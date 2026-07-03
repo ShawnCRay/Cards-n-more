@@ -26,6 +26,17 @@ Table stakes are $5–$1,000, bet with chip buttons ($5/$25/$100/$500) or Rebet.
 Keyboard shortcuts while playing a hand: **H**it, **S**tand, **D**ouble,
 s**P**lit, su**R**render.
 
+## Learning the game
+
+Two opt-in helpers live in the footer for players new to blackjack:
+
+- **How to play** opens a plain-English primer: the goal, card values, what
+  each button does, and the payouts.
+- **Coach** (off by default, remembered per device) highlights the
+  mathematically best move on your turn — the same basic-strategy chart the
+  CPU players follow — and nudges you to decline insurance. Works for guests
+  at a multiplayer table too.
+
 ## Playing with friends
 
 Tap **Play with friends** (bottom of the page), pick a name, and send the
@@ -48,6 +59,15 @@ Multiplayer notes:
 - Insurance is host-only (basic strategy never takes it anyway).
 - Host chip counts and stats persist as usual; guest chips live at the host's
   table for that session.
+
+If a friend gets "no table found" even though the code is right, the host's
+browser probably dropped off the signaling broker — the table lives in the
+host's tab, so it must stay open with the screen on (the game requests a
+screen wake lock and auto-reconnects to the broker, but a killed tab is a
+closed table). If joining hangs at "Connecting…", a strict network (cellular
+carrier-grade NAT, hotel/corporate wifi) may be blocking the direct path;
+the game falls back to free TURN relays, but when all else fails, putting
+both players on the same wifi works.
 
 ## Structure
 
