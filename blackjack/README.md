@@ -1,8 +1,8 @@
 # Blackjack
 
 A single-file, ad-free blackjack simulator. Open `index.html` in any browser —
-no build step, no dependencies, no network calls, nothing tracked or served
-from anywhere.
+no build step, no accounts, nothing tracked. Solo play works fully offline;
+optional multiplayer connects browsers directly to each other.
 
 ## The game
 
@@ -26,9 +26,40 @@ Table stakes are $5–$1,000, bet with chip buttons ($5/$25/$100/$500) or Rebet.
 Keyboard shortcuts while playing a hand: **H**it, **S**tand, **D**ouble,
 s**P**lit, su**R**render.
 
+## Playing with friends
+
+Tap **Play with friends** (bottom of the page), pick a name, and send the
+invite link it gives you. Friends who open the link just type a name and sit
+down — they take over the CPU seats (chips included), up to two friends plus
+the host. If someone leaves, the CPU quietly takes the seat back.
+
+How it works: the host's browser runs the actual game (shoe, payouts, turn
+order) and is the source of truth. Guests connect peer-to-peer over WebRTC
+using PeerJS — the public PeerJS broker is used only for the initial
+handshake; after that, game traffic flows directly between browsers. No
+server of ours, no accounts, nothing stored anywhere.
+
+Multiplayer notes:
+
+- Bets: guests place a bet each round; the host deals when ready. A guest who
+  hasn't bet simply sits that round out.
+- A guest who takes too long on their turn (45s) auto-stands so the table
+  never stalls.
+- Insurance is host-only (basic strategy never takes it anyway).
+- Host chip counts and stats persist as usual; guest chips live at the host's
+  table for that session.
+
 ## Structure
 
 Everything is in `index.html` — markup, CSS, and game logic in one file. The
 basic-strategy table the CPUs use (and the house rules above) are implemented
 at the top of the script block if you want to tweak rules like number of decks,
 penetration, or table limits.
+
+`peerjs.min.js` is a vendored copy of [PeerJS](https://peerjs.com) (MIT),
+loaded by `index.html` for multiplayer. If the file is missing (e.g. you only
+downloaded `index.html`), the game still works — the multiplayer button just
+hides itself.
+
+For development: automated tests can point the game at a self-hosted PeerJS
+signaling server with `?ps=host:port` instead of the public broker.
