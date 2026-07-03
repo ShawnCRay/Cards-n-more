@@ -309,6 +309,43 @@
     margin-bottom: 14px;
   }
   #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+
+  /* ---------- help & coach ---------- */
+  #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    max-width: 540px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  #help .help-body { text-align: left; font-size: 13.5px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 10px; }
+  #help .help-body ul { margin: 0 0 10px 18px; }
+  #help .help-body li { margin-bottom: 6px; }
+  #help .help-body b { color: var(--gold); }
+  button.suggest {
+    outline: 3px solid var(--gold);
+    box-shadow: 0 0 14px rgba(212,175,55,0.8);
+    animation: suggestPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes suggestPulse {
+    50% { box-shadow: 0 0 4px rgba(212,175,55,0.35); }
+  }
   /* guests re-render from host snapshots; replaying the deal animation would flicker */
   body.guest .card { animation: none; }
 
@@ -418,8 +455,51 @@
   <div id="log"></div>
   <div class="small-btns">
     <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-coach">Coach: off</button>
     <button id="btn-reset-stats">Reset stats</button>
     <button id="btn-reset-bank">Reset bankroll</button>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play blackjack</h2>
+    <div class="help-body">
+      <p><b>The goal:</b> beat the dealer by getting closer to 21 without going
+      over (&ldquo;busting&rdquo;). You only play against the dealer — never
+      against the other players at the table.</p>
+      <p><b>Card values:</b> number cards count as printed, face cards (J, Q, K)
+      count 10, and an ace counts 1 <i>or</i> 11, whichever helps you more
+      (a hand using an ace as 11 is called &ldquo;soft&rdquo;).</p>
+      <p><b>A round:</b> place your bet, then everyone gets two cards; the dealer
+      gets one face up and one hidden. Each player acts in turn, then the dealer
+      reveals the hidden card and must keep drawing until reaching 17. Finish
+      closer to 21 than the dealer — or watch the dealer bust — and you win.</p>
+      <p><b>Your options on a turn:</b></p>
+      <ul>
+        <li><b>Hit</b> — take another card. Keep hitting as long as you like,
+        but bust and the bet is gone.</li>
+        <li><b>Stand</b> — keep what you have and end your turn.</li>
+        <li><b>Double</b> — double your bet and take exactly one more card.
+        Strongest when your first two cards total 10 or 11.</li>
+        <li><b>Split</b> — when your two cards match, split them into two
+        separate hands (adds a second bet equal to your first).</li>
+        <li><b>Surrender</b> — fold your first two cards and keep half your bet.
+        Only worth it against a very strong dealer card.</li>
+        <li><b>Insurance</b> — a side bet offered when the dealer shows an ace.
+        It pays 2:1 if the dealer has blackjack, but it loses money in the long
+        run — the correct play is to always skip it.</li>
+      </ul>
+      <p><b>Payouts:</b> a win pays even money, a &ldquo;blackjack&rdquo;
+      (ace + ten-value as your first two cards) pays 3:2, and a tie
+      (&ldquo;push&rdquo;) returns your bet.</p>
+      <p><b>Want backup at the table?</b> Turn on the <b>Coach</b> button. On
+      your turn it highlights the mathematically best move — the same
+      &ldquo;basic strategy&rdquo; the CPU players use. Great way to learn;
+      switch it off whenever you're ready to fly solo.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -844,7 +924,8 @@ async function startRound() {
 
   // insurance (player only; basic strategy never takes it, so CPUs pass)
   if (up.rank === 'A' && player.bank >= player.hands[0].bet / 2) {
-    setMessage('Dealer shows an ace. Insurance?');
+    setMessage('Dealer shows an ace. Insurance?' +
+      (coachOn ? ' Coach says decline — insurance loses money long-run.' : ''));
     $('insurance-controls').style.display = '';
     const take = await new Promise(r => { playerResolver = r; });
     playerResolver = null;
@@ -947,7 +1028,7 @@ async function playSeat(seat, up) {
         action = basicStrategy(hand, up, can);
       } else if (seat.remote) {
         setMessage('Waiting for ' + seat.name + '…');
-        action = await getRemoteAction(seat, can);
+        action = await getRemoteAction(seat, hand, can);
         setMessage('');
       } else {
         action = await getPlayerAction(can);
@@ -1008,6 +1089,26 @@ async function playSeat(seat, up) {
   }
 }
 
+/* ---------- coach (optional basic-strategy hints) ---------- */
+
+let coachOn = false;
+try { coachOn = localStorage.getItem('blackjack-coach') === '1'; } catch (e) { /* no storage */ }
+
+const ACTION_NAMES = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender' };
+const ACTION_BTNS  = { H: 'btn-hit', S: 'btn-stand', D: 'btn-double', P: 'btn-split', R: 'btn-surrender' };
+
+function clearCoachHint() {
+  for (const id of Object.values(ACTION_BTNS)) $(id).classList.remove('suggest');
+}
+
+function showCoachHint(cards, up, can) {
+  clearCoachHint();
+  if (!coachOn || !cards || !up) return;
+  const a = basicStrategy({ cards }, up, can);
+  $(ACTION_BTNS[a]).classList.add('suggest');
+  setMessage('Your move — coach says ' + ACTION_NAMES[a] + '.');
+}
+
 function getPlayerAction(can) {
   return new Promise(resolve => {
     $('action-controls').style.display = '';
@@ -1015,7 +1116,9 @@ function getPlayerAction(can) {
     $('btn-split').disabled = !can.split;
     $('btn-surrender').disabled = !can.surrender;
     setMessage('Your move.');
+    showCoachHint(activeRef && activeRef.hand.cards, dealer.cards[0], can);
     playerResolver = action => {
+      clearCoachHint();
       $('action-controls').style.display = 'none';
       playerResolver = null;
       resolve(action);
@@ -1095,7 +1198,7 @@ function settleRound(dealerBlackjack) {
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
               hostName: 'Host', resolvers: {}, lastView: null, lastSeen: 0, hostGone: false };
 const HEARTBEAT_MS = 3000;
-const STALE_MS = 12000; // browsers don't reliably fire close on abrupt exits
+const STALE_MS = 35000; // generous: backgrounded phone tabs throttle timers hard
 let mySeatIdx = 1;
 let guestPrevBetting = null;
 
@@ -1112,7 +1215,39 @@ function makePeer(id) {
   const opts = ps
     ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
     : {};
-  return id ? new Peer(id, opts) : new Peer(opts);
+  // STUN discovers a direct path between the two browsers; the free Open Relay
+  // TURN servers are a fallback relay for strict NATs (cellular, hotel wifi)
+  // where a direct path can't be opened.
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  // the broker quietly drops idle websockets; without this the table becomes
+  // unjoinable ("no table found") even though the game looks fine to the host
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  // a sleeping phone screen kills the broker connection and with it the table
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
 }
 
 function randCode() {
@@ -1170,6 +1305,7 @@ function hostRoom() {
     updateNetBar();
     setMessage('Table ready — send friends the invite link.');
     log('Table ' + code + ' opened. Friends who join take over the CPU seats.');
+    keepAwake();
     render();
     setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
     setInterval(() => {
@@ -1257,7 +1393,7 @@ function sanitizeAction(a, can) {
   return 'S';
 }
 
-function getRemoteAction(seat, can) {
+function getRemoteAction(seat, hand, can) {
   return new Promise(resolve => {
     const idx = seats.indexOf(seat);
     let settled = false;
@@ -1273,7 +1409,8 @@ function getRemoteAction(seat, can) {
       finish('S');
     }, 45000);
     net.resolvers[idx] = finish;
-    if (seat.remote && seat.remote.open) seat.remote.send({ type: 'turn', can });
+    if (seat.remote && seat.remote.open)
+      seat.remote.send({ type: 'turn', can, hand: hand.cards, up: dealer.cards[0] });
     else finish('S');
   });
 }
@@ -1282,6 +1419,14 @@ function getRemoteAction(seat, can) {
 
 function joinRoom(code, name) {
   net.roomCode = code;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy(); // retry: start clean
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… If this hangs, the table may be ' +
+        'unreachable from this network. Ask the host to keep the game open and their ' +
+        'screen on, then tap Join again — the same wifi as the host works best.';
+  }, 20000);
   net.peer = makePeer();
   net.peer.on('open', () => {
     const conn = net.peer.connect('bjsim-' + code, { reliable: true });
@@ -1299,8 +1444,9 @@ function joinRoom(code, name) {
   net.peer.on('error', e => {
     $('overlay-status').textContent =
       e.type === 'peer-unavailable'
-        ? 'No table found with that code — is the host still at the table?'
-        : 'Connection failed (' + e.type + ').';
+        ? 'No table with code ' + code + ' right now. Make sure the host still has the ' +
+          'game open with the screen on (the table lives in their browser), then tap Join again.'
+        : 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
   });
 }
 
@@ -1317,6 +1463,8 @@ function handleHostMsg(d) {
   net.lastSeen = Date.now();
   if (d.type === 'welcome') {
     net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
     mySeatIdx = d.seat;
     net.hostName = d.hostName || 'Host';
     document.body.classList.add('guest');
@@ -1334,7 +1482,7 @@ function handleHostMsg(d) {
     renderView(d.view);
     syncGuestControls(d.view);
   } else if (d.type === 'turn') {
-    showGuestActions(d.can);
+    showGuestActions(d.can, d.hand, d.up);
   } else if (d.type === 'full') {
     $('overlay-status').textContent = 'That table is full (host + 2 friends).';
   }
@@ -1360,14 +1508,16 @@ function syncGuestControls(view) {
   $('btn-rebet').disabled = !(betting && lastBet >= MIN_BET && lastBet <= bank);
 }
 
-function showGuestActions(can) {
+function showGuestActions(can, hand, up) {
   $('bet-controls').style.display = 'none';
   $('action-controls').style.display = '';
   $('btn-double').disabled = !can.double;
   $('btn-split').disabled = !can.split;
   $('btn-surrender').disabled = !can.surrender;
   setMessage('Your move.');
+  showCoachHint(hand, up, can);
   playerResolver = action => {
+    clearCoachHint();
     $('action-controls').style.display = 'none';
     playerResolver = null;
     setMessage('');
@@ -1418,6 +1568,20 @@ $('overlay-cancel').addEventListener('click', () => {
   if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
 });
 $('btn-invite').addEventListener('click', () => showOverlay('host'));
+
+/* ----- help & coach ----- */
+
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-coach').addEventListener('click', () => {
+  coachOn = !coachOn;
+  try { localStorage.setItem('blackjack-coach', coachOn ? '1' : '0'); } catch (e) { /* no storage */ }
+  $('btn-coach').textContent = 'Coach: ' + (coachOn ? 'on' : 'off');
+  setMessage(coachOn
+    ? 'Coach on — on your turn, the best move lights up.'
+    : 'Coach off.');
+  if (!coachOn) clearCoachHint();
+});
 
 /* ---------- wiring ---------- */
 
@@ -1485,6 +1649,7 @@ shuffleShoe();
 buildSeats();
 enterBettingPhase();
 log('Welcome. ' + NUM_DECKS + '-deck shoe, blackjack pays 3:2, dealer stands on all 17s.');
+$('btn-coach').textContent = 'Coach: ' + (coachOn ? 'on' : 'off');
 
 if (window.Peer) {
   $('btn-invite').style.display = '';
