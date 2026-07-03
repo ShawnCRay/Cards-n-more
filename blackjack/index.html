@@ -399,21 +399,26 @@
   }
 
   @media (max-width: 720px) {
-    #topbar { padding: 8px 10px; font-size: 12px; gap: 3px 12px; justify-content: center; }
+    #topbar { padding: 6px 10px; font-size: 12px; gap: 3px 12px; justify-content: center; }
     #topbar .title { display: none; }
-    #table { padding: 8px 8px 0; }
-    #dealer-area { min-height: 118px; }
-    #table-rules { font-size: 9px; margin: 4px 6px 8px; }
+    #topbar .stat.xtra { display: none; } /* keep the bar to one row */
+    #table { padding: 6px 8px 0; }
+    #dealer-area { min-height: 0; }
+    .area-label { font-size: 10px; margin-bottom: 2px; }
+    #table-rules { font-size: 9px; margin: 4px 6px 6px; }
+    #net-bar { font-size: 12px; min-height: 0; margin-bottom: 4px; }
+    #bet-note { min-height: 0; }
+    .seat-status { min-height: 0; margin-bottom: 2px; }
 
     /* CPU seats compact side by side; your seat full width, closest to the buttons */
-    #seats { gap: 8px; align-items: stretch; }
-    .seat { min-width: 0; max-width: none; flex: 1 1 0; padding: 8px 6px 10px; }
+    #seats { gap: 6px; align-items: stretch; margin-top: 4px; }
+    .seat { min-width: 0; max-width: none; flex: 1 1 0; padding: 6px 6px 8px; }
     .seat.you { flex: 1 1 100%; order: 3; }
-    .seat .seat-name { font-size: 13px; }
-    .seat .seat-bank { font-size: 11px; margin-bottom: 4px; }
-    .hand { margin: 2px 3px; padding: 4px 4px 6px; }
-    .hand .hand-info { font-size: 11px; gap: 6px; }
-    .hand .cards { min-height: 66px; }
+    .seat .seat-name { font-size: 12px; }
+    .seat .seat-bank { font-size: 11px; margin-bottom: 2px; }
+    .hand { margin: 1px 2px; padding: 2px 3px 4px; }
+    .hand .hand-info { font-size: 11px; gap: 6px; margin-top: 3px; min-height: 16px; }
+    .hand .cards { min-height: 50px; }
 
     .card { width: 44px; height: 63px; }
     .card .pip { font-size: 21px; }
@@ -421,13 +426,23 @@
     .seat:not(.you) .card:first-child { margin-left: 0; }
     .seat:not(.you) .card .pip { font-size: 15px; }
     .seat:not(.you) .card .corner { font-size: 10px; top: 2px; left: 3px; }
-    .seat:not(.you) .hand .cards { min-height: 50px; }
+    .seat:not(.you) .hand .cards { min-height: 48px; }
 
-    #controls { padding: 6px 8px 12px; }
-    #message { font-size: 14px; }
-    button { padding: 10px 14px; }
-    .chip-btn { width: 50px; height: 50px; font-size: 12px; }
-    #footer { font-size: 11px; padding-bottom: 10px; }
+    #controls { padding: 4px 8px 6px; }
+    #message { font-size: 14px; min-height: 18px; margin-bottom: 4px; }
+    #bet-display { font-size: 13px; margin: 2px 0; }
+    .btn-row { gap: 6px; }
+    button { padding: 9px 12px; }
+    .chip-btn { width: 42px; height: 42px; font-size: 11px; border-width: 3px; }
+    #footer { font-size: 10px; gap: 6px; padding: 2px 10px 6px; }
+    #footer .small-btns button, #footer .small-btns select { font-size: 10px; padding: 3px 7px; }
+    #log { max-height: 18px; font-size: 10px; }
+  }
+
+  /* short phone screens: drop the decorative rules banner to keep the
+     dealer and the action buttons on screen together */
+  @media (max-width: 720px) and (max-height: 800px) {
+    #table-rules { display: none; }
   }
 </style>
 </head>
@@ -437,9 +452,9 @@
   <span class="title">♠ BLACKJACK</span>
   <span class="stat">Bank <b id="stat-bank">$0</b></span>
   <span class="stat">Session <b id="stat-net">$0</b></span>
-  <span class="stat">Hands <b id="stat-hands">0</b></span>
+  <span class="stat xtra">Hands <b id="stat-hands">0</b></span>
   <span class="stat">W–L–P <b id="stat-record">0–0–0</b></span>
-  <span class="stat">Blackjacks <b id="stat-bj">0</b></span>
+  <span class="stat xtra">Blackjacks <b id="stat-bj">0</b></span>
   <span class="stat" title="Cards left in the shoe — red tick is the cut card (shuffle when the gold drains past it)">Shoe <span id="shoe-meter"><span id="shoe-fill"></span><span id="shoe-cut"></span></span> <b id="stat-shoe">—</b></span>
 </div>
 
@@ -825,12 +840,14 @@ function renderView(view) {
     $('seat-' + i).querySelector('.seat-name').innerHTML =
       escapeHtml(seat.name) + ' <span class="tag">' + tag + '</span>';
     $('seat-bank-' + i).textContent = fmt(seat.bank);
-    // during betting, show at a glance which humans have their bet in
+    // show at a glance which humans have a bet in (or queued for the next deal)
     const status = $('seat-status-' + i);
-    if (view.phase === 'betting' && !seat.ai && i !== mySeatIdx) {
+    if (!seat.ai && i !== mySeatIdx && view.phase === 'betting') {
       status.innerHTML = seat.pendingBet > 0
         ? '<span class="badge win">BET ' + fmt(seat.pendingBet) + '</span>'
         : '<span class="badge push wait">WAITING TO BET…</span>';
+    } else if (!seat.ai && i !== mySeatIdx && seat.pendingBet > 0) {
+      status.innerHTML = '<span class="badge win">NEXT BET ' + fmt(seat.pendingBet) + '</span>';
     } else {
       status.innerHTML = '';
     }
@@ -986,9 +1003,10 @@ async function startRound() {
     if (seat === player) continue;
     seat.finishAsCpu = false;
     if (seat.remote) {
-      if (seat.netBet >= MIN_BET && seat.netBet <= seat.bank) {
-        seat.bank -= seat.netBet;
-        seat.hands = [makeHand(seat.netBet)];
+      const b = Math.min(seat.netBet, seat.bank, MAX_BET); // pre-bets clamp to what they still have
+      if (b >= MIN_BET) {
+        seat.bank -= b;
+        seat.hands = [makeHand(b)];
       } else {
         seat.hands = []; // no bet in — sits this round out
       }
@@ -1502,11 +1520,11 @@ function handleGuestMsg(conn, d) {
     render();
   } else if (d.type === 'bet') {
     const seat = conn._seat;
-    if (!seat || roundActive) return;
+    if (!seat) return;
     const amt = Math.floor(Number(d.amount) || 0);
-    if (amt >= MIN_BET && amt <= Math.min(seat.bank, MAX_BET)) {
-      seat.netBet = amt;
-      log(seat.name + ' bets ' + fmt(amt) + '.');
+    if (amt >= MIN_BET && amt <= MAX_BET) {
+      seat.netBet = amt; // mid-round bets ride on the next deal; clamped to bank at deal time
+      log(seat.name + (roundActive ? ' sets ' + fmt(amt) + ' for the next hand.' : ' bets ' + fmt(amt) + '.'));
       render();
     }
   } else if (d.type === 'action') {
@@ -1516,7 +1534,7 @@ function handleGuestMsg(conn, d) {
     if (r) r(d.action);
   } else if (d.type === 'buyin') {
     const seat = conn._seat;
-    if (seat && seat.bank < MIN_BET && !roundActive) {
+    if (seat && seat.bank < MIN_BET) {
       seat.bank += 1000;
       log(seat.name + ' buys in for $1,000.');
       render();
@@ -1680,22 +1698,40 @@ function handleHostMsg(d) {
 
 function syncGuestControls(view) {
   const betting = view.phase === 'betting';
-  const bank = view.seats[mySeatIdx].bank;
-  if (betting && guestPrevBetting !== true) {
-    pendingBet = 0;
-    $('btn-deal').disabled = false;
-    $('bet-controls').style.display = '';
-    $('action-controls').style.display = 'none';
-    setMessage(bank < MIN_BET ? "You're out of chips. Buy back in to keep playing." : 'Place your bet.');
-    $('bet-amount').textContent = fmt(pendingBet);
-  } else if (!betting && guestPrevBetting !== false) {
-    $('bet-controls').style.display = 'none';
-    if (view.seats[mySeatIdx].hands.length === 0)
-      setMessage('Hand in progress — you’ll be dealt in next round.');
+  const me = view.seats[mySeatIdx];
+  const bank = me.bank;
+  const betIn = me.pendingBet > 0; // the host holds my (pre-)bet
+  const myTurn = $('action-controls').style.display !== 'none';
+
+  if (betting !== guestPrevBetting) {
+    if (betting && !betIn) pendingBet = 0; // fresh betting round, nothing queued
+    guestPrevBetting = betting;
   }
-  guestPrevBetting = betting;
-  $('btn-buyin').style.display = (betting && bank < MIN_BET) ? '' : 'none';
-  $('btn-rebet').disabled = !(betting && lastBet >= MIN_BET && lastBet <= bank);
+
+  if (myTurn) {
+    $('bet-controls').style.display = 'none';
+    $('bet-note').textContent = '';
+    return;
+  }
+
+  // not my turn: betting is always available — mid-round it queues for the next deal
+  $('bet-controls').style.display = '';
+  $('btn-deal').textContent = betting ? 'Place bet' : 'Bet next hand';
+  $('btn-deal').disabled = betIn || bank < MIN_BET;
+  $('btn-buyin').style.display = (bank < MIN_BET && !betIn) ? '' : 'none';
+  $('btn-rebet').disabled = betIn || !(lastBet >= MIN_BET && lastBet <= bank);
+  $('bet-amount').textContent = fmt(pendingBet);
+
+  if (betting) {
+    $('bet-note').textContent = '';
+    setMessage(betIn ? 'Bet in — waiting for ' + net.hostName + ' to deal.'
+      : bank < MIN_BET ? "You're out of chips. Buy back in to keep playing."
+      : 'Place your bet.');
+  } else {
+    $('bet-note').textContent = betIn
+      ? 'Next hand’s bet is in.'
+      : 'Hand in progress — this bet will ride on the next deal.';
+  }
 }
 
 function showGuestActions(can, hand, up) {
