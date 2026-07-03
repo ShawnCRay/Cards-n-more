@@ -9,7 +9,9 @@ optional multiplayer connects browsers directly to each other.
 You sit at a three-seat table between two CPU players (Ruby and Max) who play
 textbook basic strategy with their own bankrolls. Real casino rules and odds:
 
-- 6-deck shoe, reshuffled at 75% penetration (cut card)
+- Configurable shoe: 1, 2, 4, 6, or 8 decks (footer selector, host's choice
+  at a multiplayer table), reshuffled at 75% penetration — the top-bar shoe
+  meter drains as cards go and the red tick marks the cut card
 - Blackjack pays 3:2, dealer stands on all 17s
 - Dealer peeks for blackjack on an ace or ten up
 - Double on any first two cards, double after split allowed
@@ -52,8 +54,10 @@ server of ours, no accounts, nothing stored anywhere.
 
 Multiplayer notes:
 
-- Bets: guests place a bet each round; the host deals when ready. A guest who
-  hasn't bet simply sits that round out.
+- Bets: guests place a bet each round; the host deals when ready. Seats show
+  "BET $x" / "WAITING TO BET" badges during the betting phase and the host
+  gets a note naming anyone who hasn't bet, since a guest without a bet in
+  sits the round out.
 - A guest who takes too long on their turn (45s) auto-stands so the table
   never stalls.
 - Insurance is host-only (basic strategy never takes it anyway).
