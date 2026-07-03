@@ -58,6 +58,10 @@ Multiplayer notes:
   "BET $x" / "WAITING TO BET" badges during the betting phase and the host
   gets a note naming anyone who hasn't bet, since a guest without a bet in
   sits the round out.
+- Guests can pre-bet: while a hand is still playing out, the betting chips
+  stay available and the button reads "Bet next hand" — the wager (badged
+  "NEXT BET" for the table) is applied automatically when the next round's
+  betting opens, clamped to whatever the player's bank holds by then.
 - A guest who takes too long on their turn (45s) auto-stands so the table
   never stalls.
 - Insurance is host-only (basic strategy never takes it anyway).
