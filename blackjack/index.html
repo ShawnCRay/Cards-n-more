@@ -23,7 +23,10 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    min-height: 100svh;
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
   }
 
   /* ---------- top bar ---------- */
@@ -208,6 +211,7 @@
     color: var(--cream);
     cursor: pointer;
     letter-spacing: 0.5px;
+    -webkit-tap-highlight-color: transparent;
   }
   button:hover:not(:disabled) { background: rgba(212,175,55,0.2); }
   button:disabled { opacity: 0.35; cursor: default; }
@@ -267,10 +271,41 @@
     font-weight: 400;
   }
 
+  /* touch devices: keyboard hints are noise */
+  @media (hover: none) {
+    button kbd { display: none; }
+  }
+
   @media (max-width: 720px) {
-    .seat { min-width: 200px; }
+    #topbar { padding: 8px 10px; font-size: 12px; gap: 3px 12px; justify-content: center; }
+    #topbar .title { display: none; }
+    #table { padding: 8px 8px 0; }
+    #dealer-area { min-height: 118px; }
+    #table-rules { font-size: 9px; margin: 4px 6px 8px; }
+
+    /* CPU seats compact side by side; your seat full width, closest to the buttons */
+    #seats { gap: 8px; align-items: stretch; }
+    .seat { min-width: 0; max-width: none; flex: 1 1 0; padding: 8px 6px 10px; }
+    .seat.you { flex: 1 1 100%; order: 3; }
+    .seat .seat-name { font-size: 13px; }
+    .seat .seat-bank { font-size: 11px; margin-bottom: 4px; }
+    .hand { margin: 2px 3px; padding: 4px 4px 6px; }
+    .hand .hand-info { font-size: 11px; gap: 6px; }
+    .hand .cards { min-height: 66px; }
+
     .card { width: 44px; height: 63px; }
     .card .pip { font-size: 21px; }
+    .seat:not(.you) .card { width: 34px; height: 48px; margin-left: -14px; }
+    .seat:not(.you) .card:first-child { margin-left: 0; }
+    .seat:not(.you) .card .pip { font-size: 15px; }
+    .seat:not(.you) .card .corner { font-size: 10px; top: 2px; left: 3px; }
+    .seat:not(.you) .hand .cards { min-height: 50px; }
+
+    #controls { padding: 6px 8px 12px; }
+    #message { font-size: 14px; }
+    button { padding: 10px 14px; }
+    .chip-btn { width: 50px; height: 50px; font-size: 12px; }
+    #footer { font-size: 11px; padding-bottom: 10px; }
   }
 </style>
 </head>
