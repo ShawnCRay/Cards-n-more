@@ -740,6 +740,7 @@ async function startRound() {
   // dealer's turn
   activeRef = null;
   dealer.holeHidden = false;
+  setMessage('Dealer plays…');
   render();
   await sleep(600);
 
