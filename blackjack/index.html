@@ -794,7 +794,7 @@ function buildView() {
       bank: s.bank,
       pendingBet: s === player ? pendingBet : (s.remote ? s.netBet : 0),
       hands: s.hands.map(h => ({
-        cards: h.cards, bet: h.bet,
+        cards: h.cards, bet: h.bet, split: h.isSplit,
         busted: h.busted, surrendered: h.surrendered, result: h.result,
       })),
     })),
@@ -812,7 +812,10 @@ function renderView(view) {
     $('dealer-total').textContent = 'Showing ' + upValue(view.dealer.cards[0]);
   } else {
     const v = handValue(view.dealer.cards);
-    $('dealer-total').textContent = v.total > 21 ? v.total + ' — BUST' : v.total;
+    $('dealer-total').textContent =
+      v.total > 21 ? v.total + ' — BUST'
+      : v.total === 21 && view.dealer.cards.length === 2 ? 'Blackjack'
+      : v.total;
   }
 
   // seats
@@ -850,7 +853,11 @@ function renderView(view) {
       const info = document.createElement('div');
       info.className = 'hand-info';
       const v = handValue(hand.cards);
-      let totalTxt = hand.cards.length ? (v.soft && v.total <= 21 ? 'Soft ' : '') + v.total : '';
+      let totalTxt = '';
+      if (hand.cards.length) {
+        if (v.total === 21 && hand.cards.length === 2 && !hand.split) totalTxt = 'Blackjack';
+        else totalTxt = (v.soft && v.total < 21 ? 'Soft ' : '') + v.total;
+      }
       info.innerHTML = '<span class="bet-chip">' + fmt(hand.bet) + '</span>' +
                        '<span class="total">' + totalTxt + '</span>';
       if (hand.result) {
