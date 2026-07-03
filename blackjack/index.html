@@ -1229,6 +1229,13 @@ function makePeer(id) {
       },
     ],
   };
+  if (id) {
+    // reuse one session token for the table so a rebuilt/reconnected host
+    // REPLACES its lingering registration on the broker instead of colliding
+    // with it (frozen phone tabs leave a ghost registration behind)
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
   const peer = id ? new Peer(id, opts) : new Peer(opts);
   // the broker quietly drops idle websockets; without this the table becomes
   // unjoinable ("no table found") even though the game looks fine to the host
@@ -1283,8 +1290,15 @@ function updateNetBar() {
     const guests = seats.filter(s => s.remote).map(s => escapeHtml(s.name));
     bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
       (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
-      '<button id="btn-copy-link">Copy invite link</button>';
-    $('btn-copy-link').addEventListener('click', copyInvite);
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Blackjack', text: 'Join my blackjack table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else {
+        copyInvite();
+      }
+    });
   } else if (net.mode === 'guest') {
     bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
   } else {
@@ -1295,29 +1309,45 @@ function updateNetBar() {
 /* ----- host side ----- */
 
 function hostRoom() {
-  const code = randCode();
   setMessage('Setting up your table…');
-  net.peer = makePeer('bjsim-' + code);
-  net.peer.on('open', () => {
-    net.mode = 'host';
-    net.roomCode = code;
-    $('btn-invite').style.display = 'none';
-    updateNetBar();
-    setMessage('Table ready — send friends the invite link.');
-    log('Table ' + code + ' opened. Friends who join take over the CPU seats.');
-    keepAwake();
-    render();
-    setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
-    setInterval(() => {
-      const now = Date.now();
-      for (const s of seats) {
-        if (s.remote && s.remote._lastSeen && now - s.remote._lastSeen > STALE_MS) {
-          const conn = s.remote;
-          try { conn.close(); } catch (e) { /* already dead */ }
-          dropGuest(conn);
-        }
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  // phones freeze the tab (and kill the lobby socket) the moment the host
+  // switches apps — e.g. to text the invite link. Re-register the table as
+  // soon as we're visible again, and sweep every few seconds as a backstop.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const s of seats) {
+      if (s.remote && s.remote._lastSeen && now - s.remote._lastSeen > STALE_MS) {
+        const conn = s.remote;
+        try { conn.close(); } catch (e) { /* already dead */ }
+        dropGuest(conn);
       }
-    }, 4000);
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('bjsim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Friends who join take over the CPU seats.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
   });
   net.peer.on('connection', conn => {
     conn.on('data', d => handleGuestMsg(conn, d));
@@ -1325,15 +1355,45 @@ function hostRoom() {
     conn.on('error', () => dropGuest(conn));
   });
   net.peer.on('error', e => {
-    setMessage('Multiplayer error (' + e.type + ') — solo play still works.');
-    log('Multiplayer error: ' + e.type);
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      // lobby connection lost (typical after the phone left this tab); the
+      // watchdog re-registers the table — seated players are unaffected
+      setMessage('Reconnecting to the lobby so friends can join…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
   });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer(); // fatal broker errors destroy the Peer; rebuild on the same code
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* already gone */ }
+      createHostPeer();
+    }
+  }
 }
 
 function handleGuestMsg(conn, d) {
   if (!d || typeof d !== 'object') return;
   conn._lastSeen = Date.now();
   if (d.type === 'hello') {
+    // a rejoining guest (same peer id) reclaims their seat instead of a new one
+    const prior = seats.find(s => s.remote && s.remote !== conn && s.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale connection */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: seats.indexOf(prior), hostName: player.name, code: net.roomCode });
+      render();
+      return;
+    }
     const seat = seats.find(s => s.ai && !s.remote);
     if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
     seat.ai = false;
@@ -1419,35 +1479,61 @@ function getRemoteAction(seat, hand, can) {
 
 function joinRoom(code, name) {
   net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
   if (net.peer && !net.peer.destroyed) net.peer.destroy(); // retry: start clean
   clearTimeout(net.joinTimer);
   net.joinTimer = setTimeout(() => {
     if (net.mode !== 'guest')
-      $('overlay-status').textContent = 'Still trying… If this hangs, the table may be ' +
-        'unreachable from this network. Ask the host to keep the game open and their ' +
-        'screen on, then tap Join again — the same wifi as the host works best.';
-  }, 20000);
+      $('overlay-status').textContent = 'Still trying… If this never lands, this network may ' +
+        'block the connection — the same wifi as the host works best.';
+  }, 30000);
   net.peer = makePeer();
-  net.peer.on('open', () => {
-    const conn = net.peer.connect('bjsim-' + code, { reliable: true });
-    net.hostConn = conn;
-    conn.on('open', () => {
-      conn.send({ type: 'hello', name });
-      setInterval(() => { if (conn.open) conn.send({ type: 'ping' }); }, HEARTBEAT_MS);
-      setInterval(() => {
-        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
-      }, 4000);
-    });
-    conn.on('data', d => handleHostMsg(d));
-    conn.on('close', () => { if (net.mode === 'guest') hostLost(); });
-  });
+  net.peer.on('open', () => guestConnect());
   net.peer.on('error', e => {
-    $('overlay-status').textContent =
-      e.type === 'peer-unavailable'
-        ? 'No table with code ' + code + ' right now. Make sure the host still has the ' +
-          'game open with the screen on (the table lives in their browser), then tap Join again.'
-        : 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    if (net.mode === 'guest') return; // seated — lobby hiccups no longer matter
+    if (e.type === 'peer-unavailable') {
+      // the table vanishes from the lobby whenever the host's phone leaves the
+      // tab (e.g. while texting the invite link). Keep retrying — the host's
+      // game re-registers itself the moment they come back.
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — the host may be " +
+          'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host ' +
+          'to open the game and stay on it, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
   });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale attempt */ } }
+  const conn = net.peer.connect('bjsim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  // a host whose tab froze leaves a ghost registration: the broker relays our
+  // offer into a dead socket and no error ever comes back. Treat silence as
+  // failure and retry — the host's game re-registers when they return.
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — the host may be " +
+        'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to open ' +
+        'the game and stay on it, then tap Join again.';
+    }
+  }, 8000);
 }
 
 function hostLost() {
@@ -1465,6 +1551,15 @@ function handleHostMsg(d) {
     net.mode = 'guest';
     clearTimeout(net.joinTimer);
     keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
     mySeatIdx = d.seat;
     net.hostName = d.hostName || 'Host';
     document.body.classList.add('guest');
