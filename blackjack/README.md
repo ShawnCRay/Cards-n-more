@@ -1,12 +1,15 @@
-# Blackjack
+# Vault 21 Blackjack
 
-A single-file, ad-free blackjack simulator. Open `index.html` in any browser —
-no build step, no accounts, nothing tracked. Solo play works fully offline;
-optional multiplayer connects browsers directly to each other.
+A single-file, ad-free blackjack simulator with a Fallout-inspired Pip-Boy
+skin: phosphor-green CRT terminal, scanlines, amber for the red suits, and
+bottle caps (₵) for chips. All CSS and text — no game assets are copied.
+Open `index.html` in any browser — no build step, no accounts, nothing
+tracked. Solo play works fully offline; optional multiplayer connects
+browsers directly to each other.
 
 ## The game
 
-You sit at a six-seat table between two CPU players (Ruby and Max) who play
+You sit at a six-seat table between two CPU players (Cass and Boone) who play
 textbook basic strategy with their own bankrolls; the other three seats stay
 open for friends (hidden on phones until someone sits down). Real casino
 rules and odds:
@@ -25,7 +28,7 @@ rules and odds:
 Your bankroll and session stats (hands, W–L–P, blackjacks, net) persist in the
 browser via `localStorage`, so they survive closing the tab. Buttons in the
 footer reset stats or the bankroll; a buy-in button appears if you go broke.
-Table stakes are $5–$1,000, bet with chip buttons ($5/$25/$100/$500) or Rebet.
+Table stakes are ₵5–₵1,000, bet with the bottle-cap buttons (₵5/₵25/₵100/₵500) or Rebet.
 
 Keyboard shortcuts while playing a hand: **H**it, **S**tand, **D**ouble,
 s**P**lit, su**R**render.
@@ -46,7 +49,7 @@ Two opt-in helpers live in the footer for players new to blackjack:
 Tap **Play with friends** (bottom of the page), pick a name, and send the
 invite link it gives you. Friends who open the link just type a name and sit
 down — up to five friends plus the host. They fill the open seats first
-(fresh $1,000 bankroll), then take over the CPU seats (inheriting those
+(fresh ₵1,000 bankroll), then take over the CPU seats (inheriting those
 chips). When someone leaves, their seat opens back up — or the CPU takes it
 back if it was theirs.
 
