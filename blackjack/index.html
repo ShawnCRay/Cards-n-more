@@ -452,7 +452,7 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.6);
     -webkit-tap-highlight-color: transparent;
   }
-  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:hover:not(:disabled):not(.chip-btn) { background: rgba(217,151,63,0.2); }
   button:disabled { opacity: 0.35; cursor: default; }
   button.primary {
     background:
@@ -479,10 +479,26 @@
     padding: 0;
     position: relative;
     font-size: 13px;
-    border: 4px dashed rgba(230,217,184,0.75);
+    border: none;
     color: #f3e9cf;
     text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    /* a real bottle cap: 21 crimped flutes around the skirt */
+    clip-path: polygon(50.0% 0.0%, 56.8% 5.0%, 64.7% 2.2%, 69.7% 9.0%, 78.2% 8.7%, 80.9% 16.6%, 89.1% 18.8%, 89.4% 27.3%, 96.5% 31.7%, 94.4% 39.9%, 99.9% 46.3%, 95.4% 53.4%, 98.7% 61.1%, 92.4% 66.6%, 93.3% 75.0%, 85.6% 78.4%, 84.0% 86.7%, 75.6% 87.6%, 71.7% 95.0%, 63.4% 93.5%, 57.5% 99.4%, 50.0% 95.5%, 42.5% 99.4%, 36.6% 93.5%, 28.3% 95.0%, 24.4% 87.6%, 16.0% 86.7%, 14.4% 78.4%, 6.7% 75.0%, 7.6% 66.6%, 1.3% 61.1%, 4.6% 53.4%, 0.1% 46.3%, 5.6% 39.9%, 3.5% 31.7%, 10.6% 27.3%, 10.9% 18.8%, 19.1% 16.6%, 21.8% 8.7%, 30.3% 9.0%, 35.3% 2.2%, 43.2% 5.0%);
   }
+  /* the flat pressed top sitting inside the crimp, with a dent of shine */
+  .chip-btn::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(circle at 34% 28%, rgba(255,246,220,0.30), rgba(255,246,220,0.06) 45%, transparent 62%);
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.4),
+      inset 0 -3px 5px rgba(0,0,0,0.35),
+      inset 0 2px 3px rgba(255,246,220,0.18);
+  }
+  button.chip-btn:hover:not(:disabled) { filter: brightness(1.15); }
   /* bottle caps: rusty, dented, crimped edges */
   .chip-btn.c5   { background: radial-gradient(circle at 35% 30%, #6e4118, #4a2a0e); }
   .chip-btn.c25  { background: radial-gradient(circle at 35% 30%, #1d6427, #113f18); }
@@ -491,14 +507,15 @@
   .chip-btn::after {
     content: '';
     position: absolute;
-    inset: -4px; /* cover the crimped border too */
+    inset: 0;
     border-radius: 50%;
     pointer-events: none;
     background:
       radial-gradient(circle 6px at 68% 20%, rgba(70,40,15,0.6), transparent 70%),
       radial-gradient(circle 4px at 22% 68%, rgba(70,40,15,0.5), transparent 70%),
       radial-gradient(circle 3px at 48% 42%, rgba(0,0,0,0.35), transparent 70%),
-      radial-gradient(circle 5px at 80% 75%, rgba(150,84,30,0.45), transparent 70%);
+      radial-gradient(circle 5px at 80% 75%, rgba(150,84,30,0.45), transparent 70%),
+      radial-gradient(ellipse 10px 4px at 40% 88%, rgba(0,0,0,0.3), transparent 70%);
   }
   #bet-display { font-size: 16px; margin: 8px 0; }
   #bet-display b { color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -681,7 +698,7 @@
     #bet-display { font-size: 13px; margin: 2px 0; }
     .btn-row { gap: 6px; }
     button { padding: 9px 12px; }
-    .chip-btn { width: 42px; height: 42px; font-size: 11px; border-width: 3px; }
+    .chip-btn { width: 44px; height: 44px; font-size: 11px; }
     #footer { font-size: 10px; gap: 6px; padding: 2px 10px 6px; }
     #footer .small-btns button, #footer .small-btns select { font-size: 10px; padding: 3px 7px; }
     #log { max-height: 18px; font-size: 10px; }
