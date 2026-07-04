@@ -1,8 +1,9 @@
 # Vault 21 Blackjack
 
-A single-file, ad-free blackjack simulator with a Fallout-inspired Pip-Boy
-skin: phosphor-green CRT terminal, scanlines, amber for the red suits, and
-bottle caps (₵) for chips. All CSS and text — no game assets are copied.
+A single-file, ad-free blackjack simulator themed as a post-war wasteland
+casino: worn felt under a warm hanging lamp, aged-paper cards dealt a little
+crooked, rusted-amber trim, and bottle caps (₵) for chips. All CSS and text —
+no game assets are copied.
 Open `index.html` in any browser — no build step, no accounts, nothing
 tracked. Solo play works fully offline; optional multiplayer connects
 browsers directly to each other.
