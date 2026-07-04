@@ -182,6 +182,32 @@
     box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
     white-space: nowrap;
   }
+  .cchip.tappable, .mchip { cursor: pointer; -webkit-tap-highlight-color: rgba(217,151,63,0.3); }
+
+  /* tap-to-inspect popover — gives phones the detail desktop shows on hover */
+  #cardtip {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    max-width: 260px;
+    padding: 9px 11px;
+    background: linear-gradient(180deg, #2a2417, #17130c);
+    border: 1px solid var(--gold);
+    border-radius: 7px 11px 7px 11px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.65);
+    color: var(--cream);
+    font-size: 12px;
+    line-height: 1.4;
+    pointer-events: none;
+  }
+  #cardtip .ct-name { font-weight: 700; color: var(--gold); font-size: 13px; margin-bottom: 2px; }
+  #cardtip .ct-sub { font-size: 10px; letter-spacing: 1px; opacity: 0.85; margin-bottom: 6px; text-transform: uppercase; }
+  #cardtip .ct-icons { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 6px; }
+  #cardtip .ct-icons .ic { font-size: 12px; }
+  #cardtip .ct-icons em { font-style: normal; opacity: 0.7; font-size: 10px; margin-left: 1px; }
+  #cardtip .ct-fx { font-size: 11.5px; border-top: 1px solid rgba(217,151,63,0.3); padding-top: 5px; }
+  .taphint { display: none; }
+  @media (hover: none), (pointer: coarse) { .taphint { display: inline; } }
 
   #controls { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px 8px; text-align: center; }
   #net-bar { min-height: 16px; margin-bottom: 3px; font-size: 12px; color: var(--gold); }
@@ -312,7 +338,7 @@
 </div>
 
 <div id="hand-area">
-  <div id="hand-label">YOUR PACK</div>
+  <div id="hand-label">YOUR PACK<span class="taphint"> · tap a card to inspect</span></div>
   <div id="hand"></div>
 </div>
 
@@ -334,6 +360,8 @@
     <button id="btn-new">New game</button>
   </div>
 </div>
+
+<div id="cardtip"></div>
 
 <div id="overlay" style="display:none">
   <div class="panel">
@@ -488,7 +516,7 @@ const CARDS = [
 function fxText(card) {
   const parts = card.fx.map(f => {
     const [op, a, b] = f;
-    if (op === 'scav') return 'scavenge ' + a + ' era-' + '±'.replace('±', b > 0 ? '+' + b : '') + (b ? b : '') + ' tech' + (a > 1 ? 's' : '');
+    if (op === 'scav') return 'scavenge ' + a + ' tech' + (a > 1 ? 's' : '') + (b > 0 ? ' at era +' + b : '');
     if (op === 'scavstash') return 'scavenge ' + a + ' & stash';
     if (op === 'scavmeld') return 'scavenge & build' + (b > 0 ? ' (era +' + b + ')' : '');
     if (op === 'stashHand') return 'stash a tech from your pack';
@@ -859,6 +887,34 @@ function newGame() {
 
 /* ---------- rendering ---------- */
 
+/* tap-to-inspect popover: on phones (no hover) this shows the same card
+   detail the title tooltip gives on desktop. */
+function cardDetailHTML(name, domain, era, iconStr, effect) {
+  const icons = [...iconStr].map(x =>
+    '<span class="ic">' + ICON[x] + ' <em>' + ICON_NAME[x] + '</em></span>').join('');
+  return '<div class="ct-name">' + escapeHtml(name) + '</div>' +
+    '<div class="ct-sub">' + escapeHtml(domain) + ' · Era ' + era + '</div>' +
+    '<div class="ct-icons">' + icons + '</div>' +
+    '<div class="ct-fx">' + escapeHtml(effect) + '</div>';
+}
+function showCardTip(ev, html) {
+  ev.stopPropagation();
+  const tip = $('cardtip');
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  let top = r.top - th - 8;
+  if (top < 8) top = r.bottom + 8;      // flip below if no room above
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideCardTip() { const t = $('cardtip'); if (t) t.style.display = 'none'; }
+document.addEventListener('click', hideCardTip);
+window.addEventListener('scroll', hideCardTip, true);
+
 function buildView(forIdx) {
   return {
     phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
@@ -911,9 +967,13 @@ function renderView(view) {
       const row = document.createElement('div');
       row.className = 'stackrow';
       const chipEl = document.createElement('span');
-      chipEl.className = 'cchip col-' + col;
+      chipEl.className = 'cchip col-' + col + (c.top ? ' tappable' : '');
       chipEl.textContent = c.top ? c.top.n + ' · e' + c.top.e + ' ' + [...c.top.i].map(x => ICON[x]).join('') : col.toUpperCase() + ' — empty';
-      if (c.top) chipEl.title = c.top.txt;
+      if (c.top) {
+        chipEl.title = c.top.txt;
+        chipEl.addEventListener('click', ev =>
+          showCardTip(ev, cardDetailHTML(c.top.n, col, c.top.e, c.top.i, c.top.txt)));
+      }
       const meta = document.createElement('span');
       meta.className = 'meta';
       meta.textContent = '×' + c.n + (p.splay[col] ? ' ' + ({ left: '◀', right: '▶', up: '▲' })[p.splay[col]] : '');
@@ -932,6 +992,8 @@ function renderView(view) {
     el.className = 'mchip col-' + c.c;
     el.textContent = c.n + ' e' + c.e + ' ' + [...c.i].map(x => ICON[x]).join('');
     el.title = fxText(c);
+    el.addEventListener('click', ev =>
+      showCardTip(ev, cardDetailHTML(c.n, c.c, c.e, c.i, fxText(c))));
     hb.appendChild(el);
   });
 
