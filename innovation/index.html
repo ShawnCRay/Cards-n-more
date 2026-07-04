@@ -357,7 +357,7 @@
       (<b>New World</b>), one scavenged tech at a time.</p>
       <p><b>Your camp</b> has five domains — <b>WAR, CROPS, TECH, SALVAGE,
       CREED</b>. Techs stack by domain; only the top tech is active. Every tech
-      carries icons: <b>⚔ Guns · ₵ Caps · ❧ Crops · ⚛ Science · ⚙ Scrap ·
+      carries icons: <b>₵ Caps · ⚗ Chems · ⚙ Junk · ⌖ Ammo · ⚔ Guns ·
       ☢ Rads</b>.</p>
       <p><b>Each turn, take two actions:</b></p>
       <ul>
@@ -404,85 +404,85 @@ const TURN_TIMEOUT_MS = 60000;
 const LANDMARKS_TO_WIN = 5;
 
 const COLORS = ['war', 'crops', 'tech', 'salvage', 'creed'];
-const ICON = { G: '⚔', C: '₵', P: '❧', S: '⚛', F: '⚙', R: '☢' };
-const ICON_NAME = { G: 'Guns', C: 'Caps', P: 'Crops', S: 'Science', F: 'Scrap', R: 'Rads' };
+const ICON = { G: '⚔', C: '₵', H: '⚗', A: '⌖', J: '⚙', R: '☢' };
+const ICON_NAME = { G: 'Guns', C: 'Caps', H: 'Chems', A: 'Ammo', J: 'Junk', R: 'Rads' };
 const ERA_NAME = ['', 'Dust', 'Settlements', 'Trade Routes', 'Chems', 'Firearms', 'Industry', 'Energy', 'Robotics', 'Atomics', 'New World'];
 
 /* effects: [op, ...params] — see runOp. dmd: true → AT GUNPOINT (hits rivals
    with FEWER key icons); otherwise shared with rivals holding >= key icons. */
 const CARDS = [
   // era 1 — Dust
-  { n: 'Sharpened Rebar', e: 1, c: 'war',     i: 'GGF', k: 'G', dmd: true,  fx: [['demandHand']] },
+  { n: 'Sharpened Rebar', e: 1, c: 'war',     i: 'GGJ', k: 'G', dmd: true,  fx: [['demandHand']] },
   { n: 'Slingshots',      e: 1, c: 'war',     i: 'GCG', k: 'G', dmd: true,  fx: [['demandStash', 1]] },
-  { n: 'Rat Traps',       e: 1, c: 'crops',   i: 'PPG', k: 'P', fx: [['scav', 1, 0]] },
-  { n: 'Brahmin Herding', e: 1, c: 'crops',   i: 'PPC', k: 'P', fx: [['stashHand']] },
-  { n: 'Boiled Water',    e: 1, c: 'tech',    i: 'SPP', k: 'P', fx: [['scavstash', 1, 0]] },
-  { n: 'Scrap Picking',   e: 1, c: 'salvage', i: 'FFC', k: 'F', fx: [['tuck', 1], ['scav', 1, 0]] },
-  { n: 'Campfire Tales',  e: 1, c: 'creed',   i: 'CCP', k: 'C', fx: [['spread', 'war', 'left'], ['scav', 1, 0]] },
-  { n: 'Bone Charms',     e: 1, c: 'creed',   i: 'CPC', k: 'C', fx: [['scav', 1, 1]] },
+  { n: 'Rat Traps',       e: 1, c: 'crops',   i: 'AAG', k: 'A', fx: [['scav', 1, 0]] },
+  { n: 'Brahmin Herding', e: 1, c: 'crops',   i: 'AAC', k: 'A', fx: [['stashHand']] },
+  { n: 'Boiled Water',    e: 1, c: 'tech',    i: 'HAA', k: 'A', fx: [['scavstash', 1, 0]] },
+  { n: 'Scrap Picking',   e: 1, c: 'salvage', i: 'JJC', k: 'J', fx: [['tuck', 1], ['scav', 1, 0]] },
+  { n: 'Campfire Tales',  e: 1, c: 'creed',   i: 'CCA', k: 'C', fx: [['spread', 'war', 'left'], ['scav', 1, 0]] },
+  { n: 'Bone Charms',     e: 1, c: 'creed',   i: 'CAC', k: 'C', fx: [['scav', 1, 1]] },
   // era 2 — Settlements
-  { n: 'Palisade Walls',  e: 2, c: 'war',     i: 'GGF', k: 'G', dmd: true,  fx: [['demandHand']] },
-  { n: 'Corn Rows',       e: 2, c: 'crops',   i: 'PPP', k: 'P', fx: [['scavstash', 1, 0]] },
-  { n: 'Wells & Cisterns',e: 2, c: 'tech',    i: 'SPF', k: 'P', fx: [['scav', 2, 0]] },
-  { n: 'Caravan Post',    e: 2, c: 'salvage', i: 'CFC', k: 'C', fx: [['stashHand'], ['scav', 1, 0]] },
-  { n: 'Water Church',    e: 2, c: 'creed',   i: 'CCS', k: 'C', fx: [['spread', 'creed', 'left'], ['scavstash', 1, 0]] },
-  { n: 'Leather Armor',   e: 2, c: 'war',     i: 'GFG', k: 'G', fx: [['tuck', 2]] },
+  { n: 'Palisade Walls',  e: 2, c: 'war',     i: 'GGJ', k: 'G', dmd: true,  fx: [['demandHand']] },
+  { n: 'Corn Rows',       e: 2, c: 'crops',   i: 'AAA', k: 'A', fx: [['scavstash', 1, 0]] },
+  { n: 'Wells & Cisterns',e: 2, c: 'tech',    i: 'HAJ', k: 'A', fx: [['scav', 2, 0]] },
+  { n: 'Caravan Post',    e: 2, c: 'salvage', i: 'CJC', k: 'C', fx: [['stashHand'], ['scav', 1, 0]] },
+  { n: 'Water Church',    e: 2, c: 'creed',   i: 'CCH', k: 'C', fx: [['spread', 'creed', 'left'], ['scavstash', 1, 0]] },
+  { n: 'Leather Armor',   e: 2, c: 'war',     i: 'GJG', k: 'G', fx: [['tuck', 2]] },
   // era 3 — Trade Routes
   { n: 'Cap Standard',    e: 3, c: 'salvage', i: 'CCC', k: 'C', fx: [['scavstash', 2, 0]] },
-  { n: 'Guard Dogs',      e: 3, c: 'war',     i: 'GGP', k: 'G', dmd: true,  fx: [['demandStash', 1]] },
-  { n: 'Seed Vault',      e: 3, c: 'crops',   i: 'PPS', k: 'P', fx: [['spread', 'crops', 'left'], ['scav', 1, 1]] },
-  { n: 'Radio Tower',     e: 3, c: 'tech',    i: 'SSC', k: 'S', fx: [['scavmeld', 0]] },
-  { n: 'Toll Bridge',     e: 3, c: 'salvage', i: 'CFG', k: 'C', dmd: true,  fx: [['demandStash', 1]] },
-  { n: 'Still & Brew',    e: 3, c: 'creed',   i: 'CPC', k: 'C', fx: [['stashHand'], ['stashHand']] },
+  { n: 'Guard Dogs',      e: 3, c: 'war',     i: 'GGA', k: 'G', dmd: true,  fx: [['demandStash', 1]] },
+  { n: 'Seed Vault',      e: 3, c: 'crops',   i: 'AAH', k: 'A', fx: [['spread', 'crops', 'left'], ['scav', 1, 1]] },
+  { n: 'Radio Tower',     e: 3, c: 'tech',    i: 'HHC', k: 'H', fx: [['scavmeld', 0]] },
+  { n: 'Toll Bridge',     e: 3, c: 'salvage', i: 'CJG', k: 'C', dmd: true,  fx: [['demandStash', 1]] },
+  { n: 'Still & Brew',    e: 3, c: 'creed',   i: 'CAC', k: 'C', fx: [['stashHand'], ['stashHand']] },
   // era 4 — Chems
-  { n: 'Stimpaks',        e: 4, c: 'tech',    i: 'SSP', k: 'S', fx: [['scav', 1, 1], ['stashHand']] },
-  { n: 'Rad-X',           e: 4, c: 'tech',    i: 'SPF', k: 'S', fx: [['spread', 'tech', 'right']] },
-  { n: 'Med Clinic',      e: 4, c: 'crops',   i: 'PSP', k: 'P', fx: [['scavstash', 2, 0]] },
-  { n: 'Gun Runners',     e: 4, c: 'war',     i: 'GFC', k: 'G', dmd: true,  fx: [['demandHand'], ['scav', 1, 0]] },
-  { n: 'Barter Guild',    e: 4, c: 'salvage', i: 'CCF', k: 'C', fx: [['spread', 'salvage', 'right']] },
-  { n: 'Jet Labs',        e: 4, c: 'creed',   i: 'CSC', k: 'C', fx: [['scavmeld', 0], ['stashHand']] },
+  { n: 'Stimpaks',        e: 4, c: 'tech',    i: 'HHA', k: 'H', fx: [['scav', 1, 1], ['stashHand']] },
+  { n: 'Rad-X',           e: 4, c: 'tech',    i: 'HAJ', k: 'H', fx: [['spread', 'tech', 'right']] },
+  { n: 'Med Clinic',      e: 4, c: 'crops',   i: 'AHA', k: 'A', fx: [['scavstash', 2, 0]] },
+  { n: 'Gun Runners',     e: 4, c: 'war',     i: 'GJC', k: 'G', dmd: true,  fx: [['demandHand'], ['scav', 1, 0]] },
+  { n: 'Barter Guild',    e: 4, c: 'salvage', i: 'CCJ', k: 'C', fx: [['spread', 'salvage', 'right']] },
+  { n: 'Jet Labs',        e: 4, c: 'creed',   i: 'CHC', k: 'C', fx: [['scavmeld', 0], ['stashHand']] },
   // era 5 — Firearms
-  { n: 'Ammo Press',      e: 5, c: 'war',     i: 'GGF', k: 'G', fx: [['spread', 'war', 'right'], ['scav', 1, 0]] },
-  { n: 'Sniper Nests',    e: 5, c: 'war',     i: 'GGS', k: 'G', dmd: true,  fx: [['demandTop', 4]] },
-  { n: 'Greenhouses',     e: 5, c: 'crops',   i: 'PPF', k: 'P', fx: [['scavstash', 2, 1]] },
+  { n: 'Ammo Press',      e: 5, c: 'war',     i: 'GGJ', k: 'G', fx: [['spread', 'war', 'right'], ['scav', 1, 0]] },
+  { n: 'Sniper Nests',    e: 5, c: 'war',     i: 'GGH', k: 'G', dmd: true,  fx: [['demandTop', 4]] },
+  { n: 'Greenhouses',     e: 5, c: 'crops',   i: 'AAJ', k: 'A', fx: [['scavstash', 2, 1]] },
   { n: 'Casino Row',      e: 5, c: 'salvage', i: 'CCC', k: 'C', dmd: true,  fx: [['demandStash', 2]] },
   { n: 'Raider Creed',    e: 5, c: 'creed',   i: 'CGG', k: 'G', dmd: true,  fx: [['demandHand'], ['demandStash', 1]] },
-  { n: 'Water Merchants', e: 5, c: 'tech',    i: 'SCF', k: 'C', fx: [['stashTop'], ['scav', 1, 0]] },
+  { n: 'Water Merchants', e: 5, c: 'tech',    i: 'HCJ', k: 'C', fx: [['stashTop'], ['scav', 1, 0]] },
   // era 6 — Industry
-  { n: 'Assembly Line',   e: 6, c: 'salvage', i: 'FFF', k: 'F', fx: [['scavmeld', 0], ['scavmeld', 0]] },
-  { n: 'PA Forge',        e: 6, c: 'war',     i: 'GFF', k: 'F', fx: [['spread', 'war', 'up']] },
-  { n: 'Hydroponics',     e: 6, c: 'crops',   i: 'PFS', k: 'P', fx: [['scavstash', 2, 0], ['spread', 'crops', 'right']] },
-  { n: 'Terminal Net',    e: 6, c: 'tech',    i: 'SSF', k: 'S', fx: [['scav', 3, 0]] },
+  { n: 'Assembly Line',   e: 6, c: 'salvage', i: 'JJJ', k: 'J', fx: [['scavmeld', 0], ['scavmeld', 0]] },
+  { n: 'PA Forge',        e: 6, c: 'war',     i: 'GJJ', k: 'J', fx: [['spread', 'war', 'up']] },
+  { n: 'Hydroponics',     e: 6, c: 'crops',   i: 'AJH', k: 'A', fx: [['scavstash', 2, 0], ['spread', 'crops', 'right']] },
+  { n: 'Terminal Net',    e: 6, c: 'tech',    i: 'HHJ', k: 'H', fx: [['scav', 3, 0]] },
   { n: 'Atom Cultists',   e: 6, c: 'creed',   i: 'CRR', k: 'R', fx: [['spread', 'creed', 'right'], ['stashHand']] },
-  { n: 'Scrap Smelter',   e: 6, c: 'salvage', i: 'FFC', k: 'F', fx: [['tuck', 2], ['scavstash', 1, 0]] },
+  { n: 'Scrap Smelter',   e: 6, c: 'salvage', i: 'JJC', k: 'J', fx: [['tuck', 2], ['scavstash', 1, 0]] },
   // era 7 — Energy
-  { n: 'Fusion Cells',    e: 7, c: 'tech',    i: 'SSR', k: 'S', fx: [['scav', 2, 1]] },
-  { n: 'Laser Rifles',    e: 7, c: 'war',     i: 'GSR', k: 'G', dmd: true,  fx: [['demandTop', 6]] },
-  { n: 'Irrigation Grid', e: 7, c: 'crops',   i: 'PPF', k: 'P', fx: [['scavstash', 3, 0]] },
-  { n: 'Trade Consortium',e: 7, c: 'salvage', i: 'CCF', k: 'C', fx: [['spread', 'salvage', 'up'], ['stashTop']] },
-  { n: "Followers' Code", e: 7, c: 'creed',   i: 'CSS', k: 'S', fx: [['scavmeld', 1]] },
-  { n: 'Reactor Co-op',   e: 7, c: 'tech',    i: 'SFR', k: 'R', fx: [['spread', 'tech', 'up']] },
+  { n: 'Fusion Cells',    e: 7, c: 'tech',    i: 'HHR', k: 'H', fx: [['scav', 2, 1]] },
+  { n: 'Laser Rifles',    e: 7, c: 'war',     i: 'GHR', k: 'G', dmd: true,  fx: [['demandTop', 6]] },
+  { n: 'Irrigation Grid', e: 7, c: 'crops',   i: 'AAJ', k: 'A', fx: [['scavstash', 3, 0]] },
+  { n: 'Trade Consortium',e: 7, c: 'salvage', i: 'CCJ', k: 'C', fx: [['spread', 'salvage', 'up'], ['stashTop']] },
+  { n: "Followers' Code", e: 7, c: 'creed',   i: 'CHH', k: 'H', fx: [['scavmeld', 1]] },
+  { n: 'Reactor Co-op',   e: 7, c: 'tech',    i: 'HJR', k: 'R', fx: [['spread', 'tech', 'up']] },
   // era 8 — Robotics
   { n: 'Sentry Bots',     e: 8, c: 'war',     i: 'GRR', k: 'R', dmd: true,  fx: [['demandStash', 2], ['demandHand']] },
-  { n: 'Agri-Bots',       e: 8, c: 'crops',   i: 'PFR', k: 'P', fx: [['scavstash', 3, 0], ['scav', 1, 0]] },
-  { n: 'AI Terminal',     e: 8, c: 'tech',    i: 'SSR', k: 'S', fx: [['scavmeld', 1], ['spread', 'tech', 'up']] },
-  { n: 'Protectron Line', e: 8, c: 'salvage', i: 'FFR', k: 'F', fx: [['tuck', 3], ['scavstash', 2, 0]] },
-  { n: 'Machine Cult',    e: 8, c: 'creed',   i: 'CRS', k: 'R', fx: [['spread', 'creed', 'up'], ['stashHand']] },
-  { n: 'Eyebot Network',  e: 8, c: 'salvage', i: 'CRF', k: 'C', fx: [['scav', 2, 0], ['stashTop']] },
+  { n: 'Agri-Bots',       e: 8, c: 'crops',   i: 'AJR', k: 'A', fx: [['scavstash', 3, 0], ['scav', 1, 0]] },
+  { n: 'AI Terminal',     e: 8, c: 'tech',    i: 'HHR', k: 'H', fx: [['scavmeld', 1], ['spread', 'tech', 'up']] },
+  { n: 'Protectron Line', e: 8, c: 'salvage', i: 'JJR', k: 'J', fx: [['tuck', 3], ['scavstash', 2, 0]] },
+  { n: 'Machine Cult',    e: 8, c: 'creed',   i: 'CRH', k: 'R', fx: [['spread', 'creed', 'up'], ['stashHand']] },
+  { n: 'Eyebot Network',  e: 8, c: 'salvage', i: 'CRJ', k: 'C', fx: [['scav', 2, 0], ['stashTop']] },
   // era 9 — Atomics
-  { n: 'Warhead Salvage', e: 9, c: 'war',     i: 'GRF', k: 'R', dmd: true,  fx: [['demandTop', 8]] },
-  { n: 'Rad Farming',     e: 9, c: 'crops',   i: 'PRR', k: 'P', fx: [['scavstash', 4, 0]] },
-  { n: 'Cold Fusion',     e: 9, c: 'tech',    i: 'SRS', k: 'S', fx: [['scav', 2, 1], ['spread', 'tech', 'up']] },
+  { n: 'Warhead Salvage', e: 9, c: 'war',     i: 'GRJ', k: 'R', dmd: true,  fx: [['demandTop', 8]] },
+  { n: 'Rad Farming',     e: 9, c: 'crops',   i: 'ARR', k: 'A', fx: [['scavstash', 4, 0]] },
+  { n: 'Cold Fusion',     e: 9, c: 'tech',    i: 'HRH', k: 'H', fx: [['scav', 2, 1], ['spread', 'tech', 'up']] },
   { n: 'Cap Mint',        e: 9, c: 'salvage', i: 'CCR', k: 'C', fx: [['stashTop'], ['stashTop']] },
   { n: 'Church of Division', e: 9, c: 'creed', i: 'CRR', k: 'R', dmd: true, fx: [['demandStash', 2]] },
   { n: 'Deathclaw Pens',  e: 9, c: 'war',     i: 'GGR', k: 'G', dmd: true,  fx: [['demandHand'], ['demandHand']] },
   // era 10 — New World
-  { n: 'G.E.C.K.',        e: 10, c: 'crops',  i: 'PSR', k: 'P', fx: [['scavstash', 5, 0]] },
-  { n: 'Vault Network',   e: 10, c: 'tech',   i: 'SSR', k: 'S', fx: [['scav', 3, 0], ['spread', 'tech', 'up']] },
-  { n: 'New Republic',    e: 10, c: 'creed',  i: 'CCS', k: 'C', fx: [['spread', 'creed', 'up'], ['stashTop'], ['stashTop']] },
+  { n: 'G.E.C.K.',        e: 10, c: 'crops',  i: 'AHR', k: 'A', fx: [['scavstash', 5, 0]] },
+  { n: 'Vault Network',   e: 10, c: 'tech',   i: 'HHR', k: 'H', fx: [['scav', 3, 0], ['spread', 'tech', 'up']] },
+  { n: 'New Republic',    e: 10, c: 'creed',  i: 'CCH', k: 'C', fx: [['spread', 'creed', 'up'], ['stashTop'], ['stashTop']] },
   { n: 'Securitron Army', e: 10, c: 'war',    i: 'GRR', k: 'R', dmd: true,  fx: [['demandStash', 3], ['demandTop', 9]] },
-  { n: 'Water Purifier',  e: 10, c: 'tech',   i: 'SPR', k: 'S', fx: [['scavstash', 4, 0], ['scav', 1, 0]] },
-  { n: 'The Long Caravan',e: 10, c: 'salvage',i: 'CFR', k: 'C', fx: [['stashTop'], ['scavstash', 3, 0]] },
+  { n: 'Water Purifier',  e: 10, c: 'tech',   i: 'HAR', k: 'H', fx: [['scavstash', 4, 0], ['scav', 1, 0]] },
+  { n: 'The Long Caravan',e: 10, c: 'salvage',i: 'CJR', k: 'C', fx: [['stashTop'], ['scavstash', 3, 0]] },
 ];
 
 function fxText(card) {
