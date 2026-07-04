@@ -369,6 +369,15 @@
               radial-gradient(circle 8px at 63% 25%, transparent 60%, rgba(226,204,152,0.28) 72%, transparent 84%);
     --clip: polygon(2% 3%, 22% 1%, 42% 2%, 48% 7%, 55% 9%, 61% 6%, 66% 1%, 93% 2%, 100% 9%, 98% 34%, 100% 60%, 99% 86%, 94% 100%, 70% 99%, 44% 100%, 16% 98%, 1% 96%, 0% 70%, 2% 46%, 0% 20%);
   }
+  .card.wear-4 { /* cigarette burn pressed into the face, plus a scorch smudge */
+    --damage: radial-gradient(circle 5px at 70% 62%, rgba(12,7,3,0.9) 38%, rgba(58,30,10,0.75) 58%, rgba(110,70,25,0.4) 76%, transparent 88%),
+              radial-gradient(ellipse 12px 8px at 30% 26%, rgba(80,45,15,0.35), rgba(110,70,25,0.18) 60%, transparent 78%);
+  }
+  .card.wear-5 { /* burnt clean through: two holes with charred rims */
+    --damage: radial-gradient(circle 4.5px at 62% 24%, #10130c 42%, rgba(20,12,5,0.95) 54%, rgba(66,34,11,0.85) 68%, rgba(122,76,28,0.45) 80%, transparent 90%),
+              radial-gradient(circle 3.5px at 34% 74%, #10130c 40%, rgba(20,12,5,0.9) 54%, rgba(66,34,11,0.8) 70%, transparent 86%),
+              radial-gradient(circle 8px at 63% 25%, transparent 60%, rgba(226,204,152,0.28) 72%, transparent 84%);
+  }
   /* hand-dealt look: every card sits a touch crooked, worn a little differently */
   .card:nth-child(odd)  { --tilt: -1.4deg; --sx: 76%; --sy: 18%; --sx2: 22%; --sy2: 80%; --crease: 115deg; }
   .card:nth-child(even) { --tilt: 1.1deg;  --sx: 16%; --sy: 30%; --sx2: 82%; --sy2: 66%; --crease: 62deg; }
