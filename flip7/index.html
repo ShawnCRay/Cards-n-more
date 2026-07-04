@@ -337,6 +337,69 @@
   #log div { line-height: 1.6; }
   #footer .small-btns button { font-size: 11px; padding: 4px 10px; font-weight: 400; }
 
+  /* ---------- multiplayer ---------- */
+  #net-bar { min-height: 18px; margin-bottom: 6px; font-size: 13px; color: var(--gold); text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 11px; font-weight: 400; padding: 3px 10px; margin-left: 8px; }
+  .seat.open {
+    border-style: dashed;
+    opacity: 0.45;
+    min-height: 40px;
+    justify-content: center;
+  }
+  .seat.open .who, .seat.open .tableau, .seat.open .stat-badges { display: none; }
+  .seat.open::after {
+    content: 'OPEN SEAT';
+    font-size: 11px;
+    letter-spacing: 2px;
+    opacity: 0.9;
+  }
+  #open-hint {
+    display: none;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.55;
+    margin-top: 4px;
+  }
+  body.guest .card { animation: none; }
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #overlay h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+
   /* ---------- help ---------- */
   #help {
     position: fixed;
@@ -389,6 +452,9 @@
     #footer { font-size: 10px; gap: 6px; padding: 2px 10px 8px; }
     #footer .small-btns button { font-size: 10px; padding: 3px 7px; }
     #log { max-height: 18px; font-size: 10px; }
+    #net-bar { font-size: 12px; min-height: 0; margin-bottom: 4px; }
+    .seat.open { display: none; }
+    #open-hint { display: block; }
   }
   @media (max-width: 720px) and (max-height: 800px) {
     #table-rules { display: none; }
@@ -410,9 +476,11 @@
 <div id="table">
   <div id="table-rules">VAULT-TEC APPROVED &nbsp;•&nbsp; SEVEN UNIQUE NUMBERS FLIPS THE TABLE (+15) &nbsp;•&nbsp; A DUPLICATE BUSTS YOU &nbsp;•&nbsp; FIRST TO 200 WALKS OUT RICH</div>
   <div id="seats"></div>
+  <div id="open-hint"></div>
 </div>
 
 <div id="controls">
+  <div id="net-bar"></div>
   <div id="message"></div>
   <div id="action-controls" style="display:none">
     <div class="btn-row">
@@ -433,9 +501,23 @@
 <div id="footer">
   <div id="log"></div>
   <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
     <button id="btn-games">More games</button>
     <button id="btn-help">How to play</button>
     <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
   </div>
 </div>
 
@@ -474,6 +556,7 @@
   </div>
 </div>
 
+<script src="peerjs.min.js"></script>
 <script>
 'use strict';
 
@@ -483,25 +566,46 @@
    three each of Freeze, Flip Three, Second Chance (94 total).
    Duplicates bust. Seven unique numbers ends the round (+15).
    First to 200 wins.
+
+   Multiplayer mirrors the blackjack table: the host's browser is
+   the authoritative engine; guests receive view snapshots and
+   answer hit/stay and target prompts. Guests fill open seats
+   first, then take over the CPUs (inheriting their score).
    ============================================================ */
 
 const TARGET = 200;
 const STORE_KEY = 'flip7-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 45000;
 
+function openSeat() {
+  return { name: 'Open', cpuName: null, open: true, ai: false, remote: null, finishAsCpu: false,
+           total: 0, cards: [], mods: [], x2: false, second: false, status: 'out' };
+}
+function cpuSeat(name) {
+  return { name, cpuName: name, open: false, ai: true, remote: null, finishAsCpu: false,
+           total: 0, cards: [], mods: [], x2: false, second: false, status: 'waiting' };
+}
 const players = [
-  { name: 'Cass',  ai: true },
-  { name: 'You',   ai: false },
-  { name: 'Boone', ai: true },
-].map(p => ({ ...p, total: 0, cards: [], mods: [], x2: false, second: false, status: 'waiting' }));
-const me = players[1];
+  cpuSeat('Cass'),
+  openSeat(),
+  { name: 'You', cpuName: null, open: false, ai: false, remote: null, finishAsCpu: false,
+    total: 0, cards: [], mods: [], x2: false, second: false, status: 'waiting' },
+  openSeat(),
+  cpuSeat('Boone'),
+  openSeat(),
+];
+const me = players[2];
+let mySeatIdx = players.indexOf(me);
 
 let deck = [];
 let roundNo = 0;
 let roundActive = false;
 let gameOver = false;
+let lastWinnerIdx = -1;
 let activePlayer = null;
 let playerResolver = null;
-let targetResolver = null;
 let stats = { wins: 0, games: 0 };
 
 /* ---------- deck ---------- */
@@ -535,16 +639,20 @@ function draw() {
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function log(msg) {
   const el = document.createElement('div');
   el.textContent = msg;
   $('log').prepend(el);
   while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
 }
 function setMessage(m) { $('message').textContent = m || ''; }
 
-function roundPoints(p) {
+function seated() { return players.filter(p => !p.open); }
+function roundPointsOf(p) {
   if (p.status === 'busted') return 0;
   let pts = p.cards.reduce((a, b) => a + b, 0);
   if (p.x2) pts *= 2;
@@ -552,10 +660,10 @@ function roundPoints(p) {
   if (p.status === 'flip7') pts += 15;
   return pts;
 }
-
-function activePlayers() { return players.filter(p => p.status === 'active'); }
+function activePlayers() { return players.filter(p => !p.open && p.status === 'active'); }
 function roundEnded() {
-  return players.every(p => p.status !== 'active') || players.some(p => p.status === 'flip7');
+  const live = seated();
+  return live.every(p => p.status !== 'active') || live.some(p => p.status === 'flip7');
 }
 
 function save() {
@@ -591,11 +699,11 @@ function buildSeats() {
   $('seats').innerHTML = '';
   players.forEach((p, i) => {
     const el = document.createElement('div');
-    el.className = 'seat' + (p === me ? ' you' : '');
+    el.className = 'seat' + (p === me ? ' you' : '') + (p.open ? ' open' : '');
     el.id = 'seat-' + i;
     el.innerHTML =
       '<div class="who">' +
-        '<div class="seat-name">' + p.name + ' <span class="tag">' + (p.ai ? 'CPU' : 'Player') + '</span></div>' +
+        '<div class="seat-name" id="name-' + i + '"></div>' +
         '<div class="totals" id="totals-' + i + '"></div>' +
       '</div>' +
       '<div class="tableau" id="tableau-' + i + '"></div>' +
@@ -604,11 +712,35 @@ function buildSeats() {
   });
 }
 
-function render() {
-  players.forEach((p, i) => {
-    $('seat-' + i).classList.toggle('active-turn', p === activePlayer && roundActive);
-    $('totals-' + i).innerHTML =
-      'Banked <b>' + p.total + '</b><br>Round <b>' + roundPoints(p) + '</b>';
+function buildView() {
+  return {
+    phase: gameOver ? 'gameover' : roundActive ? 'round' : 'between',
+    roundNo,
+    deck: deck.length,
+    active: players.indexOf(activePlayer),
+    hostSeat: players.indexOf(me),
+    winner: lastWinnerIdx,
+    msg: $('message').textContent,
+    players: players.map(p => ({
+      name: p.name, ai: p.ai, open: p.open,
+      total: p.total, cards: p.cards, mods: p.mods,
+      x2: p.x2, second: p.second, status: p.status,
+      roundPts: roundPointsOf(p),
+    })),
+  };
+}
+
+function renderView(view) {
+  view.players.forEach((p, i) => {
+    const seatEl = $('seat-' + i);
+    seatEl.classList.toggle('you', i === mySeatIdx);
+    seatEl.classList.toggle('open', !!p.open);
+    seatEl.classList.toggle('active-turn', view.active === i && view.phase === 'round');
+    if (p.open) return;
+    const tag = p.ai ? 'CPU' : i === mySeatIdx ? (p.name === 'You' ? '' : 'You')
+      : i === view.hostSeat ? 'Host' : 'Guest';
+    $('name-' + i).innerHTML = escapeHtml(p.name) + (tag ? ' <span class="tag">' + tag + '</span>' : '');
+    $('totals-' + i).innerHTML = 'Banked <b>' + p.total + '</b><br>Round <b>' + p.roundPts + '</b>';
     const tab = $('tableau-' + i);
     tab.innerHTML = '';
     for (const v of p.cards) tab.appendChild(cardEl({ t: 'num', v }));
@@ -620,19 +752,50 @@ function render() {
       c.textContent = '2ND CHANCE';
       tab.appendChild(c);
     }
-    const b = $('badges-' + i);
-    b.innerHTML =
+    $('badges-' + i).innerHTML =
       p.status === 'busted' ? '<span class="badge lose">BUSTED</span>' :
       p.status === 'stayed' ? '<span class="badge push">STAYED</span>' :
       p.status === 'frozen' ? '<span class="badge push">FROZEN</span>' :
       p.status === 'flip7'  ? '<span class="badge bj">FLIP 7 +15</span>' : '';
   });
-  $('stat-round').textContent = roundNo || '—';
-  $('stat-deck').textContent = deck.length;
+  $('stat-round').textContent = view.roundNo || '—';
+  $('stat-deck').textContent = view.deck;
   $('stat-wins').textContent = stats.wins;
+  const openCount = view.players.filter(p => p.open).length;
+  $('open-hint').textContent = openCount
+    ? '· ' + openCount + ' open seat' + (openCount === 1 ? '' : 's') + ' — play with friends to fill them ·'
+    : '';
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!net.prompting) {
+      if (view.phase === 'gameover' && view.winner === mySeatIdx) {
+        setMessage('★ You hit ' + view.players[mySeatIdx].total + ' and walk out rich. The wasteland provides.');
+      } else {
+        setMessage(view.msg);
+      }
+    }
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === mySeatIdx) stats.wins++;
+      save();
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
 }
 
-/* ---------- card resolution ---------- */
+function render() {
+  if (net.mode === 'guest') {
+    if (net.lastView) renderView(net.lastView);
+    return;
+  }
+  const view = buildView();
+  renderView(view);
+  if (net.mode === 'host') netBroadcast({ type: 'state', view });
+}
+
+/* ---------- card resolution (host/solo only) ---------- */
 
 async function flipCard(p) {
   const card = draw();
@@ -665,9 +828,7 @@ async function flipCard(p) {
     } else {
       const takers = activePlayers().filter(q => q !== p && !q.second);
       if (takers.length) {
-        const taker = p.ai
-          ? takers[Math.floor(Math.random() * takers.length)]
-          : await chooseTarget(p, '2nd Chance', takers);
+        const taker = await chooseTarget(p, '2nd Chance', takers);
         taker.second = true;
         log(p.name + ' already has one — the spare 2nd Chance goes to ' + taker.name + '.');
       } else {
@@ -679,7 +840,7 @@ async function flipCard(p) {
     const target = targets.length ? await chooseTarget(p, 'Freeze', targets) : null;
     if (target) {
       target.status = 'frozen';
-      log(p.name + ' flips FREEZE → ' + target.name + ' banks ' + roundPoints(target) + ' and is out.');
+      log(p.name + ' flips FREEZE → ' + target.name + ' banks ' + roundPointsOf(target) + ' and is out.');
     }
   } else if (card.t === 'flip3') {
     const targets = activePlayers();
@@ -698,22 +859,20 @@ async function flipCard(p) {
   render();
 }
 
-/* who gets an action card? CPUs play mean; you get buttons */
+function heuristicTarget(chooser, label, candidates) {
+  const others = candidates.filter(c => c !== chooser);
+  if (!others.length) return chooser;
+  if (label === 'Freeze') {
+    return others.reduce((a, b) =>
+      (a.total + roundPointsOf(a) > b.total + roundPointsOf(b) ? a : b));
+  }
+  return others.reduce((a, b) => (a.cards.length > b.cards.length ? a : b));
+}
+
 async function chooseTarget(chooser, label, candidates) {
   if (candidates.length === 1) return candidates[0];
-  if (chooser.ai) {
-    const others = candidates.filter(c => c !== chooser);
-    if (label === 'Freeze') {
-      // freeze whoever has the most to lose... for them, the least banked for us
-      return others.length
-        ? others.reduce((a, b) => (a.total + roundPoints(a) > b.total + roundPoints(b) ? a : b))
-        : chooser;
-    }
-    // Flip Three: dump it on whoever has the most cards showing (most bust risk)
-    return others.length
-      ? others.reduce((a, b) => (a.cards.length > b.cards.length ? a : b))
-      : chooser;
-  }
+  if (chooser.ai || chooser.finishAsCpu) return heuristicTarget(chooser, label, candidates);
+  if (chooser.remote) return getRemoteTarget(chooser, label, candidates);
   return new Promise(resolve => {
     $('action-controls').style.display = 'none';
     const box = $('target-buttons');
@@ -724,24 +883,22 @@ async function chooseTarget(chooser, label, candidates) {
       b.textContent = c === chooser ? 'Yourself' : c.name;
       b.addEventListener('click', () => {
         $('target-controls').style.display = 'none';
-        targetResolver = null;
         resolve(c);
       });
       box.appendChild(b);
     }
     $('target-controls').style.display = '';
-    targetResolver = resolve;
   });
 }
 
-/* ---------- turns ---------- */
+/* ---------- turns (host/solo only) ---------- */
 
 function aiWantsHit(p) {
   const dupes = deck.filter(c => c.t === 'num' && p.cards.includes(c.v)).length;
   const risk = deck.length ? dupes / deck.length : 0.2;
-  const pts = roundPoints(p);
-  if (p.total + pts >= TARGET) return false;      // lock the win
-  if (p.cards.length >= 6) return risk < 0.42;    // one away from Flip 7: chase it
+  const pts = roundPointsOf(p);
+  if (p.total + pts >= TARGET) return false;
+  if (p.cards.length >= 6) return risk < 0.42;
   if (pts >= 24) return false;
   if (pts >= 18 && risk > 0.18) return false;
   return risk < 0.24 + (p.second ? 0.15 : 0);
@@ -762,100 +919,104 @@ function getPlayerAction() {
 async function takeTurn(p) {
   activePlayer = p;
   render();
-  if (p.ai) {
+  if (p.ai || p.finishAsCpu) {
     await sleep(650);
-    if (p.status !== 'active') return; // frozen mid-wait
+    if (p.status !== 'active') return;
     if (aiWantsHit(p)) {
       await flipCard(p);
     } else {
       p.status = 'stayed';
-      log(p.name + ' stays on ' + roundPoints(p) + '.');
+      log(p.name + ' stays on ' + roundPointsOf(p) + '.');
     }
+  } else if (p.remote) {
+    setMessage('Waiting for ' + p.name + '…');
+    const a = await getRemoteAction(p);
+    if (p.status !== 'active') return;
+    if (a === 'H') await flipCard(p);
+    else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   } else {
     const a = await getPlayerAction();
     if (p.status !== 'active') return;
     if (a === 'H') await flipCard(p);
-    else { p.status = 'stayed'; log('You stay on ' + roundPoints(p) + '.'); }
+    else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   }
   activePlayer = null;
   render();
 }
 
-/* ---------- round & game flow ---------- */
+/* ---------- round & game flow (host/solo only) ---------- */
 
 async function playRound() {
-  if (roundActive || gameOver) return;
+  if (roundActive || gameOver || net.mode === 'guest') return;
   roundActive = true;
   roundNo++;
   $('round-controls').style.display = 'none';
   for (const p of players) {
-    p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.status = 'active';
+    p.cards = []; p.mods = []; p.x2 = false; p.second = false;
+    p.finishAsCpu = false;
+    p.status = p.open ? 'out' : 'active';
   }
   log('— Round ' + roundNo + ' —');
   setMessage('Opening flips…');
   render();
 
-  // the dealer flips everyone one card to start
-  for (const p of players) {
+  for (const p of seated()) {
     if (p.status !== 'active') continue;
     await sleep(350);
     await flipCard(p);
     if (roundEnded()) break;
   }
 
-  const start = (roundNo - 1) % players.length; // rotate who goes first
+  const start = (roundNo - 1) % players.length;
   while (!roundEnded()) {
     for (let i = 0; i < players.length; i++) {
       const p = players[(start + i) % players.length];
-      if (p.status !== 'active') continue;
+      if (p.open || p.status !== 'active') continue;
       await takeTurn(p);
       if (roundEnded()) break;
     }
   }
 
-  // settle
   activePlayer = null;
   const lines = [];
-  for (const p of players) {
-    const pts = roundPoints(p);
+  for (const p of seated()) {
+    const pts = roundPointsOf(p);
     p.total += pts;
     lines.push(p.name + ' +' + pts);
   }
   log('Round ' + roundNo + ': ' + lines.join(' · '));
-  render();
 
-  const leader = players.reduce((a, b) => (a.total > b.total ? a : b));
+  const live = seated();
+  const leader = live.reduce((a, b) => (a.total > b.total ? a : b));
   if (leader.total >= TARGET) {
     gameOver = true;
+    lastWinnerIdx = players.indexOf(leader);
     stats.games++;
-    const winners = players.filter(p => p.total === leader.total);
-    const won = winners.includes(me);
-    if (won) stats.wins++;
+    if (leader === me) stats.wins++;
     save();
-    setMessage(won
+    setMessage(leader === me && net.mode === 'solo'
       ? '★ You hit ' + me.total + ' and walk out rich. The wasteland provides.'
-      : leader.name + ' hits ' + leader.total + ' first. The house always wins — and tonight the house is ' + leader.name + '.');
+      : '★ ' + leader.name + ' hits ' + leader.total + ' first and walks out rich.');
     $('btn-deal').textContent = 'Play again';
-    $('round-controls').style.display = '';
-    roundActive = false;
-    render();
-    return;
+  } else {
+    setMessage('Round over. ' + leader.name + ' leads with ' + leader.total + '.');
+    $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
   }
-
-  setMessage('Round over. ' + leader.name + ' leads with ' + leader.total + '.');
-  $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
   $('round-controls').style.display = '';
   roundActive = false;
   render();
 }
 
 function newGame() {
+  if (net.mode === 'guest') return;
   for (const p of players) {
-    p.total = 0; p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.status = 'waiting';
+    p.total = 0; p.cards = []; p.mods = []; p.x2 = false; p.second = false;
+    p.status = p.open ? 'out' : 'waiting';
   }
   deck = shuffle(buildDeck());
   roundNo = 0;
   gameOver = false;
+  lastWinnerIdx = -1;
   roundActive = false;
   $('btn-deal').textContent = 'Deal round 1';
   $('round-controls').style.display = '';
@@ -864,6 +1025,446 @@ function newGame() {
   setMessage('Fresh deck, fresh caps. Deal when ready.');
   render();
 }
+
+/* ============================================================
+   Multiplayer — same peer-to-peer layer as the blackjack table.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', resolvers: {}, choosers: {}, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', prompting: false,
+              heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Flip 7', text: 'Join my Flip 7 table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+/* ----- host side ----- */
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* already dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('f7sim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Up to 5 friends can join.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby so friends can join…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* already gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale connection */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    const seat = players.find(p => p.open && !p.remote) || players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    const tookOpenSeat = seat.open;
+    seat.open = false;
+    seat.ai = false;
+    seat.remote = conn;
+    seat.finishAsCpu = roundActive && seat.status === 'active';
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    if (tookOpenSeat) {
+      seat.total = 0;
+      seat.status = roundActive ? 'out' : 'waiting';
+    }
+    conn._seat = seat;
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + (tookOpenSeat
+      ? ' sits down at an open seat.'
+      : ' takes over ' + seat.cpuName + "'s run at " + seat.total + ' points.'));
+    updateNetBar();
+    render();
+  } else if (d.type === 'action') {
+    const seat = conn._seat;
+    if (!seat) return;
+    const r = net.resolvers[players.indexOf(seat)];
+    if (r) r(d.a === 'H' ? 'H' : 'S');
+  } else if (d.type === 'target') {
+    const seat = conn._seat;
+    if (!seat) return;
+    const r = net.choosers[players.indexOf(seat)];
+    if (r) r(d.idx);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  const idx = players.indexOf(seat);
+  seat.remote = null;
+  if (seat.cpuName) {
+    log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
+    seat.ai = true;
+    seat.name = seat.cpuName;
+  } else {
+    log(seat.name + ' left the table — the seat is open again.');
+    seat.open = true;
+    seat.name = 'Open';
+    seat.total = 0;
+    seat.cards = []; seat.mods = []; seat.x2 = false; seat.second = false;
+    if (seat.status === 'active') seat.status = 'stayed'; // exits the round quietly
+    else if (!roundActive) seat.status = 'out';
+  }
+  const r = net.resolvers[idx];
+  if (r) r('S');
+  const c = net.choosers[idx];
+  if (c) c(-1);
+  updateNetBar();
+  render();
+}
+
+function getRemoteAction(p) {
+  return new Promise(resolve => {
+    const idx = players.indexOf(p);
+    let settled = false;
+    const finish = a => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete net.resolvers[idx];
+      resolve(a === 'H' ? 'H' : 'S');
+    };
+    const timer = setTimeout(() => {
+      log(p.name + ' took too long — staying.');
+      finish('S');
+    }, TURN_TIMEOUT_MS);
+    net.resolvers[idx] = finish;
+    if (p.remote && p.remote.open) p.remote.send({ type: 'turn' });
+    else finish('S');
+  });
+}
+
+function getRemoteTarget(p, label, candidates) {
+  return new Promise(resolve => {
+    const idx = players.indexOf(p);
+    let settled = false;
+    const finish = i => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete net.choosers[idx];
+      const pick = players[i];
+      resolve(candidates.includes(pick) ? pick : heuristicTarget(p, label, candidates));
+    };
+    const timer = setTimeout(() => finish(-1), TURN_TIMEOUT_MS);
+    net.choosers[idx] = finish;
+    if (p.remote && p.remote.open) {
+      p.remote.send({ type: 'choose', label, cands: candidates.map(c => players.indexOf(c)) });
+    } else {
+      finish(-1);
+    }
+  });
+}
+
+/* ----- guest side ----- */
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  setMessage('Lost the host — refresh the page to play solo.');
+  $('action-controls').style.display = 'none';
+  $('target-controls').style.display = 'none';
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… If this never lands, this network may ' +
+        'block the connection — the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — the host may be " +
+          'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host ' +
+          'to open the game and stay on it, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale attempt */ } }
+  const conn = net.peer.connect('f7sim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — the host may be " +
+        'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to open ' +
+        'the game and stay on it, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'turn') {
+    net.prompting = true;
+    $('action-controls').style.display = '';
+    setMessage('Your move — hit or stay?');
+    playerResolver = a => {
+      $('action-controls').style.display = 'none';
+      playerResolver = null;
+      net.prompting = false;
+      if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'action', a });
+    };
+  } else if (d.type === 'choose') {
+    net.prompting = true;
+    $('action-controls').style.display = 'none';
+    const box = $('target-buttons');
+    box.innerHTML = '';
+    setMessage('Give ' + d.label + ' to…');
+    for (const idx of d.cands) {
+      const b = document.createElement('button');
+      const nm = net.lastView && net.lastView.players[idx] ? net.lastView.players[idx].name : 'Seat ' + idx;
+      b.textContent = idx === mySeatIdx ? 'Yourself' : nm;
+      b.addEventListener('click', () => {
+        $('target-controls').style.display = 'none';
+        net.prompting = false;
+        setMessage('');
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'target', idx });
+      });
+      box.appendChild(b);
+    }
+    $('target-controls').style.display = '';
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (host + 5 friends).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table, then send the invite link. Up to five friends grab the open seats (or take over the CPUs) — your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(overlayCode, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
 
 /* ---------- wiring ---------- */
 
@@ -888,6 +1489,13 @@ load();
 buildSeats();
 newGame();
 log('Welcome to the Flip 7 table. Seven unique numbers wins the round — one duplicate loses it.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
 </script>
 </body>
 </html>
