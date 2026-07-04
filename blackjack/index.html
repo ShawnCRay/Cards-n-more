@@ -132,6 +132,8 @@
   }
   .seat.open .seat-name { font-weight: 400; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9; }
   .seat.open .seat-bank, .seat.open .seat-status, .seat.open .hand { display: none; }
+  /* phones hide empty seats to save height; this one-liner says they exist */
+  #open-hint { display: none; }
   .seat .seat-name { font-weight: 700; margin-bottom: 2px; }
   .seat .seat-name .tag {
     font-size: 10px;
@@ -429,6 +431,16 @@
     .seat { min-width: 0; max-width: none; flex: 1 1 28%; padding: 6px 6px 8px; }
     .seat.you { flex: 1 1 100%; order: 3; }
     .seat.open { display: none; }
+    #open-hint {
+      display: block;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.55;
+      margin-top: 3px;
+    }
     .seat .seat-name { font-size: 12px; }
     .seat .seat-bank { font-size: 11px; margin-bottom: 2px; }
     .hand { margin: 1px 2px; padding: 2px 3px 4px; }
@@ -485,6 +497,7 @@
     <div id="table-rules">BLACKJACK PAYS 3 TO 2 &nbsp;•&nbsp; DEALER STANDS ON ALL 17s &nbsp;•&nbsp; INSURANCE PAYS 2 TO 1 &nbsp;•&nbsp; <span id="rules-decks">6 DECKS</span></div>
   </div>
   <div id="seats"></div>
+  <div id="open-hint"></div>
 </div>
 
 <div id="controls">
@@ -945,6 +958,11 @@ function renderView(view) {
   $('shoe-fill').classList.toggle('low', view.shoe < view.cut);
   $('shoe-cut').style.left = (view.cut / view.shoeSize * 100) + '%';
   $('rules-decks').textContent = view.decks + (view.decks === 1 ? ' DECK' : ' DECKS');
+
+  const openCount = view.seats.filter(s => s.open).length;
+  $('open-hint').textContent = openCount
+    ? '· ' + openCount + ' open seat' + (openCount === 1 ? '' : 's') + ' — play with friends to fill them ·'
+    : '';
 
   $('bet-amount').textContent = fmt(pendingBet);
 
