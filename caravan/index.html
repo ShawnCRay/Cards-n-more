@@ -399,6 +399,7 @@
   <div id="log"></div>
   <div class="small-btns">
     <button id="btn-invite" style="display:none">Play a friend</button>
+    <button id="btn-join" style="display:none">Join with code</button>
     <button id="btn-games">More games</button>
     <button id="btn-help">How to play</button>
     <button id="btn-new">New game</button>
@@ -409,6 +410,7 @@
   <div class="panel">
     <h2 id="overlay-title"></h2>
     <p id="overlay-sub"></p>
+    <input id="overlay-code" maxlength="6" placeholder="Table code" autocomplete="off" style="display:none; text-transform:uppercase; letter-spacing:3px; text-align:center; font-weight:700">
     <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
     <div class="btn-row">
       <button id="overlay-cancel">Cancel</button>
@@ -1346,9 +1348,12 @@ function showOverlay(mode, code) {
     ? 'Caravan is one on one. Open a table and send the invite link — your browser runs the game.'
     : 'Joining table ' + code + '. Pick a name and sit down.';
   $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-code').style.display = mode === 'host' ? 'none' : '';
+  $('overlay-code').value = code || '';
+  if (mode !== 'host' && !code) $('overlay-sub').textContent = 'Enter the table code your host reads you, then pick a name.';
   $('overlay-status').textContent = '';
   $('overlay').style.display = '';
-  $('overlay-name').focus();
+  if (mode !== 'host' && !code) $('overlay-code').focus(); else $('overlay-name').focus();
 }
 
 $('overlay-go').addEventListener('click', () => {
@@ -1359,16 +1364,21 @@ $('overlay-go').addEventListener('click', () => {
     hostRoom();
     render();
   } else {
+    const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (code.length !== 6) { $('overlay-status').textContent = 'Enter the 6-character table code.'; return; }
+    overlayCode = code;
     $('overlay-status').textContent = 'Connecting…';
-    joinRoom(overlayCode, name || 'Rival');
+    joinRoom(code, name || 'Rival');
   }
 });
 $('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
 $('overlay-cancel').addEventListener('click', () => {
   $('overlay').style.display = 'none';
   if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
 });
 $('btn-invite').addEventListener('click', () => showOverlay('host'));
+$('btn-join').addEventListener('click', () => showOverlay('join'));
 
 /* ---------- wiring ---------- */
 
@@ -1386,6 +1396,7 @@ log('Welcome to the Caravan table. Sell two of three at 21–26 and the route is
 
 if (window.Peer) {
   $('btn-invite').style.display = '';
+  $('btn-join').style.display = '';
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   if (joinCode) showOverlay('join', joinCode);
