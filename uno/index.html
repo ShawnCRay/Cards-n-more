@@ -974,7 +974,7 @@ async function takeTurn(p) {
   render();
   let action;
   if (p.ai || p.finishAsCpu) {
-    await sleep(650);
+    await sleep(1100);
     action = aiChoose(p);
   } else if (p.remote) {
     setMessage('Waiting for ' + p.name + '…');
@@ -1037,7 +1037,7 @@ async function playRound() {
       for (let k = 0; k < pendingFx.drawN; k++) p.hand.push(drawCard());
       log(p.name + ' draws ' + pendingFx.drawN + ' and loses the turn.');
       render();
-      await sleep(500);
+      await sleep(850);
       pendingFx = { skipped: 0 };
       idx = nextSeatIdx(idx);
       continue;
@@ -1045,7 +1045,7 @@ async function playRound() {
     if (pendingFx.skipped) {
       log(p.name + ' is skipped.');
       render();
-      await sleep(400);
+      await sleep(750);
       pendingFx = { skipped: 0 };
       idx = nextSeatIdx(idx);
       continue;

@@ -846,7 +846,7 @@ async function playMatch() {
     if (!gameOver) await takeAction(p, 2);
     if (gameOver) break;
     turnIdx = (turnIdx + 1) % players.length;
-    await sleep(150);
+    await sleep(550);
   }
 
   gameActive = false;
@@ -1057,7 +1057,7 @@ function showOptions(options, label) {
 async function choose(p, label, options) {
   if (!options.length) return null;
   if (p.ai) {
-    await sleep(300);
+    await sleep(600);
     let best = options[0], bs = -1e9;
     for (const o of options) {
       const s = (o.score || 0) + Math.random() * 1.5;

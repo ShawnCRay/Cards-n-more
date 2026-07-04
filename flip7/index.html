@@ -948,7 +948,7 @@ async function takeTurn(p) {
   activePlayer = p;
   render();
   if (p.ai || p.finishAsCpu) {
-    await sleep(650);
+    await sleep(1000);
     if (p.status !== 'active') return;
     if (aiWantsHit(p)) {
       await flipCard(p);
@@ -990,7 +990,7 @@ async function playRound() {
 
   for (const p of seated()) {
     if (p.status !== 'active') continue;
-    await sleep(350);
+    await sleep(600);
     await flipCard(p);
     if (roundEnded()) break;
   }

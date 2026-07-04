@@ -667,7 +667,7 @@ async function choose(p, label, options) {
   if (!options.length) return null;
   if (options.length === 1 && options[0].forced) return options[0].id;
   if (p.ai) {
-    await sleep(350);
+    await sleep(650);
     let best = options[0], bs = -1e9;
     for (const o of options) {
       const s = (o.score || 0) + Math.random() * 2;
@@ -1035,7 +1035,7 @@ async function playMatch() {
       break;
     }
     leaderIdx = (leaderIdx + 1) % players.length;
-    await sleep(150);
+    await sleep(550);
   }
 
   gameActive = false;

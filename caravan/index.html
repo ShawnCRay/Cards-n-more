@@ -982,7 +982,7 @@ async function playMatch() {
 
     let move = null;
     if (p.ai) {
-      await sleep(700);
+      await sleep(1100);
       move = aiChoose(p);
     } else if (p.remote) {
       setMessage('Waiting for ' + p.name + '…');
@@ -1009,7 +1009,7 @@ async function playMatch() {
     const w = matchWinner();
     if (w !== -1 && players[0].opening >= 3 && players[1].opening >= 3) { lastWinner = w; break; }
     turnIdx = 1 - turnIdx;
-    await sleep(250);
+    await sleep(650);
   }
 
   gameActive = false;
