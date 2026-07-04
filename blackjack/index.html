@@ -329,7 +329,8 @@
       inset 0 0 10px rgba(96,70,36,0.6),
       inset 0 0 3px rgba(70,48,22,0.65);
   }
-  /* the deck's hard-luck cards: scorched corners, tape repairs, water rings */
+  /* The deck's hard-luck cards. Damage is keyed to each card's rank+suit (see
+     cardEl), so a given card carries the same scars every time it's dealt. */
   .card::after {
     content: '';
     position: absolute;
@@ -338,15 +339,24 @@
     pointer-events: none;
     background: var(--damage, none);
   }
-  .card:nth-child(2n) {
+  .card.wear-1 { /* scorched corner */
     --damage: radial-gradient(circle 15px at 102% 102%, rgba(25,15,7,0.6), rgba(80,45,15,0.4) 55%, rgba(110,70,25,0.2) 72%, transparent 82%);
   }
-  .card:nth-child(3n) {
+  .card.wear-2 { /* yellowed tape repair */
     --damage: linear-gradient(32deg, transparent 60%, rgba(216,192,140,0.5) 62%, rgba(226,204,152,0.42) 76%, transparent 78%);
   }
-  .card:nth-child(5n) {
+  .card.wear-3 { /* water ring and a singed top-left */
     --damage: radial-gradient(circle 17px at 32% 42%, transparent 55%, rgba(122,86,38,0.30) 66%, transparent 76%),
               radial-gradient(circle 12px at 0% 0%, rgba(25,15,7,0.45), rgba(80,45,15,0.28) 60%, transparent 78%);
+  }
+  .card.wear-4 { /* cigarette burn pressed into the face, plus a scorch smudge */
+    --damage: radial-gradient(circle 5px at 70% 62%, rgba(12,7,3,0.9) 38%, rgba(58,30,10,0.75) 58%, rgba(110,70,25,0.4) 76%, transparent 88%),
+              radial-gradient(ellipse 12px 8px at 30% 26%, rgba(80,45,15,0.35), rgba(110,70,25,0.18) 60%, transparent 78%);
+  }
+  .card.wear-5 { /* burnt clean through: two holes with charred rims */
+    --damage: radial-gradient(circle 4.5px at 62% 24%, #10130c 42%, rgba(20,12,5,0.95) 54%, rgba(66,34,11,0.85) 68%, rgba(122,76,28,0.45) 80%, transparent 90%),
+              radial-gradient(circle 3.5px at 34% 74%, #10130c 40%, rgba(20,12,5,0.9) 54%, rgba(66,34,11,0.8) 70%, transparent 86%),
+              radial-gradient(circle 8px at 63% 25%, transparent 60%, rgba(226,204,152,0.28) 72%, transparent 84%);
   }
   /* hand-dealt look: every card sits a touch crooked, worn a little differently */
   .card:nth-child(odd)  { --tilt: -1.4deg; --sx: 76%; --sy: 18%; --sx2: 22%; --sy2: 80%; --crease: 115deg; }
@@ -989,7 +999,9 @@ function cardEl(card, faceDown) {
   const el = document.createElement('div');
   if (faceDown) { el.className = 'card back'; return el; }
   const red = card.suit === '♥' || card.suit === '♦';
-  el.className = 'card' + (red ? ' red' : '');
+  // deterministic wear: the same physical card always carries the same scars
+  const wear = (card.rank.charCodeAt(0) * 7 + card.rank.length * 3 + card.suit.charCodeAt(0)) % 6;
+  el.className = 'card' + (red ? ' red' : '') + ' wear-' + wear;
   el.innerHTML = '<span class="corner">' + card.rank + '<br>' + card.suit + '</span>' +
                  '<span class="pip">' + card.suit + '</span>';
   return el;
