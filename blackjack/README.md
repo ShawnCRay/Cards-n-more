@@ -6,8 +6,10 @@ optional multiplayer connects browsers directly to each other.
 
 ## The game
 
-You sit at a three-seat table between two CPU players (Ruby and Max) who play
-textbook basic strategy with their own bankrolls. Real casino rules and odds:
+You sit at a six-seat table between two CPU players (Ruby and Max) who play
+textbook basic strategy with their own bankrolls; the other three seats stay
+open for friends (hidden on phones until someone sits down). Real casino
+rules and odds:
 
 - Configurable shoe: 1, 2, 4, 6, or 8 decks (footer selector, host's choice
   at a multiplayer table), reshuffled at 75% penetration — the top-bar shoe
@@ -43,8 +45,10 @@ Two opt-in helpers live in the footer for players new to blackjack:
 
 Tap **Play with friends** (bottom of the page), pick a name, and send the
 invite link it gives you. Friends who open the link just type a name and sit
-down — they take over the CPU seats (chips included), up to two friends plus
-the host. If someone leaves, the CPU quietly takes the seat back.
+down — up to five friends plus the host. They fill the open seats first
+(fresh $1,000 bankroll), then take over the CPU seats (inheriting those
+chips). When someone leaves, their seat opens back up — or the CPU takes it
+back if it was theirs.
 
 How it works: the host's browser runs the actual game (shoe, payouts, turn
 order) and is the source of truth. Guests connect peer-to-peer over WebRTC
