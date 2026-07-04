@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Caravan</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      radial-gradient(circle 7px at 58% 63%, rgba(15,9,4,0.75), rgba(70,40,15,0.5) 55%, transparent 75%),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, #net-bar { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 16px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 13px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* ---------- board ---------- */
+  #board {
+    flex: 1;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 10px 0;
+  }
+  #foe-strip, #you-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 2px 4px;
+  }
+  #foe-strip b, #you-strip b { color: var(--gold); }
+  .strip-name .tag { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  #tracks { display: flex; gap: 10px; justify-content: center; }
+  .track {
+    flex: 1 1 0;
+    max-width: 200px;
+    background:
+      radial-gradient(circle 50px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      rgba(0,0,0,0.20);
+    border: 1px solid rgba(217,151,63,0.25);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 6px 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  .track:nth-child(odd)  { border-radius: 14px 9px 13px 8px / 10px 14px 8px 13px; }
+  .track:nth-child(even) { border-radius: 8px 13px 9px 14px / 13px 8px 14px 10px; }
+  .track .vs {
+    text-align: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 0;
+    border-top: 1px dashed rgba(217,151,63,0.3);
+    border-bottom: 1px dashed rgba(217,151,63,0.3);
+    margin: 4px 0;
+  }
+  .track .vs b { color: var(--gold); }
+  .track .vs .sold { color: #7fd68a; font-weight: 800; }
+  .track .vs .bust { color: #ff9878; font-weight: 800; }
+  .cv { min-height: 66px; position: relative; }
+  .cv.foe { display: flex; flex-direction: column-reverse; }
+  .cv .stack { display: flex; flex-direction: column; align-items: center; }
+  .cv.foe .stack { flex-direction: column-reverse; }
+  .cv-drop {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    opacity: 0.45;
+    padding: 4px 0 2px;
+    text-transform: uppercase;
+  }
+  .cv-drop.legal {
+    opacity: 1;
+    color: var(--gold);
+    cursor: pointer;
+    text-shadow: 0 0 8px rgba(217,151,63,0.7);
+  }
+  .disband {
+    font-size: 9px;
+    padding: 1px 6px;
+    margin: 2px auto 0;
+    display: block;
+    font-weight: 400;
+  }
+
+  /* entries (cards on caravans) */
+  .entry {
+    width: 40px;
+    height: 54px;
+    margin-top: -34px;
+    border-radius: 5px;
+    border: 1px solid #b3a37c;
+    background:
+      radial-gradient(circle 20px at 80% 15%, rgba(148,114,58,0.22), transparent),
+      linear-gradient(160deg, #ece1c0 0%, #ddcfa6 70%, #cbb98d 100%);
+    color: #2b2317;
+    position: relative;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(2% 2%, 30% 1%, 60% 2%, 92% 1%, 100% 8%, 99% 40%, 100% 72%, 98% 96%, 90% 100%, 55% 99%, 20% 100%, 1% 95%, 0% 60%, 1% 28%, 0% 6%);
+    box-shadow: inset 0 0 8px rgba(96,70,36,0.5);
+  }
+  .cv .stack .entry:first-child { margin-top: 0; }
+  .cv.foe .stack .entry { margin-top: 0; margin-bottom: -34px; }
+  .cv.foe .stack .entry:first-child { margin-bottom: 0; }
+  .entry.red { color: #a53c2a; }
+  .entry .att {
+    position: absolute;
+    right: -8px;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .entry .att span {
+    font-size: 9px;
+    font-weight: 800;
+    background: var(--gold);
+    color: var(--ink);
+    border-radius: 3px;
+    padding: 0 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .entry .att span.j { background: #8a3520; color: #ffd9c0; }
+  .entry.legal { outline: 2px solid var(--gold); cursor: pointer; box-shadow: 0 0 10px rgba(217,151,63,0.7); }
+  /* targeting mode: fan the stacks out so every card is tappable */
+  .stack.spread .entry { margin-top: 3px !important; margin-bottom: 0 !important; }
+
+  /* ---------- hand ---------- */
+  #hand-area { max-width: 900px; width: 100%; margin: 0 auto; padding: 4px 10px; text-align: center; }
+  #hand-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 3px; }
+  #hand { display: flex; flex-wrap: wrap; justify-content: center; min-height: 64px; align-items: center; }
+  .hcard {
+    width: 42px;
+    height: 58px;
+    border-radius: 6px;
+    border: 1px solid #b3a37c;
+    background:
+      radial-gradient(circle 22px at 80% 15%, rgba(148,114,58,0.22), transparent),
+      linear-gradient(160deg, #ece1c0 0%, #ddcfa6 70%, #cbb98d 100%);
+    color: #2b2317;
+    margin-left: -12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    clip-path: polygon(2% 2%, 30% 1%, 60% 2%, 92% 1%, 100% 8%, 99% 40%, 100% 72%, 98% 96%, 90% 100%, 55% 99%, 20% 100%, 1% 95%, 0% 60%, 1% 28%, 0% 6%);
+    box-shadow: inset 0 0 8px rgba(96,70,36,0.45);
+  }
+  .hcard:first-child { margin-left: 0; }
+  .hcard.red { color: #a53c2a; }
+  .hcard .suit { position: absolute; top: 2px; left: 4px; font-size: 10px; }
+  .hcard.sel { margin-top: -12px; outline: 2px solid var(--gold); box-shadow: 0 0 12px rgba(217,151,63,0.7); }
+  .hcard.dim { opacity: 0.5; }
+
+  /* ---------- controls ---------- */
+  #controls { max-width: 900px; width: 100%; margin: 0 auto; padding: 2px 10px 8px; text-align: center; }
+  #net-bar { min-height: 16px; margin-bottom: 4px; font-size: 13px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 11px; font-weight: 400; padding: 3px 10px; margin-left: 8px; }
+  #message { min-height: 18px; margin-bottom: 6px; font-size: 13px; color: var(--gold); font-weight: 600; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+
+  /* ---------- footer & overlays ---------- */
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 10px 8px;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 180px; max-height: 34px; overflow: hidden; }
+  #log div { line-height: 1.6; }
+  #footer .small-btns button { font-size: 11px; padding: 4px 10px; font-weight: 400; }
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 560px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13.5px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 10px; }
+  #help .help-body ul { margin: 0 0 10px 18px; }
+  #help .help-body li { margin-bottom: 6px; }
+  #help .help-body b { color: var(--gold); }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; gap: 2px 10px; justify-content: center; }
+    #topbar .title { display: none; }
+    #board { padding: 4px 6px 0; }
+    #tracks { gap: 6px; }
+    .track { padding: 4px 4px 6px; }
+    .entry { width: 32px; height: 44px; font-size: 12px; margin-top: -28px; }
+    .cv.foe .stack .entry { margin-bottom: -28px; margin-top: 0; }
+    .cv { min-height: 50px; }
+    .hcard { width: 36px; height: 50px; font-size: 14px; margin-left: -14px; }
+    #hand { min-height: 56px; }
+    #message { font-size: 12px; min-height: 16px; }
+    #net-bar { font-size: 12px; min-height: 0; }
+    button { padding: 8px 11px; font-size: 12px; }
+    #footer { font-size: 10px; gap: 6px; }
+    #footer .small-btns button { font-size: 10px; padding: 3px 7px; }
+    #log { max-height: 17px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · CARAVAN</span>
+  <span class="stat">Sell at <b>21–26</b></span>
+  <span class="stat">Your deck <b id="stat-deck">—</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="board">
+  <div id="foe-strip">
+    <span class="strip-name" id="foe-name"></span>
+    <span>Hand <b id="foe-hand">—</b> · Deck <b id="foe-deck">—</b></span>
+  </div>
+  <div id="tracks"></div>
+  <div id="you-strip">
+    <span class="strip-name" id="you-name"></span>
+    <span></span>
+  </div>
+</div>
+
+<div id="hand-area">
+  <div id="hand-label">YOUR HAND</div>
+  <div id="hand"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="message"></div>
+  <div id="turn-controls" style="display:none">
+    <div class="btn-row">
+      <button id="btn-discard">Discard card</button>
+      <button id="btn-cancel-sel">Cancel</button>
+    </div>
+  </div>
+  <div id="round-controls">
+    <div class="btn-row"><button id="btn-deal" class="primary">Start game</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play a friend</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play Caravan</h2>
+    <div class="help-body">
+      <p><b>The goal:</b> build three caravans and <b>sell</b> them by getting
+      each between <b>21 and 26</b>. Each of your caravans faces one of your
+      opponent's — the higher sold caravan takes that track. Take two of the
+      three tracks to win.</p>
+      <p><b>Opening:</b> your first three plays must each start one of your
+      caravans with a number card (ace = 1).</p>
+      <p><b>Your turn:</b> play one card, or discard one, or disband one of
+      your caravans (dump the whole pile). You draw back up to five cards.</p>
+      <p><b>Number cards</b> go on your own caravans. After the second card,
+      the caravan has a direction — up or down — and each new card must follow
+      it <i>unless</i> it matches the suit of the card before it, which lets
+      you bend the direction. Equal values never stack.</p>
+      <p><b>Face cards</b> can be played onto anyone's cards:</p>
+      <ul>
+        <li><b>Jack</b> — assassinates a number card (and everything attached).</li>
+        <li><b>Queen</b> — on a caravan's last card: reverses its direction and
+        changes its suit.</li>
+        <li><b>King</b> — doubles a number card. Kings stack.</li>
+        <li><b>Joker</b> — on an ace: wipes every other card of that suit from
+        the whole table. On 2–10: wipes every other card of that value.</li>
+      </ul>
+      <p><b>Busting:</b> over 26 doesn't sell — fix it with a jack, joker, or
+      disband. Run out of cards entirely and you lose the match. Cass has run
+      this route for years; watch her jacks. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   Caravan — the New Vegas table game. Two players, three
+   caravans each, sell at 21-26, best two of three tracks.
+   Each player runs their own 54-card deck (52 + 2 jokers).
+
+   Multiplayer is 1v1 over the shared peer-to-peer layer with
+   private views (you never see the other hand).
+   ============================================================ */
+
+const STORE_KEY = 'caravan-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 60000;
+const SUITS = ['♠', '♥', '♦', '♣'];
+
+const players = [
+  { name: 'You',  cpuName: null,   ai: false, remote: null, deck: [], hand: [], cvs: [], opening: 0 },
+  { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null, deck: [], hand: [], cvs: [], opening: 0 },
+];
+const me = players[0];
+let mySeatIdx = 0;
+
+let gameActive = false;
+let gameOver = false;
+let turnIdx = 0;
+let stats = { wins: 0, games: 0 };
+let localSel = null;   // selected hand index (local human)
+let localMoveResolve = null;
+
+/* ---------- cards & caravans ---------- */
+
+function buildDeck() {
+  const d = [];
+  for (const s of SUITS) {
+    for (let v = 1; v <= 10; v++) d.push({ v, s });          // ace = 1
+    for (const f of ['J', 'Q', 'K']) d.push({ f, s });
+  }
+  d.push({ f: '★' }, { f: '★' });                            // jokers
+  return d;
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function newCv() { return { entries: [], dir: 0, suit: null }; }
+function cvValue(cv) { return cv.entries.reduce((a, e) => a + e.v * Math.pow(2, e.kings), 0); }
+function inRange(n) { return n >= 21 && n <= 26; }
+
+function recalc(cv) {
+  const es = cv.entries;
+  if (!es.length) { cv.dir = 0; cv.suit = null; return; }
+  const last = es[es.length - 1];
+  cv.suit = last.q || last.s;
+  cv.dir = es.length >= 2 ? Math.sign(last.v - es[es.length - 2].v) : 0;
+}
+
+function numberLegal(cv, card) {
+  const es = cv.entries;
+  if (!es.length) return true;
+  const last = es[es.length - 1];
+  if (card.v === last.v) return false;
+  if (cv.dir === 0) return true;
+  return card.s === cv.suit || Math.sign(card.v - last.v) === cv.dir;
+}
+
+function cardName(c) {
+  if (c.f === '★') return 'Joker';
+  if (c.f) return ({ J: 'Jack', Q: 'Queen', K: 'King' })[c.f] + ' of ' + c.s;
+  return (c.v === 1 ? 'Ace' : c.v) + ' of ' + c.s;
+}
+
+/* apply a move to the game state. move formats:
+   {kind:'number', hi, cv}                    — own caravan index 0-2
+   {kind:'face',   hi, side, cv, ei}          — side: 0=mover's, 1=opponent's
+   {kind:'discard', hi}
+   {kind:'disband', cv}                                                    */
+function applyMove(p, move) {
+  const foe = players[1 - players.indexOf(p)];
+  if (move.kind === 'discard') {
+    const c = p.hand.splice(move.hi, 1)[0];
+    log(p.name + ' discards.');
+    return c;
+  }
+  if (move.kind === 'disband') {
+    p.cvs[move.cv] = newCv();
+    log(p.name + ' disbands caravan ' + (move.cv + 1) + '.');
+    return true;
+  }
+  const card = p.hand.splice(move.hi, 1)[0];
+  if (!card) return false;
+  if (move.kind === 'number') {
+    const cv = p.cvs[move.cv];
+    cv.entries.push({ v: card.v, s: card.s, kings: 0, q: null, joker: false });
+    recalc(cv);
+    log(p.name + ' plays ' + cardName(card) + ' → caravan ' + (move.cv + 1) + ' (' + cvValue(cv) + ').');
+  } else {
+    const owner = move.side === 0 ? p : foe;
+    const cv = owner.cvs[move.cv];
+    const entry = cv.entries[move.ei];
+    if (!entry) return false;
+    if (card.f === 'J') {
+      cv.entries.splice(move.ei, 1);
+      recalc(cv);
+      log(p.name + ' plays a Jack — kills the ' + (entry.v === 1 ? 'Ace' : entry.v) + ' on ' + owner.name + "'s caravan.");
+    } else if (card.f === 'K') {
+      entry.kings++;
+      log(p.name + ' plays a King — doubles a ' + (entry.v === 1 ? 'Ace' : entry.v) + ' on ' + owner.name + "'s caravan.");
+    } else if (card.f === 'Q') {
+      entry.q = card.s;
+      cv.suit = card.s;
+      cv.dir = -cv.dir;
+      log(p.name + ' plays a Queen — bends ' + owner.name + "'s caravan to " + card.s + '.');
+    } else if (card.f === '★') {
+      entry.joker = true;
+      const isAce = entry.v === 1;
+      for (const pl of players) {
+        for (const c2 of pl.cvs) {
+          c2.entries = c2.entries.filter(e =>
+            e === entry || (isAce ? e.s !== entry.s : e.v !== entry.v));
+          recalc(c2);
+        }
+      }
+      log(p.name + ' plays a JOKER on the ' + (isAce ? 'Ace of ' + entry.s + ' — every other ' + entry.s + ' card burns.'
+                                                     : entry.v + ' — every other ' + entry.v + ' burns.'));
+    }
+  }
+  return card;
+}
+
+/* all legal moves for a player (used by AI, the UI, and host validation) */
+function legalMoves(p) {
+  const foe = players[1 - players.indexOf(p)];
+  const moves = [];
+  const opening = p.opening < 3;
+  p.hand.forEach((c, hi) => {
+    if (!c.f) {
+      p.cvs.forEach((cv, i) => {
+        if (opening ? cv.entries.length === 0 : numberLegal(cv, c)) {
+          moves.push({ kind: 'number', hi, cv: i });
+        }
+      });
+    } else if (!opening) {
+      if (c.f === 'Q') {
+        [p, foe].forEach((owner, side) => owner.cvs.forEach((cv, i) => {
+          if (cv.entries.length) moves.push({ kind: 'face', hi, side, cv: i, ei: cv.entries.length - 1 });
+        }));
+      } else {
+        [p, foe].forEach((owner, side) => owner.cvs.forEach((cv, i) =>
+          cv.entries.forEach((e, ei) => moves.push({ kind: 'face', hi, side, cv: i, ei }))));
+      }
+    }
+  });
+  if (!opening) {
+    p.hand.forEach((c, hi) => moves.push({ kind: 'discard', hi }));
+    p.cvs.forEach((cv, i) => { if (cv.entries.length) moves.push({ kind: 'disband', cv: i }); });
+  } else if (!moves.length) {
+    // pathological opening hand with no number cards: allow discarding out of it
+    p.hand.forEach((c, hi) => moves.push({ kind: 'discard', hi }));
+  }
+  return moves;
+}
+
+/* ---------- win logic ---------- */
+
+function trackState(i) {
+  // returns -1 undecided, 0 player0 wins track, 1 player1 wins track
+  const a = cvValue(players[0].cvs[i]), b = cvValue(players[1].cvs[i]);
+  const ar = inRange(a), br = inRange(b);
+  if (ar && br) return a === b ? -1 : (a > b ? 0 : 1);
+  if (ar) return 0;
+  if (br) return 1;
+  return -1;
+}
+function matchWinner() {
+  const states = [0, 1, 2].map(trackState);
+  if (states.some(s => s === -1)) return -1;
+  const w0 = states.filter(s => s === 0).length;
+  return w0 >= 2 ? 0 : 1;
+}
+
+/* ---------- helpers ---------- */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh */ }
+}
+
+/* ---------- rendering ---------- */
+
+function buildView(forIdx) {
+  const you = players[forIdx], foe = players[1 - forIdx];
+  return {
+    phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
+    turn: players.indexOf(players[turnIdx]) === forIdx ? 'you' : 'foe',
+    winner: gameOver ? (lastWinner === forIdx ? 'you' : 'foe') : null,
+    msg: $('message').textContent,
+    you: {
+      name: you.name, cvs: you.cvs, hand: you.hand,
+      deck: you.deck.length, opening: you.opening,
+    },
+    foe: {
+      name: foe.name, ai: foe.ai, cvs: foe.cvs,
+      hand: foe.hand.length, deck: foe.deck.length,
+    },
+  };
+}
+
+function entryEl(e, clickable, onclick) {
+  const el = document.createElement('div');
+  el.className = 'entry' + ((e.s === '♥' || e.s === '♦') ? ' red' : '') + (clickable ? ' legal' : '');
+  el.textContent = e.v === 1 ? 'A' : e.v;
+  const att = document.createElement('span');
+  att.className = 'att';
+  for (let k = 0; k < e.kings; k++) { const s = document.createElement('span'); s.textContent = 'K'; att.appendChild(s); }
+  if (e.q) { const s = document.createElement('span'); s.textContent = 'Q' + e.q; att.appendChild(s); }
+  if (e.joker) { const s = document.createElement('span'); s.className = 'j'; s.textContent = '★'; att.appendChild(s); }
+  el.appendChild(att);
+  if (clickable && onclick) el.addEventListener('click', onclick);
+  return el;
+}
+
+function renderView(view) {
+  $('foe-name').innerHTML = escapeHtml(view.foe.name) +
+    ' <span class="tag">' + (view.foe.ai ? 'CPU' : net.mode === 'guest' ? 'Host' : 'Guest') + '</span>' +
+    (view.phase === 'game' && view.turn === 'foe' ? ' <span class="tag">· their move</span>' : '');
+  $('you-name').innerHTML = escapeHtml(view.you.name) +
+    (view.phase === 'game' && view.turn === 'you' ? ' <span class="tag">· your move</span>' : '');
+  $('foe-hand').textContent = view.foe.hand;
+  $('foe-deck').textContent = view.foe.deck;
+  $('stat-deck').textContent = view.you.deck;
+  $('stat-wins').textContent = stats.wins;
+
+  const sel = currentSel();
+  const selCard = sel != null ? view.you.hand[sel] : null;
+  const opening = view.you.opening < 3;
+  const myTurn = view.phase === 'game' && view.turn === 'you' && isMyPrompt();
+
+  const tracks = $('tracks');
+  tracks.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const tr = document.createElement('div');
+    tr.className = 'track';
+    // foe caravan (top, growing downward visually)
+    const foeCv = document.createElement('div');
+    foeCv.className = 'cv foe';
+    const spreading = myTurn && selCard && selCard.f;
+    const foeStack = document.createElement('div');
+    foeStack.className = 'stack' + (spreading ? ' spread' : '');
+    view.foe.cvs[i].entries.forEach((e, ei) => {
+      const clickable = myTurn && selCard && selCard.f &&
+        (selCard.f === 'Q' ? ei === view.foe.cvs[i].entries.length - 1 : true);
+      foeStack.appendChild(entryEl(e, clickable, () => sendFace(1, i, ei)));
+    });
+    foeCv.appendChild(foeStack);
+    tr.appendChild(foeCv);
+
+    // totals strip
+    const a = cvValue(view.you.cvs[i]), b = cvValue(view.foe.cvs[i]);
+    const vs = document.createElement('div');
+    vs.className = 'vs';
+    const mark = n => inRange(n) ? '<span class="sold">' + n + '</span>' : n > 26 ? '<span class="bust">' + n + '</span>' : '<b>' + n + '</b>';
+    vs.innerHTML = mark(b) + ' · ' + mark(a);
+    tr.appendChild(vs);
+
+    // your caravan
+    const youCv = document.createElement('div');
+    youCv.className = 'cv';
+    const youStack = document.createElement('div');
+    youStack.className = 'stack' + (spreading ? ' spread' : '');
+    view.you.cvs[i].entries.forEach((e, ei) => {
+      const clickable = myTurn && selCard && selCard.f &&
+        (selCard.f === 'Q' ? ei === view.you.cvs[i].entries.length - 1 : true);
+      youStack.appendChild(entryEl(e, clickable, () => sendFace(0, i, ei)));
+    });
+    youCv.appendChild(youStack);
+    const drop = document.createElement('div');
+    drop.className = 'cv-drop';
+    const canDrop = myTurn && selCard && !selCard.f &&
+      (opening ? view.you.cvs[i].entries.length === 0
+               : numberLegalView(view.you.cvs[i], selCard));
+    drop.classList.toggle('legal', !!canDrop);
+    drop.textContent = canDrop ? '▼ play here' : 'caravan ' + (i + 1);
+    if (canDrop) drop.addEventListener('click', () => sendNumber(i));
+    tr.appendChild(youCv);
+    tr.appendChild(drop);
+    if (myTurn && !opening && view.you.cvs[i].entries.length) {
+      const db = document.createElement('button');
+      db.className = 'disband';
+      db.textContent = 'disband';
+      db.addEventListener('click', () => sendDisband(i));
+      tr.appendChild(db);
+    }
+    tracks.appendChild(tr);
+  }
+
+  // hand
+  const handBox = $('hand');
+  handBox.innerHTML = '';
+  view.you.hand.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'hcard' + ((c.s === '♥' || c.s === '♦') ? ' red' : '');
+    el.textContent = c.f ? c.f : (c.v === 1 ? 'A' : c.v);
+    if (c.s) {
+      const su = document.createElement('span');
+      su.className = 'suit';
+      su.textContent = c.s;
+      el.appendChild(su);
+    }
+    if (sel === i) el.classList.add('sel');
+    if (myTurn) el.addEventListener('click', () => { setSel(sel === i ? null : i); rerender(); });
+    else el.classList.add('dim');
+    handBox.appendChild(el);
+  });
+
+  $('turn-controls').style.display = myTurn ? '' : 'none';
+  const noNumbers = !view.you.hand.some(c => !c.f);
+  $('btn-discard').disabled = !(sel != null && (!opening || noNumbers));
+  $('btn-cancel-sel').disabled = sel == null;
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!isMyPrompt()) setMessage(view.msg);
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === 'you') stats.wins++;
+      save();
+      if (view.winner === 'you') setMessage('★ You take the caravan match. The wasteland provides.');
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
+}
+
+/* numberLegal against a view caravan (same shape as engine caravans) */
+function numberLegalView(cv, card) {
+  const es = cv.entries;
+  if (!es.length) return true;
+  const last = es[es.length - 1];
+  if (card.v === last.v) return false;
+  const suit = last.q || last.s;
+  const dir = es.length >= 2 ? Math.sign(last.v - es[es.length - 2].v) : 0;
+  if (dir === 0) return true;
+  return card.s === suit || Math.sign(card.v - last.v) === dir;
+}
+
+function currentSel() { return net.mode === 'guest' ? net.guestSel : localSel; }
+function setSel(v) { if (net.mode === 'guest') net.guestSel = v; else localSel = v; }
+function isMyPrompt() { return net.mode === 'guest' ? !!net.guestPrompt : !!localMoveResolve; }
+function rerender() {
+  if (net.mode === 'guest') { if (net.lastView) renderView(net.lastView); }
+  else renderView(buildView(mySeatIdx));
+}
+
+function render() {
+  if (net.mode === 'guest') { rerender(); return; }
+  rerender();
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+    }
+  }
+}
+
+/* move senders — route to the live prompt (local resolver or host) */
+function submitMove(move) {
+  setSel(null);
+  if (net.mode === 'guest') {
+    if (!net.guestPrompt) return;
+    net.guestPrompt = false;
+    if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'move', move });
+    rerender();
+  } else {
+    const r = localMoveResolve;
+    localMoveResolve = null;
+    if (r) r(move);
+  }
+}
+function sendNumber(cv) { const hi = currentSel(); if (hi != null) submitMove({ kind: 'number', hi, cv }); }
+function sendFace(side, cv, ei) { const hi = currentSel(); if (hi != null) submitMove({ kind: 'face', hi, side, cv, ei }); }
+function sendDisband(cv) { submitMove({ kind: 'disband', cv }); }
+$('btn-discard').addEventListener('click', () => { const hi = currentSel(); if (hi != null) submitMove({ kind: 'discard', hi }); });
+$('btn-cancel-sel').addEventListener('click', () => { setSel(null); rerender(); });
+
+/* ---------- CPU brain ---------- */
+
+function aiChoose(p) {
+  const foe = players[1 - players.indexOf(p)];
+  const myIdx = players.indexOf(p);
+  const moves = legalMoves(p);
+  if (!moves.length) return null;
+  let best = null, bestScore = -1e9;
+  for (const m of moves) {
+    let s = -5;
+    if (m.kind === 'number') {
+      const cv = p.cvs[m.cv];
+      const nv = cvValue(cv) + p.hand[m.hi].v;
+      if (nv > 26) s = -40;
+      else if (inRange(nv)) {
+        const foeV = cvValue(foe.cvs[m.cv]);
+        s = 60 + (inRange(foeV) ? (nv > foeV ? 25 : -20) : 15) + nv;
+      } else s = 10 + nv - Math.max(0, cvValue(cv) - 10);
+    } else if (m.kind === 'face') {
+      const card = p.hand[m.hi];
+      const owner = m.side === 0 ? p : foe;
+      const cv = owner.cvs[m.cv];
+      const entry = cv.entries[m.ei];
+      const val = cvValue(cv);
+      if (card.f === 'J') {
+        if (owner === foe) s = inRange(val) ? 70 : val > 15 ? 30 + entry.v : -10;
+        else s = val > 26 ? 45 - (val - 26 > entry.v * Math.pow(2, entry.kings) ? 20 : 0) : -30;
+      } else if (card.f === 'K') {
+        if (owner === p) {
+          const nv = val + entry.v * Math.pow(2, entry.kings);
+          s = nv > 26 ? -40 : inRange(nv) ? 65 + nv : 5;
+        } else {
+          const nv = val + entry.v * Math.pow(2, entry.kings);
+          s = nv > 26 ? 55 : -20; // shove them over the cliff
+        }
+      } else if (card.f === 'Q') {
+        s = owner === p && !inRange(val) && val < 21 ? 4 : -12;
+      } else if (card.f === '★') {
+        // count what burns on each side
+        let mine = 0, theirs = 0;
+        const isAce = entry.v === 1;
+        for (const pl of players) for (const c2 of pl.cvs) for (const e of c2.entries) {
+          if (e === entry) continue;
+          const hit = isAce ? e.s === entry.s : e.v === entry.v;
+          if (hit) (pl === p ? mine += e.v : theirs += e.v);
+        }
+        s = (theirs - mine) * 3 + (theirs > mine ? 10 : -15);
+      }
+    } else if (m.kind === 'disband') {
+      s = cvValue(p.cvs[m.cv]) > 26 ? 35 : -25;
+    } else if (m.kind === 'discard') {
+      const c = p.hand[m.hi];
+      s = c.f ? -8 : -2 - (10 - Math.abs(5.5 - c.v)); // shed middling numbers first
+    }
+    s += Math.random() * 3;
+    if (s > bestScore) { bestScore = s; best = m; }
+  }
+  return best;
+}
+
+/* ---------- match flow (host/solo) ---------- */
+
+let lastWinner = -1;
+
+function getLocalMove() {
+  return new Promise(resolve => {
+    localMoveResolve = resolve;
+    setMessage(me.opening < 3
+      ? 'Opening — start caravan ' + (me.opening + 1) + ' with a number card.'
+      : 'Your move — pick a card, then a target. Or discard / disband.');
+    rerender();
+  });
+}
+
+function getRemoteMove(p) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = m => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      net.mover = null;
+      resolve(m);
+    };
+    const timer = setTimeout(() => { log(p.name + ' took too long — discarding.'); finish(null); }, TURN_TIMEOUT_MS);
+    net.mover = finish;
+    if (p.remote && p.remote.open) p.remote.send({ type: 'turn' });
+    else finish(null);
+  });
+}
+
+function validMove(p, move) {
+  if (!move || typeof move !== 'object') return false;
+  return legalMoves(p).some(m =>
+    m.kind === move.kind && m.hi === move.hi && m.cv === move.cv &&
+    m.side === move.side && m.ei === move.ei);
+}
+
+async function playMatch() {
+  if (gameActive || net.mode === 'guest') return;
+  gameActive = true;
+  gameOver = false;
+  lastWinner = -1;
+  $('round-controls').style.display = 'none';
+  for (const p of players) {
+    p.deck = shuffle(buildDeck());
+    p.hand = [];
+    p.cvs = [newCv(), newCv(), newCv()];
+    p.opening = 0;
+    for (let i = 0; i < 8; i++) p.hand.push(p.deck.pop());
+  }
+  turnIdx = 0;
+  log('— New caravan match: ' + players[0].name + ' vs ' + players[1].name + ' —');
+  render();
+
+  let safety = 3000;
+  while (safety-- > 0) {
+    const p = players[turnIdx];
+    setMessage(p === me && net.mode !== 'host' ? '' : p.name + ' is thinking…');
+    render();
+
+    let move = null;
+    if (p.ai) {
+      await sleep(700);
+      move = aiChoose(p);
+    } else if (p.remote) {
+      setMessage('Waiting for ' + p.name + '…');
+      render();
+      move = await getRemoteMove(p);
+      if (move && !validMove(p, move)) move = null;
+    } else {
+      move = await getLocalMove();
+      if (move && !validMove(p, move)) { setMessage("Can't play that there."); continue; }
+    }
+    if (!move) {
+      // timeout / dead end: discard first card if possible, else disband, else lose
+      const lm = legalMoves(p);
+      move = lm.find(m => m.kind === 'discard') || lm[0];
+      if (!move) { lastWinner = 1 - turnIdx; break; }
+    }
+    if (p.opening < 3 && move.kind === 'number') p.opening++;
+    applyMove(p, move);
+    if (p.hand.length < 5 && p.deck.length) p.hand.push(p.deck.pop());
+    render();
+
+    // out of cards entirely = forfeit
+    if (p.hand.length === 0 && p.deck.length === 0) { lastWinner = 1 - turnIdx; break; }
+    const w = matchWinner();
+    if (w !== -1 && players[0].opening >= 3 && players[1].opening >= 3) { lastWinner = w; break; }
+    turnIdx = 1 - turnIdx;
+    await sleep(250);
+  }
+
+  gameActive = false;
+  gameOver = true;
+  stats.games++;
+  if (lastWinner === 0) stats.wins++;
+  save();
+  const winP = players[lastWinner];
+  setMessage(winP === me && net.mode === 'solo'
+    ? '★ Your caravans sell. The route is yours — the wasteland provides.'
+    : '★ ' + winP.name + ' takes the match — two of three caravans sold.');
+  log('★ ' + winP.name + ' wins the caravan match.');
+  $('btn-deal').textContent = 'Play again';
+  $('round-controls').style.display = '';
+  render();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  gameOver = false;
+  gameActive = false;
+  for (const p of players) { p.deck = []; p.hand = []; p.cvs = [newCv(), newCv(), newCv()]; p.opening = 0; }
+  $('btn-deal').textContent = 'Start game';
+  $('round-controls').style.display = '';
+  setMessage('Two players, three caravans, sell at 21–26. Start when ready.');
+  render();
+}
+
+/* ============================================================
+   Multiplayer — 1v1, private views.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', mover: null, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
+              guestSel: null, heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your rival.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guest = players[1].remote ? escapeHtml(players[1].name) : null;
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guest ? 'playing ' + guest : 'waiting for a rival…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Caravan', text: 'Play me at Caravan', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+/* ----- host side ----- */
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    const p = players[1];
+    if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+      const conn = p.remote;
+      try { conn.close(); } catch (e) { /* dead */ }
+      dropGuest(conn);
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('cvnsim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send your rival the invite link.');
+      log('Table ' + net.roomCode + ' opened. Caravan is one on one.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  const seat = players[1];
+  if (d.type === 'hello') {
+    if (seat.remote && seat.remote !== conn && seat.remote.peer === conn.peer) {
+      try { seat.remote.close(); } catch (e) { /* stale */ }
+      seat.remote = conn;
+      conn.send({ type: 'welcome', hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    if (seat.remote) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    seat.ai = false;
+    seat.remote = conn;
+    seat.name = String(d.name || 'Rival').slice(0, 12).trim() || 'Rival';
+    conn.send({ type: 'welcome', hostName: me.name, code: net.roomCode });
+    log(seat.name + ' sits down across from you.');
+    updateNetBar();
+    render();
+  } else if (d.type === 'move') {
+    if (net.mover) net.mover(d.move);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = players[1];
+  if (seat.remote !== conn) return;
+  seat.remote = null;
+  seat.ai = true;
+  seat.name = seat.cpuName;
+  log('Your rival left — ' + seat.cpuName + ' (CPU) plays out the match.');
+  if (net.mover) net.mover(null);
+  updateNetBar();
+  render();
+}
+
+/* ----- guest side ----- */
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  net.guestPrompt = false;
+  setMessage('Lost the host — refresh the page to play solo.');
+  $('turn-controls').style.display = 'none';
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — the host may be " +
+          'off-screen. Retrying, attempt ' + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host to stay on the game, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
+  const conn = net.peer.connect('cvnsim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to stay on the game, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the host to start.');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'turn') {
+    net.guestPrompt = true;
+    setMessage((net.lastView && net.lastView.you.opening < 3)
+      ? 'Opening — start a caravan with a number card.'
+      : 'Your move — pick a card, then a target. Or discard / disband.');
+    rerender();
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table already has a rival seated.';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play a friend' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Caravan is one on one. Open a table and send the invite link — your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and sit down.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(overlayCode, name || 'Rival');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+
+/* ---------- wiring ---------- */
+
+$('btn-deal').addEventListener('click', playMatch);
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+/* ---------- boot ---------- */
+
+load();
+newGame();
+log('Welcome to the Caravan table. Sell two of three at 21–26 and the route is yours.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+</script>
+</body>
+</html>
