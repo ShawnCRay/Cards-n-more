@@ -8,3 +8,4 @@ ads. Open the file in a browser to play.
 |---|---|---|
 | Blackjack | [`blackjack/`](blackjack/) | 6-deck shoe, real casino rules, CPU players, chip tracking |
 | Flip7 | [`flip7/`](flip7/) | Push your luck, number matching game |
+ 
