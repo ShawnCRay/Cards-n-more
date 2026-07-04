@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Liar's Dice</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, #net-bar { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 14px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 12px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  #board { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 8px 10px 0; font-size: 12px; }
+  #players { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+  .seat {
+    flex: 1 1 30%;
+    min-width: 240px;
+    background:
+      radial-gradient(circle 60px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 7px 9px 9px;
+  }
+  .seat:nth-child(odd)  { border-radius: 14px 9px 13px 8px / 10px 14px 8px 13px; }
+  .seat:nth-child(even) { border-radius: 8px 13px 9px 14px / 13px 8px 14px 10px; }
+  .seat.you { border-color: rgba(217,151,63,0.55); }
+  .seat.turn { border-color: var(--gold); box-shadow: 0 0 12px rgba(217,151,63,0.4), inset 0 0 20px rgba(0,0,0,0.4); }
+  .seat.out { opacity: 0.4; }
+  .seat.open { opacity: 0.5; border-style: dashed; }
+  .seat.waiting { opacity: 0.6; }
+  .seat .who { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .seat .nm { font-weight: 700; font-size: 13px; }
+  .seat .nm .tag { font-size: 9px; font-weight: 400; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; margin-left: 3px; }
+  .seat .dc { color: var(--gold); font-weight: 700; font-size: 11px; white-space: nowrap; }
+  .seat .tray { display: flex; gap: 5px; flex-wrap: wrap; min-height: 32px; align-items: center; }
+  .seat .note { font-size: 11px; opacity: 0.7; font-style: italic; }
+
+  .die {
+    width: 30px; height: 30px;
+    border-radius: 7px 5px 7px 5px;
+    background: linear-gradient(158deg, #efe6cb 0%, #ddcda3 72%, #cabb8e 100%);
+    border: 1px solid #b3a37c;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    padding: 4px;
+    gap: 1px;
+    box-shadow: inset 0 0 5px rgba(96,70,36,0.45), 0 1px 2px rgba(0,0,0,0.45);
+    flex-shrink: 0;
+  }
+  .die .pip { border-radius: 50%; }
+  .die .pip.on { background: radial-gradient(circle at 38% 32%, #4a3820, #120d07); box-shadow: inset 0 0 1px rgba(0,0,0,0.6); }
+  .die.wild { border-color: var(--gold); box-shadow: 0 0 7px rgba(217,151,63,0.55), inset 0 0 5px rgba(96,70,36,0.45); }
+  .die.wild .pip.on { background: radial-gradient(circle at 38% 32%, #f0c069, #a9761f); }
+  .die.hidden {
+    background:
+      repeating-linear-gradient(45deg, #4a3320 0 5px, #38271a 5px 10px);
+    border-color: #5a3f26;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.45);
+    position: relative;
+  }
+  .die.new { animation: dieIn 0.28s ease-out; }
+  @keyframes dieIn { from { transform: translateY(-8px) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  #controls { max-width: 1000px; width: 100%; margin: 0 auto; padding: 6px 10px 8px; text-align: center; }
+  #net-bar { min-height: 16px; margin-bottom: 3px; font-size: 12px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 10px; font-weight: 400; padding: 3px 9px; margin-left: 8px; }
+  #bidbar { min-height: 40px; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 9px; flex-wrap: wrap; }
+  #bidbar .who { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.75; }
+  #bidbar .qty { font-size: 26px; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
+  #bidbar .none { font-size: 12px; opacity: 0.6; font-style: italic; }
+  #bidbar .die { width: 26px; height: 26px; }
+  #message { min-height: 18px; margin-bottom: 6px; font-size: 13px; color: var(--gold); font-weight: 600; }
+
+  #opts { display: flex; justify-content: center; }
+  .bidder {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(217,151,63,0.3);
+    border-radius: 12px 8px 12px 8px;
+    padding: 10px 14px;
+  }
+  .bidder .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .bidder .qlabel { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+  .bidder .qval { font-size: 22px; font-weight: 700; color: var(--gold); min-width: 34px; font-variant-numeric: tabular-nums; }
+  .bidder .step { padding: 6px 13px; font-size: 16px; }
+  .bidder .faces { display: flex; gap: 5px; }
+  .bidder .fdie {
+    cursor: pointer; padding: 0; border: 2px solid transparent; border-radius: 9px 7px 9px 7px;
+    background: none; opacity: 0.6;
+  }
+  .bidder .fdie.sel { opacity: 1; border-color: var(--gold); box-shadow: 0 0 8px rgba(217,151,63,0.4); }
+  .bidder .fdie .die { width: 30px; height: 30px; }
+
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+  button.danger { border-color: var(--red); color: #f0c9be; }
+  button.danger:hover:not(:disabled) { background: rgba(184,69,47,0.28); }
+
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 10px 8px;
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  #log { flex: 1; min-width: 180px; max-height: 34px; overflow: hidden; }
+  #log div { line-height: 1.55; }
+  #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
+
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 600px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 9px; }
+  #help .help-body ul { margin: 0 0 9px 18px; }
+  #help .help-body li { margin-bottom: 4px; }
+  #help .help-body b { color: var(--gold); }
+
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
+    #topbar .title { display: none; }
+    #board { padding: 5px 6px 0; }
+    #players { gap: 6px; }
+    .seat { min-width: 100%; }
+    .die { width: 27px; height: 27px; }
+    #message { font-size: 12px; }
+    #footer { font-size: 10px; }
+    #footer .small-btns button { font-size: 9px; padding: 3px 7px; }
+    #log { max-height: 17px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · LIAR'S DICE</span>
+  <span class="stat">Cups <b id="stat-players">—</b></span>
+  <span class="stat">Dice up <b id="stat-dice">—</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="board">
+  <div id="players"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="bidbar"></div>
+  <div id="message"></div>
+  <div id="opts"></div>
+  <div id="round-controls">
+    <div class="btn-row"><button id="btn-deal" class="primary">Roll out</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-join" style="display:none">Join with code</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-code" maxlength="6" placeholder="Table code" autocomplete="off" style="display:none; text-transform:uppercase; letter-spacing:3px; text-align:center; font-weight:700">
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>Liar's Dice</h2>
+    <div class="help-body">
+      <p>Everyone starts with <b>five dice under a cup</b>, rolled in secret —
+      you only ever see your own until someone gets called out.</p>
+      <p><b>1s are wild</b> — a 1 counts as every number. So all bidding is on
+      the faces <b>2 through 6</b>.</p>
+      <p><b>On your turn</b> you must either:</p>
+      <ul>
+        <li><b>Raise the bid</b> — a bid is a guess about <em>all</em> the dice
+        on the table, e.g. "<b>three fives</b>" means at least three dice show a
+        5 (counting wild 1s) across everyone's cups. Each new bid must be
+        higher: more dice, or the same many at a higher face.</li>
+        <li><b>Call liar</b> — you think the last bid is a bluff. All cups lift
+        and that face is counted (plus every wild 1).</li>
+      </ul>
+      <p>If the bid was <b>true</b> (the count met it), the <b>caller</b> loses a
+      die. If it was a <b>bluff</b>, the <b>bidder</b> loses one. Lose your last
+      die and you're out. <b>Last cup standing wins.</b></p>
+      <p>Cass plays the odds; Boone bluffs more than he should. Read them, and
+      good luck out there.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   Vault 21 — Liar's Dice.  Host-authoritative; each cup's dice
+   are private (sent only to that player) until a call reveals them.
+   ============================================================ */
+
+const START_DICE = 5;
+const STORE_KEY = 'liarsdice-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 45000;
+const AI_THINK = 1000;   // CPUs pause so you can follow them
+const POST_BID = 650;    // linger after a bid
+const REVEAL_MS = 3200;  // cups-up reveal
+
+const FACE_NAME = ['', 'ones', 'twos', 'threes', 'fours', 'fives', 'sixes'];
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+
+const players = [
+  { name: 'You',   cpuName: null,    ai: false, remote: null, open: false },
+  { name: 'Cass',  cpuName: 'Cass',  ai: true,  remote: null, open: false },
+  { name: 'Boone', cpuName: 'Boone', ai: true,  remote: null, open: false },
+  { name: 'Open',  cpuName: 'Drifter', ai: false, remote: null, open: true },
+  { name: 'Open',  cpuName: 'Stranger', ai: false, remote: null, open: true },
+  { name: 'Open',  cpuName: 'Wanderer', ai: false, remote: null, open: true },
+].map(p => ({ ...p, diceCount: p.open ? null : START_DICE, out: false, waiting: false, dice: [] }));
+const me = players[0];
+let mySeatIdx = 0;
+
+let bid = null;            // { qty, face, by }
+let activeSeat = -1;
+let revealActive = false;
+let gameActive = false, gameOver = false, roundActive = false;
+let nextStarter = null;
+let lastWinnerIdx = -1;
+let stats = { wins: 0, games: 0 };
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(STORE_KEY)); if (d && typeof d.wins === 'number') stats = d; }
+  catch (e) { /* fresh */ }
+}
+
+/* ---------- rules helpers ---------- */
+
+function rollN(n) { return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6)); }
+function alivePlayers() { return players.filter(p => !p.open && !p.out); }
+function inPlay(p) { return !p.open && !p.out && !p.waiting; }
+function totalDice() { return players.reduce((a, p) => a + (inPlay(p) ? p.dice.length : 0), 0); }
+function totalShowing(face) {
+  return players.reduce((a, p) => a + (inPlay(p) ? p.dice.filter(d => d === face || d === 1).length : 0), 0);
+}
+function bidText(b) { return b.qty + ' ' + (b.qty === 1 ? FACE_NAME[b.face].replace(/s$/, '') : FACE_NAME[b.face]); }
+function isMe(seat) { return seat === mySeatIdx && net.mode !== 'guest' ? seat === mySeatIdx : seat === mySeatIdx; }
+
+function minRaise(b, total) {
+  if (!b) return { qty: 1, face: 2 };
+  if (b.face < 6) return { qty: b.qty, face: b.face + 1 };
+  return { qty: Math.min(total, b.qty + 1), face: 2 };
+}
+function raises(a, b) {
+  if (a.face < 2 || a.face > 6 || a.qty < 1) return false;
+  if (!b) return true;
+  return a.qty > b.qty || (a.qty === b.qty && a.face > b.face);
+}
+function legalAction(a, b, total) {
+  if (!a) return null;
+  if (a.kind === 'call') return b ? { kind: 'call' } : null;
+  if (a.kind === 'bid') {
+    const q = Math.floor(a.qty), f = Math.floor(a.face);
+    if (f < 2 || f > 6 || q < 1 || q > total) return null;
+    if (!raises({ qty: q, face: f }, b)) return null;
+    return { kind: 'bid', qty: q, face: f };
+  }
+  return null;
+}
+function nextAliveSeat(seat) {
+  for (let i = 1; i <= players.length; i++) {
+    const s = (seat + i) % players.length;
+    if (!players[s].open && !players[s].out) return s;
+  }
+  return seat;
+}
+
+/* ---------- CPU brain ---------- */
+
+function nCr(n, r) {
+  if (r < 0 || r > n) return 0;
+  r = Math.min(r, n - r);
+  let c = 1;
+  for (let i = 0; i < r; i++) c = c * (n - i) / (i + 1);
+  return c;
+}
+function binomAtLeast(n, k, p) {   // P(X >= k), X ~ Binomial(n, p)
+  if (k <= 0) return 1;
+  if (k > n) return 0;
+  let cum = 0;
+  for (let i = k; i <= n; i++) cum += nCr(n, i) * Math.pow(p, i) * Math.pow(1 - p, n - i);
+  return Math.min(1, cum);
+}
+function aiAction(p, b, total) {
+  const mine = p.dice;
+  const myCount = f => mine.filter(d => d === f || d === 1).length;
+  const bluffy = p.cpuName === 'Boone' ? 0.10 : 0;   // Boone pushes his luck
+  if (!b) {
+    let bestF = 2, bestC = -1;
+    for (let f = 2; f <= 6; f++) { const c = myCount(f); if (c > bestC) { bestC = c; bestF = f; } }
+    const unknown = total - mine.length;
+    let qty = Math.max(1, Math.min(total, bestC + Math.round(unknown / 3)));
+    if (Math.random() < 0.25 && qty < total) qty++;   // a little swagger
+    return { kind: 'bid', qty, face: bestF };
+  }
+  const k = myCount(b.face);
+  const unknown = total - mine.length;
+  const need = b.qty - k;
+  const pTrue = binomAtLeast(unknown, need, 1 / 3);
+  const thresh = 0.34 - bluffy + (Math.random() - 0.5) * 0.12;
+  if (pTrue < thresh) return { kind: 'call' };
+  // raise: prefer a face I actually hold, minimal quantity bump
+  let raise = minRaise(b, total);
+  let bestF = raise.face, bestC = myCount(raise.face);
+  for (let f = 2; f <= 6; f++) {
+    const cand = { qty: raise.qty, face: f };
+    if (raises(cand, b) && cand.qty <= total && myCount(f) > bestC) { bestC = myCount(f); bestF = f; }
+  }
+  raise = { qty: raise.qty, face: bestF };
+  if (!raises(raise, b) || raise.qty > total) raise = minRaise(b, total);
+  if (raise.qty > total) return { kind: 'call' };
+  if ((pTrue > 0.82 || Math.random() < bluffy) && raise.qty < total && Math.random() < 0.45)
+    raise = { qty: raise.qty + 1, face: raise.face };
+  return { kind: 'bid', qty: raise.qty, face: raise.face };
+}
+
+/* ---------- rendering ---------- */
+
+function dieEl(v, opts) {
+  const el = document.createElement('div');
+  el.className = 'die' + (v === 1 && opts && opts.wildGlow ? ' wild' : '') + (opts && opts.fresh ? ' new' : '');
+  const on = PIPS[v] || [];
+  for (let i = 0; i < 9; i++) {
+    const pip = document.createElement('span');
+    pip.className = 'pip' + (on.includes(i) ? ' on' : '');
+    el.appendChild(pip);
+  }
+  return el;
+}
+function hiddenDieEl() {
+  const el = document.createElement('div');
+  el.className = 'die hidden';
+  return el;
+}
+
+function buildView(forIdx) {
+  return {
+    phase: gameOver ? 'over' : gameActive ? 'play' : 'idle',
+    active: activeSeat, reveal: revealActive, winner: lastWinnerIdx,
+    bid: bid ? { qty: bid.qty, face: bid.face, by: bid.by } : null,
+    total: totalDice(),
+    msg: $('message').textContent,
+    you: forIdx,
+    players: players.map((p, i) => ({
+      name: p.name, ai: p.ai, open: p.open, out: p.out, waiting: p.waiting,
+      host: i === 0, remote: !!p.remote,
+      diceN: p.dice.length, count: p.diceCount || 0,
+      dice: (i === forIdx || revealActive) ? p.dice.slice() : null,
+    })),
+  };
+}
+
+function renderView(v) {
+  // topbar
+  $('stat-players').textContent = v.players.filter(p => !p.open && !p.out).length || '—';
+  $('stat-dice').textContent = v.total || '—';
+  $('stat-wins').textContent = stats.wins;
+
+  // seats
+  const box = $('players');
+  box.innerHTML = '';
+  v.players.forEach((p, i) => {
+    if (p.open && !gameActiveView(v)) { /* still show open seats in lobby */ }
+    const el = document.createElement('div');
+    el.className = 'seat'
+      + (i === v.you ? ' you' : '')
+      + (v.active === i && v.phase === 'play' ? ' turn' : '')
+      + (p.out ? ' out' : '') + (p.open ? ' open' : '') + (p.waiting ? ' waiting' : '');
+    const tag = p.open ? '' : p.ai ? 'CPU' : i === v.you ? 'You' : p.host ? 'Host' : 'Guest';
+    const dcTxt = p.open ? 'open seat' : p.out ? 'OUT' : (p.count + (p.count === 1 ? ' die' : ' dice'));
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.innerHTML = '<span class="nm">' + escapeHtml(p.open ? 'Open seat' : p.name)
+      + (tag ? ' <span class="tag">' + tag + '</span>' : '') + '</span>'
+      + '<span class="dc">' + dcTxt + '</span>';
+    el.appendChild(who);
+    const tray = document.createElement('div');
+    tray.className = 'tray';
+    if (p.open) {
+      tray.innerHTML = '<span class="note">invite a friend to fill it</span>';
+    } else if (p.out) {
+      tray.innerHTML = '<span class="note">knocked out</span>';
+    } else if (p.waiting) {
+      tray.innerHTML = '<span class="note">joins next round</span>';
+    } else if (p.dice) {
+      p.dice.forEach(d => tray.appendChild(dieEl(d, { wildGlow: v.reveal || i === v.you })));
+    } else {
+      for (let d = 0; d < p.diceN; d++) tray.appendChild(hiddenDieEl());
+    }
+    el.appendChild(tray);
+    box.appendChild(el);
+  });
+
+  // bid bar
+  const bb = $('bidbar');
+  bb.innerHTML = '';
+  if (v.bid) {
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = (v.players[v.bid.by] ? v.players[v.bid.by].name : '?') + ' bids';
+    const qty = document.createElement('span');
+    qty.className = 'qty';
+    qty.textContent = '×' + v.bid.qty;
+    bb.appendChild(who);
+    bb.appendChild(qty);
+    bb.appendChild(dieEl(v.bid.face, {}));
+  } else if (v.phase === 'play') {
+    const n = document.createElement('span');
+    n.className = 'none';
+    n.textContent = 'No bid yet — open the bidding.';
+    bb.appendChild(n);
+  }
+
+  if (!net.prompting) setMessage(v.msg);
+}
+function gameActiveView(v) { return v.phase === 'play'; }
+
+function rerender() {
+  if (net.mode === 'guest') { if (net.lastView) renderView(net.lastView); }
+  else renderView(buildView(mySeatIdx));
+}
+function render() {
+  rerender();
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+    }
+  }
+}
+
+/* ---------- turn UI (bid builder) ---------- */
+
+let turnCtx = null, bidSel = null;
+
+function openTurnUI(b, total, submit) {
+  turnCtx = { bid: b, total, submit };
+  bidSel = minRaise(b, total);
+  if (bidSel.qty > total) bidSel.qty = total;
+  renderTurnUI();
+}
+function closeTurnUI() { turnCtx = null; $('opts').innerHTML = ''; }
+
+function renderTurnUI() {
+  if (!turnCtx) { $('opts').innerHTML = ''; return; }
+  const { bid: b, total } = turnCtx;
+  const minQty = b ? b.qty : 1;
+  const box = $('opts');
+  box.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'bidder';
+
+  const row1 = document.createElement('div');
+  row1.className = 'row';
+  const minus = document.createElement('button');
+  minus.className = 'step'; minus.textContent = '−';
+  minus.disabled = bidSel.qty <= minQty;
+  minus.addEventListener('click', () => { if (bidSel.qty > minQty) { bidSel.qty--; renderTurnUI(); } });
+  const qv = document.createElement('span');
+  qv.className = 'qval'; qv.textContent = bidSel.qty;
+  const plus = document.createElement('button');
+  plus.className = 'step'; plus.textContent = '+';
+  plus.disabled = bidSel.qty >= total;
+  plus.addEventListener('click', () => { if (bidSel.qty < total) { bidSel.qty++; renderTurnUI(); } });
+  const ql = document.createElement('span');
+  ql.className = 'qlabel'; ql.textContent = 'dice showing';
+  row1.appendChild(minus); row1.appendChild(qv); row1.appendChild(plus); row1.appendChild(ql);
+  wrap.appendChild(row1);
+
+  const faces = document.createElement('div');
+  faces.className = 'faces';
+  for (let f = 2; f <= 6; f++) {
+    const fb = document.createElement('button');
+    fb.className = 'fdie' + (bidSel.face === f ? ' sel' : '');
+    fb.appendChild(dieEl(f, {}));
+    fb.addEventListener('click', () => { bidSel.face = f; renderTurnUI(); });
+    faces.appendChild(fb);
+  }
+  wrap.appendChild(faces);
+
+  const row2 = document.createElement('div');
+  row2.className = 'btn-row';
+  const bidBtn = document.createElement('button');
+  bidBtn.className = 'primary';
+  bidBtn.textContent = 'Bid ×' + bidSel.qty + ' ' + FACE_NAME[bidSel.face];
+  bidBtn.disabled = !(raises(bidSel, b) && bidSel.qty <= total);
+  bidBtn.addEventListener('click', () => {
+    const a = { kind: 'bid', qty: bidSel.qty, face: bidSel.face };
+    const s = turnCtx.submit; closeTurnUI(); s(a);
+  });
+  row2.appendChild(bidBtn);
+  if (b) {
+    const callBtn = document.createElement('button');
+    callBtn.className = 'danger';
+    callBtn.textContent = 'Call liar';
+    callBtn.addEventListener('click', () => {
+      const s = turnCtx.submit; closeTurnUI(); s({ kind: 'call' });
+    });
+    row2.appendChild(callBtn);
+  }
+  wrap.appendChild(row2);
+  box.appendChild(wrap);
+}
+
+function getLocalAction(b, total) {
+  return new Promise(res => openTurnUI(b, total, res));
+}
+function getRemoteAction(p, b, total) {
+  render();
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = a => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      net.picker = null;
+      resolve(legalAction(a, b, total) || (b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }));
+    };
+    const timer = setTimeout(() => { log(p.name + ' took too long — calling it.'); finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }); }, TURN_TIMEOUT_MS);
+    net.picker = finish;
+    if (p.remote && p.remote.open) p.remote.send({ type: 'prompt', bid: b, total });
+    else finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
+  });
+}
+
+/* ---------- round & game flow (host / solo only) ---------- */
+
+function beginRound() {
+  for (const p of players) {
+    if (!p.open && p.diceCount == null) { p.diceCount = START_DICE; p.out = false; }
+    p.waiting = false;
+  }
+  const seats = players.map((p, i) => i).filter(i => !players[i].open && !players[i].out);
+  for (const i of seats) players[i].dice = rollN(players[i].diceCount);
+  return seats;
+}
+
+async function playRound() {
+  const seats = beginRound();
+  bid = null; revealActive = false; roundActive = true;
+  let startSeat = nextStarter;
+  if (startSeat == null || !seats.includes(startSeat)) startSeat = seats[0];
+  let pos = seats.indexOf(startSeat);
+  log('— New round: ' + seats.length + ' cups, ' + totalDice() + ' dice under the table.');
+  render();
+  await sleep(600);
+
+  while (true) {
+    const seat = seats[pos];
+    const p = players[seat];
+    const total = totalDice();
+    activeSeat = seat;
+    setMessage(seat === mySeatIdx && net.mode !== 'guest'
+      ? 'Your turn — raise the bid or call liar.'
+      : p.name + ' is deciding…');
+    render();
+
+    let action;
+    if (p.ai) { await sleep(AI_THINK); action = aiAction(p, bid, total); }
+    else if (p.remote) action = await getRemoteAction(p, bid, total);
+    else action = await getLocalAction(bid, total);
+    action = legalAction(action, bid, total) || (bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
+
+    if (action.kind === 'call') { await resolveCall(seat); break; }
+    bid = { qty: action.qty, face: action.face, by: seat };
+    log(p.name + ' bids ' + bidText(bid) + '.');
+    render();
+    await sleep(POST_BID);
+    pos = (pos + 1) % seats.length;
+  }
+  activeSeat = -1;
+  roundActive = false;
+}
+
+async function resolveCall(callerSeat) {
+  const b = bid;
+  const caller = players[callerSeat], bidder = players[b.by];
+  revealActive = true;
+  const actual = totalShowing(b.face);
+  render();
+  const truth = actual >= b.qty;
+  const loserSeat = truth ? callerSeat : b.by;
+  const loser = players[loserSeat];
+  log(caller.name + ' calls liar on ' + bidder.name + ' (' + bidText(b) + '). The table shows ' + actual
+    + ' — ' + (truth ? 'the bid holds up' : bidder.name + ' was bluffing') + '. ' + loser.name + ' loses a die.');
+  setMessage('Cups up! ' + bidText(b) + '? The table shows ' + actual + '. ' + loser.name + ' loses a die.');
+  await sleep(REVEAL_MS);
+  revealActive = false;
+
+  loser.diceCount--;
+  loser.dice = [];
+  if (loser.diceCount <= 0) { loser.out = true; log(loser.name + ' lost their last die — out of the game.'); }
+  nextStarter = loser.out ? nextAliveSeat(loserSeat) : loserSeat;
+
+  const alive = alivePlayers();
+  if (alive.length <= 1) {
+    gameOver = true;
+    lastWinnerIdx = alive.length ? players.indexOf(alive[0]) : -1;
+    if (lastWinnerIdx >= 0) {
+      log('★ ' + players[lastWinnerIdx].name + ' is the last cup standing!');
+      setMessage(lastWinnerIdx === mySeatIdx ? '★ Last cup standing — the table is yours.'
+        : players[lastWinnerIdx].name + ' cleans out the table.');
+    }
+  }
+  render();
+}
+
+async function playGame() {
+  gameActive = true; gameOver = false;
+  render();
+  while (!gameOver) {
+    await playRound();
+    if (gameOver) break;
+    await sleep(800);
+  }
+  gameActive = false;
+  stats.games++;
+  if (lastWinnerIdx === mySeatIdx) stats.wins++;
+  save();
+  if (net.mode !== 'guest') {
+    $('round-controls').style.display = '';
+    $('btn-deal').textContent = 'Play again';
+  }
+  render();
+}
+
+async function startPlay() {
+  if (gameActive || net.mode === 'guest') return;
+  if (alivePlayers().length < 2) { setMessage('Need at least two cups at the table.'); return; }
+  $('round-controls').style.display = 'none';
+  await playGame();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  gameActive = false; gameOver = false; roundActive = false; revealActive = false; bid = null;
+  activeSeat = -1; nextStarter = null; lastWinnerIdx = -1;
+  for (const p of players) {
+    if (!p.open) { p.diceCount = START_DICE; p.out = false; p.waiting = false; p.dice = []; }
+  }
+  $('round-controls').style.display = '';
+  $('btn-deal').textContent = 'Roll out';
+  setMessage('Five dice each. Roll out when you’re ready.');
+  render();
+}
+
+/* ============================================================
+   Multiplayer — shared peer layer, private cups.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', picker: null, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', prompting: false,
+              heartbeatsStarted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject', credential: 'openrelayproject' },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) { for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg); }
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else { prompt('Copy this invite link:', inviteUrl()); }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: "Liar's Dice", text: 'Join my table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else { bar.textContent = ''; }
+}
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('liardice-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the code or link.');
+      log('Table ' + net.roomCode + ' opened. Friends fill the open seats or take over Cass and Boone.');
+      keepAwake();
+      render();
+    } else {
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) { setMessage('Reconnecting to the lobby…'); setTimeout(ensureJoinable, 2000); }
+    else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') log('Multiplayer error: ' + e.type);
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) { createHostPeer(); }
+  else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) { try { net.peer.destroy(); } catch (e2) { /* gone */ } createHostPeer(); }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale */ }
+      prior.remote = conn; conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    const seat = players.find(p => p.open) || players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    const wasOpen = seat.open;
+    seat.open = false;
+    seat.ai = false;
+    seat.remote = conn;
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    conn._seat = seat;
+    if (wasOpen) {
+      seat.diceCount = START_DICE;
+      seat.out = false;
+      seat.waiting = gameActive;   // a live game: join at the next round
+    }
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + (wasOpen ? ' pulls up a chair.' : ' takes over ' + seat.cpuName + "'s cup."));
+    updateNetBar();
+    render();
+  } else if (d.type === 'action') {
+    if (net.picker) net.picker(d.action);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  seat.remote = null;
+  seat.ai = true;
+  seat.name = seat.cpuName;
+  log(seat.name + ' left — a CPU takes the cup.');
+  if (net.picker) net.picker(bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
+  updateNetBar();
+  render();
+}
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  net.prompting = false;
+  closeTurnUI();
+  setMessage('Lost the host — refresh the page to play solo.');
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest') $('overlay-status').textContent = 'Still trying… the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host to stay on the game, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
+  const conn = net.peer.connect('liardice-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to stay on the game, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => { if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' }); }, HEARTBEAT_MS);
+      setInterval(() => { if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost(); }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-join').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'prompt') {
+    net.prompting = true;
+    openTurnUI(d.bid, d.total, a => {
+      net.prompting = false;
+      if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'action', action: a });
+      setMessage('');
+    });
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (six cups).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table, then send the code or link. Up to five friends can grab the open seats or take over Cass and Boone — your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-code').style.display = mode === 'host' ? 'none' : '';
+  $('overlay-code').value = code || '';
+  if (mode !== 'host' && !code) $('overlay-sub').textContent = 'Enter the table code your host reads you, then pick a name.';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  if (mode !== 'host' && !code) $('overlay-code').focus(); else $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (code.length !== 6) { $('overlay-status').textContent = 'Enter the 6-character table code.'; return; }
+    overlayCode = code;
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(code, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+$('btn-join').addEventListener('click', () => showOverlay('join'));
+
+/* ---------- wiring & boot ---------- */
+
+$('btn-deal').addEventListener('click', startPlay);
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+load();
+newGame();
+log('Welcome to the back room. Five dice, one cup, and a table full of liars.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  $('btn-join').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+</script>
+</body>
+</html>
