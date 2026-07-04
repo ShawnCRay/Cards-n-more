@@ -21,11 +21,19 @@
   html, body { height: 100%; }
   body {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
-    /* a warm lamp pooled over the table, a couple of old stains, worn felt */
+    /* a warm lamp pooled over weathered felt: stains, a threadbare patch where
+       the cards slide, spilled-drink rings, and the fabric's weave showing */
     background:
       radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
-      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.28), transparent),
-      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.22), transparent),
+      radial-gradient(ellipse 40% 22% at 50% 34%, rgba(226,203,150,0.07), transparent 75%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      radial-gradient(circle 90px at 68% 78%, rgba(58,38,16,0.30), transparent),
+      radial-gradient(circle 46px at 70% 80%, rgba(58,38,16,0.18), transparent 55%, rgba(58,38,16,0.30) 62%, transparent 68%),
+      radial-gradient(circle 120px at 8% 22%, rgba(46,32,14,0.25), transparent),
+      radial-gradient(circle 70px at 92% 60%, rgba(0,0,0,0.22), transparent),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 3px),
       radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
       var(--felt-dark);
     color: var(--cream);
@@ -46,6 +54,17 @@
     z-index: 998;
     background: radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(0,0,0,0.5) 100%);
   }
+  /* dust and grit over everything (tiled SVG noise, no external assets) */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.45;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
   #topbar .title, #message, .area-label, .seat-name, #net-bar, #table-rules, #open-hint {
     text-shadow: 0 1px 3px rgba(0,0,0,0.7);
   }
@@ -58,7 +77,13 @@
     flex-wrap: wrap;
     gap: 8px;
     padding: 10px 16px;
-    background: rgba(0,0,0,0.35);
+    /* rusted metal strip: streaks of oxide over dark steel */
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.28), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.16) 0 2px, transparent 2px 9px),
+      radial-gradient(circle 80px at 78% 120%, rgba(150,84,30,0.30), transparent),
+      radial-gradient(circle 50px at 12% -20%, rgba(150,84,30,0.22), transparent),
+      rgba(0,0,0,0.35);
     border-bottom: 2px solid var(--rail);
     font-size: 14px;
   }
@@ -130,7 +155,13 @@
     margin-top: 10px;
   }
   .seat {
-    background: rgba(0,0,0,0.22);
+    /* grime pooled in the corners, finish worn thin in the middle */
+    background:
+      radial-gradient(circle 70px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 50px at 6% 8%, rgba(0,0,0,0.22), transparent),
+      radial-gradient(circle 40px at 90% 6%, rgba(58,38,16,0.20), transparent),
+      rgba(0,0,0,0.22);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.35);
     border: 1px solid rgba(217,151,63,0.25);
     border-radius: 14px;
     padding: 10px 12px 12px;
@@ -232,10 +263,29 @@
     animation: dealIn 0.28s ease-out;
   }
   .card:first-child { margin-left: 0; }
-  /* hand-dealt look: every card sits a touch crooked */
-  .card:nth-child(odd)  { --tilt: -1.4deg; }
-  .card:nth-child(even) { --tilt: 1.1deg; }
-  .card:nth-child(3n)   { --tilt: 0.4deg; }
+  /* wear: foxing spots, grimy edges, a crease catching the light — the stain
+     positions vary per card so no two look alike */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 9px at var(--sx, 76%) var(--sy, 18%), rgba(122,86,38,0.30), transparent 70%),
+      radial-gradient(circle 5px at var(--sx2, 22%) var(--sy2, 80%), rgba(122,86,38,0.26), transparent 70%),
+      radial-gradient(circle 16px at var(--sy, 30%) 104%, rgba(96,66,28,0.22), transparent 70%),
+      radial-gradient(ellipse 130% 30% at 50% -8%, rgba(70,48,22,0.14), transparent),
+      linear-gradient(var(--crease, 115deg), transparent 45%, rgba(255,252,240,0.35) 49%, rgba(120,95,50,0.12) 51%, transparent 55%);
+    box-shadow:
+      inset 0 0 7px rgba(96,70,36,0.5),
+      inset 0 0 2px rgba(70,48,22,0.55);
+  }
+  /* hand-dealt look: every card sits a touch crooked, worn a little differently */
+  .card:nth-child(odd)  { --tilt: -1.4deg; --sx: 76%; --sy: 18%; --sx2: 22%; --sy2: 80%; --crease: 115deg; }
+  .card:nth-child(even) { --tilt: 1.1deg;  --sx: 16%; --sy: 30%; --sx2: 82%; --sy2: 66%; --crease: 62deg; }
+  .card:nth-child(3n)   { --tilt: 0.4deg;  --sx: 60%; --sy: 86%; --sx2: 34%; --sy2: 12%; --crease: 150deg; }
+  .card:nth-child(5n)   { --tilt: -0.7deg; --sx: 40%; --sy: 55%; --sx2: 88%; --sy2: 26%; --crease: 80deg; }
   .card.red { color: #a53c2a; }
   .card .pip { font-size: 26px; line-height: 1; }
   .card .corner {
@@ -249,12 +299,21 @@
   }
   .card.back {
     background: repeating-linear-gradient(45deg, #6e3226 0 6px, #572820 6px 12px);
-    border: 2px solid #d9c9a0;
+    border: 2px solid #cbb98d;
+  }
+  /* backs rubbed pale where thumbs held them, edges gone dark */
+  .card.back::before {
+    background:
+      radial-gradient(circle 13px at 72% 28%, rgba(230,215,178,0.22), transparent 70%),
+      radial-gradient(circle 9px at 24% 74%, rgba(230,215,178,0.18), transparent 70%),
+      radial-gradient(ellipse 120% 35% at 50% 108%, rgba(0,0,0,0.30), transparent),
+      linear-gradient(var(--crease, 115deg), transparent 46%, rgba(230,215,178,0.20) 50%, transparent 54%);
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
   }
   .card.back::after {
     content: '☢';
     font-size: 20px;
-    color: rgba(230,215,178,0.55);
+    color: rgba(230,215,178,0.5);
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   @keyframes dealIn {
@@ -285,16 +344,28 @@
     padding: 10px 18px;
     border-radius: 4px;
     border: 1px solid rgba(217,151,63,0.5);
-    background: rgba(0,0,0,0.4);
+    /* scratched dark metal */
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
     color: var(--cream);
     cursor: pointer;
     letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
     -webkit-tap-highlight-color: transparent;
   }
   button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
   button:disabled { opacity: 0.35; cursor: default; }
-  button.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
-  button.primary:hover:not(:disabled) { background: #e6c34f; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
   button kbd {
     font-size: 10px;
     opacity: 0.6;
