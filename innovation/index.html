@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Eras of the Wasteland</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+    --c-war: #9c3a26;
+    --c-crops: #5a7a35;
+    --c-tech: #3f6875;
+    --c-salvage: #a8802a;
+    --c-creed: #6b4a75;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, #net-bar { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 14px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 12px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  #board { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 6px 10px 0; font-size: 12px; }
+
+  #common {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    border-radius: 12px 8px 11px 7px / 8px 12px 7px 11px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  #common .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; }
+  #landmarks { display: flex; gap: 4px; flex-wrap: wrap; }
+  .lm {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.3);
+    color: var(--gold);
+  }
+  .lm.claimed { opacity: 0.55; border-style: dashed; color: var(--cream); }
+
+  #tableaus { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .tab {
+    flex: 1 1 30%;
+    min-width: 250px;
+    background:
+      radial-gradient(circle 60px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 8px 8px;
+  }
+  .tab:nth-child(odd)  { border-radius: 14px 9px 13px 8px / 10px 14px 8px 13px; }
+  .tab:nth-child(even) { border-radius: 8px 13px 9px 14px / 13px 8px 14px 10px; }
+  .tab.you { border-color: rgba(217,151,63,0.55); }
+  .tab.active-turn { border-color: var(--gold); box-shadow: 0 0 12px rgba(217,151,63,0.4), inset 0 0 20px rgba(0,0,0,0.4); }
+  .tab .hdr { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
+  .tab .hdr .nm { font-weight: 700; font-size: 13px; }
+  .tab .hdr .nm .tag { font-size: 9px; font-weight: 400; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .tab .hdr .st { color: var(--gold); font-weight: 700; font-size: 11px; }
+  .tab .icons { font-size: 11px; margin: 3px 0 2px; letter-spacing: 1px; }
+  .stackrow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 3px;
+    font-size: 11px;
+  }
+  .stackrow .cchip {
+    flex: 1;
+    padding: 2px 7px;
+    border-radius: 3px 6px 3px 6px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.45);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .col-war { background: var(--c-war); }
+  .col-crops { background: var(--c-crops); }
+  .col-tech { background: var(--c-tech); }
+  .col-salvage { background: var(--c-salvage); }
+  .col-creed { background: var(--c-creed); }
+  .stackrow .meta { font-size: 10px; opacity: 0.8; white-space: nowrap; }
+
+  #hand-area { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px; text-align: center; }
+  #hand-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 3px; }
+  #hand { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 22px; }
+  .mchip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 1px 7px;
+    border-radius: 3px 5px 3px 5px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.45);
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
+    white-space: nowrap;
+  }
+
+  #controls { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px 8px; text-align: center; }
+  #net-bar { min-height: 16px; margin-bottom: 3px; font-size: 12px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 10px; font-weight: 400; padding: 3px 9px; margin-left: 8px; }
+  #message { min-height: 18px; margin-bottom: 5px; font-size: 13px; color: var(--gold); font-weight: 600; }
+  #opts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-height: 190px; overflow-y: auto; }
+  #opts button { font-size: 11px; padding: 8px 12px; text-transform: none; letter-spacing: 0.4px; max-width: 340px; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 10px 8px;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 180px; max-height: 32px; overflow: hidden; }
+  #log div { line-height: 1.55; }
+  #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 620px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 9px; }
+  #help .help-body ul { margin: 0 0 9px 18px; }
+  #help .help-body li { margin-bottom: 4px; }
+  #help .help-body b { color: var(--gold); }
+
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
+    #topbar .title { display: none; }
+    #board { padding: 4px 6px 0; }
+    #tableaus { gap: 6px; }
+    .tab { min-width: 100%; }
+    #message { font-size: 12px; }
+    #opts { max-height: 150px; }
+    #opts button { font-size: 10px; padding: 7px 9px; }
+    #footer { font-size: 10px; }
+    #footer .small-btns button { font-size: 9px; padding: 3px 7px; }
+    #log { max-height: 17px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · ERAS OF THE WASTELAND</span>
+  <span class="stat">Era decks <b id="stat-decks">—</b></span>
+  <span class="stat">Landmarks to win <b>5</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="board">
+  <div id="common">
+    <span class="lbl">Landmarks</span>
+    <div id="landmarks"></div>
+  </div>
+  <div id="tableaus"></div>
+</div>
+
+<div id="hand-area">
+  <div id="hand-label">YOUR PACK</div>
+  <div id="hand"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="message"></div>
+  <div id="opts"></div>
+  <div id="round-controls">
+    <div class="btn-row"><button id="btn-deal" class="primary">Head out</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>Eras of the Wasteland</h2>
+    <div class="help-body">
+      <p>A wasteland-original civilization card game in the spirit of the great
+      tableau-builders: rebuild the world from Era 1 (<b>Dust</b>) to Era 10
+      (<b>New World</b>), one scavenged tech at a time.</p>
+      <p><b>Your camp</b> has five domains — <b>WAR, CROPS, TECH, SALVAGE,
+      CREED</b>. Techs stack by domain; only the top tech is active. Every tech
+      carries icons: <b>⚔ Guns · ₵ Caps · ❧ Crops · ⚛ Science · ⚙ Scrap ·
+      ☢ Rads</b>.</p>
+      <p><b>Each turn, take two actions:</b></p>
+      <ul>
+        <li><b>SCAVENGE</b> — draw a tech of your highest active era.</li>
+        <li><b>BUILD</b> — play a tech from your pack onto its domain stack.</li>
+        <li><b>ACTIVATE</b> — fire a top tech's effect. Here's the trap: rivals
+        with <b>as many or more</b> of its key icon join in on the good stuff
+        (and word gets around — you scavenge a free tech if they do). Effects
+        marked <b>AT GUNPOINT</b> instead hit every rival with <b>fewer</b> of
+        that icon.</li>
+        <li><b>CLAIM LANDMARK</b> — bank an era's landmark if your stash holds
+        at least 5× its era in caps and your camp has a tech of that era or
+        later. <b>Five landmarks wins.</b></li>
+      </ul>
+      <p><b>Stash</b> is your buried wealth — stashed techs are worth their era
+      in caps. <b>SPREAD</b> effects fan a domain stack left, right, or up,
+      exposing extra icons on the covered techs — that's how camps get
+      strong.</p>
+      <p>If anyone must scavenge past Era 10, the world is rebuilt: the game
+      ends and the richest stash wins (landmarks break ties). Cass hoards, and
+      Boone's demands come at gunpoint. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   Eras of the Wasteland — an Innovation-style civilization card
+   game with fully wasteland-original cards and vocabulary.
+   Scavenge (draw), Build (meld), Activate (dogma, with shared
+   effects and AT GUNPOINT demands), Spread (splay), Stash
+   (score), Claim Landmarks (achievements). Five landmarks wins;
+   scavenging past Era 10 ends it on stash wealth.
+   ============================================================ */
+
+const STORE_KEY = 'eras-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 60000;
+const LANDMARKS_TO_WIN = 5;
+
+const COLORS = ['war', 'crops', 'tech', 'salvage', 'creed'];
+const ICON = { G: '⚔', C: '₵', P: '❧', S: '⚛', F: '⚙', R: '☢' };
+const ICON_NAME = { G: 'Guns', C: 'Caps', P: 'Crops', S: 'Science', F: 'Scrap', R: 'Rads' };
+const ERA_NAME = ['', 'Dust', 'Settlements', 'Trade Routes', 'Chems', 'Firearms', 'Industry', 'Energy', 'Robotics', 'Atomics', 'New World'];
+
+/* effects: [op, ...params] — see runOp. dmd: true → AT GUNPOINT (hits rivals
+   with FEWER key icons); otherwise shared with rivals holding >= key icons. */
+const CARDS = [
+  // era 1 — Dust
+  { n: 'Sharpened Rebar', e: 1, c: 'war',     i: 'GGF', k: 'G', dmd: true,  fx: [['demandHand']] },
+  { n: 'Slingshots',      e: 1, c: 'war',     i: 'GCG', k: 'G', dmd: true,  fx: [['demandStash', 1]] },
+  { n: 'Rat Traps',       e: 1, c: 'crops',   i: 'PPG', k: 'P', fx: [['scav', 1, 0]] },
+  { n: 'Brahmin Herding', e: 1, c: 'crops',   i: 'PPC', k: 'P', fx: [['stashHand']] },
+  { n: 'Boiled Water',    e: 1, c: 'tech',    i: 'SPP', k: 'P', fx: [['scavstash', 1, 0]] },
+  { n: 'Scrap Picking',   e: 1, c: 'salvage', i: 'FFC', k: 'F', fx: [['tuck', 1], ['scav', 1, 0]] },
+  { n: 'Campfire Tales',  e: 1, c: 'creed',   i: 'CCP', k: 'C', fx: [['spread', 'war', 'left'], ['scav', 1, 0]] },
+  { n: 'Bone Charms',     e: 1, c: 'creed',   i: 'CPC', k: 'C', fx: [['scav', 1, 1]] },
+  // era 2 — Settlements
+  { n: 'Palisade Walls',  e: 2, c: 'war',     i: 'GGF', k: 'G', dmd: true,  fx: [['demandHand']] },
+  { n: 'Corn Rows',       e: 2, c: 'crops',   i: 'PPP', k: 'P', fx: [['scavstash', 1, 0]] },
+  { n: 'Wells & Cisterns',e: 2, c: 'tech',    i: 'SPF', k: 'P', fx: [['scav', 2, 0]] },
+  { n: 'Caravan Post',    e: 2, c: 'salvage', i: 'CFC', k: 'C', fx: [['stashHand'], ['scav', 1, 0]] },
+  { n: 'Water Church',    e: 2, c: 'creed',   i: 'CCS', k: 'C', fx: [['spread', 'creed', 'left'], ['scavstash', 1, 0]] },
+  { n: 'Leather Armor',   e: 2, c: 'war',     i: 'GFG', k: 'G', fx: [['tuck', 2]] },
+  // era 3 — Trade Routes
+  { n: 'Cap Standard',    e: 3, c: 'salvage', i: 'CCC', k: 'C', fx: [['scavstash', 2, 0]] },
+  { n: 'Guard Dogs',      e: 3, c: 'war',     i: 'GGP', k: 'G', dmd: true,  fx: [['demandStash', 1]] },
+  { n: 'Seed Vault',      e: 3, c: 'crops',   i: 'PPS', k: 'P', fx: [['spread', 'crops', 'left'], ['scav', 1, 1]] },
+  { n: 'Radio Tower',     e: 3, c: 'tech',    i: 'SSC', k: 'S', fx: [['scavmeld', 0]] },
+  { n: 'Toll Bridge',     e: 3, c: 'salvage', i: 'CFG', k: 'C', dmd: true,  fx: [['demandStash', 1]] },
+  { n: 'Still & Brew',    e: 3, c: 'creed',   i: 'CPC', k: 'C', fx: [['stashHand'], ['stashHand']] },
+  // era 4 — Chems
+  { n: 'Stimpaks',        e: 4, c: 'tech',    i: 'SSP', k: 'S', fx: [['scav', 1, 1], ['stashHand']] },
+  { n: 'Rad-X',           e: 4, c: 'tech',    i: 'SPF', k: 'S', fx: [['spread', 'tech', 'right']] },
+  { n: 'Med Clinic',      e: 4, c: 'crops',   i: 'PSP', k: 'P', fx: [['scavstash', 2, 0]] },
+  { n: 'Gun Runners',     e: 4, c: 'war',     i: 'GFC', k: 'G', dmd: true,  fx: [['demandHand'], ['scav', 1, 0]] },
+  { n: 'Barter Guild',    e: 4, c: 'salvage', i: 'CCF', k: 'C', fx: [['spread', 'salvage', 'right']] },
+  { n: 'Jet Labs',        e: 4, c: 'creed',   i: 'CSC', k: 'C', fx: [['scavmeld', 0], ['stashHand']] },
+  // era 5 — Firearms
+  { n: 'Ammo Press',      e: 5, c: 'war',     i: 'GGF', k: 'G', fx: [['spread', 'war', 'right'], ['scav', 1, 0]] },
+  { n: 'Sniper Nests',    e: 5, c: 'war',     i: 'GGS', k: 'G', dmd: true,  fx: [['demandTop', 4]] },
+  { n: 'Greenhouses',     e: 5, c: 'crops',   i: 'PPF', k: 'P', fx: [['scavstash', 2, 1]] },
+  { n: 'Casino Row',      e: 5, c: 'salvage', i: 'CCC', k: 'C', dmd: true,  fx: [['demandStash', 2]] },
+  { n: 'Raider Creed',    e: 5, c: 'creed',   i: 'CGG', k: 'G', dmd: true,  fx: [['demandHand'], ['demandStash', 1]] },
+  { n: 'Water Merchants', e: 5, c: 'tech',    i: 'SCF', k: 'C', fx: [['stashTop'], ['scav', 1, 0]] },
+  // era 6 — Industry
+  { n: 'Assembly Line',   e: 6, c: 'salvage', i: 'FFF', k: 'F', fx: [['scavmeld', 0], ['scavmeld', 0]] },
+  { n: 'PA Forge',        e: 6, c: 'war',     i: 'GFF', k: 'F', fx: [['spread', 'war', 'up']] },
+  { n: 'Hydroponics',     e: 6, c: 'crops',   i: 'PFS', k: 'P', fx: [['scavstash', 2, 0], ['spread', 'crops', 'right']] },
+  { n: 'Terminal Net',    e: 6, c: 'tech',    i: 'SSF', k: 'S', fx: [['scav', 3, 0]] },
+  { n: 'Atom Cultists',   e: 6, c: 'creed',   i: 'CRR', k: 'R', fx: [['spread', 'creed', 'right'], ['stashHand']] },
+  { n: 'Scrap Smelter',   e: 6, c: 'salvage', i: 'FFC', k: 'F', fx: [['tuck', 2], ['scavstash', 1, 0]] },
+  // era 7 — Energy
+  { n: 'Fusion Cells',    e: 7, c: 'tech',    i: 'SSR', k: 'S', fx: [['scav', 2, 1]] },
+  { n: 'Laser Rifles',    e: 7, c: 'war',     i: 'GSR', k: 'G', dmd: true,  fx: [['demandTop', 6]] },
+  { n: 'Irrigation Grid', e: 7, c: 'crops',   i: 'PPF', k: 'P', fx: [['scavstash', 3, 0]] },
+  { n: 'Trade Consortium',e: 7, c: 'salvage', i: 'CCF', k: 'C', fx: [['spread', 'salvage', 'up'], ['stashTop']] },
+  { n: "Followers' Code", e: 7, c: 'creed',   i: 'CSS', k: 'S', fx: [['scavmeld', 1]] },
+  { n: 'Reactor Co-op',   e: 7, c: 'tech',    i: 'SFR', k: 'R', fx: [['spread', 'tech', 'up']] },
+  // era 8 — Robotics
+  { n: 'Sentry Bots',     e: 8, c: 'war',     i: 'GRR', k: 'R', dmd: true,  fx: [['demandStash', 2], ['demandHand']] },
+  { n: 'Agri-Bots',       e: 8, c: 'crops',   i: 'PFR', k: 'P', fx: [['scavstash', 3, 0], ['scav', 1, 0]] },
+  { n: 'AI Terminal',     e: 8, c: 'tech',    i: 'SSR', k: 'S', fx: [['scavmeld', 1], ['spread', 'tech', 'up']] },
+  { n: 'Protectron Line', e: 8, c: 'salvage', i: 'FFR', k: 'F', fx: [['tuck', 3], ['scavstash', 2, 0]] },
+  { n: 'Machine Cult',    e: 8, c: 'creed',   i: 'CRS', k: 'R', fx: [['spread', 'creed', 'up'], ['stashHand']] },
+  { n: 'Eyebot Network',  e: 8, c: 'salvage', i: 'CRF', k: 'C', fx: [['scav', 2, 0], ['stashTop']] },
+  // era 9 — Atomics
+  { n: 'Warhead Salvage', e: 9, c: 'war',     i: 'GRF', k: 'R', dmd: true,  fx: [['demandTop', 8]] },
+  { n: 'Rad Farming',     e: 9, c: 'crops',   i: 'PRR', k: 'P', fx: [['scavstash', 4, 0]] },
+  { n: 'Cold Fusion',     e: 9, c: 'tech',    i: 'SRS', k: 'S', fx: [['scav', 2, 1], ['spread', 'tech', 'up']] },
+  { n: 'Cap Mint',        e: 9, c: 'salvage', i: 'CCR', k: 'C', fx: [['stashTop'], ['stashTop']] },
+  { n: 'Church of Division', e: 9, c: 'creed', i: 'CRR', k: 'R', dmd: true, fx: [['demandStash', 2]] },
+  { n: 'Deathclaw Pens',  e: 9, c: 'war',     i: 'GGR', k: 'G', dmd: true,  fx: [['demandHand'], ['demandHand']] },
+  // era 10 — New World
+  { n: 'G.E.C.K.',        e: 10, c: 'crops',  i: 'PSR', k: 'P', fx: [['scavstash', 5, 0]] },
+  { n: 'Vault Network',   e: 10, c: 'tech',   i: 'SSR', k: 'S', fx: [['scav', 3, 0], ['spread', 'tech', 'up']] },
+  { n: 'New Republic',    e: 10, c: 'creed',  i: 'CCS', k: 'C', fx: [['spread', 'creed', 'up'], ['stashTop'], ['stashTop']] },
+  { n: 'Securitron Army', e: 10, c: 'war',    i: 'GRR', k: 'R', dmd: true,  fx: [['demandStash', 3], ['demandTop', 9]] },
+  { n: 'Water Purifier',  e: 10, c: 'tech',   i: 'SPR', k: 'S', fx: [['scavstash', 4, 0], ['scav', 1, 0]] },
+  { n: 'The Long Caravan',e: 10, c: 'salvage',i: 'CFR', k: 'C', fx: [['stashTop'], ['scavstash', 3, 0]] },
+];
+
+function fxText(card) {
+  const parts = card.fx.map(f => {
+    const [op, a, b] = f;
+    if (op === 'scav') return 'scavenge ' + a + ' era-' + '±'.replace('±', b > 0 ? '+' + b : '') + (b ? b : '') + ' tech' + (a > 1 ? 's' : '');
+    if (op === 'scavstash') return 'scavenge ' + a + ' & stash';
+    if (op === 'scavmeld') return 'scavenge & build' + (b > 0 ? ' (era +' + b + ')' : '');
+    if (op === 'stashHand') return 'stash a tech from your pack';
+    if (op === 'stashTop') return 'stash one of your active techs';
+    if (op === 'spread') return 'spread your ' + a.toUpperCase() + ' camp ' + b;
+    if (op === 'tuck') return 'shore up ' + a + ' from your pack';
+    if (op === 'demandHand') return 'they hand over a pack tech';
+    if (op === 'demandStash') return 'they surrender ' + a + ' stash cap' + (a > 1 ? 's' : '');
+    if (op === 'demandTop') return 'they surrender a top tech (era ≤ ' + a + ')';
+    return op;
+  });
+  return (card.dmd ? 'AT GUNPOINT (' + ICON[card.k] + '): ' : ICON[card.k] + ': ') + parts.join('; ');
+}
+
+/* ---------- players & state ---------- */
+
+const players = [
+  { name: 'You',  cpuName: null,   ai: false, remote: null },
+  { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null },
+  { name: 'Boone', cpuName: 'Boone', ai: true, remote: null },
+].map(p => ({ ...p, pack: [], stash: [], camps: {}, splay: {}, landmarks: [] }));
+const me = players[0];
+let mySeatIdx = 0;
+
+let eras = {};        // era -> [cards]
+let landmarks = [];   // [{e, by: null | idx}]
+let turnIdx = 0;
+let gameActive = false, gameOver = false, endByWealth = false;
+let lastWinnerIdx = -1;
+let stats = { wins: 0, games: 0 };
+let localChooser = null;
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh */ }
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ---------- rules helpers ---------- */
+
+function topEra(p) {
+  let m = 1;
+  for (const c of COLORS) { const s = p.camps[c]; if (s && s.length) m = Math.max(m, s[s.length - 1].e); }
+  return m;
+}
+function scavenge(p, era, silent) {
+  let e = Math.max(1, era);
+  while (e <= 10 && (!eras[e] || !eras[e].length)) e++;
+  if (e > 10) { endByWealth = true; gameOver = true; return null; }
+  const c = eras[e].pop();
+  p.pack.push(c);
+  if (!silent) log(p.name + ' scavenges an era-' + e + ' tech.');
+  return c;
+}
+function stashValue(p) { return p.stash.reduce((a, c) => a + c.e, 0); }
+function iconCount(p, icon) {
+  let n = 0;
+  for (const c of COLORS) {
+    const s = p.camps[c];
+    if (!s || !s.length) continue;
+    const top = s[s.length - 1];
+    for (const ch of top.i) if (ch === icon) n++;
+    const dir = p.splay[c];
+    for (let k = 0; k < s.length - 1; k++) {
+      const card = s[k];
+      let shown = [];
+      if (dir === 'left') shown = [card.i[2]];
+      else if (dir === 'right') shown = [card.i[0], card.i[1]];
+      else if (dir === 'up') shown = [card.i[1], card.i[2]];
+      for (const ch of shown) if (ch === icon) n++;
+    }
+  }
+  return n;
+}
+function meld(p, packIdx) {
+  const c = p.pack.splice(packIdx, 1)[0];
+  if (!c) return;
+  (p.camps[c.c] = p.camps[c.c] || []).push(c);
+  log(p.name + ' builds ' + c.n + ' (' + c.c.toUpperCase() + ', era ' + c.e + ').');
+  return c;
+}
+function landmarkWin(p) { return p.landmarks.length >= LANDMARKS_TO_WIN; }
+
+/* ---------- effect interpreter ---------- */
+
+async function runOp(actor, op) {
+  const [kind, a, b] = op;
+  if (kind === 'scav') { for (let i = 0; i < a; i++) scavenge(actor, topEra(actor) + (b || 0)); }
+  else if (kind === 'scavstash') {
+    for (let i = 0; i < a; i++) {
+      const c = scavenge(actor, topEra(actor) + (b || 0), true);
+      if (c) { actor.pack.pop(); actor.stash.push(c); log(actor.name + ' stashes an era-' + c.e + ' tech (+' + c.e + ' caps).'); }
+    }
+  }
+  else if (kind === 'scavmeld') {
+    const c = scavenge(actor, topEra(actor) + (a || 0), true);
+    if (c) { actor.pack.pop(); (actor.camps[c.c] = actor.camps[c.c] || []).push(c); log(actor.name + ' scavenges and builds ' + c.n + '.'); }
+  }
+  else if (kind === 'stashHand') {
+    if (!actor.pack.length) return;
+    const opts = actor.pack.map((c, i) => ({ id: 'h:' + i, label: 'Stash ' + c.n + ' (era ' + c.e + ' → +' + c.e + ' caps)', score: c.e }));
+    const pick = await choose(actor, actor.name + ' — stash which tech?', opts);
+    if (pick == null) return;
+    const c = actor.pack.splice(Number(pick.split(':')[1]), 1)[0];
+    if (c) { actor.stash.push(c); log(actor.name + ' stashes ' + c.n + ' (+' + c.e + ' caps).'); }
+  }
+  else if (kind === 'stashTop') {
+    const opts = [];
+    for (const col of COLORS) {
+      const s = actor.camps[col];
+      if (s && s.length) {
+        const t = s[s.length - 1];
+        opts.push({ id: 'c:' + col, label: 'Stash active ' + t.n + ' (+' + t.e + ' caps)', score: t.e - (s.length === 1 ? 0 : 1) });
+      }
+    }
+    if (!opts.length) return;
+    opts.push({ id: 'skip', label: 'Keep the camp intact', score: 1 });
+    const pick = await choose(actor, actor.name + ' — stash an active tech?', opts);
+    if (!pick || pick === 'skip') return;
+    const s = actor.camps[pick.split(':')[1]];
+    const c = s.pop();
+    actor.stash.push(c);
+    log(actor.name + ' dismantles ' + c.n + ' into the stash (+' + c.e + ' caps).');
+  }
+  else if (kind === 'spread') {
+    // choose any of your domains with 2+ techs; a=suggested color, b=direction
+    const opts = COLORS.filter(col => (actor.camps[col] || []).length >= 2 && actor.splay[col] !== b)
+      .map(col => ({ id: 's:' + col, label: 'Spread ' + col.toUpperCase() + ' camp ' + b, score: (actor.camps[col] || []).length + (col === a ? 1 : 0) }));
+    if (!opts.length) return;
+    opts.push({ id: 'skip', label: 'Leave the camp as is', score: 0 });
+    const pick = await choose(actor, actor.name + ' — spread which camp ' + b + '?', opts);
+    if (!pick || pick === 'skip') return;
+    const col = pick.split(':')[1];
+    actor.splay[col] = b;
+    log(actor.name + ' spreads the ' + col.toUpperCase() + ' camp ' + b + '.');
+  }
+  else if (kind === 'tuck') {
+    for (let i = 0; i < a && actor.pack.length; i++) {
+      const opts = actor.pack.map((c, j) => ({ id: 't:' + j, label: 'Shore up with ' + c.n, score: 5 - c.e }));
+      const pick = await choose(actor, actor.name + ' — shore up which tech?', opts);
+      if (pick == null) break;
+      const c = actor.pack.splice(Number(pick.split(':')[1]), 1)[0];
+      (actor.camps[c.c] = actor.camps[c.c] || []).unshift(c);
+      log(actor.name + ' shores up the ' + c.c.toUpperCase() + ' camp with ' + c.n + '.');
+    }
+  }
+}
+
+async function runDemand(actor, victim, op) {
+  const [kind, a] = op;
+  if (kind === 'demandHand') {
+    if (!victim.pack.length) { log(victim.name + ' has nothing to hand over.'); return; }
+    const i = Math.floor(Math.random() * victim.pack.length);
+    const c = victim.pack.splice(i, 1)[0];
+    actor.pack.push(c);
+    log(victim.name + ' hands over a pack tech at gunpoint.');
+  } else if (kind === 'demandStash') {
+    for (let k = 0; k < a; k++) {
+      if (!victim.stash.length) break;
+      let bi = 0;
+      victim.stash.forEach((c, i) => { if (c.e > victim.stash[bi].e) bi = i; });
+      const c = victim.stash.splice(bi, 1)[0];
+      actor.stash.push(c);
+      log(victim.name + ' surrenders ' + c.e + ' caps of stash to ' + actor.name + '.');
+    }
+  } else if (kind === 'demandTop') {
+    const opts = [];
+    for (const col of COLORS) {
+      const s = victim.camps[col];
+      if (s && s.length && s[s.length - 1].e <= a) {
+        const t = s[s.length - 1];
+        opts.push({ id: col, label: 'Take ' + victim.name + "'s " + t.n + ' (era ' + t.e + ')', score: t.e });
+      }
+    }
+    if (!opts.length) { log(victim.name + "'s camp has nothing worth taking."); return; }
+    const pick = await choose(actor, actor.name + ' — seize which tech from ' + victim.name + '?', opts);
+    if (pick == null) return;
+    const c = victim.camps[pick].pop();
+    (actor.camps[c.c] = actor.camps[c.c] || []).push(c);
+    log(actor.name + ' seizes ' + c.n + ' from ' + victim.name + ' at gunpoint.');
+  }
+}
+
+async function activate(p, card) {
+  log(p.name + ' activates ' + card.n + ' — ' + fxText(card));
+  const myIcons = iconCount(p, card.k);
+  let anyShared = false;
+  if (card.dmd) {
+    for (const q of players) {
+      if (q === p || gameOver) continue;
+      if (iconCount(q, card.k) < myIcons) {
+        for (const op of card.fx) { if (gameOver) break; await runDemand(p, q, op); }
+      } else {
+        log(q.name + ' matches the ' + ICON_NAME[card.k] + ' and stares the demand down.');
+      }
+    }
+  } else {
+    // rivals with >= icons share first, in order after the activator
+    for (let k = 1; k < players.length; k++) {
+      const q = players[(players.indexOf(p) + k) % players.length];
+      if (gameOver) break;
+      if (iconCount(q, card.k) >= myIcons) {
+        anyShared = true;
+        log(q.name + ' joins in (' + ICON_NAME[card.k] + ' ' + iconCount(q, card.k) + ' vs ' + myIcons + ').');
+        for (const op of card.fx) { if (gameOver) break; await runOp(q, op); }
+      }
+    }
+    for (const op of card.fx) { if (gameOver) break; await runOp(p, op); }
+    if (anyShared && !gameOver) {
+      log('Word gets around — ' + p.name + ' scavenges a free tech.');
+      scavenge(p, topEra(p));
+    }
+  }
+  render();
+}
+
+/* ---------- turn flow (host/solo) ---------- */
+
+async function takeAction(p, n) {
+  const opts = [];
+  const era = topEra(p);
+  opts.push({ id: 'scav', label: 'SCAVENGE — draw an era-' + era + ' tech', score: p.pack.length <= 1 ? 6 : 2.5 });
+  p.pack.forEach((c, i) => {
+    opts.push({ id: 'build:' + i, label: 'BUILD ' + c.n + ' [' + c.c.toUpperCase() + ' ' + c.e + '] — ' + fxText(c),
+                score: 3 + c.e * 0.4 + (c.fx.some(f => f[0].startsWith('demand')) ? 0.5 : 0) });
+  });
+  for (const col of COLORS) {
+    const s = p.camps[col];
+    if (s && s.length) {
+      const t = s[s.length - 1];
+      let sc = 3;
+      if (t.fx.some(f => f[0] === 'scavstash' || f[0] === 'stashTop')) sc = 4.5;
+      if (t.dmd) {
+        const vic = players.filter(q => q !== p && iconCount(q, t.k) < iconCount(p, t.k)).length;
+        sc = vic ? 4 + vic : 0.5;
+      } else {
+        const sharers = players.filter(q => q !== p && iconCount(q, t.k) >= iconCount(p, t.k)).length;
+        sc -= sharers * 0.8;
+      }
+      opts.push({ id: 'act:' + col, label: 'ACTIVATE ' + t.n + ' — ' + fxText(t), score: sc });
+    }
+  }
+  for (const lm of landmarks) {
+    if (lm.by == null && stashValue(p) >= lm.e * 5 && topEra(p) >= lm.e) {
+      opts.push({ id: 'claim:' + lm.e, label: 'CLAIM LANDMARK — Era ' + lm.e + ' (' + ERA_NAME[lm.e] + ')', score: 50 });
+    }
+  }
+  const pick = await choose(p, p.name + ' — action ' + n + ' of 2', opts);
+  if (pick == null) return;
+  if (pick === 'scav') { scavenge(p, era); }
+  else if (pick.startsWith('build:')) { meld(p, Number(pick.split(':')[1])); }
+  else if (pick.startsWith('act:')) {
+    const s = p.camps[pick.split(':')[1]];
+    if (s && s.length) await activate(p, s[s.length - 1]);
+  } else if (pick.startsWith('claim:')) {
+    const e = Number(pick.split(':')[1]);
+    const lm = landmarks.find(l => l.e === e && l.by == null);
+    if (lm) {
+      lm.by = players.indexOf(p);
+      p.landmarks.push(e);
+      log('★ ' + p.name + ' claims the Era ' + e + ' landmark: ' + ERA_NAME[e] + '.');
+      if (landmarkWin(p)) { gameOver = true; lastWinnerIdx = players.indexOf(p); }
+    }
+  }
+  render();
+}
+
+async function playMatch() {
+  if (gameActive || net.mode === 'guest') return;
+  gameActive = true;
+  gameOver = false;
+  endByWealth = false;
+  lastWinnerIdx = -1;
+  $('round-controls').style.display = 'none';
+
+  eras = {};
+  for (const c of CARDS) (eras[c.e] = eras[c.e] || []).push({ ...c });
+  for (let e = 1; e <= 10; e++) shuffle(eras[e] || (eras[e] = []));
+  landmarks = [];
+  for (let e = 1; e <= 9; e++) {
+    if (eras[e].length) landmarks.push({ e, by: null, card: eras[e].pop() });
+  }
+  for (const p of players) {
+    p.pack = []; p.stash = []; p.camps = {}; p.splay = {}; p.landmarks = [];
+    scavenge(p, 1, true); scavenge(p, 1, true);
+  }
+  log('— The wasteland stirs. Era 1: ' + ERA_NAME[1] + '. —');
+  // everyone builds one starting tech
+  for (const p of players) {
+    const opts = p.pack.map((c, i) => ({ id: String(i), label: 'Start with ' + c.n + ' — ' + fxText(c), score: c.i.length }));
+    const pick = await choose(p, p.name + ' — found your camp', opts);
+    meld(p, Number(pick || 0));
+  }
+  turnIdx = 0;
+  render();
+
+  let safety = 600;
+  while (!gameOver && safety-- > 0) {
+    const p = players[turnIdx];
+    setMessage(p.name + "'s turn…");
+    render();
+    await takeAction(p, 1);
+    if (!gameOver) await takeAction(p, 2);
+    if (gameOver) break;
+    turnIdx = (turnIdx + 1) % players.length;
+    await sleep(150);
+  }
+
+  gameActive = false;
+  gameOver = true;
+  if (lastWinnerIdx < 0) {
+    // world rebuilt: richest stash, landmarks break ties
+    let best = -1, bi = 0;
+    players.forEach((p, i) => {
+      const s = stashValue(p) * 100 + p.landmarks.length;
+      if (s > best) { best = s; bi = i; }
+    });
+    lastWinnerIdx = bi;
+  }
+  stats.games++;
+  if (lastWinnerIdx === mySeatIdx) stats.wins++;
+  save();
+  const winP = players[lastWinnerIdx];
+  const tally = players.map(p => p.name + ' ' + stashValue(p) + '₵/' + p.landmarks.length + '★').join(' · ');
+  log('Final: ' + tally);
+  setMessage(winP === me && net.mode === 'solo'
+    ? '★ You rebuild the world (' + stashValue(me) + '₵, ' + me.landmarks.length + ' landmarks). The wasteland provides.'
+    : '★ ' + winP.name + ' rebuilds the world — ' + tally);
+  $('btn-deal').textContent = 'Head out again';
+  $('round-controls').style.display = '';
+  render();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  gameOver = false;
+  gameActive = false;
+  for (const p of players) { p.pack = []; p.stash = []; p.camps = {}; p.splay = {}; p.landmarks = []; }
+  eras = {}; landmarks = [];
+  $('btn-deal').textContent = 'Head out';
+  $('round-controls').style.display = '';
+  $('opts').innerHTML = '';
+  setMessage('Ten eras from dust to a new world. Head out when ready.');
+  render();
+}
+
+/* ---------- rendering ---------- */
+
+function buildView(forIdx) {
+  return {
+    phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
+    turn: turnIdx,
+    winner: lastWinnerIdx,
+    msg: $('message').textContent,
+    decks: Array.from({ length: 10 }, (_, i) => (eras[i + 1] || []).length),
+    landmarks: landmarks.map(l => ({ e: l.e, by: l.by })),
+    players: players.map((p, i) => ({
+      name: p.name, ai: p.ai,
+      packN: p.pack.length,
+      stashN: p.stash.length,
+      stashV: stashValue(p),
+      lms: p.landmarks,
+      splay: p.splay,
+      icons: Object.fromEntries(Object.keys(ICON).map(k => [k, iconCount(p, k)])),
+      camps: Object.fromEntries(COLORS.map(c => {
+        const s = p.camps[c] || [];
+        return [c, { n: s.length, top: s.length ? { n: s[s.length - 1].n, e: s[s.length - 1].e, i: s[s.length - 1].i, txt: fxText(s[s.length - 1]) } : null }];
+      })),
+      pack: i === forIdx ? p.pack : null,
+    })),
+  };
+}
+
+function renderView(view) {
+  $('stat-decks').textContent = view.decks.map((n, i) => n ? (i + 1) + ':' + n : null).filter(Boolean).join(' ') || 'empty';
+  $('stat-wins').textContent = stats.wins;
+  const lms = $('landmarks');
+  lms.innerHTML = '';
+  view.landmarks.forEach(l => {
+    const el = document.createElement('span');
+    el.className = 'lm' + (l.by != null ? ' claimed' : '');
+    el.textContent = 'Era ' + l.e + (l.by != null ? ' ✓' + view.players[l.by].name : ' · ' + (l.e * 5) + '₵');
+    lms.appendChild(el);
+  });
+
+  const tb = $('tableaus');
+  tb.innerHTML = '';
+  view.players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (i === mySeatIdx ? ' you' : '') + (view.phase === 'game' && view.turn === i ? ' active-turn' : '');
+    const tag = p.ai ? 'CPU' : i === mySeatIdx ? 'You' : i === 0 ? 'Host' : 'Guest';
+    el.innerHTML =
+      '<div class="hdr"><span class="nm">' + escapeHtml(p.name) + ' <span class="tag">' + tag + '</span></span>' +
+      '<span class="st">stash ' + p.stashV + '₵ · ★' + p.lms.length + ' · pack ' + p.packN + '</span></div>' +
+      '<div class="icons">' + Object.keys(ICON).map(k => ICON[k] + p.icons[k]).join(' ') + '</div>';
+    for (const col of COLORS) {
+      const c = p.camps[col];
+      const row = document.createElement('div');
+      row.className = 'stackrow';
+      const chipEl = document.createElement('span');
+      chipEl.className = 'cchip col-' + col;
+      chipEl.textContent = c.top ? c.top.n + ' · e' + c.top.e + ' ' + [...c.top.i].map(x => ICON[x]).join('') : col.toUpperCase() + ' — empty';
+      if (c.top) chipEl.title = c.top.txt;
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = '×' + c.n + (p.splay[col] ? ' ' + ({ left: '◀', right: '▶', up: '▲' })[p.splay[col]] : '');
+      row.appendChild(chipEl);
+      row.appendChild(meta);
+      el.appendChild(row);
+    }
+    tb.appendChild(el);
+  });
+
+  const hb = $('hand');
+  hb.innerHTML = '';
+  const meV = view.players[mySeatIdx];
+  (meV.pack || []).forEach(c => {
+    const el = document.createElement('span');
+    el.className = 'mchip col-' + c.c;
+    el.textContent = c.n + ' e' + c.e + ' ' + [...c.i].map(x => ICON[x]).join('');
+    el.title = fxText(c);
+    hb.appendChild(el);
+  });
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!net.guestPrompt) {
+      if (view.phase === 'gameover' && view.winner === mySeatIdx) {
+        setMessage('★ You rebuild the world. The wasteland provides.');
+      } else setMessage(view.msg);
+    }
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === mySeatIdx) stats.wins++;
+      save();
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
+}
+
+function rerender() {
+  if (net.mode === 'guest') { if (net.lastView) renderView(net.lastView); }
+  else renderView(buildView(mySeatIdx));
+}
+function render() {
+  rerender();
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+    }
+  }
+}
+
+/* ---------- the one chooser ---------- */
+
+function showOptions(options, label) {
+  setMessage(label);
+  const box = $('opts');
+  box.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.addEventListener('click', () => {
+      box.innerHTML = '';
+      if (net.mode === 'guest') {
+        net.guestPrompt = false;
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id });
+        setMessage('');
+      } else if (localChooser) {
+        const r = localChooser.resolve;
+        localChooser = null;
+        r(o.id);
+      }
+    });
+    box.appendChild(b);
+  }
+}
+
+async function choose(p, label, options) {
+  if (!options.length) return null;
+  if (p.ai) {
+    await sleep(300);
+    let best = options[0], bs = -1e9;
+    for (const o of options) {
+      const s = (o.score || 0) + Math.random() * 1.5;
+      if (s > bs) { bs = s; best = o; }
+    }
+    return best.id;
+  }
+  if (p.remote) {
+    render();
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = id => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        net.picker = null;
+        resolve(options.some(o => o.id === id) ? id : options[0].id);
+      };
+      const timer = setTimeout(() => { log(p.name + ' took too long — first option it is.'); finish(options[0].id); }, TURN_TIMEOUT_MS);
+      net.picker = finish;
+      if (p.remote.open) p.remote.send({ type: 'choose', label, options: options.map(o => ({ id: o.id, label: o.label })) });
+      else finish(options[0].id);
+    });
+  }
+  render();
+  return new Promise(resolve => {
+    localChooser = { resolve };
+    showOptions(options, label);
+  });
+}
+
+/* ============================================================
+   Multiplayer — shared peer layer, private packs.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', picker: null, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
+              heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Eras of the Wasteland', text: 'Join my table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('erasim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Two friends can take over Cass and Boone.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    const seat = players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    seat.ai = false;
+    seat.remote = conn;
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    conn._seat = seat;
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + ' takes over ' + seat.cpuName + "'s camp.");
+    updateNetBar();
+    render();
+  } else if (d.type === 'pick') {
+    if (net.picker) net.picker(d.id);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  seat.remote = null;
+  seat.ai = true;
+  log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the camp back.');
+  seat.name = seat.cpuName;
+  if (net.picker) net.picker(null);
+  updateNetBar();
+  render();
+}
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  net.guestPrompt = false;
+  $('opts').innerHTML = '';
+  setMessage('Lost the host — refresh the page to play solo.');
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host to stay on the game, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
+  const conn = net.peer.connect('erasim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to stay on the game, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'choose') {
+    net.guestPrompt = true;
+    showOptions(d.options, d.label);
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (host + 2 friends).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table and send the invite link — two friends can take over Cass and Boone. Your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(overlayCode, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+
+/* ---------- wiring & boot ---------- */
+
+$('btn-deal').addEventListener('click', playMatch);
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+load();
+newGame();
+log('Welcome to the long rebuild. Ten eras between you and a new world.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+</script>
+</body>
+</html>
