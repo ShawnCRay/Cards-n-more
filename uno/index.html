@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Uno</title>
+<style>
+  /* Post-war casino palette, shared with the rest of the game room. */
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+    --uno-r: #9c3a26;
+    --uno-y: #a8802a;
+    --uno-g: #5a7a35;
+    --uno-b: #3f6875;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      radial-gradient(circle 90px at 68% 78%, rgba(58,38,16,0.34), transparent),
+      radial-gradient(circle 7px at 58% 63%, rgba(15,9,4,0.75), rgba(70,40,15,0.5) 55%, transparent 75%),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, .seat-name, #net-bar, #table-rules { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      radial-gradient(circle 80px at 78% 120%, rgba(150,84,30,0.40), transparent),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 14px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* ---------- table ---------- */
+  #table {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 10px 12px 4px;
+  }
+  #table-rules {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    opacity: 0.65;
+    text-align: center;
+    margin: 2px 0 8px;
+  }
+  #opponents { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .seat {
+    background:
+      radial-gradient(circle 70px at 88% 92%, rgba(0,0,0,0.34), transparent),
+      radial-gradient(circle 26px at 0% 35%, rgba(150,84,30,0.30), transparent 65%),
+      rgba(0,0,0,0.22);
+    box-shadow: inset 0 0 24px rgba(0,0,0,0.45);
+    border: 1px solid rgba(217,151,63,0.25);
+    padding: 7px 12px 9px;
+    min-width: 150px;
+    text-align: center;
+    transition: box-shadow 0.25s, border-color 0.25s;
+  }
+  .seat:nth-child(odd)  { border-radius: 16px 10px 15px 9px / 11px 16px 9px 15px; }
+  .seat:nth-child(even) { border-radius: 9px 15px 10px 16px / 15px 9px 16px 11px; }
+  .seat.active-turn {
+    border-color: var(--gold);
+    box-shadow: 0 0 14px rgba(217,151,63,0.45), inset 0 0 24px rgba(0,0,0,0.45);
+  }
+  .seat .seat-name { font-weight: 700; font-size: 13px; }
+  .seat .seat-name .tag { font-size: 10px; font-weight: 400; letter-spacing: 1px; opacity: 0.6; text-transform: uppercase; }
+  .seat .score { font-size: 11px; opacity: 0.85; font-variant-numeric: tabular-nums; }
+  .seat .score b { color: var(--gold); }
+  .seat .backs { display: flex; justify-content: center; margin-top: 5px; min-height: 26px; align-items: center; }
+  .mini {
+    width: 16px;
+    height: 24px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(45deg, #6e3226 0 4px, #572820 4px 8px);
+    border: 1px solid #cbb98d;
+    margin-left: -8px;
+    flex-shrink: 0;
+  }
+  .mini:first-child { margin-left: 0; }
+  .seat .count { font-size: 11px; margin-left: 6px; opacity: 0.85; }
+  .badge {
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 1px 7px;
+    border-radius: 4px 7px 3px 6px / 6px 3px 7px 4px;
+    border: 1px solid rgba(0,0,0,0.4);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+    display: inline-block;
+    margin-top: 3px;
+  }
+  .badge.bj  { background: var(--gold); color: var(--ink); }
+  .badge.win { background: #1c6e33; color: #d9ffe4; }
+  .seat.open {
+    border-style: dashed;
+    opacity: 0.45;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 96px;
+  }
+  .seat.open > * { display: none; }
+  .seat.open::after { content: 'OPEN'; font-size: 10px; letter-spacing: 2px; opacity: 0.9; }
+  #open-hint {
+    display: none;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.55;
+    margin-top: 3px;
+  }
+
+  /* ---------- center: piles ---------- */
+  #center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 12px 0 6px;
+    min-height: 110px;
+  }
+  #dir { font-size: 26px; color: var(--gold); opacity: 0.8; text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+  .pilewrap { text-align: center; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9; }
+  .pilewrap .lbl { margin-top: 4px; opacity: 0.6; }
+
+  /* ---------- uno cards ---------- */
+  .ucard {
+    width: 56px;
+    height: 82px;
+    border-radius: 8px;
+    border: 2px solid #cbb98d;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 800;
+    color: #f0e6c8;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    clip-path: var(--clip, polygon(2% 2%, 20% 1%, 45% 2%, 70% 0%, 96% 1%, 100% 6%, 99% 30%, 100% 55%, 98% 78%, 100% 96%, 95% 100%, 72% 99%, 48% 100%, 22% 99%, 4% 100%, 0% 94%, 1% 70%, 0% 45%, 2% 22%, 0% 5%));
+    transform: rotate(var(--tilt, 0deg));
+    animation: dealIn 0.25s ease-out;
+  }
+  .ucard .big { font-size: 26px; line-height: 1; }
+  .ucard .big.sym { font-size: 15px; letter-spacing: 0; text-align: center; line-height: 1.2; white-space: pre-line; }
+  .ucard .corner { position: absolute; top: 3px; left: 5px; font-size: 11px; }
+  .ucard.c-r { background: radial-gradient(circle 30px at 78% 16%, rgba(0,0,0,0.25), transparent), linear-gradient(160deg, #a84630, var(--uno-r) 60%, #7c2e1e); }
+  .ucard.c-y { background: radial-gradient(circle 30px at 78% 16%, rgba(0,0,0,0.25), transparent), linear-gradient(160deg, #b78e33, var(--uno-y) 60%, #82621d); }
+  .ucard.c-g { background: radial-gradient(circle 30px at 78% 16%, rgba(0,0,0,0.25), transparent), linear-gradient(160deg, #67883e, var(--uno-g) 60%, #43602a); }
+  .ucard.c-b { background: radial-gradient(circle 30px at 78% 16%, rgba(0,0,0,0.25), transparent), linear-gradient(160deg, #4a7684, var(--uno-b) 60%, #2e4f5a); }
+  .ucard.c-w {
+    background:
+      conic-gradient(from 45deg, var(--uno-r) 0 90deg, var(--uno-y) 90deg 180deg, var(--uno-g) 180deg 270deg, var(--uno-b) 270deg 360deg);
+  }
+  .ucard.back {
+    background: repeating-linear-gradient(45deg, #6e3226 0 6px, #572820 6px 12px);
+  }
+  .ucard.back::after {
+    content: '☢';
+    font-size: 22px;
+    color: rgba(230,215,178,0.55);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  /* the same hard life as every other deck in the vault */
+  .ucard::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 8px at var(--sx, 76%) var(--sy, 18%), rgba(40,24,8,0.35), transparent 70%),
+      radial-gradient(circle 5px at var(--sx2, 22%) var(--sy2, 80%), rgba(40,24,8,0.30), transparent 70%),
+      radial-gradient(ellipse 130% 30% at 50% -8%, rgba(20,12,5,0.30), transparent),
+      linear-gradient(var(--crease, 115deg), transparent 45%, rgba(255,252,240,0.28) 49%, rgba(30,18,8,0.20) 51%, transparent 55%);
+    box-shadow: inset 0 0 10px rgba(20,12,5,0.55);
+  }
+  .ucard:nth-child(odd)  { --tilt: -1.3deg; --sx: 76%; --sy: 18%; --sx2: 22%; --sy2: 80%; --crease: 115deg; }
+  .ucard:nth-child(even) { --tilt: 1.0deg;  --sx: 16%; --sy: 30%; --sx2: 82%; --sy2: 66%; --crease: 62deg; }
+  .ucard:nth-child(3n)   { --tilt: 0.4deg;  --sx: 60%; --sy: 86%; --sx2: 34%; --sy2: 12%; --crease: 150deg; }
+  .ucard:nth-child(5n)   { --tilt: -0.6deg; --sx: 40%; --sy: 55%; --sx2: 88%; --sy2: 26%; --crease: 80deg; }
+  @keyframes dealIn {
+    from { transform: translateY(-12px) rotate(var(--tilt, 0deg)); opacity: 0; }
+    to   { transform: translateY(0) rotate(var(--tilt, 0deg)); opacity: 1; }
+  }
+  body.guest .ucard { animation: none; }
+
+  #color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: -3px;
+    border: 2px solid rgba(230,217,184,0.7);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  #deckpile { cursor: pointer; }
+
+  /* ---------- your hand ---------- */
+  #hand-area {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 12px;
+    text-align: center;
+  }
+  #hand-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 4px; }
+  #hand {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 0;
+    min-height: 88px;
+    align-items: center;
+  }
+  #hand .ucard { margin-left: -14px; }
+  #hand .ucard:first-child { margin-left: 0; }
+  #hand .ucard.playable { cursor: pointer; margin-top: -10px; box-shadow: 0 0 12px rgba(217,151,63,0.6); border-color: var(--gold); }
+  #hand .ucard.dim { opacity: 0.55; }
+  #hand .ucard.drawn { outline: 2px dashed var(--gold); }
+
+  /* ---------- controls ---------- */
+  #controls {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 4px 12px 10px;
+    text-align: center;
+  }
+  #net-bar { min-height: 18px; margin-bottom: 4px; font-size: 13px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 11px; font-weight: 400; padding: 3px 10px; margin-left: 8px; }
+  #message { min-height: 20px; margin-bottom: 6px; font-size: 14px; color: var(--gold); font-weight: 600; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+  .colorbtn { width: 46px; height: 46px; border-radius: 50%; padding: 0; border: 2px solid rgba(230,217,184,0.7); }
+  .colorbtn.r { background: var(--uno-r); }
+  .colorbtn.y { background: var(--uno-y); }
+  .colorbtn.g { background: var(--uno-g); }
+  .colorbtn.b { background: var(--uno-b); }
+
+  /* ---------- footer ---------- */
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 12px 10px;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 200px; max-height: 36px; overflow: hidden; font-variant-numeric: tabular-nums; }
+  #log div { line-height: 1.6; }
+  #footer .small-btns button { font-size: 11px; padding: 4px 10px; font-weight: 400; }
+
+  /* ---------- overlays ---------- */
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 540px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13.5px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 10px; }
+  #help .help-body ul { margin: 0 0 10px 18px; }
+  #help .help-body li { margin-bottom: 6px; }
+  #help .help-body b { color: var(--gold); }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 720px) {
+    #topbar { padding: 6px 10px; font-size: 12px; gap: 3px 12px; justify-content: center; }
+    #topbar .title { display: none; }
+    #table { padding: 4px 8px 0; }
+    #table-rules { display: none; }
+    #opponents { gap: 6px; }
+    .seat { min-width: 0; flex: 1 1 28%; padding: 5px 6px 7px; }
+    .seat .seat-name { font-size: 11px; }
+    .seat .score { font-size: 10px; }
+    .mini { width: 12px; height: 18px; margin-left: -6px; }
+    .seat.open { display: none; }
+    #open-hint { display: block; }
+    #center { gap: 14px; padding: 8px 0 4px; min-height: 92px; }
+    .ucard { width: 46px; height: 67px; }
+    .ucard .big { font-size: 21px; }
+    .ucard .big.sym { font-size: 12px; }
+    #hand .ucard { margin-left: -18px; }
+    #hand { min-height: 70px; }
+    #message { font-size: 13px; min-height: 18px; }
+    #net-bar { font-size: 12px; min-height: 0; }
+    button { padding: 9px 12px; }
+    .colorbtn { width: 42px; height: 42px; }
+    #footer { font-size: 10px; gap: 6px; padding: 2px 10px 8px; }
+    #footer .small-btns button { font-size: 10px; padding: 3px 7px; }
+    #log { max-height: 18px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · UNO</span>
+  <span class="stat">Round <b id="stat-round">—</b></span>
+  <span class="stat">Draw pile <b id="stat-deck">—</b></span>
+  <span class="stat">Target <b>500</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="table">
+  <div id="table-rules">VAULT-TEC APPROVED &nbsp;•&nbsp; MATCH COLOR OR NUMBER &nbsp;•&nbsp; EMPTY YOUR HAND, SCORE THEIR CARDS &nbsp;•&nbsp; FIRST TO 500</div>
+  <div id="opponents"></div>
+  <div id="open-hint"></div>
+  <div id="center">
+    <div class="pilewrap">
+      <div id="deckpile"></div>
+      <div class="lbl">Draw <span id="deck-count"></span></div>
+    </div>
+    <div id="dir">⟳</div>
+    <div class="pilewrap">
+      <div id="discard"></div>
+      <div class="lbl">Color <span id="color-dot"></span></div>
+    </div>
+  </div>
+</div>
+
+<div id="hand-area">
+  <div id="hand-label">YOUR HAND</div>
+  <div id="hand"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="message"></div>
+  <div id="turn-controls" style="display:none">
+    <div class="btn-row"><button id="btn-draw" class="primary">Draw a card</button></div>
+  </div>
+  <div id="drawn-controls" style="display:none">
+    <div class="btn-row">
+      <button id="btn-playdrawn" class="primary">Play drawn card</button>
+      <button id="btn-keep">Keep it</button>
+    </div>
+  </div>
+  <div id="color-controls" style="display:none">
+    <div class="btn-row">
+      <button class="colorbtn r" data-c="r" title="Rust"></button>
+      <button class="colorbtn y" data-c="y" title="Mustard"></button>
+      <button class="colorbtn g" data-c="g" title="Olive"></button>
+      <button class="colorbtn b" data-c="b" title="Steel"></button>
+    </div>
+  </div>
+  <div id="round-controls">
+    <div class="btn-row"><button id="btn-deal" class="primary">Deal round 1</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play Uno</h2>
+    <div class="help-body">
+      <p><b>The goal:</b> be the first to empty your hand each round. The winner
+      scores the cards everyone else is still holding (numbers at face value,
+      action cards 20, wilds 50). First to <b>500 points</b> wins the game.</p>
+      <p><b>Your turn:</b> play a card that matches the top of the discard pile
+      by <b>color</b> or by <b>number/symbol</b> — or play a wild. Can't (or
+      won't)? Draw a card; if it's playable you may play it right away,
+      otherwise your turn passes.</p>
+      <p><b>The troublemakers:</b></p>
+      <ul>
+        <li><b>SKIP (⊘)</b> — next player loses their turn.</li>
+        <li><b>REVERSE (⇄)</b> — play direction flips (acts as a skip with two
+        players).</li>
+        <li><b>+2</b> — next player draws two and is skipped.</li>
+        <li><b>WILD</b> — play on anything, choose the new color.</li>
+        <li><b>WILD +4</b> — choose the color and the next player draws four
+        and is skipped. (House rule: playable any time, no challenges.)</li>
+      </ul>
+      <p><b>UNO:</b> when a player is down to one card the table announces it —
+      no penalties here, just the dread. Cass and Boone hoard their wilds and
+      aim their +4s with intent. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   Uno — classic 108-card rules. Per color: one 0, two 1-9, two
+   Skip, two Reverse, two +2; plus 4 Wilds and 4 Wild +4s. Round
+   winner scores opponents' hands (numbers face, actions 20,
+   wilds 50); first to 500 takes the game. Wild +4 is playable
+   any time (house rule, no challenges); UNO calls are automatic.
+
+   Multiplayer mirrors the other tables — host authoritative —
+   with one twist: hands are hidden, so every player receives a
+   PRIVATE view (own cards, everyone else's counts).
+   ============================================================ */
+
+const TARGET = 500;
+const STORE_KEY = 'uno-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 45000;
+
+const COLORS = ['r', 'y', 'g', 'b'];
+const COLOR_NAMES = { r: 'rust', y: 'mustard', g: 'olive', b: 'steel' };
+const COLOR_CSS = { r: 'var(--uno-r)', y: 'var(--uno-y)', g: 'var(--uno-g)', b: 'var(--uno-b)' };
+const SYM = { skip: '⊘\nSKIP', rev: '⇄\nREV', d2: '+2', wild: 'WILD', wd4: 'WILD\n+4' };
+
+function openSeat() {
+  return { name: 'Open', cpuName: null, open: true, ai: false, remote: null, finishAsCpu: false,
+           score: 0, hand: [] };
+}
+function cpuSeat(name) {
+  return { name, cpuName: name, open: false, ai: true, remote: null, finishAsCpu: false,
+           score: 0, hand: [] };
+}
+const players = [
+  cpuSeat('Cass'),
+  openSeat(),
+  { name: 'You', cpuName: null, open: false, ai: false, remote: null, finishAsCpu: false, score: 0, hand: [] },
+  openSeat(),
+  cpuSeat('Boone'),
+  openSeat(),
+];
+const me = players[2];
+let mySeatIdx = players.indexOf(me);
+
+let deck = [], discard = [];
+let curColor = 'r';
+let dir = 1;
+let roundNo = 0;
+let roundActive = false;
+let gameOver = false;
+let lastWinnerIdx = -1;
+let activePlayer = null;
+let stats = { wins: 0, games: 0 };
+let localPrompt = null; // resolver for the local human's turn
+
+/* ---------- deck ---------- */
+
+function buildDeck() {
+  const d = [];
+  for (const c of COLORS) {
+    d.push({ c, v: 0 });
+    for (let v = 1; v <= 9; v++) { d.push({ c, v }); d.push({ c, v }); }
+    for (const s of ['skip', 'rev', 'd2']) { d.push({ c, v: s }); d.push({ c, v: s }); }
+  }
+  for (let i = 0; i < 4; i++) { d.push({ c: 'w', v: 'wild' }); d.push({ c: 'w', v: 'wd4' }); }
+  return d;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function drawCard() {
+  if (!deck.length) {
+    const top = discard.pop();
+    deck = shuffle(discard);
+    discard = [top];
+    log('Draw pile ran dry — reshuffled the discards.');
+    if (!deck.length) deck = shuffle(buildDeck()); // pathological safety
+  }
+  return deck.pop();
+}
+
+/* ---------- helpers ---------- */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+
+function seated() { return players.filter(p => !p.open); }
+function topCard() { return discard[discard.length - 1]; }
+function playableOn(card) {
+  return card.c === 'w' || card.c === curColor || card.v === topCard().v;
+}
+function playableIdx(p) {
+  return p.hand.map((c, i) => playableOn(c) ? i : -1).filter(i => i >= 0);
+}
+function cardPoints(c) { return c.c === 'w' ? 50 : (typeof c.v === 'number' ? c.v : 20); }
+function cardLabel(c) {
+  const cn = c.c === 'w' ? '' : COLOR_NAMES[c.c] + ' ';
+  return cn + (typeof c.v === 'number' ? c.v : ({ skip: 'Skip', rev: 'Reverse', d2: '+2', wild: 'Wild', wd4: 'Wild +4' })[c.v]);
+}
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ }
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh start */ }
+}
+
+/* ---------- rendering ---------- */
+
+function ucardEl(card, faceDown) {
+  const el = document.createElement('div');
+  if (faceDown || !card) { el.className = 'ucard back'; return el; }
+  el.className = 'ucard c-' + card.c;
+  const big = document.createElement('span');
+  if (typeof card.v === 'number') {
+    big.className = 'big';
+    big.textContent = card.v;
+    const corner = document.createElement('span');
+    corner.className = 'corner';
+    corner.textContent = card.v;
+    el.appendChild(corner);
+  } else {
+    big.className = 'big sym';
+    big.textContent = SYM[card.v];
+  }
+  el.appendChild(big);
+  return el;
+}
+
+function buildSeatsDom() {
+  $('opponents').innerHTML = '';
+  players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'seat';
+    el.id = 'seat-' + i;
+    el.innerHTML =
+      '<div class="seat-name" id="name-' + i + '"></div>' +
+      '<div class="score" id="score-' + i + '"></div>' +
+      '<div class="backs" id="backs-' + i + '"></div>' +
+      '<div id="badge-' + i + '"></div>';
+    $('opponents').appendChild(el);
+  });
+}
+
+function buildView(forIdx) {
+  return {
+    phase: gameOver ? 'gameover' : roundActive ? 'round' : 'between',
+    roundNo,
+    deck: deck.length,
+    dir,
+    curColor,
+    top: topCard() || null,
+    active: players.indexOf(activePlayer),
+    hostSeat: players.indexOf(me),
+    winner: lastWinnerIdx,
+    msg: $('message').textContent,
+    players: players.map((p, i) => ({
+      name: p.name, ai: p.ai, open: p.open, score: p.score,
+      count: p.hand.length,
+      hand: i === forIdx ? p.hand : null,
+    })),
+  };
+}
+
+function renderView(view) {
+  view.players.forEach((p, i) => {
+    const seatEl = $('seat-' + i);
+    seatEl.classList.toggle('open', !!p.open);
+    seatEl.classList.toggle('active-turn', view.active === i && view.phase === 'round');
+    seatEl.style.display = i === mySeatIdx ? 'none' : ''; // your hand renders below
+    if (p.open || i === mySeatIdx) return;
+    const tag = p.ai ? 'CPU' : i === view.hostSeat ? 'Host' : 'Guest';
+    $('name-' + i).innerHTML = escapeHtml(p.name) + ' <span class="tag">' + tag + '</span>';
+    $('score-' + i).innerHTML = 'Score <b>' + p.score + '</b>';
+    const backs = $('backs-' + i);
+    backs.innerHTML = '';
+    for (let k = 0; k < Math.min(p.count, 8); k++) {
+      const m = document.createElement('span');
+      m.className = 'mini';
+      backs.appendChild(m);
+    }
+    const cnt = document.createElement('span');
+    cnt.className = 'count';
+    cnt.textContent = '×' + p.count;
+    backs.appendChild(cnt);
+    $('badge-' + i).innerHTML =
+      view.phase === 'round' && p.count === 1 ? '<span class="badge bj">UNO!</span>' :
+      view.phase !== 'round' && view.winner === i && view.phase === 'gameover' ? '<span class="badge win">WINNER</span>' : '';
+  });
+
+  // center piles
+  $('discard').innerHTML = '';
+  if (view.top) $('discard').appendChild(ucardEl(view.top));
+  else $('discard').appendChild(ucardEl(null, true));
+  $('deckpile').innerHTML = '';
+  $('deckpile').appendChild(ucardEl(null, true));
+  $('deck-count').textContent = view.deck;
+  $('dir').textContent = view.dir === 1 ? '⟳' : '⟲';
+  $('color-dot').style.background = COLOR_CSS[view.curColor] || 'transparent';
+
+  // my hand
+  const meView = view.players[mySeatIdx];
+  const hand = meView && meView.hand ? meView.hand : [];
+  const handBox = $('hand');
+  handBox.innerHTML = '';
+  const prompt = net.mode === 'guest' ? net.guestPrompt : localPrompt;
+  hand.forEach((c, i) => {
+    const el = ucardEl(c);
+    const canPlay = prompt && prompt.playable && prompt.playable.includes(i);
+    el.classList.toggle('playable', !!canPlay);
+    el.classList.toggle('dim', !!prompt && !canPlay);
+    if (prompt && prompt.drawn === i) el.classList.add('drawn');
+    if (canPlay) el.addEventListener('click', () => answerPlay(i));
+    handBox.appendChild(el);
+  });
+  $('hand-label').textContent = meView && meView.open === false ? 'YOUR HAND' : 'YOUR HAND';
+
+  $('stat-round').textContent = view.roundNo || '—';
+  $('stat-deck').textContent = view.deck;
+  $('stat-wins').textContent = stats.wins;
+  const openCount = view.players.filter(p => p.open).length;
+  $('open-hint').textContent = openCount
+    ? '· ' + openCount + ' open seat' + (openCount === 1 ? '' : 's') + ' — play with friends to fill them ·'
+    : '';
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!net.guestPrompt) {
+      if (view.phase === 'gameover' && view.winner === mySeatIdx) {
+        setMessage('★ You hit ' + view.players[mySeatIdx].score + ' and walk out rich. The wasteland provides.');
+      } else {
+        setMessage(view.msg);
+      }
+    }
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === mySeatIdx) stats.wins++;
+      save();
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
+}
+
+function render() {
+  if (net.mode === 'guest') {
+    if (net.lastView) renderView(net.lastView);
+    return;
+  }
+  renderView(buildView(mySeatIdx));
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) {
+        p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+      }
+    }
+  }
+}
+
+/* ---------- turn prompts ---------- */
+
+/* answerPlay routes a tapped hand card into whichever prompt is live */
+function answerPlay(idx) {
+  const prompt = net.mode === 'guest' ? net.guestPrompt : localPrompt;
+  if (!prompt || !prompt.playable.includes(idx)) return;
+  const hand = net.mode === 'guest'
+    ? (net.lastView && net.lastView.players[mySeatIdx].hand) || []
+    : me.hand;
+  const card = hand[idx];
+  if (card && card.c === 'w') {
+    askColor().then(color => finishAnswer({ type: 'play', idx, color }));
+  } else {
+    finishAnswer({ type: 'play', idx });
+  }
+}
+
+function askColor() {
+  return new Promise(resolve => {
+    $('turn-controls').style.display = 'none';
+    $('drawn-controls').style.display = 'none';
+    $('color-controls').style.display = '';
+    setMessage('Pick the new color.');
+    const btns = document.querySelectorAll('.colorbtn');
+    const handler = e => {
+      btns.forEach(b => b.removeEventListener('click', handler));
+      $('color-controls').style.display = 'none';
+      resolve(e.currentTarget.dataset.c);
+    };
+    btns.forEach(b => b.addEventListener('click', handler));
+  });
+}
+
+function finishAnswer(action) {
+  $('turn-controls').style.display = 'none';
+  $('drawn-controls').style.display = 'none';
+  $('color-controls').style.display = 'none';
+  if (net.mode === 'guest') {
+    net.guestPrompt = null;
+    setMessage('');
+    if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'move', action });
+    render();
+  } else {
+    const r = localPrompt && localPrompt.resolve;
+    localPrompt = null;
+    if (r) r(action);
+    render();
+  }
+}
+
+/* local human prompt (host or solo) */
+function getLocalMove(playable, drawn) {
+  return new Promise(resolve => {
+    localPrompt = { playable, drawn: drawn == null ? null : drawn, resolve };
+    if (drawn == null) {
+      $('turn-controls').style.display = '';
+      setMessage(playable.length ? 'Your move — play a card or draw.' : 'Nothing playable — draw a card.');
+    } else if (playable.length) {
+      $('drawn-controls').style.display = '';
+      setMessage('You drew ' + cardLabel(me.hand[drawn]) + ' — play it?');
+    }
+    render();
+  });
+}
+
+/* ---------- CPU brain ---------- */
+
+function aiPickColor(p) {
+  const counts = { r: 0, y: 0, g: 0, b: 0 };
+  for (const c of p.hand) if (c.c !== 'w') counts[c.c]++;
+  return COLORS.reduce((a, b) => (counts[a] >= counts[b] ? a : b));
+}
+
+function aiChoose(p) {
+  const pl = playableIdx(p);
+  if (!pl.length) return { type: 'draw' };
+  const next = nextSeat(players.indexOf(p));
+  const nextLow = next && next.hand.length <= 2;
+  let best = null, bestScore = -1;
+  for (const i of pl) {
+    const c = p.hand[i];
+    let s;
+    if (c.c === 'w') s = c.v === 'wd4' ? (nextLow ? 6 : 0.5) : 0.8;
+    else if (c.v === 'd2' || c.v === 'skip' || c.v === 'rev') s = nextLow ? 5 : 2;
+    else s = 1 + c.v / 10;
+    if (s > bestScore) { bestScore = s; best = i; }
+  }
+  const card = p.hand[best];
+  return { type: 'play', idx: best, color: card.c === 'w' ? aiPickColor(p) : undefined };
+}
+
+/* ---------- engine (host/solo only) ---------- */
+
+function nextSeatIdx(from) {
+  let i = from;
+  do { i = (i + dir + players.length) % players.length; } while (players[i].open);
+  return i;
+}
+function nextSeat(from) { return players[nextSeatIdx(from)]; }
+
+async function applyMove(p, action) {
+  if (action.type === 'draw') {
+    const c = drawCard();
+    p.hand.push(c);
+    log(p.name + ' draws a card.');
+    render();
+    if (playableOn(c)) {
+      const idx = p.hand.length - 1;
+      let follow;
+      if (p.ai || p.finishAsCpu) {
+        follow = { type: 'play', idx, color: c.c === 'w' ? aiPickColor(p) : undefined };
+      } else if (p.remote) {
+        follow = await getRemoteMove(p, [idx], idx);
+      } else {
+        follow = await getLocalMove([idx], idx);
+      }
+      if (follow && follow.type === 'play' && follow.idx === idx) {
+        return playCardFrom(p, idx, follow.color);
+      }
+    }
+    return { skipped: 0 };
+  }
+  return playCardFrom(p, action.idx, action.color);
+}
+
+function playCardFrom(p, idx, color) {
+  const card = p.hand.splice(idx, 1)[0];
+  if (!card) return { skipped: 0 };
+  discard.push(card);
+  curColor = card.c === 'w' ? (COLORS.includes(color) ? color : aiPickColor(p)) : card.c;
+  let msg = p.name + ' plays ' + cardLabel(card) +
+    (card.c === 'w' ? ' → ' + COLOR_NAMES[curColor] : '') + '.';
+  const fx = { skipped: 0 };
+  if (card.v === 'skip') fx.skipped = 1;
+  if (card.v === 'rev') {
+    dir *= -1;
+    if (seated().length === 2) fx.skipped = 1;
+  }
+  if (card.v === 'd2') { fx.drawN = 2; fx.skipped = 1; }
+  if (card.v === 'wd4') { fx.drawN = 4; fx.skipped = 1; }
+  log(msg);
+  if (p.hand.length === 1) log('⚠ ' + p.name + ' has UNO!');
+  return fx;
+}
+
+async function takeTurn(p) {
+  activePlayer = p;
+  render();
+  let action;
+  if (p.ai || p.finishAsCpu) {
+    await sleep(650);
+    action = aiChoose(p);
+  } else if (p.remote) {
+    setMessage('Waiting for ' + p.name + '…');
+    render();
+    action = await getRemoteMove(p, playableIdx(p), null);
+  } else {
+    action = await getLocalMove(playableIdx(p), null);
+    if (action.type === 'play' && !playableIdx(p).includes(action.idx)) action = { type: 'draw' };
+  }
+  const fx = await applyMove(p, action);
+  activePlayer = null;
+  render();
+  return fx;
+}
+
+async function playRound() {
+  if (roundActive || gameOver || net.mode === 'guest') return;
+  roundActive = true;
+  roundNo++;
+  $('round-controls').style.display = 'none';
+  deck = shuffle(buildDeck());
+  discard = [];
+  dir = 1;
+  for (const p of players) {
+    p.hand = [];
+    if (p.finishAsCpu && !p.remote && !p.cpuName) { // a leaver's ghost finished the round
+      p.open = true; p.ai = false; p.name = 'Open'; p.score = 0;
+    }
+    p.finishAsCpu = false;
+  }
+  log('— Round ' + roundNo + ' —');
+
+  for (let k = 0; k < 7; k++) for (const p of seated()) p.hand.push(drawCard());
+
+  // starter: wild +4 goes back in; other actions apply to the first player
+  let starter = drawCard();
+  while (starter.v === 'wd4') {
+    deck.splice(Math.floor(Math.random() * (deck.length + 1)), 0, starter);
+    starter = drawCard();
+  }
+  discard.push(starter);
+  curColor = starter.c === 'w' ? COLORS[Math.floor(Math.random() * 4)] : starter.c;
+  log('Starter: ' + cardLabel(starter) + (starter.c === 'w' ? ' → ' + COLOR_NAMES[curColor] : '') + '.');
+
+  let idx = (roundNo - 1) % players.length;
+  while (players[idx].open) idx = (idx + 1) % players.length;
+  let pendingFx = { skipped: 0 };
+  if (starter.v === 'skip') pendingFx.skipped = 1;
+  if (starter.v === 'rev') dir = -1;
+  if (starter.v === 'd2') { pendingFx.drawN = 2; pendingFx.skipped = 1; }
+  setMessage('Round ' + roundNo + ' — ' + players[idx].name + ' leads off.');
+  render();
+  await sleep(600);
+
+  let winner = null;
+  let safety = 2000;
+  while (!winner && safety-- > 0) {
+    const p = players[idx];
+    if (pendingFx.drawN) {
+      for (let k = 0; k < pendingFx.drawN; k++) p.hand.push(drawCard());
+      log(p.name + ' draws ' + pendingFx.drawN + ' and loses the turn.');
+      render();
+      await sleep(500);
+      pendingFx = { skipped: 0 };
+      idx = nextSeatIdx(idx);
+      continue;
+    }
+    if (pendingFx.skipped) {
+      log(p.name + ' is skipped.');
+      render();
+      await sleep(400);
+      pendingFx = { skipped: 0 };
+      idx = nextSeatIdx(idx);
+      continue;
+    }
+    pendingFx = await takeTurn(p);
+    if (p.hand.length === 0) { winner = p; break; }
+    idx = nextSeatIdx(idx);
+  }
+
+  // score the round
+  activePlayer = null;
+  const gained = seated().filter(q => q !== winner)
+    .reduce((sum, q) => sum + q.hand.reduce((a, c) => a + cardPoints(c), 0), 0);
+  winner.score += gained;
+  log('★ ' + winner.name + ' goes out and scores ' + gained + ' (total ' + winner.score + ').');
+
+  if (winner.score >= TARGET) {
+    gameOver = true;
+    lastWinnerIdx = players.indexOf(winner);
+    stats.games++;
+    if (winner === me) stats.wins++;
+    save();
+    setMessage(winner === me && net.mode === 'solo'
+      ? '★ You hit ' + me.score + ' and walk out rich. The wasteland provides.'
+      : '★ ' + winner.name + ' hits ' + winner.score + ' first and walks out rich.');
+    $('btn-deal').textContent = 'Play again';
+  } else {
+    setMessage(winner.name + ' takes round ' + roundNo + ' for ' + gained + '. First to ' + TARGET + '.');
+    $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
+  }
+  $('round-controls').style.display = '';
+  roundActive = false;
+  render();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  for (const p of players) { p.score = 0; p.hand = []; }
+  deck = shuffle(buildDeck());
+  discard = [];
+  roundNo = 0;
+  gameOver = false;
+  lastWinnerIdx = -1;
+  roundActive = false;
+  $('btn-deal').textContent = 'Deal round 1';
+  $('round-controls').style.display = '';
+  $('turn-controls').style.display = 'none';
+  $('drawn-controls').style.display = 'none';
+  $('color-controls').style.display = 'none';
+  setMessage('Fresh deck. Deal when ready.');
+  render();
+}
+
+/* ============================================================
+   Multiplayer — same peer-to-peer layer as the other tables,
+   but every player gets a PRIVATE view (hands are hidden).
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', movers: {}, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: null,
+              heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Uno', text: 'Join my Uno table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+/* ----- host side ----- */
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* already dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('unosim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Up to 5 friends can join.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby so friends can join…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* already gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale connection */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    const seat = players.find(p => p.open && !p.remote) || players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    const tookOpenSeat = seat.open;
+    seat.open = false;
+    seat.ai = false;
+    seat.remote = conn;
+    seat.finishAsCpu = roundActive; // mid-round: the book finishes this hand
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    if (tookOpenSeat) {
+      seat.score = 0;
+      seat.hand = [];
+      // joining mid-round at an open seat: deal them in next round
+    }
+    conn._seat = seat;
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + (tookOpenSeat
+      ? ' sits down at an open seat.'
+      : ' takes over ' + seat.cpuName + "'s run at " + seat.score + ' points.'));
+    updateNetBar();
+    render();
+  } else if (d.type === 'move') {
+    const seat = conn._seat;
+    if (!seat) return;
+    const r = net.movers[players.indexOf(seat)];
+    if (r) r(d.action);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  const idx = players.indexOf(seat);
+  seat.remote = null;
+  if (seat.cpuName) {
+    log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
+    seat.ai = true;
+    seat.name = seat.cpuName;
+  } else {
+    log(seat.name + ' left the table.');
+    if (roundActive && seat.hand.length) {
+      // the book plays out their cards so the round can finish cleanly
+      seat.ai = true;
+      seat.finishAsCpu = true;
+      seat.name = seat.name + '†';
+    } else {
+      seat.open = true;
+      seat.name = 'Open';
+      seat.score = 0;
+      seat.hand = [];
+    }
+  }
+  const r = net.movers[idx];
+  if (r) r({ type: 'draw' });
+  updateNetBar();
+  render();
+}
+
+function getRemoteMove(p, playable, drawn) {
+  return new Promise(resolve => {
+    const idx = players.indexOf(p);
+    let settled = false;
+    const finish = a => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete net.movers[idx];
+      // validate: play only from the allowed set, else draw/pass
+      if (a && a.type === 'play' && playable.includes(a.idx)) resolve(a);
+      else if (drawn != null) resolve({ type: 'pass' });
+      else resolve({ type: 'draw' });
+    };
+    const timer = setTimeout(() => {
+      log(p.name + ' took too long — drawing.');
+      finish(null);
+    }, TURN_TIMEOUT_MS);
+    net.movers[idx] = finish;
+    if (p.remote && p.remote.open) p.remote.send({ type: 'turn', playable, drawn });
+    else finish(null);
+  });
+}
+
+/* ----- guest side ----- */
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  setMessage('Lost the host — refresh the page to play solo.');
+  net.guestPrompt = null;
+  $('turn-controls').style.display = 'none';
+  $('drawn-controls').style.display = 'none';
+  $('color-controls').style.display = 'none';
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… If this never lands, this network may ' +
+        'block the connection — the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — the host may be " +
+          'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host ' +
+          'to open the game and stay on it, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale attempt */ } }
+  const conn = net.peer.connect('unosim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — the host may be " +
+        'off-screen for a moment. Retrying, attempt ' + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to open ' +
+        'the game and stay on it, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'turn') {
+    net.guestPrompt = { playable: d.playable, drawn: d.drawn == null ? null : d.drawn };
+    if (d.drawn == null) {
+      $('turn-controls').style.display = '';
+      setMessage(d.playable.length ? 'Your move — play a card or draw.' : 'Nothing playable — draw a card.');
+    } else if (d.playable.length) {
+      $('drawn-controls').style.display = '';
+      const hand = net.lastView && net.lastView.players[mySeatIdx].hand;
+      const c = hand && hand[d.drawn];
+      setMessage('You drew ' + (c ? cardLabel(c) : 'a card') + ' — play it?');
+    }
+    render();
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (host + 5 friends).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table, then send the invite link. Up to five friends grab the open seats (or take over the CPUs) — your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(overlayCode, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+
+/* ---------- wiring ---------- */
+
+$('btn-draw').addEventListener('click', () => finishAnswer({ type: 'draw' }));
+$('deckpile').addEventListener('click', () => {
+  const prompt = net.mode === 'guest' ? net.guestPrompt : localPrompt;
+  if (prompt && prompt.drawn == null) finishAnswer({ type: 'draw' });
+});
+$('btn-playdrawn').addEventListener('click', () => {
+  const prompt = net.mode === 'guest' ? net.guestPrompt : localPrompt;
+  if (prompt && prompt.drawn != null) answerPlay(prompt.drawn);
+});
+$('btn-keep').addEventListener('click', () => finishAnswer({ type: 'pass' }));
+$('btn-deal').addEventListener('click', () => { if (gameOver) newGame(); else playRound(); });
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+/* ---------- boot ---------- */
+
+load();
+buildSeatsDom();
+newGame();
+log('Welcome to the Uno table. Match the color or the number — first to 500 walks out rich.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+</script>
+</body>
+</html>
