@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Flip 7</title>
+<style>
+  /* Post-war casino palette, shared with the blackjack table next door. */
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      radial-gradient(circle 90px at 68% 78%, rgba(58,38,16,0.34), transparent),
+      radial-gradient(circle 46px at 70% 80%, rgba(58,38,16,0.20), transparent 55%, rgba(58,38,16,0.34) 62%, transparent 68%),
+      radial-gradient(circle 7px at 58% 63%, rgba(15,9,4,0.75), rgba(70,40,15,0.5) 55%, transparent 75%),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      radial-gradient(circle 120px at 8% 22%, rgba(46,32,14,0.30), transparent),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, .area-label, .seat-name, #table-rules {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      radial-gradient(circle 80px at 78% 120%, rgba(150,84,30,0.40), transparent),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 14px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* ---------- table ---------- */
+  #table {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 12px 12px 4px;
+  }
+  #table-rules {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    opacity: 0.65;
+    text-align: center;
+    margin: 2px 0 10px;
+  }
+  #seats { display: flex; flex-direction: column; gap: 10px; }
+  .seat {
+    background:
+      radial-gradient(circle 70px at 88% 92%, rgba(0,0,0,0.34), transparent),
+      radial-gradient(circle 50px at 6% 8%, rgba(0,0,0,0.26), transparent),
+      radial-gradient(circle 26px at 0% 35%, rgba(150,84,30,0.30), transparent 65%),
+      radial-gradient(circle 18px at 100% 60%, rgba(150,84,30,0.26), transparent 65%),
+      rgba(0,0,0,0.22);
+    box-shadow: inset 0 0 24px rgba(0,0,0,0.45);
+    border: 1px solid rgba(217,151,63,0.25);
+    padding: 8px 12px 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 86px;
+    transition: box-shadow 0.25s, border-color 0.25s;
+  }
+  .seat:nth-child(odd)  { border-radius: 16px 10px 15px 9px / 11px 16px 9px 15px; }
+  .seat:nth-child(even) { border-radius: 9px 15px 10px 16px / 15px 9px 16px 11px; }
+  .seat.you { border-color: rgba(217,151,63,0.6); }
+  .seat.active-turn {
+    border-color: var(--gold);
+    box-shadow: 0 0 14px rgba(217,151,63,0.45), inset 0 0 24px rgba(0,0,0,0.45);
+  }
+  .seat .who { min-width: 118px; }
+  .seat .seat-name { font-weight: 700; }
+  .seat .seat-name .tag {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    opacity: 0.6;
+    text-transform: uppercase;
+  }
+  .seat .totals { font-size: 12px; opacity: 0.9; font-variant-numeric: tabular-nums; line-height: 1.5; }
+  .seat .totals b { color: var(--gold); }
+  .seat .tableau { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 0; min-height: 60px; }
+  .seat .stat-badges { min-width: 86px; text-align: right; }
+
+  .badge {
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px 7px 3px 6px / 6px 3px 7px 4px;
+    border: 1px solid rgba(0,0,0,0.4);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.4);
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    display: inline-block;
+    margin: 2px 0 2px 4px;
+  }
+  .badge.win  { background: #1c6e33; color: #d9ffe4; }
+  .badge.lose { background: #6e2a10; color: #ffd9c0; }
+  .badge.push { background: #3a4f41; color: #d9e8dd; }
+  .badge.bj   { background: var(--gold); color: var(--ink); }
+
+  /* ---------- cards ---------- */
+  .card {
+    width: 40px;
+    height: 56px;
+    border-radius: 6px;
+    background:
+      radial-gradient(circle 24px at 80% 15%, rgba(148,114,58,0.22), transparent),
+      linear-gradient(160deg, #ece1c0 0%, #ddcfa6 70%, #cbb98d 100%);
+    color: #2b2317;
+    border: 1px solid #b3a37c;
+    clip-path: var(--clip, polygon(2% 2%, 20% 1%, 45% 2%, 70% 0%, 96% 1%, 100% 6%, 99% 30%, 100% 55%, 98% 78%, 100% 96%, 95% 100%, 72% 99%, 48% 100%, 22% 99%, 4% 100%, 0% 94%, 1% 70%, 0% 45%, 2% 22%, 0% 5%));
+    margin-left: -12px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+    transform: rotate(var(--tilt, 0deg));
+    animation: dealIn 0.28s ease-out;
+  }
+  .card:first-child { margin-left: 0; }
+  .card .pip { font-size: 19px; line-height: 1; }
+  .card.mod-card { color: #7d4a12; }
+  .card.act-card { color: #8a3520; }
+  .card.act-card .pip { font-size: 10px; letter-spacing: 0; text-align: center; line-height: 1.25; font-weight: 800; white-space: pre-line; }
+  /* wear: stains vary per card; damage and silhouette keyed to the card face */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 7px at var(--sx, 76%) var(--sy, 18%), rgba(122,86,38,0.40), transparent 70%),
+      radial-gradient(circle 4px at var(--sx2, 22%) var(--sy2, 80%), rgba(122,86,38,0.36), transparent 70%),
+      radial-gradient(ellipse 130% 30% at 50% -8%, rgba(70,48,22,0.20), transparent),
+      linear-gradient(var(--crease, 115deg), transparent 45%, rgba(255,252,240,0.40) 49%, rgba(120,95,50,0.18) 51%, transparent 55%);
+    box-shadow: inset 0 0 8px rgba(96,70,36,0.6), inset 0 0 3px rgba(70,48,22,0.65);
+  }
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: var(--damage, none);
+  }
+  .card:nth-child(odd)  { --tilt: -1.4deg; --sx: 76%; --sy: 18%; --sx2: 22%; --sy2: 80%; --crease: 115deg; }
+  .card:nth-child(even) { --tilt: 1.1deg;  --sx: 16%; --sy: 30%; --sx2: 82%; --sy2: 66%; --crease: 62deg; }
+  .card:nth-child(3n)   { --tilt: 0.4deg;  --sx: 60%; --sy: 86%; --sx2: 34%; --sy2: 12%; --crease: 150deg; }
+  .card:nth-child(5n)   { --tilt: -0.7deg; --sx: 40%; --sy: 55%; --sx2: 88%; --sy2: 26%; --crease: 80deg; }
+  .card.wear-1 {
+    --damage: radial-gradient(circle 12px at 102% 102%, rgba(25,15,7,0.6), rgba(80,45,15,0.4) 55%, rgba(110,70,25,0.2) 72%, transparent 82%);
+    --clip: polygon(2% 2%, 25% 0%, 52% 2%, 78% 0%, 97% 2%, 100% 8%, 99% 32%, 100% 56%, 99% 76%, 95% 84%, 89% 90%, 82% 96%, 76% 100%, 52% 99%, 28% 100%, 8% 99%, 0% 93%, 1% 68%, 0% 42%, 1% 18%, 3% 4%);
+  }
+  .card.wear-2 {
+    --damage: linear-gradient(32deg, transparent 60%, rgba(216,192,140,0.5) 62%, rgba(226,204,152,0.42) 76%, transparent 78%);
+    --clip: polygon(1% 3%, 28% 1%, 60% 2%, 90% 0%, 99% 4%, 100% 25%, 98% 48%, 100% 72%, 99% 94%, 92% 100%, 68% 98%, 40% 100%, 15% 99%, 2% 96%, 0% 74%, 1% 50%, 0% 26%, 2% 6%);
+  }
+  .card.wear-3 {
+    --damage: radial-gradient(circle 13px at 32% 42%, transparent 55%, rgba(122,86,38,0.30) 66%, transparent 76%),
+              radial-gradient(circle 9px at 0% 0%, rgba(25,15,7,0.45), rgba(80,45,15,0.28) 60%, transparent 78%);
+    --clip: polygon(4% 3%, 14% 1%, 26% 3%, 42% 0%, 58% 3%, 74% 0%, 88% 2%, 98% 1%, 100% 14%, 98% 30%, 100% 46%, 97% 62%, 100% 78%, 98% 92%, 93% 100%, 78% 98%, 62% 100%, 46% 98%, 30% 100%, 14% 98%, 3% 99%, 0% 88%, 2% 72%, 0% 56%, 2% 40%, 0% 24%, 1% 8%);
+  }
+  .card.wear-4 {
+    --damage: radial-gradient(circle 4px at 70% 62%, rgba(12,7,3,0.9) 38%, rgba(58,30,10,0.75) 58%, rgba(110,70,25,0.4) 76%, transparent 88%),
+              radial-gradient(ellipse 9px 6px at 30% 26%, rgba(80,45,15,0.35), rgba(110,70,25,0.18) 60%, transparent 78%);
+    --clip: polygon(2% 1%, 30% 2%, 58% 0%, 88% 2%, 99% 3%, 100% 20%, 96% 25%, 93% 30%, 96% 35%, 100% 39%, 99% 62%, 100% 84%, 97% 97%, 78% 100%, 50% 99%, 24% 100%, 5% 98%, 0% 80%, 1% 55%, 0% 30%, 1% 8%);
+  }
+  .card.wear-5 {
+    --damage: radial-gradient(circle 3.5px at 62% 24%, #10130c 42%, rgba(20,12,5,0.95) 54%, rgba(66,34,11,0.85) 68%, rgba(122,76,28,0.45) 80%, transparent 90%),
+              radial-gradient(circle 3px at 34% 74%, #10130c 40%, rgba(20,12,5,0.9) 54%, rgba(66,34,11,0.8) 70%, transparent 86%),
+              radial-gradient(circle 6px at 63% 25%, transparent 60%, rgba(226,204,152,0.28) 72%, transparent 84%);
+    --clip: polygon(2% 3%, 22% 1%, 42% 2%, 48% 7%, 55% 9%, 61% 6%, 66% 1%, 93% 2%, 100% 9%, 98% 34%, 100% 62%, 99% 88%, 94% 100%, 70% 99%, 44% 100%, 16% 98%, 1% 96%, 0% 70%, 2% 46%, 0% 20%);
+  }
+  @keyframes dealIn {
+    from { transform: translateY(-14px) rotate(var(--tilt, 0deg)); opacity: 0; }
+    to   { transform: translateY(0) rotate(var(--tilt, 0deg)); opacity: 1; }
+  }
+  .held-chip {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(217,151,63,0.18);
+    border: 1px solid rgba(217,151,63,0.5);
+    color: var(--gold);
+  }
+
+  /* ---------- controls ---------- */
+  #controls {
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 12px 12px;
+    text-align: center;
+  }
+  #message {
+    min-height: 22px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+  button kbd {
+    font-size: 10px;
+    opacity: 0.6;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    padding: 0 3px;
+    margin-left: 5px;
+  }
+  @media (hover: none) { button kbd { display: none; } }
+
+  /* ---------- footer ---------- */
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 4px 12px 12px;
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 200px; max-height: 40px; overflow: hidden; font-variant-numeric: tabular-nums; }
+  #log div { line-height: 1.6; }
+  #footer .small-btns button { font-size: 11px; padding: 4px 10px; font-weight: 400; }
+
+  /* ---------- help ---------- */
+  #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    max-width: 540px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  #help .help-body { text-align: left; font-size: 13.5px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 10px; }
+  #help .help-body ul { margin: 0 0 10px 18px; }
+  #help .help-body li { margin-bottom: 6px; }
+  #help .help-body b { color: var(--gold); }
+
+  /* ---------- mobile ---------- */
+  @media (max-width: 720px) {
+    #topbar { padding: 6px 10px; font-size: 12px; gap: 3px 12px; justify-content: center; }
+    #topbar .title { display: none; }
+    #table { padding: 6px 8px 0; }
+    #table-rules { font-size: 9px; margin: 2px 6px 6px; }
+    #seats { gap: 6px; }
+    .seat { padding: 6px 8px; gap: 8px; min-height: 74px; flex-wrap: wrap; }
+    .seat .who { min-width: 92px; }
+    .seat .seat-name { font-size: 12px; }
+    .seat .totals { font-size: 11px; }
+    .seat .tableau { min-height: 46px; }
+    .seat .stat-badges { min-width: 0; }
+    .card { width: 30px; height: 43px; margin-left: -9px; }
+    .card .pip { font-size: 14px; }
+    .card.act-card .pip { font-size: 7.5px; }
+    .badge { font-size: 10px; padding: 1px 6px; }
+    #controls { padding: 4px 8px 8px; }
+    #message { font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+    button { padding: 9px 12px; }
+    #footer { font-size: 10px; gap: 6px; padding: 2px 10px 8px; }
+    #footer .small-btns button { font-size: 10px; padding: 3px 7px; }
+    #log { max-height: 18px; font-size: 10px; }
+  }
+  @media (max-width: 720px) and (max-height: 800px) {
+    #table-rules { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · FLIP 7</span>
+  <span class="stat">Round <b id="stat-round">—</b></span>
+  <span class="stat">Deck <b id="stat-deck">94</b></span>
+  <span class="stat">Target <b>200</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="table">
+  <div id="table-rules">VAULT-TEC APPROVED &nbsp;•&nbsp; SEVEN UNIQUE NUMBERS FLIPS THE TABLE (+15) &nbsp;•&nbsp; A DUPLICATE BUSTS YOU &nbsp;•&nbsp; FIRST TO 200 WALKS OUT RICH</div>
+  <div id="seats"></div>
+</div>
+
+<div id="controls">
+  <div id="message"></div>
+  <div id="action-controls" style="display:none">
+    <div class="btn-row">
+      <button id="btn-hit" class="primary">Hit<kbd>H</kbd></button>
+      <button id="btn-stay">Stay<kbd>S</kbd></button>
+    </div>
+  </div>
+  <div id="target-controls" style="display:none">
+    <div class="btn-row" id="target-buttons"></div>
+  </div>
+  <div id="round-controls">
+    <div class="btn-row">
+      <button id="btn-deal" class="primary">Deal round 1</button>
+    </div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play Flip 7</h2>
+    <div class="help-body">
+      <p><b>The goal:</b> bank points by flipping number cards — but every flip
+      can wipe you out. First to <b>200 points</b> wins.</p>
+      <p><b>Your turn:</b> <b>Hit</b> to flip the next card onto your row, or
+      <b>Stay</b> to bank what's showing and sit out the rest of the round.</p>
+      <p><b>Busting:</b> flip a number you already have showing and you bust —
+      zero points this round. The deck has one 1, two 2s, three 3s… up to
+      twelve 12s (and a single 0), so big numbers pile up fast.</p>
+      <p><b>Flip 7:</b> get <b>seven different numbers</b> showing and the round
+      ends instantly — you score them all plus a <b>15-point bonus</b>, and
+      everyone else banks whatever they had showing.</p>
+      <p><b>The other cards:</b></p>
+      <ul>
+        <li><b>+2 … +10</b> — bonus points added to your round score. They can't
+        bust you and don't count toward your seven.</li>
+        <li><b>×2</b> — doubles your number-card points (bonuses added after).</li>
+        <li><b>FREEZE</b> — hand it to any player still in the round (yourself
+        included). They bank their points immediately and are done.</li>
+        <li><b>FLIP 3</b> — hand it to any player still in. They must flip three
+        cards in a row, come what may.</li>
+        <li><b>2ND CHANCE</b> — keep it; the next duplicate you flip is discarded
+        instead of busting you. Only one per player — a spare goes to someone
+        who needs it.</li>
+      </ul>
+      <p><b>Scoring:</b> when the round ends, everyone still standing banks
+      their showing cards. Busted players bank nothing. Cass and Boone play the
+      odds — the deck runs thin and they know it. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   Flip 7 — push your luck. Deck: one 0, one 1, two 2s … twelve
+   12s (79 number cards), +2/+4/+6/+8/+10 and ×2 modifiers, and
+   three each of Freeze, Flip Three, Second Chance (94 total).
+   Duplicates bust. Seven unique numbers ends the round (+15).
+   First to 200 wins.
+   ============================================================ */
+
+const TARGET = 200;
+const STORE_KEY = 'flip7-sim-v1';
+
+const players = [
+  { name: 'Cass',  ai: true },
+  { name: 'You',   ai: false },
+  { name: 'Boone', ai: true },
+].map(p => ({ ...p, total: 0, cards: [], mods: [], x2: false, second: false, status: 'waiting' }));
+const me = players[1];
+
+let deck = [];
+let roundNo = 0;
+let roundActive = false;
+let gameOver = false;
+let activePlayer = null;
+let playerResolver = null;
+let targetResolver = null;
+let stats = { wins: 0, games: 0 };
+
+/* ---------- deck ---------- */
+
+function buildDeck() {
+  const d = [{ t: 'num', v: 0 }];
+  for (let v = 1; v <= 12; v++) for (let i = 0; i < v; i++) d.push({ t: 'num', v });
+  for (const m of [2, 4, 6, 8, 10]) d.push({ t: 'mod', v: m });
+  d.push({ t: 'x2' });
+  for (let i = 0; i < 3; i++) d.push({ t: 'freeze' }, { t: 'flip3' }, { t: 'second' });
+  return d;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function draw() {
+  if (!deck.length) {
+    deck = shuffle(buildDeck());
+    log('Deck ran dry — shuffled a fresh one.');
+  }
+  return deck.pop();
+}
+
+/* ---------- helpers ---------- */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+
+function roundPoints(p) {
+  if (p.status === 'busted') return 0;
+  let pts = p.cards.reduce((a, b) => a + b, 0);
+  if (p.x2) pts *= 2;
+  pts += p.mods.reduce((a, b) => a + b, 0);
+  if (p.status === 'flip7') pts += 15;
+  return pts;
+}
+
+function activePlayers() { return players.filter(p => p.status === 'active'); }
+function roundEnded() {
+  return players.every(p => p.status !== 'active') || players.some(p => p.status === 'flip7');
+}
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ }
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh start */ }
+}
+
+/* ---------- rendering ---------- */
+
+function cardEl(card) {
+  const el = document.createElement('div');
+  let label, cls = '', wearKey;
+  if (card.t === 'num') { label = card.v; wearKey = card.v * 7 + 3; }
+  else if (card.t === 'mod') { label = '+' + card.v; cls = ' mod-card'; wearKey = card.v * 5 + 1; }
+  else if (card.t === 'x2') { label = '×2'; cls = ' mod-card'; wearKey = 17; }
+  else if (card.t === 'freeze') { label = 'FRZ'; cls = ' act-card'; wearKey = 23; }
+  else if (card.t === 'flip3') { label = 'FLIP\n×3'; cls = ' act-card'; wearKey = 29; }
+  else { label = '2ND'; cls = ' act-card'; wearKey = 31; }
+  el.className = 'card' + cls + ' wear-' + (wearKey % 6);
+  const pip = document.createElement('span');
+  pip.className = 'pip';
+  pip.textContent = label;
+  el.appendChild(pip);
+  return el;
+}
+
+function buildSeats() {
+  $('seats').innerHTML = '';
+  players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'seat' + (p === me ? ' you' : '');
+    el.id = 'seat-' + i;
+    el.innerHTML =
+      '<div class="who">' +
+        '<div class="seat-name">' + p.name + ' <span class="tag">' + (p.ai ? 'CPU' : 'Player') + '</span></div>' +
+        '<div class="totals" id="totals-' + i + '"></div>' +
+      '</div>' +
+      '<div class="tableau" id="tableau-' + i + '"></div>' +
+      '<div class="stat-badges" id="badges-' + i + '"></div>';
+    $('seats').appendChild(el);
+  });
+}
+
+function render() {
+  players.forEach((p, i) => {
+    $('seat-' + i).classList.toggle('active-turn', p === activePlayer && roundActive);
+    $('totals-' + i).innerHTML =
+      'Banked <b>' + p.total + '</b><br>Round <b>' + roundPoints(p) + '</b>';
+    const tab = $('tableau-' + i);
+    tab.innerHTML = '';
+    for (const v of p.cards) tab.appendChild(cardEl({ t: 'num', v }));
+    for (const m of p.mods) tab.appendChild(cardEl({ t: 'mod', v: m }));
+    if (p.x2) tab.appendChild(cardEl({ t: 'x2' }));
+    if (p.second) {
+      const c = document.createElement('span');
+      c.className = 'held-chip';
+      c.textContent = '2ND CHANCE';
+      tab.appendChild(c);
+    }
+    const b = $('badges-' + i);
+    b.innerHTML =
+      p.status === 'busted' ? '<span class="badge lose">BUSTED</span>' :
+      p.status === 'stayed' ? '<span class="badge push">STAYED</span>' :
+      p.status === 'frozen' ? '<span class="badge push">FROZEN</span>' :
+      p.status === 'flip7'  ? '<span class="badge bj">FLIP 7 +15</span>' : '';
+  });
+  $('stat-round').textContent = roundNo || '—';
+  $('stat-deck').textContent = deck.length;
+  $('stat-wins').textContent = stats.wins;
+}
+
+/* ---------- card resolution ---------- */
+
+async function flipCard(p) {
+  const card = draw();
+  if (card.t === 'num') {
+    if (p.cards.includes(card.v)) {
+      if (p.second) {
+        p.second = false;
+        log(p.name + ' flips a duplicate ' + card.v + ' — 2nd Chance eats it.');
+      } else {
+        p.status = 'busted';
+        log(p.name + ' flips a duplicate ' + card.v + ' and BUSTS.');
+      }
+    } else {
+      p.cards.push(card.v);
+      if (p.cards.length === 7) {
+        p.status = 'flip7';
+        log('★ ' + p.name + ' FLIPS 7! Round over, +15 bonus.');
+      }
+    }
+  } else if (card.t === 'mod') {
+    p.mods.push(card.v);
+    log(p.name + ' flips +' + card.v + '.');
+  } else if (card.t === 'x2') {
+    p.x2 = true;
+    log(p.name + ' flips ×2 — number points doubled.');
+  } else if (card.t === 'second') {
+    if (!p.second) {
+      p.second = true;
+      log(p.name + ' pockets a 2nd Chance.');
+    } else {
+      const takers = activePlayers().filter(q => q !== p && !q.second);
+      if (takers.length) {
+        const taker = p.ai
+          ? takers[Math.floor(Math.random() * takers.length)]
+          : await chooseTarget(p, '2nd Chance', takers);
+        taker.second = true;
+        log(p.name + ' already has one — the spare 2nd Chance goes to ' + taker.name + '.');
+      } else {
+        log(p.name + ' flips a spare 2nd Chance — nobody can take it. Discarded.');
+      }
+    }
+  } else if (card.t === 'freeze') {
+    const targets = activePlayers();
+    const target = targets.length ? await chooseTarget(p, 'Freeze', targets) : null;
+    if (target) {
+      target.status = 'frozen';
+      log(p.name + ' flips FREEZE → ' + target.name + ' banks ' + roundPoints(target) + ' and is out.');
+    }
+  } else if (card.t === 'flip3') {
+    const targets = activePlayers();
+    const target = targets.length ? await chooseTarget(p, 'Flip Three', targets) : null;
+    if (target) {
+      log(p.name + ' flips FLIP THREE → ' + target.name + ' must take three.');
+      render();
+      for (let i = 0; i < 3; i++) {
+        if (target.status !== 'active' || roundEnded()) break;
+        await sleep(500);
+        await flipCard(target);
+        render();
+      }
+    }
+  }
+  render();
+}
+
+/* who gets an action card? CPUs play mean; you get buttons */
+async function chooseTarget(chooser, label, candidates) {
+  if (candidates.length === 1) return candidates[0];
+  if (chooser.ai) {
+    const others = candidates.filter(c => c !== chooser);
+    if (label === 'Freeze') {
+      // freeze whoever has the most to lose... for them, the least banked for us
+      return others.length
+        ? others.reduce((a, b) => (a.total + roundPoints(a) > b.total + roundPoints(b) ? a : b))
+        : chooser;
+    }
+    // Flip Three: dump it on whoever has the most cards showing (most bust risk)
+    return others.length
+      ? others.reduce((a, b) => (a.cards.length > b.cards.length ? a : b))
+      : chooser;
+  }
+  return new Promise(resolve => {
+    $('action-controls').style.display = 'none';
+    const box = $('target-buttons');
+    box.innerHTML = '';
+    setMessage('Give ' + label + ' to…');
+    for (const c of candidates) {
+      const b = document.createElement('button');
+      b.textContent = c === chooser ? 'Yourself' : c.name;
+      b.addEventListener('click', () => {
+        $('target-controls').style.display = 'none';
+        targetResolver = null;
+        resolve(c);
+      });
+      box.appendChild(b);
+    }
+    $('target-controls').style.display = '';
+    targetResolver = resolve;
+  });
+}
+
+/* ---------- turns ---------- */
+
+function aiWantsHit(p) {
+  const dupes = deck.filter(c => c.t === 'num' && p.cards.includes(c.v)).length;
+  const risk = deck.length ? dupes / deck.length : 0.2;
+  const pts = roundPoints(p);
+  if (p.total + pts >= TARGET) return false;      // lock the win
+  if (p.cards.length >= 6) return risk < 0.42;    // one away from Flip 7: chase it
+  if (pts >= 24) return false;
+  if (pts >= 18 && risk > 0.18) return false;
+  return risk < 0.24 + (p.second ? 0.15 : 0);
+}
+
+function getPlayerAction() {
+  return new Promise(resolve => {
+    $('action-controls').style.display = '';
+    setMessage('Your move — hit or stay?');
+    playerResolver = a => {
+      $('action-controls').style.display = 'none';
+      playerResolver = null;
+      resolve(a);
+    };
+  });
+}
+
+async function takeTurn(p) {
+  activePlayer = p;
+  render();
+  if (p.ai) {
+    await sleep(650);
+    if (p.status !== 'active') return; // frozen mid-wait
+    if (aiWantsHit(p)) {
+      await flipCard(p);
+    } else {
+      p.status = 'stayed';
+      log(p.name + ' stays on ' + roundPoints(p) + '.');
+    }
+  } else {
+    const a = await getPlayerAction();
+    if (p.status !== 'active') return;
+    if (a === 'H') await flipCard(p);
+    else { p.status = 'stayed'; log('You stay on ' + roundPoints(p) + '.'); }
+  }
+  activePlayer = null;
+  render();
+}
+
+/* ---------- round & game flow ---------- */
+
+async function playRound() {
+  if (roundActive || gameOver) return;
+  roundActive = true;
+  roundNo++;
+  $('round-controls').style.display = 'none';
+  for (const p of players) {
+    p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.status = 'active';
+  }
+  log('— Round ' + roundNo + ' —');
+  setMessage('Opening flips…');
+  render();
+
+  // the dealer flips everyone one card to start
+  for (const p of players) {
+    if (p.status !== 'active') continue;
+    await sleep(350);
+    await flipCard(p);
+    if (roundEnded()) break;
+  }
+
+  const start = (roundNo - 1) % players.length; // rotate who goes first
+  while (!roundEnded()) {
+    for (let i = 0; i < players.length; i++) {
+      const p = players[(start + i) % players.length];
+      if (p.status !== 'active') continue;
+      await takeTurn(p);
+      if (roundEnded()) break;
+    }
+  }
+
+  // settle
+  activePlayer = null;
+  const lines = [];
+  for (const p of players) {
+    const pts = roundPoints(p);
+    p.total += pts;
+    lines.push(p.name + ' +' + pts);
+  }
+  log('Round ' + roundNo + ': ' + lines.join(' · '));
+  render();
+
+  const leader = players.reduce((a, b) => (a.total > b.total ? a : b));
+  if (leader.total >= TARGET) {
+    gameOver = true;
+    stats.games++;
+    const winners = players.filter(p => p.total === leader.total);
+    const won = winners.includes(me);
+    if (won) stats.wins++;
+    save();
+    setMessage(won
+      ? '★ You hit ' + me.total + ' and walk out rich. The wasteland provides.'
+      : leader.name + ' hits ' + leader.total + ' first. The house always wins — and tonight the house is ' + leader.name + '.');
+    $('btn-deal').textContent = 'Play again';
+    $('round-controls').style.display = '';
+    roundActive = false;
+    render();
+    return;
+  }
+
+  setMessage('Round over. ' + leader.name + ' leads with ' + leader.total + '.');
+  $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
+  $('round-controls').style.display = '';
+  roundActive = false;
+  render();
+}
+
+function newGame() {
+  for (const p of players) {
+    p.total = 0; p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.status = 'waiting';
+  }
+  deck = shuffle(buildDeck());
+  roundNo = 0;
+  gameOver = false;
+  roundActive = false;
+  $('btn-deal').textContent = 'Deal round 1';
+  $('round-controls').style.display = '';
+  $('action-controls').style.display = 'none';
+  $('target-controls').style.display = 'none';
+  setMessage('Fresh deck, fresh caps. Deal when ready.');
+  render();
+}
+
+/* ---------- wiring ---------- */
+
+$('btn-hit').addEventListener('click', () => playerResolver && playerResolver('H'));
+$('btn-stay').addEventListener('click', () => playerResolver && playerResolver('S'));
+$('btn-deal').addEventListener('click', () => { if (gameOver) newGame(); else playRound(); });
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+document.addEventListener('keydown', e => {
+  if (!playerResolver) return;
+  const k = e.key.toLowerCase();
+  if (k === 'h') playerResolver('H');
+  else if (k === 's') playerResolver('S');
+});
+
+/* ---------- boot ---------- */
+
+load();
+buildSeats();
+newGame();
+log('Welcome to the Flip 7 table. Seven unique numbers wins the round — one duplicate loses it.');
+</script>
+</body>
+</html>
