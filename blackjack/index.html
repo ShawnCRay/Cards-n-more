@@ -1441,7 +1441,7 @@ async function playSeat(seat, up) {
 
       let action;
       if (seat.ai || seat.finishAsCpu) {
-        await sleep(650);
+        await sleep(950);
         action = basicStrategy(hand, up, can);
       } else if (seat.remote) {
         setMessage('Waiting for ' + seat.name + '…');
@@ -1455,7 +1455,7 @@ async function playSeat(seat, up) {
         hand.cards.push(draw());
         if (!seat.ai) setMessage('');
         render();
-        if (seat.ai) await sleep(250);
+        if (seat.ai) await sleep(650);
       } else if (action === 'S') {
         hand.done = true;
       } else if (action === 'D') {
