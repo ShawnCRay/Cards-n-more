@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Glory to Rome</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+    --m-rubble: #8a7a5a;
+    --m-wood: #5a7a35;
+    --m-brick: #9c3a26;
+    --m-concrete: #6b7570;
+    --m-stone: #3f6875;
+    --m-marble: #a89a7a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, #net-bar { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 14px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 12px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  #board { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 6px 10px 0; font-size: 12px; }
+
+  /* pool & sites */
+  #common {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    border-radius: 12px 8px 11px 7px / 8px 12px 7px 11px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  #common .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 3px; }
+  #pool-cards { display: flex; flex-wrap: wrap; gap: 3px; min-height: 22px; max-width: 100%; }
+  #sites-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .sitechip {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.4);
+  }
+
+  .mchip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 1px 6px;
+    border-radius: 3px 5px 3px 5px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.45);
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
+    white-space: nowrap;
+  }
+  .mat-rubble   { background: var(--m-rubble); }
+  .mat-wood     { background: var(--m-wood); }
+  .mat-brick    { background: var(--m-brick); }
+  .mat-concrete { background: var(--m-concrete); }
+  .mat-stone    { background: var(--m-stone); }
+  .mat-marble   { background: var(--m-marble); color: #241d12; text-shadow: none; }
+  .mat-jack     { background: #241d12; color: var(--gold); border-color: var(--gold); }
+
+  /* player tableaus */
+  #tableaus { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .tab {
+    flex: 1 1 30%;
+    min-width: 240px;
+    background:
+      radial-gradient(circle 60px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 8px 8px;
+  }
+  .tab:nth-child(odd)  { border-radius: 14px 9px 13px 8px / 10px 14px 8px 13px; }
+  .tab:nth-child(even) { border-radius: 8px 13px 9px 14px / 13px 8px 14px 10px; }
+  .tab.you { border-color: rgba(217,151,63,0.55); }
+  .tab.active-turn { border-color: var(--gold); box-shadow: 0 0 12px rgba(217,151,63,0.4), inset 0 0 20px rgba(0,0,0,0.4); }
+  .tab .hdr { display: flex; justify-content: space-between; align-items: baseline; }
+  .tab .hdr .nm { font-weight: 700; font-size: 13px; }
+  .tab .hdr .nm .tag { font-size: 9px; font-weight: 400; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .tab .hdr .inf { color: var(--gold); font-weight: 700; }
+  .tab .row { margin-top: 4px; }
+  .tab .row .lbl { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.5; }
+  .tab .chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; min-height: 14px; }
+  .bldg {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px dashed rgba(230,217,184,0.5);
+    background: rgba(0,0,0,0.3);
+  }
+  .bldg.done { border-style: solid; border-color: var(--gold); color: var(--gold); }
+  .bldg .prog { opacity: 0.8; }
+
+  /* hand */
+  #hand-area { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px; text-align: center; }
+  #hand-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 3px; }
+  #hand { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 22px; }
+
+  /* controls */
+  #controls { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px 8px; text-align: center; }
+  #net-bar { min-height: 16px; margin-bottom: 3px; font-size: 12px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 10px; font-weight: 400; padding: 3px 9px; margin-left: 8px; }
+  #message { min-height: 18px; margin-bottom: 5px; font-size: 13px; color: var(--gold); font-weight: 600; }
+  #opts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-height: 180px; overflow-y: auto; }
+  #opts button { font-size: 11px; padding: 8px 12px; text-transform: none; letter-spacing: 0.4px; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+
+  /* footer & overlays */
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 10px 8px;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 180px; max-height: 32px; overflow: hidden; }
+  #log div { line-height: 1.55; }
+  #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 600px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 9px; }
+  #help .help-body ul { margin: 0 0 9px 18px; }
+  #help .help-body li { margin-bottom: 4px; }
+  #help .help-body b { color: var(--gold); }
+
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
+    #topbar .title { display: none; }
+    #board { padding: 4px 6px 0; }
+    #tableaus { gap: 6px; }
+    .tab { min-width: 100%; }
+    #message { font-size: 12px; }
+    #opts { max-height: 150px; }
+    #opts button { font-size: 10px; padding: 7px 9px; }
+    #footer { font-size: 10px; }
+    #footer .small-btns button { font-size: 9px; padding: 3px 7px; }
+    #log { max-height: 17px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · GLORY TO ROME</span>
+  <span class="stat">Deck <b id="stat-deck">—</b></span>
+  <span class="stat">Jacks <b id="stat-jacks">—</b></span>
+  <span class="stat">Leader <b id="stat-leader">—</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="board">
+  <div id="common">
+    <div style="flex:1 1 55%">
+      <div class="lbl">Pool</div>
+      <div id="pool-cards"></div>
+    </div>
+    <div>
+      <div class="lbl">Building sites</div>
+      <div id="sites-row"></div>
+    </div>
+  </div>
+  <div id="tableaus"></div>
+</div>
+
+<div id="hand-area">
+  <div id="hand-label">YOUR HAND</div>
+  <div id="hand"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="message"></div>
+  <div id="opts"></div>
+  <div id="round-controls">
+    <div class="btn-row"><button id="btn-deal" class="primary">Start game</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play</h2>
+    <div class="help-body">
+      <p>A fan adaptation of the classic city-building card game, with a curated
+      set of buildings. Every card is three things at once: a <b>role</b> to
+      lead, a <b>material</b> to build with, and a <b>building</b> to construct.</p>
+      <p><b>On your turn</b> either <b>THINK</b> (refill your hand, or draw one,
+      or take a Jack — a wild role card) or <b>LEAD</b> a role by playing a card.
+      Everyone else may <b>follow</b> (play a matching card) or think. Everyone
+      who joined performs the action — once themselves, plus once per matching
+      <b>client</b>. Played cards land in the shared <b>pool</b>.</p>
+      <p><b>The six roles</b> (each tied to a material):</p>
+      <ul>
+        <li><b>LABORER</b> (rubble) — take a pool card into your stockpile.</li>
+        <li><b>PATRON</b> (marble) — hire a pool card as a client. Clients act
+        with you every time their role runs.</li>
+        <li><b>CRAFTSMAN</b> (wood) — start a building on a matching site, or add
+        a matching material from your hand.</li>
+        <li><b>ARCHITECT</b> (concrete) — like the craftsman, but builds with
+        materials from your stockpile.</li>
+        <li><b>LEGIONARY</b> (brick) — demand a material: take it from the pool
+        and from every rival's hand.</li>
+        <li><b>MERCHANT</b> (stone) — bank a stockpile material in your vault
+        (points at game end).</li>
+      </ul>
+      <p><b>Buildings</b> complete when they hold materials equal to their
+      value (rubble/wood 1, brick/concrete 2, stone/marble 3). Completing one
+      grants that much <b>influence</b> — which raises your clientele and vault
+      limits — and switches on the building's power. The powers are where the
+      game lives: read them on your hand cards.</p>
+      <p><b>Game end:</b> the deck runs dry or the building sites do; highest
+      influence + vault wins. Complete the <b>FORUM</b> with a client of every
+      role and you win on the spot.</p>
+      <p>Simplifications vs the tabletop original: a trimmed building list, no
+      out-of-town sites, no petitions, and no merchant majority bonus. Cass and
+      Boone play a solid economic game — watch your hand when they lead the
+      legion. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   Glory to Rome — fan adaptation with a curated building set.
+   Core loop: think or lead; follow; role actions for performers
+   and their clients; played cards feed the shared pool.
+   Every decision is a labeled option list, which one generic
+   chooser presents to the local player, remote guests, or the
+   CPU scorer alike.
+   ============================================================ */
+
+const STORE_KEY = 'rome-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 60000;
+
+const MATS = ['rubble', 'wood', 'brick', 'concrete', 'stone', 'marble'];
+const MAT_VAL = { rubble: 1, wood: 1, brick: 2, concrete: 2, stone: 3, marble: 3 };
+const MAT_ROLE = { rubble: 'LABORER', wood: 'CRAFTSMAN', brick: 'LEGIONARY', concrete: 'ARCHITECT', stone: 'MERCHANT', marble: 'PATRON' };
+const ROLES = ['LABORER', 'CRAFTSMAN', 'LEGIONARY', 'ARCHITECT', 'MERCHANT', 'PATRON'];
+
+/* the curated building set: name, material, short power text, effect key */
+const BUILDINGS = [
+  { n: 'Insula',      m: 'rubble',   fx: 'insula',      t: '+2 clientele limit' },
+  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Patron: also hire blind off the deck' },
+  { n: 'Road',        m: 'rubble',   fx: 'road',        t: 'Stone buildings accept any material' },
+  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Laborer: also stockpile a card from hand' },
+  { n: 'Market',      m: 'wood',     fx: 'market',      t: '+2 vault limit' },
+  { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Legionary demands' },
+  { n: 'Circus',      m: 'wood',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
+  { n: 'Shrine',      m: 'brick',    fx: 'shrine',      t: '+2 hand limit' },
+  { n: 'Atrium',      m: 'brick',    fx: 'atrium',      t: 'Merchant: may vault blind off the deck' },
+  { n: 'Bath',        m: 'brick',    fx: 'bath',        t: 'New clients act immediately when hired' },
+  { n: 'Academy',     m: 'brick',    fx: 'academy',     t: 'Draw a card after each Craftsman action' },
+  { n: 'Aqueduct',    m: 'concrete', fx: 'aqueduct',    t: 'Patron: may hire from hand; clientele limit ×2' },
+  { n: 'Wall',        m: 'concrete', fx: 'wall',        t: 'Legionary-proof; +1 pt per 2 stockpile' },
+  { n: 'Tower',       m: 'concrete', fx: 'tower',       t: 'Rubble may be built into anything' },
+  { n: 'Villa',       m: 'stone',    fx: 'villa',       t: 'Architect completes it with one material' },
+  { n: 'Scriptorium', m: 'stone',    fx: 'scriptorium', t: 'One marble completes any building' },
+  { n: 'Statue',      m: 'marble',   fx: 'statue',      t: '+3 pts; builds on any site' },
+  { n: 'Temple',      m: 'marble',   fx: 'temple',      t: '+4 hand limit' },
+  { n: 'Forum',       m: 'marble',   fx: 'forum',       t: 'WIN with a client of every role' },
+];
+const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
+
+function openSeatNames() { return ['Cass', 'Boone']; }
+const players = [
+  { name: 'You',  cpuName: null,   ai: false, remote: null },
+  { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null },
+  { name: 'Boone', cpuName: 'Boone', ai: true, remote: null },
+].map(p => ({ ...p, hand: [], stockpile: [], vault: [], clients: [], buildings: [], influence: 2 }));
+const me = players[0];
+let mySeatIdx = 0;
+
+let deck = [], jacks = 6, pool = [], sites = {};
+let leaderIdx = 0;
+let gameActive = false, gameOver = false, endFlag = false;
+let lastWinnerIdx = -1;
+let stats = { wins: 0, games: 0 };
+let localChooser = null; // {resolve, options}
+
+/* ---------- setup helpers ---------- */
+
+function buildDeck() {
+  const d = [];
+  for (const b of BUILDINGS) for (let i = 0; i < 3; i++) d.push({ n: b.n, m: b.m });
+  return d;
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function draw1() {
+  if (!deck.length) { endFlag = true; return null; }
+  const c = deck.pop();
+  if (!deck.length) endFlag = true;
+  return c;
+}
+
+/* ---------- state queries ---------- */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function has(p, fx) { return p.buildings.some(b => b.done && BLD[b.n].fx === fx); }
+function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple') ? 4 : 0); }
+function clientLimit(p) { return (p.influence + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
+function vaultLimit(p) { return p.influence + (has(p, 'market') ? 2 : 0); }
+function roleOf(card) { return card.jack ? 'JACK' : MAT_ROLE[card.m]; }
+function score(p) {
+  let s = p.influence + p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0);
+  for (const b of p.buildings) if (b.done && BLD[b.n].fx === 'statue') s += 3;
+  if (has(p, 'wall')) s += Math.floor(p.stockpile.length / 2);
+  return s;
+}
+function cardLabel(c) {
+  return c.jack ? 'Jack (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
+}
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh */ }
+}
+
+/* ---------- rendering ---------- */
+
+function chip(c) {
+  const el = document.createElement('span');
+  el.className = 'mchip mat-' + (c.jack ? 'jack' : c.m);
+  el.textContent = c.jack ? 'JACK' : c.n;
+  el.title = c.jack ? 'Wild role' : (BLD[c.n].t + ' — ' + c.m + ' / ' + MAT_ROLE[c.m]);
+  return el;
+}
+
+function buildView(forIdx) {
+  return {
+    phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
+    deck: deck.length, jacks,
+    leader: leaderIdx,
+    winner: lastWinnerIdx,
+    msg: $('message').textContent,
+    pool: pool,
+    sites: sites,
+    players: players.map((p, i) => ({
+      name: p.name, ai: p.ai,
+      influence: p.influence,
+      handN: p.hand.length,
+      vaultN: p.vault.length,
+      stockpile: p.stockpile,
+      clients: p.clients,
+      buildings: p.buildings,
+      score: gameOver ? score(p) : null,
+      hand: i === forIdx ? p.hand : null,
+    })),
+  };
+}
+
+function renderView(view) {
+  // common area
+  const pc = $('pool-cards');
+  pc.innerHTML = '';
+  view.pool.forEach(c => pc.appendChild(chip(c)));
+  const sr = $('sites-row');
+  sr.innerHTML = '';
+  for (const m of MATS) {
+    const el = document.createElement('span');
+    el.className = 'sitechip mat-' + m;
+    el.textContent = m + ' ×' + view.sites[m];
+    sr.appendChild(el);
+  }
+  $('stat-deck').textContent = view.deck;
+  $('stat-jacks').textContent = view.jacks;
+  $('stat-leader').textContent = view.players[view.leader].name;
+  $('stat-wins').textContent = stats.wins;
+
+  // tableaus
+  const tb = $('tableaus');
+  tb.innerHTML = '';
+  view.players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (i === mySeatIdx ? ' you' : '') + (view.phase === 'game' && view.leader === i ? ' active-turn' : '');
+    const tag = p.ai ? 'CPU' : i === mySeatIdx ? 'You' : i === 0 ? 'Host' : 'Guest';
+    const scoreTxt = p.score != null ? ' · ' + p.score + ' pts' : '';
+    el.innerHTML =
+      '<div class="hdr"><span class="nm">' + escapeHtml(p.name) + ' <span class="tag">' + tag + '</span></span>' +
+      '<span class="inf">◆ ' + p.influence + scoreTxt + '</span></div>' +
+      '<div class="row"><span class="lbl">hand ' + p.handN + ' · vault ' + p.vaultN + '</span></div>';
+    const rows = [
+      ['buildings', p.buildings.map(b =>
+        '<span class="bldg' + (b.done ? ' done' : '') + '">' + escapeHtml(b.n) +
+        ' <span class="prog">' + (b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site]) + '</span></span>').join('')],
+      ['clients', p.clients.map(c => '<span class="mchip mat-' + c.m + '">' + MAT_ROLE[c.m].slice(0, 4) + '</span>').join('')],
+      ['stockpile', p.stockpile.map(c => '<span class="mchip mat-' + c.m + '">' + c.m.slice(0, 4) + '</span>').join('')],
+    ];
+    for (const [lbl, html] of rows) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<span class="lbl">' + lbl + '</span><div class="chips">' + html + '</div>';
+      el.appendChild(row);
+    }
+    tb.appendChild(el);
+  });
+
+  // hand
+  const hb = $('hand');
+  hb.innerHTML = '';
+  const meV = view.players[mySeatIdx];
+  (meV.hand || []).forEach(c => hb.appendChild(chip(c)));
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!net.guestPrompt) {
+      if (view.phase === 'gameover' && view.winner === mySeatIdx) {
+        setMessage('★ You take the city. The wasteland provides.');
+      } else setMessage(view.msg);
+    }
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === mySeatIdx) stats.wins++;
+      save();
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
+}
+
+function rerender() {
+  if (net.mode === 'guest') { if (net.lastView) renderView(net.lastView); }
+  else renderView(buildView(mySeatIdx));
+}
+function render() {
+  rerender();
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+    }
+  }
+}
+
+/* ---------- the one chooser ---------- */
+/* options: [{id, label, score}] — score is for the CPU only */
+
+function showOptions(options, label) {
+  setMessage(label);
+  const box = $('opts');
+  box.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.addEventListener('click', () => {
+      box.innerHTML = '';
+      if (net.mode === 'guest') {
+        net.guestPrompt = false;
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id });
+        setMessage('');
+      } else if (localChooser) {
+        const r = localChooser.resolve;
+        localChooser = null;
+        r(o.id);
+      }
+    });
+    box.appendChild(b);
+  }
+}
+
+async function choose(p, label, options) {
+  if (!options.length) return null;
+  if (options.length === 1 && options[0].forced) return options[0].id;
+  if (p.ai) {
+    await sleep(350);
+    let best = options[0], bs = -1e9;
+    for (const o of options) {
+      const s = (o.score || 0) + Math.random() * 2;
+      if (s > bs) { bs = s; best = o; }
+    }
+    return best.id;
+  }
+  if (p.remote) {
+    render();
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = id => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        net.picker = null;
+        resolve(options.some(o => o.id === id) ? id : options[0].id);
+      };
+      const timer = setTimeout(() => { log(p.name + ' took too long — first option it is.'); finish(options[0].id); }, TURN_TIMEOUT_MS);
+      net.picker = finish;
+      if (p.remote.open) p.remote.send({ type: 'choose', label, options: options.map(o => ({ id: o.id, label: o.label })) });
+      else finish(options[0].id);
+    });
+  }
+  render();
+  return new Promise(resolve => {
+    localChooser = { resolve };
+    showOptions(options, label);
+  });
+}
+
+/* ---------- game actions ---------- */
+
+function addToHand(p, c) { if (c) p.hand.push(c); }
+
+async function doThink(p) {
+  const opts = [];
+  const limit = handLimit(p);
+  const refillN = Math.max(1, limit - p.hand.length);
+  opts.push({ id: 'refill', label: 'Draw ' + refillN + ' (to hand limit ' + limit + ')', score: refillN * 3 });
+  if (jacks > 0) opts.push({ id: 'jack', label: 'Take a Jack', score: 4 });
+  const pick = await choose(p, p.name + ' thinks…', opts);
+  if (pick === 'jack') {
+    jacks--;
+    p.hand.push({ jack: true });
+    log(p.name + ' thinks and takes a Jack.');
+  } else {
+    let n = 0;
+    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; } }
+    log(p.name + ' thinks and draws ' + n + '.');
+  }
+}
+
+function leadableOptions(p) {
+  const opts = [];
+  const byRole = {};
+  p.hand.forEach((c, i) => { if (!c.jack) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+  const hasJack = p.hand.some(c => c.jack);
+  for (const role of ROLES) {
+    if (byRole[role]) {
+      opts.push({ id: 'lead:' + role + ':' + byRole[role][0], label: 'Lead ' + role + ' (' + p.hand[byRole[role][0]].n + ')', role });
+    } else if (hasJack) {
+      opts.push({ id: 'leadjack:' + role, label: 'Lead ' + role + ' (Jack)', role });
+    } else if (has(p, 'circus')) {
+      // two same-role cards act as a jack for any role
+      const pair = Object.values(byRole).find(a => a.length >= 2);
+      if (pair) opts.push({ id: 'leadpair:' + role + ':' + pair[0] + ':' + pair[1], label: 'Lead ' + role + ' (Circus pair)', role });
+    }
+  }
+  return opts;
+}
+
+function playLead(p, id) {
+  const parts = id.split(':');
+  if (parts[0] === 'lead') {
+    const c = p.hand.splice(Number(parts[2]), 1)[0];
+    p.played = [c];
+  } else if (parts[0] === 'leadjack') {
+    const ji = p.hand.findIndex(c => c.jack);
+    p.played = [p.hand.splice(ji, 1)[0]];
+  } else {
+    const i1 = Number(parts[2]), i2 = Number(parts[3]);
+    const cards = [p.hand[i1], p.hand[i2]];
+    p.hand = p.hand.filter((c, i) => i !== i1 && i !== i2);
+    p.played = cards;
+  }
+  return parts[1];
+}
+
+/* ----- role performances ----- */
+
+function poolOptions(role, p) {
+  // options to take/hire pool cards, scored for the CPU by usefulness
+  return pool.map((c, i) => {
+    let s = MAT_VAL[c.m];
+    if (role === 'PATRON') s = MAT_VAL[c.m] + (p.clients.some(q => q.m === c.m) ? -1 : 2);
+    if (role === 'LABORER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
+    return { id: 'pool:' + i, label: c.n + ' [' + c.m + ']', score: s };
+  });
+}
+
+async function actLABORER(p) {
+  const opts = poolOptions('LABORER', p);
+  if (has(p, 'dock')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'From hand: ' + cardLabel(c), score: 1 }); });
+  opts.push({ id: 'skip', label: 'Skip', score: -5 });
+  const pick = await choose(p, p.name + ': Laborer — take a material', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  const c = (src === 'pool' ? pool : p.hand).splice(Number(idx), 1)[0];
+  if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
+}
+
+async function actPATRON(p) {
+  if (p.clients.length >= clientLimit(p)) return;
+  const opts = poolOptions('PATRON', p);
+  if (has(p, 'aqueduct')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'Hire from hand: ' + cardLabel(c), score: 2 }); });
+  if (has(p, 'bar') && deck.length) opts.push({ id: 'deck:0', label: 'Hire blind off the deck', score: 1.5 });
+  opts.push({ id: 'skip', label: 'Skip', score: -4 });
+  const pick = await choose(p, p.name + ': Patron — hire a client', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  let c = null;
+  if (src === 'pool') c = pool.splice(Number(idx), 1)[0];
+  else if (src === 'hand') c = p.hand.splice(Number(idx), 1)[0];
+  else c = draw1();
+  if (!c) return;
+  p.clients.push(c);
+  log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' client (' + c.n + ').');
+  checkForum(p);
+  if (has(p, 'bath')) {
+    log('Bath: the new client gets right to work.');
+    await performRole(p, MAT_ROLE[c.m], true);
+  }
+}
+
+function buildTargets(p, mat, viaArchitect) {
+  // incomplete buildings this material could go into
+  const t = [];
+  p.buildings.forEach((b, i) => {
+    if (b.done) return;
+    const siteM = b.site;
+    const ok = mat === siteM ||
+      (mat === 'rubble' && has(p, 'tower')) ||
+      (siteM === 'stone' && has(p, 'road')) ||
+      (mat === 'marble' && has(p, 'scriptorium'));
+    if (ok) t.push(i);
+  });
+  return t;
+}
+
+function addMaterial(p, bIdx, card, viaArchitect) {
+  const b = p.buildings[bIdx];
+  b.mats.push(card);
+  let complete = b.mats.length >= MAT_VAL[b.site];
+  if (card.m === 'marble' && has(p, 'scriptorium')) complete = true;
+  if (viaArchitect && BLD[b.n].fx === 'villa') complete = true;
+  log(p.name + ' adds ' + card.m + ' to ' + b.n + (complete ? ' — COMPLETE!' : ' (' + b.mats.length + '/' + MAT_VAL[b.site] + ').'));
+  if (complete) {
+    b.done = true;
+    p.influence += MAT_VAL[b.site];
+    log(p.name + ' gains ' + MAT_VAL[b.site] + ' influence (' + p.influence + ').');
+    checkForum(p);
+  }
+}
+
+async function actBUILDER(p, viaArchitect) {
+  const opts = [];
+  // start a new building
+  p.hand.forEach((c, i) => {
+    if (c.jack || p.buildings.some(b => b.n === c.n)) return;
+    const anySite = BLD[c.n].fx === 'statue';
+    const siteMats = anySite ? MATS.filter(m => sites[m] > 0) : (sites[c.m] > 0 ? [c.m] : []);
+    for (const sm of siteMats) {
+      opts.push({ id: 'start:' + i + ':' + sm, label: 'Start ' + c.n + ' on ' + sm + ' site — ' + BLD[c.n].t,
+                  score: 4 + MAT_VAL[sm] + (BLD[c.n].fx === 'forum' ? 2 : 0) });
+    }
+  });
+  // add material
+  const srcArr = viaArchitect ? p.stockpile : p.hand;
+  srcArr.forEach((c, i) => {
+    if (c.jack) return;
+    for (const bIdx of buildTargets(p, c.m, viaArchitect)) {
+      const b = p.buildings[bIdx];
+      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaArchitect && BLD[b.n].fx === 'villa') || (c.m === 'marble' && has(p, 'scriptorium'));
+      opts.push({ id: 'add:' + i + ':' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''),
+                  score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
+    }
+  });
+  opts.push({ id: 'skip', label: 'Skip', score: -4 });
+  const roleName = viaArchitect ? 'Architect' : 'Craftsman';
+  const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
+  if (!pick || pick === 'skip') return;
+  const parts = pick.split(':');
+  if (parts[0] === 'start') {
+    const c = p.hand.splice(Number(parts[1]), 1)[0];
+    const sm = parts[2];
+    sites[sm]--;
+    p.buildings.push({ n: c.n, site: sm, mats: [], done: false });
+    log(p.name + ' starts ' + c.n + ' on a ' + sm + ' site.');
+    if (Object.values(sites).every(n => n <= 0)) endFlag = true;
+  } else {
+    const c = srcArr.splice(Number(parts[1]), 1)[0];
+    addMaterial(p, Number(parts[2]), c, viaArchitect);
+  }
+  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); log('Academy: ' + p.name + ' draws a card.'); } }
+}
+
+async function actLEGIONARY(p) {
+  const mats = [...new Set(p.hand.filter(c => !c.jack).map(c => c.m))];
+  const opts = mats.map(m => {
+    const inPool = pool.some(c => c.m === m);
+    const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.jack && c.m === m)).length;
+    return { id: 'demand:' + m, label: 'Demand ' + m + (inPool ? ' (pool has one)' : ''), score: (inPool ? 2 : 0) + victims * 2 + MAT_VAL[m] };
+  });
+  opts.push({ id: 'skip', label: 'Skip', score: -3 });
+  const pick = await choose(p, p.name + ': Legionary — demand a material', opts);
+  if (!pick || pick === 'skip') return;
+  const m = pick.split(':')[1];
+  log(p.name + ' demands ' + m + '!');
+  const pi = pool.findIndex(c => c.m === m);
+  if (pi >= 0) { p.stockpile.push(pool.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the pool.'); }
+  for (const q of players) {
+    if (q === p) continue;
+    if (has(q, 'palisade') || has(q, 'wall')) { log(q.name + "'s defenses hold."); continue; }
+    const hi = q.hand.findIndex(c => !c.jack && c.m === m);
+    if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); }
+  }
+}
+
+async function actMERCHANT(p) {
+  if (p.vault.length >= vaultLimit(p)) return;
+  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Vault ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
+  if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Vault blind off the deck', score: 4 });
+  opts.push({ id: 'skip', label: 'Skip', score: -3 });
+  const pick = await choose(p, p.name + ': Merchant — bank a material', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  const c = src === 'stock' ? p.stockpile.splice(Number(idx), 1)[0] : draw1();
+  if (c) { p.vault.push(c); log(p.name + ' banks a material in the vault.'); }
+}
+
+async function performRole(p, role, isBathEcho) {
+  if (gameOver) return;
+  if (role === 'LABORER') await actLABORER(p);
+  else if (role === 'PATRON') await actPATRON(p);
+  else if (role === 'CRAFTSMAN') await actBUILDER(p, false);
+  else if (role === 'ARCHITECT') await actBUILDER(p, true);
+  else if (role === 'LEGIONARY') await actLEGIONARY(p);
+  else if (role === 'MERCHANT') await actMERCHANT(p);
+  render();
+}
+
+function checkForum(p) {
+  if (!has(p, 'forum')) return;
+  const roles = new Set(p.clients.map(c => MAT_ROLE[c.m]));
+  if (ROLES.every(r => roles.has(r))) {
+    gameOver = true;
+    lastWinnerIdx = players.indexOf(p);
+    log('★ FORUM! ' + p.name + ' has a client of every role and WINS.');
+  }
+}
+
+/* ---------- turn & game flow (host/solo) ---------- */
+
+async function playTurn() {
+  const leader = players[leaderIdx];
+  setMessage(leader.name + ' leads…');
+  render();
+
+  const opts = [{ id: 'think', label: 'THINK (draw cards)', score: leader.hand.length <= 2 ? 8 : 2 }];
+  for (const o of leadableOptions(leader)) {
+    let s = 3;
+    if (o.role === 'CRAFTSMAN' || o.role === 'ARCHITECT') s = 5;
+    if (o.role === 'PATRON' && pool.length) s = 4.5;
+    if (o.role === 'MERCHANT' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
+    if (o.role === 'LABORER' && pool.length) s = 3.5;
+    opts.push({ ...o, score: s });
+  }
+  const pick = await choose(leader, leader.name + ' — think or lead?', opts);
+
+  if (pick === 'think') {
+    await doThink(leader);
+    render();
+    return;
+  }
+
+  const role = playLead(leader, pick);
+  log(leader.name + ' leads ' + role + '.');
+  const participants = [leader];
+  render();
+
+  for (let k = 1; k < players.length; k++) {
+    const q = players[(leaderIdx + k) % players.length];
+    const followIdx = q.hand.findIndex(c => !c.jack && MAT_ROLE[c.m] === role);
+    const jackIdx = q.hand.findIndex(c => c.jack);
+    const fopts = [];
+    if (followIdx >= 0) fopts.push({ id: 'follow:' + followIdx, label: 'Follow ' + role + ' (' + q.hand[followIdx].n + ')', score: 5 });
+    else if (jackIdx >= 0) fopts.push({ id: 'follow:' + jackIdx, label: 'Follow ' + role + ' (Jack)', score: 4 });
+    fopts.push({ id: 'think', label: 'THINK instead', score: q.hand.length <= 2 ? 6 : 3 });
+    const fp = await choose(q, q.name + ' — follow ' + role + ' or think?', fopts);
+    if (fp && fp.startsWith('follow')) {
+      const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
+      q.played = [c];
+      participants.push(q);
+      log(q.name + ' follows.');
+    } else {
+      await doThink(q);
+    }
+    render();
+  }
+
+  // perform: each participant acts once + once per matching client
+  for (const p of participants) {
+    if (gameOver) break;
+    await performRole(p, role, false);
+    for (const c of [...p.clients]) {
+      if (gameOver) break;
+      if (MAT_ROLE[c.m] === role) {
+        log(p.name + "'s " + role + ' client acts.');
+        await performRole(p, role, false);
+      }
+    }
+  }
+
+  // played cards wash into the pool
+  for (const p of participants) {
+    for (const c of (p.played || [])) { if (!c.jack) pool.push(c); else jacks++; }
+    p.played = null;
+  }
+  render();
+}
+
+async function playMatch() {
+  if (gameActive || net.mode === 'guest') return;
+  gameActive = true;
+  gameOver = false;
+  endFlag = false;
+  lastWinnerIdx = -1;
+  $('round-controls').style.display = 'none';
+
+  deck = shuffle(buildDeck());
+  jacks = 6;
+  pool = [];
+  sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  for (const p of players) {
+    p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = [];
+    p.influence = 2; p.played = null;
+    for (let i = 0; i < 4; i++) addToHand(p, draw1());
+  }
+  for (const p of players) pool.push(draw1()); // prime the pool
+  leaderIdx = 0;
+  log('— New game: the city rises again. —');
+  render();
+
+  let safety = 400;
+  while (!gameOver && safety-- > 0) {
+    await playTurn();
+    if (gameOver) break;
+    if (endFlag) {
+      // deck or sites exhausted: score it
+      let best = -1, bi = 0;
+      players.forEach((p, i) => { const s = score(p); if (s > best) { best = s; bi = i; } });
+      lastWinnerIdx = bi;
+      gameOver = true;
+      break;
+    }
+    leaderIdx = (leaderIdx + 1) % players.length;
+    await sleep(150);
+  }
+
+  gameActive = false;
+  gameOver = true;
+  stats.games++;
+  if (lastWinnerIdx === mySeatIdx) stats.wins++;
+  save();
+  const winP = players[lastWinnerIdx];
+  const scores = players.map(p => p.name + ' ' + score(p)).join(' · ');
+  log('Final: ' + scores);
+  setMessage(winP === me && net.mode === 'solo'
+    ? '★ Your city stands above the rest (' + score(me) + ' pts). The wasteland provides.'
+    : '★ ' + winP.name + ' takes the city — ' + scores);
+  $('btn-deal').textContent = 'Play again';
+  $('round-controls').style.display = '';
+  render();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  gameOver = false;
+  gameActive = false;
+  for (const p of players) { p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = []; p.influence = 2; }
+  deck = []; pool = []; jacks = 6;
+  sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  $('btn-deal').textContent = 'Start game';
+  $('round-controls').style.display = '';
+  $('opts').innerHTML = '';
+  setMessage('Lead roles, hire clients, raise buildings. Start when ready.');
+  render();
+}
+
+/* ============================================================
+   Multiplayer — shared peer layer, private hands, and the
+   generic chooser carried over the wire.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', picker: null, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
+              heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Glory to Rome', text: 'Join my table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+/* ----- host side ----- */
+
+function hostRoom() {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('romesim-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Two friends can take over Cass and Boone.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      try { prior.remote.close(); } catch (e) { /* stale */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      render();
+      return;
+    }
+    const seat = players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    seat.ai = false;
+    seat.remote = conn;
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    conn._seat = seat;
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + ' takes over ' + seat.cpuName + "'s seat.");
+    updateNetBar();
+    render();
+  } else if (d.type === 'pick') {
+    if (net.picker) net.picker(d.id);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  seat.remote = null;
+  seat.ai = true;
+  log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
+  seat.name = seat.cpuName;
+  if (net.picker) net.picker(null);
+  updateNetBar();
+  render();
+}
+
+/* ----- guest side ----- */
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  net.guestPrompt = false;
+  $('opts').innerHTML = '';
+  setMessage('Lost the host — refresh the page to play solo.');
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host to stay on the game, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
+  const conn = net.peer.connect('romesim-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to stay on the game, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'choose') {
+    net.guestPrompt = true;
+    showOptions(d.options, d.label);
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (host + 2 friends).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table and send the invite link — two friends can take over Cass and Boone. Your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom();
+    render();
+  } else {
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(overlayCode, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+
+/* ---------- wiring ---------- */
+
+$('btn-deal').addEventListener('click', playMatch);
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+/* ---------- boot ---------- */
+
+load();
+newGame();
+log('Welcome to the forum. Lead well, build fast, and mind the legions.');
+
+if (window.Peer) {
+  $('btn-invite').style.display = '';
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+</script>
+</body>
+</html>
