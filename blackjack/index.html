@@ -112,13 +112,26 @@
     background: rgba(0,0,0,0.22);
     border: 1px solid rgba(212,175,55,0.25);
     border-radius: 14px;
-    padding: 10px 14px 12px;
-    min-width: 240px;
-    max-width: 340px;
+    padding: 10px 12px 12px;
+    min-width: 150px;
+    max-width: 300px;
+    flex: 1 1 0;
     text-align: center;
     transition: box-shadow 0.25s, border-color 0.25s;
   }
-  .seat.you { border-color: rgba(212,175,55,0.6); }
+  .seat.you { border-color: rgba(212,175,55,0.6); flex-grow: 1.4; }
+  .seat.open {
+    border-style: dashed;
+    opacity: 0.45;
+    flex: 0 1 110px;
+    min-width: 90px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .seat.open .seat-name { font-weight: 400; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9; }
+  .seat.open .seat-bank, .seat.open .seat-status, .seat.open .hand { display: none; }
   .seat .seat-name { font-weight: 700; margin-bottom: 2px; }
   .seat .seat-name .tag {
     font-size: 10px;
@@ -410,10 +423,12 @@
     #bet-note { min-height: 0; }
     .seat-status { min-height: 0; margin-bottom: 2px; }
 
-    /* CPU seats compact side by side; your seat full width, closest to the buttons */
+    /* occupied seats compact side by side; your seat full width, closest to the
+       buttons; empty seats hide entirely so the table stays on one screen */
     #seats { gap: 6px; align-items: stretch; margin-top: 4px; }
-    .seat { min-width: 0; max-width: none; flex: 1 1 0; padding: 6px 6px 8px; }
+    .seat { min-width: 0; max-width: none; flex: 1 1 28%; padding: 6px 6px 8px; }
     .seat.you { flex: 1 1 100%; order: 3; }
+    .seat.open { display: none; }
     .seat .seat-name { font-size: 12px; }
     .seat .seat-bank { font-size: 11px; margin-bottom: 2px; }
     .hand { margin: 1px 2px; padding: 2px 3px 4px; }
@@ -711,12 +726,22 @@ function makeHand(bet) {
            doubled: false, isSplit: false, fromAces: false, result: null };
 }
 
+function openSeat() {
+  return { name: 'Open', cpuName: null, open: true, ai: false, remote: null,
+           netBet: 0, finishAsCpu: false, bank: 0, hands: [], insurance: 0 };
+}
+
+// six-seat table: two CPUs and three open seats around you — friends fill the
+// open seats first (fresh bankroll), then take over the CPUs
 const seats = [
-  { name: 'Ruby', cpuName: 'Ruby', ai: true,  remote: null, netBet: 0, finishAsCpu: false, bank: CPU_START_BANK, hands: [], insurance: 0 },
-  { name: 'You',  cpuName: null,   ai: false, remote: null, netBet: 0, finishAsCpu: false, bank: START_BANK,     hands: [], insurance: 0 },
-  { name: 'Max',  cpuName: 'Max',  ai: true,  remote: null, netBet: 0, finishAsCpu: false, bank: CPU_START_BANK, hands: [], insurance: 0 },
+  { name: 'Ruby', cpuName: 'Ruby', open: false, ai: true,  remote: null, netBet: 0, finishAsCpu: false, bank: CPU_START_BANK, hands: [], insurance: 0 },
+  openSeat(),
+  { name: 'You',  cpuName: null,   open: false, ai: false, remote: null, netBet: 0, finishAsCpu: false, bank: START_BANK,     hands: [], insurance: 0 },
+  openSeat(),
+  { name: 'Max',  cpuName: 'Max',  open: false, ai: true,  remote: null, netBet: 0, finishAsCpu: false, bank: CPU_START_BANK, hands: [], insurance: 0 },
+  openSeat(),
 ];
-const player = seats[1];
+const player = seats[2];
 
 let dealer = { cards: [], holeHidden: true };
 let stats = { hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0, net: 0 };
@@ -779,7 +804,7 @@ function buildSeats() {
   $('seats').innerHTML = '';
   seats.forEach((seat, i) => {
     const el = document.createElement('div');
-    el.className = 'seat' + (seat.ai ? '' : ' you');
+    el.className = 'seat' + (seat === player ? ' you' : '') + (seat.open ? ' open' : '');
     el.id = 'seat-' + i;
     el.innerHTML =
       '<div class="seat-name">' + seat.name +
@@ -803,9 +828,11 @@ function buildView() {
     active: activeRef
       ? { seat: seats.indexOf(activeRef.seat), hand: activeRef.seat.hands.indexOf(activeRef.hand) }
       : null,
+    hostSeat: seats.indexOf(player),
     seats: seats.map(s => ({
       name: s.name,
       ai: s.ai,
+      open: s.open,
       bank: s.bank,
       pendingBet: s === player ? pendingBet : (s.remote ? s.netBet : 0),
       hands: s.hands.map(h => ({
@@ -836,9 +863,19 @@ function renderView(view) {
   // seats
   view.seats.forEach((seat, i) => {
     $('seat-' + i).classList.toggle('you', i === mySeatIdx);
-    const tag = seat.ai ? 'CPU' : i === mySeatIdx ? 'You' : i === 1 ? 'Host' : 'Guest';
+    $('seat-' + i).classList.toggle('open', !!seat.open);
+    if (seat.open) {
+      $('seat-' + i).querySelector('.seat-name').innerHTML = 'Open seat';
+      $('seat-bank-' + i).textContent = '';
+      $('seat-status-' + i).innerHTML = '';
+      $('seat-hands-' + i).innerHTML = '';
+      return;
+    }
+    const tag = seat.ai ? 'CPU'
+      : i === mySeatIdx ? (seat.name === 'You' ? '' : 'You')
+      : i === view.hostSeat ? 'Host' : 'Guest';
     $('seat-' + i).querySelector('.seat-name').innerHTML =
-      escapeHtml(seat.name) + ' <span class="tag">' + tag + '</span>';
+      escapeHtml(seat.name) + (tag ? ' <span class="tag">' + tag + '</span>' : '');
     $('seat-bank-' + i).textContent = fmt(seat.bank);
     // show at a glance which humans have a bet in (or queued for the next deal)
     const status = $('seat-status-' + i);
@@ -913,7 +950,7 @@ function renderView(view) {
 
   // nudge the host before they deal past friends who haven't bet yet
   if (net.mode === 'host' && view.phase === 'betting') {
-    const unbet = view.seats.filter((s, i) => !s.ai && i !== mySeatIdx && s.pendingBet === 0).map(s => s.name);
+    const unbet = view.seats.filter((s, i) => !s.ai && !s.open && i !== mySeatIdx && s.pendingBet === 0).map(s => s.name);
     $('bet-note').textContent = unbet.length
       ? 'Waiting on ' + unbet.join(' and ') + ' to bet — dealing now would skip them.'
       : '';
@@ -1002,6 +1039,11 @@ async function startRound() {
   for (const seat of seats) {
     if (seat === player) continue;
     seat.finishAsCpu = false;
+    if (seat.open) {
+      seat.hands = [];
+      seat.netBet = 0;
+      continue;
+    }
     if (seat.remote) {
       const b = Math.min(seat.netBet, seat.bank, MAX_BET); // pre-bets clamp to what they still have
       if (b >= MIN_BET) {
@@ -1311,7 +1353,7 @@ const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
               hostName: 'Host', resolvers: {}, lastView: null, lastSeen: 0, hostGone: false };
 const HEARTBEAT_MS = 3000;
 const STALE_MS = 35000; // generous: backgrounded phone tabs throttle timers hard
-let mySeatIdx = 1;
+let mySeatIdx = seats.indexOf(player);
 let guestPrevBetting = null;
 
 function myBank() {
@@ -1453,7 +1495,7 @@ function createHostPeer() {
       $('btn-invite').style.display = 'none';
       updateNetBar();
       setMessage('Table ready — send friends the invite link.');
-      log('Table ' + net.roomCode + ' opened. Friends who join take over the CPU seats.');
+      log('Table ' + net.roomCode + ' opened. Up to 5 friends can join.');
       keepAwake();
       render();
     } else {
@@ -1506,16 +1548,22 @@ function handleGuestMsg(conn, d) {
       render();
       return;
     }
-    const seat = seats.find(s => s.ai && !s.remote);
+    // open seats fill first (fresh bankroll); then friends take over the CPUs
+    const seat = seats.find(s => s.open && !s.remote) || seats.find(s => s.ai && !s.remote);
     if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    const tookOpenSeat = seat.open;
+    seat.open = false;
     seat.ai = false;
     seat.remote = conn;
-    seat.finishAsCpu = roundActive; // joined mid-round: the book finishes this hand
+    seat.finishAsCpu = roundActive && seat.hands.length > 0; // mid-round CPU takeover: the book finishes this hand
     seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
     seat.netBet = 0;
+    if (tookOpenSeat) seat.bank = CPU_START_BANK;
     conn._seat = seat;
     conn.send({ type: 'welcome', seat: seats.indexOf(seat), hostName: player.name, code: net.roomCode });
-    log(seat.name + ' sits down at ' + seat.cpuName + "'s seat and inherits the chips.");
+    log(seat.name + (tookOpenSeat
+      ? ' sits down at an open seat with ' + fmt(seat.bank) + '.'
+      : " sits down at " + seat.cpuName + "'s seat and inherits the chips."));
     updateNetBar();
     render();
   } else if (d.type === 'bet') {
@@ -1546,11 +1594,18 @@ function dropGuest(conn) {
   const seat = conn._seat;
   if (!seat || seat.remote !== conn) return;
   const idx = seats.indexOf(seat);
-  log(seat.name + ' left the table — ' + seat.cpuName + ' (CPU) takes the seat back.');
   seat.remote = null;
-  seat.ai = true;
-  seat.name = seat.cpuName;
   seat.netBet = 0;
+  if (seat.cpuName) {
+    log(seat.name + ' left the table — ' + seat.cpuName + ' (CPU) takes the seat back.');
+    seat.ai = true;
+    seat.name = seat.cpuName;
+  } else {
+    log(seat.name + ' left the table — the seat is open again.');
+    seat.open = true;
+    seat.name = 'Open';
+    seat.bank = 0;
+  }
   const r = net.resolvers[idx];
   if (r) r('S'); // don't stall the round on a vanished player
   updateNetBar();
@@ -1692,7 +1747,7 @@ function handleHostMsg(d) {
   } else if (d.type === 'turn') {
     showGuestActions(d.can, d.hand, d.up);
   } else if (d.type === 'full') {
-    $('overlay-status').textContent = 'That table is full (host + 2 friends).';
+    $('overlay-status').textContent = 'That table is full (host + 5 friends).';
   }
 }
 
@@ -1769,7 +1824,7 @@ function showOverlay(mode, code) {
   overlayCode = code || null;
   $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
   $('overlay-sub').textContent = mode === 'host'
-    ? 'Open a table, then send the invite link. Friends take over the CPU seats — your browser runs the game.'
+    ? 'Open a table, then send the invite link. Up to five friends can grab the open seats (or take over the CPUs) — your browser runs the game.'
     : 'Joining table ' + code + '. Pick a name and pull up a chair.';
   $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
   $('overlay-status').textContent = '';
