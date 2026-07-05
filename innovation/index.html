@@ -526,7 +526,7 @@ function fxText(card) {
     if (op === 'spread') return 'spread your ' + a.toUpperCase() + ' camp ' + b;
     if (op === 'tuck') return 'shore up ' + a + ' from your pack';
     if (op === 'demandHand') return 'they hand over a pack tech';
-    if (op === 'demandStash') return 'they surrender ' + a + ' stash cap' + (a > 1 ? 's' : '');
+    if (op === 'demandStash') return 'they surrender ' + a + ' stashed tech' + (a > 1 ? 's' : '') + ' (highest era)';
     if (op === 'demandTop') return 'they surrender a top tech (era ≤ ' + a + ')';
     return op;
   });
@@ -550,6 +550,8 @@ let gameActive = false, gameOver = false, endByWealth = false;
 let lastWinnerIdx = -1;
 let stats = { wins: 0, games: 0 };
 let localChooser = null;
+let epoch = 0;    // match generation — newGame bumps it so stale playMatch loops bail
+let pickSeq = 0;  // remote prompt sequence — binds each guest pick to its prompt
 
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -582,7 +584,7 @@ function shuffle(arr) {
 /* ---------- rules helpers ---------- */
 
 function topEra(p) {
-  let m = 1;
+  let m = 0; // 0 = empty camp — no landmark eligibility (draw paths clamp to era 1)
   for (const c of COLORS) { const s = p.camps[c]; if (s && s.length) m = Math.max(m, s[s.length - 1].e); }
   return m;
 }
@@ -667,8 +669,14 @@ async function runOp(actor, op) {
   }
   else if (kind === 'spread') {
     // choose any of your domains with 2+ techs; a=suggested color, b=direction
+    // score by icons revealed vs the current spread (left shows 1 per covered tech, right/up show 2)
+    const reveal = dir => dir === 'left' ? 1 : (dir === 'right' || dir === 'up') ? 2 : 0;
     const opts = COLORS.filter(col => (actor.camps[col] || []).length >= 2 && actor.splay[col] !== b)
-      .map(col => ({ id: 's:' + col, label: 'Spread ' + col.toUpperCase() + ' camp ' + b, score: (actor.camps[col] || []).length + (col === a ? 1 : 0) }));
+      .map(col => {
+        const delta = (reveal(b) - reveal(actor.splay[col])) * (actor.camps[col].length - 1);
+        return { id: 's:' + col, label: 'Spread ' + col.toUpperCase() + ' camp ' + b,
+                 score: delta > 0 ? delta * 2 + (col === a ? 1 : 0) : -2 };
+      });
     if (!opts.length) return;
     opts.push({ id: 'skip', label: 'Leave the camp as is', score: 0 });
     const pick = await choose(actor, actor.name + ' — spread which camp ' + b + '?', opts);
@@ -737,6 +745,8 @@ async function activate(p, card) {
         log(q.name + ' matches the ' + ICON_NAME[card.k] + ' and stares the demand down.');
       }
     }
+    // non-demand riders (e.g. Gun Runners' scavenge) run once for the activator
+    for (const op of card.fx) { if (gameOver) break; if (!op[0].startsWith('demand')) await runOp(p, op); }
   } else {
     // rivals with >= icons share first, in order after the activator
     for (let k = 1; k < players.length; k++) {
@@ -761,7 +771,7 @@ async function activate(p, card) {
 
 async function takeAction(p, n) {
   const opts = [];
-  const era = topEra(p);
+  const era = Math.max(1, topEra(p));
   opts.push({ id: 'scav', label: 'SCAVENGE — draw an era-' + era + ' tech', score: p.pack.length <= 1 ? 6 : 2.5 });
   p.pack.forEach((c, i) => {
     opts.push({ id: 'build:' + i, label: 'BUILD ' + c.n + ' [' + c.c.toUpperCase() + ' ' + c.e + '] — ' + fxText(c),
@@ -810,6 +820,7 @@ async function takeAction(p, n) {
 
 async function playMatch() {
   if (gameActive || net.mode === 'guest') return;
+  const myEpoch = epoch;
   gameActive = true;
   gameOver = false;
   endByWealth = false;
@@ -832,6 +843,7 @@ async function playMatch() {
   for (const p of players) {
     const opts = p.pack.map((c, i) => ({ id: String(i), label: 'Start with ' + c.n + ' — ' + fxText(c), score: c.i.length }));
     const pick = await choose(p, p.name + ' — found your camp', opts);
+    if (myEpoch !== epoch) return;
     meld(p, Number(pick || 0));
   }
   turnIdx = 0;
@@ -843,11 +855,15 @@ async function playMatch() {
     setMessage(p.name + "'s turn…");
     render();
     await takeAction(p, 1);
+    if (myEpoch !== epoch) return;
     if (!gameOver) await takeAction(p, 2);
+    if (myEpoch !== epoch) return;
     if (gameOver) break;
     turnIdx = (turnIdx + 1) % players.length;
     await sleep(550);
+    if (myEpoch !== epoch) return;
   }
+  if (myEpoch !== epoch) return;
 
   gameActive = false;
   gameOver = true;
@@ -876,6 +892,17 @@ async function playMatch() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++;   // any in-flight playMatch loop bails at its next epoch check
+  if (net.picker) {
+    const pk = net.picker;
+    if (pk.conn && pk.conn.open) pk.conn.send({ type: 'unchoose', seq: pk.seq });
+    pk.finish(null);
+  }
+  if (localChooser) {
+    const r = localChooser.resolve;
+    localChooser = null;
+    r(null);
+  }
   gameOver = false;
   gameActive = false;
   for (const p of players) { p.pack = []; p.stash = []; p.camps = {}; p.splay = {}; p.landmarks = []; }
@@ -1042,7 +1069,7 @@ function showOptions(options, label) {
       box.innerHTML = '';
       if (net.mode === 'guest') {
         net.guestPrompt = false;
-        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id });
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id, seq: net.chooseSeq });
         setMessage('');
       } else if (localChooser) {
         const r = localChooser.resolve;
@@ -1056,8 +1083,10 @@ function showOptions(options, label) {
 
 async function choose(p, label, options) {
   if (!options.length) return null;
+  const myEpoch = epoch;
   if (p.ai) {
     await sleep(600);
+    if (myEpoch !== epoch) return null;
     let best = options[0], bs = -1e9;
     for (const o of options) {
       const s = (o.score || 0) + Math.random() * 1.5;
@@ -1069,16 +1098,23 @@ async function choose(p, label, options) {
     render();
     return new Promise(resolve => {
       let settled = false;
+      const conn = p.remote;
+      const seq = ++pickSeq;
       const finish = id => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         net.picker = null;
-        resolve(options.some(o => o.id === id) ? id : options[0].id);
+        resolve(id == null ? null : options.some(o => o.id === id) ? id : options[0].id);
       };
-      const timer = setTimeout(() => { log(p.name + ' took too long — first option it is.'); finish(options[0].id); }, TURN_TIMEOUT_MS);
-      net.picker = finish;
-      if (p.remote.open) p.remote.send({ type: 'choose', label, options: options.map(o => ({ id: o.id, label: o.label })) });
+      const msg = { type: 'choose', seq, label, options: options.map(o => ({ id: o.id, label: o.label })) };
+      const timer = setTimeout(() => {
+        log(p.name + ' took too long — first option it is.');
+        if (conn.open) conn.send({ type: 'unchoose', seq });
+        finish(options[0].id);
+      }, TURN_TIMEOUT_MS);
+      net.picker = { conn, seq, finish, msg };
+      if (conn.open) conn.send(msg);
       else finish(options[0].id);
     });
   }
@@ -1096,7 +1132,7 @@ async function choose(p, label, options) {
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
               hostName: 'Host', picker: null, lastView: null,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
-              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false, chooseSeq: 0,
               heartbeatsStarted: false, gameCounted: false, wakeLock: null };
 
 function makePeer(id) {
@@ -1253,10 +1289,12 @@ function handleGuestMsg(conn, d) {
   if (d.type === 'hello') {
     const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
     if (prior) {
-      try { prior.remote.close(); } catch (e) { /* stale */ }
+      const old = prior.remote;
+      try { old.close(); } catch (e) { /* stale */ }
       prior.remote = conn;
       conn._seat = prior;
       conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      if (net.picker && net.picker.conn === old) { net.picker.conn = conn; conn.send(net.picker.msg); }
       render();
       return;
     }
@@ -1271,7 +1309,7 @@ function handleGuestMsg(conn, d) {
     updateNetBar();
     render();
   } else if (d.type === 'pick') {
-    if (net.picker) net.picker(d.id);
+    if (net.picker && net.picker.conn === conn && net.picker.seq === d.seq) net.picker.finish(d.id);
   }
 }
 
@@ -1282,7 +1320,7 @@ function dropGuest(conn) {
   seat.ai = true;
   log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the camp back.');
   seat.name = seat.cpuName;
-  if (net.picker) net.picker(null);
+  if (net.picker && net.picker.conn === conn) net.picker.finish(null);
   updateNetBar();
   render();
 }
@@ -1373,7 +1411,14 @@ function handleHostMsg(d) {
     renderView(d.view);
   } else if (d.type === 'choose') {
     net.guestPrompt = true;
+    net.chooseSeq = d.seq;
     showOptions(d.options, d.label);
+  } else if (d.type === 'unchoose') {
+    if (d.seq === net.chooseSeq && net.guestPrompt) {
+      net.guestPrompt = false;
+      $('opts').innerHTML = '';
+      setMessage('');
+    }
   } else if (d.type === 'log') {
     const el = document.createElement('div');
     el.textContent = d.msg;
