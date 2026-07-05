@@ -905,7 +905,17 @@ function needsShuffle() {
 }
 
 function draw() {
-  if (shoe.length === 0) shuffleShoe(); // safety net mid-round
+  if (shoe.length === 0) {
+    // safety net mid-round: rebuild, but pull the cards already on the table
+    // out of the fresh shoe so no physical card exists twice
+    shuffleShoe();
+    const inPlay = [...dealer.cards];
+    for (const s of seats) for (const h of s.hands) inPlay.push(...h.cards);
+    for (const c of inPlay) {
+      const i = shoe.findIndex(sc => sc.rank === c.rank && sc.suit === c.suit);
+      if (i !== -1) shoe.splice(i, 1);
+    }
+  }
   return shoe.pop();
 }
 
@@ -956,8 +966,8 @@ function basicStrategy(hand, upCard, can) {
   if (soft) {
     if (total >= 19) return 'S';
     if (total === 18) {
-      if (up >= 2 && up <= 6) return (two && can.double) ? 'D' : 'S';
-      if (up === 7 || up === 8) return 'S';
+      if (up >= 3 && up <= 6) return (two && can.double) ? 'D' : 'S';
+      if (up === 2 || up === 7 || up === 8) return 'S';
       return 'H';
     }
     if (total === 17) return (up >= 3 && up <= 6 && two && can.double) ? 'D' : 'H';
@@ -1237,6 +1247,17 @@ function render() {
 function enterBettingPhase() {
   roundActive = false;
   activeRef = null;
+  // reopen seats whose guest left mid-round (the book finished their hand)
+  for (const s of seats) {
+    if (s.reopenAfterRound) {
+      s.reopenAfterRound = false;
+      s.finishAsCpu = false;
+      s.open = true;
+      s.name = 'Open';
+      s.bank = 0;
+      s.hands = [];
+    }
+  }
   $('deck-select').disabled = false;
   $('bet-controls').style.display = '';
   $('action-controls').style.display = 'none';
@@ -1726,6 +1747,7 @@ function updateNetBar() {
 /* ----- host side ----- */
 
 function hostRoom() {
+  if (net.mode === 'host') return; // second click while the broker is still answering
   setMessage('Setting up your table…');
   net.mode = 'host';
   net.roomCode = randCode();
@@ -1863,6 +1885,11 @@ function dropGuest(conn) {
     log(seat.name + ' left the table — ' + seat.cpuName + ' (CPU) takes the seat back.');
     seat.ai = true;
     seat.name = seat.cpuName;
+  } else if (roundActive && seat.hands.length) {
+    // mid-hand departure: the book finishes the hand, then the seat reopens
+    log(seat.name + ' left the table — the book finishes the hand.');
+    seat.finishAsCpu = true;
+    seat.reopenAfterRound = true;
   } else {
     log(seat.name + ' left the table — the seat is open again.');
     seat.open = true;
@@ -2014,6 +2041,20 @@ function handleHostMsg(d) {
   }
 }
 
+function guestTallyResults(me) {
+  // mirror the host's settle bookkeeping from the view's hand results
+  for (const hand of me.hands) {
+    if (!hand.result) continue;
+    stats.hands++;
+    if (hand.surrendered) { stats.net -= hand.bet / 2; stats.losses++; }
+    else if (hand.result.cls === 'bj') { stats.net += hand.bet * 1.5; stats.wins++; stats.blackjacks++; }
+    else if (hand.result.cls === 'win') { stats.net += hand.bet; stats.wins++; }
+    else if (hand.result.cls === 'push') { stats.pushes++; }
+    else { stats.net -= hand.bet; stats.losses++; }
+  }
+  save();
+}
+
 function syncGuestControls(view) {
   const betting = view.phase === 'betting';
   const me = view.seats[mySeatIdx];
@@ -2023,6 +2064,11 @@ function syncGuestControls(view) {
 
   if (betting !== guestPrevBetting) {
     if (betting && !betIn) pendingBet = 0; // fresh betting round, nothing queued
+    // round just settled (only count rounds we actually watched from the start)
+    if (guestPrevBetting === false && betting) {
+      guestTallyResults(me);
+      renderView(view); // topbar was drawn before the tally — refresh the stats
+    }
     guestPrevBetting = betting;
   }
 
@@ -2195,6 +2241,7 @@ $('btn-reset-stats').addEventListener('click', () => {
   log('Session stats reset.');
 });
 $('btn-reset-bank').addEventListener('click', () => {
+  if (roundActive) return;
   if (!confirm('Reset your bankroll to ' + fmt(START_BANK) + '?')) return;
   player.bank = START_BANK;
   pendingBet = 0;
