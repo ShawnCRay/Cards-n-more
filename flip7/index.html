@@ -619,12 +619,14 @@ const me = players[2];
 let mySeatIdx = players.indexOf(me);
 
 let deck = [];
+let discards = [];
 let roundNo = 0;
 let roundActive = false;
 let gameOver = false;
 let lastWinnerIdx = -1;
 let activePlayer = null;
 let playerResolver = null;
+let epoch = 0;
 let stats = { wins: 0, games: 0 };
 
 /* ---------- deck ---------- */
@@ -648,8 +650,14 @@ function shuffle(arr) {
 
 function draw() {
   if (!deck.length) {
-    deck = shuffle(buildDeck());
-    log('Deck ran dry — shuffled a fresh one.');
+    if (discards.length) {
+      deck = shuffle(discards);
+      discards = [];
+      log('Deck ran dry — shuffled the discards back in.');
+    } else {
+      deck = shuffle(buildDeck());
+      log('Deck ran dry — shuffled a fresh one.');
+    }
   }
   return deck.pop();
 }
@@ -818,7 +826,7 @@ function render() {
 
 /* ---------- card resolution (host/solo only) ---------- */
 
-async function flipCard(p) {
+async function flipCard(p, ep) {
   const card = draw();
   if (card.t === 'num') {
     if (p.cards.includes(card.v)) {
@@ -828,13 +836,17 @@ async function flipCard(p) {
         log(p.name + ' flips a duplicate ' + card.v + ' — 2nd Chance eats it.');
         render();
         await sleep(750);
+        if (ep !== epoch) return;
         p.second = false;
         p.bustCard = null;
+        discards.push(card, { t: 'second' });
       } else {
         log(p.name + ' flips a duplicate ' + card.v + ' and BUSTS.');
         render();
         await sleep(750);
+        if (ep !== epoch) return;
         p.status = 'busted';
+        discards.push(card);
       }
     } else {
       p.cards.push(card.v);
@@ -857,15 +869,19 @@ async function flipCard(p) {
       const takers = activePlayers().filter(q => q !== p && !q.second);
       if (takers.length) {
         const taker = await chooseTarget(p, '2nd Chance', takers);
+        if (ep !== epoch) return;
         taker.second = true;
         log(p.name + ' already has one — the spare 2nd Chance goes to ' + taker.name + '.');
       } else {
         log(p.name + ' flips a spare 2nd Chance — nobody can take it. Discarded.');
+        discards.push(card);
       }
     }
   } else if (card.t === 'freeze') {
     const targets = activePlayers();
     const target = targets.length ? await chooseTarget(p, 'Freeze', targets) : null;
+    if (ep !== epoch) return;
+    discards.push(card);
     if (target) {
       target.status = 'frozen';
       log(p.name + ' flips FREEZE → ' + target.name + ' banks ' + roundPointsOf(target) + ' and is out.');
@@ -873,13 +889,17 @@ async function flipCard(p) {
   } else if (card.t === 'flip3') {
     const targets = activePlayers();
     const target = targets.length ? await chooseTarget(p, 'Flip Three', targets) : null;
+    if (ep !== epoch) return;
+    discards.push(card);
     if (target) {
       log(p.name + ' flips FLIP THREE → ' + target.name + ' must take three.');
       render();
       for (let i = 0; i < 3; i++) {
         if (target.status !== 'active' || roundEnded()) break;
         await sleep(500);
-        await flipCard(target);
+        if (ep !== epoch) return;
+        await flipCard(target, ep);
+        if (ep !== epoch) return;
         render();
       }
     }
@@ -944,14 +964,14 @@ function getPlayerAction() {
   });
 }
 
-async function takeTurn(p) {
+async function takeTurn(p, ep) {
   activePlayer = p;
   render();
   if (p.ai || p.finishAsCpu) {
     await sleep(1000);
-    if (p.status !== 'active') return;
+    if (ep !== epoch || p.status !== 'active') return;
     if (aiWantsHit(p)) {
-      await flipCard(p);
+      await flipCard(p, ep);
     } else {
       p.status = 'stayed';
       log(p.name + ' stays on ' + roundPointsOf(p) + '.');
@@ -959,15 +979,16 @@ async function takeTurn(p) {
   } else if (p.remote) {
     setMessage('Waiting for ' + p.name + '…');
     const a = await getRemoteAction(p);
-    if (p.status !== 'active') return;
-    if (a === 'H') await flipCard(p);
+    if (ep !== epoch || p.status !== 'active') return;
+    if (a === 'H') await flipCard(p, ep);
     else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   } else {
     const a = await getPlayerAction();
-    if (p.status !== 'active') return;
-    if (a === 'H') await flipCard(p);
+    if (ep !== epoch || p.status !== 'active') return;
+    if (a === 'H') await flipCard(p, ep);
     else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   }
+  if (ep !== epoch) return;
   activePlayer = null;
   render();
 }
@@ -976,6 +997,7 @@ async function takeTurn(p) {
 
 async function playRound() {
   if (roundActive || gameOver || net.mode === 'guest') return;
+  const ep = epoch;
   roundActive = true;
   roundNo++;
   $('round-controls').style.display = 'none';
@@ -991,7 +1013,9 @@ async function playRound() {
   for (const p of seated()) {
     if (p.status !== 'active') continue;
     await sleep(600);
-    await flipCard(p);
+    if (ep !== epoch) return;
+    await flipCard(p, ep);
+    if (ep !== epoch) return;
     if (roundEnded()) break;
   }
 
@@ -1000,7 +1024,8 @@ async function playRound() {
     for (let i = 0; i < players.length; i++) {
       const p = players[(start + i) % players.length];
       if (p.open || p.status !== 'active') continue;
-      await takeTurn(p);
+      await takeTurn(p, ep);
+      if (ep !== epoch) return;
       if (roundEnded()) break;
     }
   }
@@ -1011,12 +1036,17 @@ async function playRound() {
     const pts = roundPointsOf(p);
     p.total += pts;
     lines.push(p.name + ' +' + pts);
+    for (const v of p.cards) discards.push({ t: 'num', v });
+    for (const v of p.mods) discards.push({ t: 'mod', v });
+    if (p.x2) discards.push({ t: 'x2' });
+    if (p.second) discards.push({ t: 'second' });
   }
   log('Round ' + roundNo + ': ' + lines.join(' · '));
 
   const live = seated();
   const leader = live.reduce((a, b) => (a.total > b.total ? a : b));
-  if (leader.total >= TARGET) {
+  const tiedForLead = live.filter(p => p.total === leader.total).length > 1;
+  if (leader.total >= TARGET && !tiedForLead) {
     gameOver = true;
     lastWinnerIdx = players.indexOf(leader);
     stats.games++;
@@ -1026,6 +1056,10 @@ async function playRound() {
       ? '★ You hit ' + me.total + ' and walk out rich. The wasteland provides.'
       : '★ ' + leader.name + ' hits ' + leader.total + ' first and walks out rich.');
     $('btn-deal').textContent = 'Play again';
+  } else if (leader.total >= TARGET) {
+    log('Tied at the top — one more round!');
+    setMessage('Tied at ' + leader.total + ' — one more round decides it.');
+    $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
   } else {
     setMessage('Round over. ' + leader.name + ' leads with ' + leader.total + '.');
     $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
@@ -1037,11 +1071,14 @@ async function playRound() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++;
+  playerResolver = null;
   for (const p of players) {
     p.total = 0; p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.bustCard = null;
     p.status = p.open ? 'out' : 'waiting';
   }
   deck = shuffle(buildDeck());
+  discards = [];
   roundNo = 0;
   gameOver = false;
   lastWinnerIdx = -1;
@@ -1288,12 +1325,14 @@ function dropGuest(conn) {
 function getRemoteAction(p) {
   return new Promise(resolve => {
     const idx = players.indexOf(p);
+    const ep = epoch;
     let settled = false;
     const finish = a => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      delete net.resolvers[idx];
+      if (net.resolvers[idx] === finish) delete net.resolvers[idx];
+      if (ep !== epoch) return;
       resolve(a === 'H' ? 'H' : 'S');
     };
     const timer = setTimeout(() => {
@@ -1309,12 +1348,14 @@ function getRemoteAction(p) {
 function getRemoteTarget(p, label, candidates) {
   return new Promise(resolve => {
     const idx = players.indexOf(p);
+    const ep = epoch;
     let settled = false;
     const finish = i => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      delete net.choosers[idx];
+      if (net.choosers[idx] === finish) delete net.choosers[idx];
+      if (ep !== epoch) return;
       const pick = players[i];
       resolve(candidates.includes(pick) ? pick : heuristicTarget(p, label, candidates));
     };
@@ -1513,6 +1554,7 @@ $('help-close').addEventListener('click', () => { $('help').style.display = 'non
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 document.addEventListener('keydown', e => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
   if (!playerResolver) return;
   const k = e.key.toLowerCase();
   if (k === 'h') playerResolver('H');
