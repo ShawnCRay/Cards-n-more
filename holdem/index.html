@@ -298,6 +298,7 @@ let street = '';          // '', 'preflop', 'flop', 'turn', 'river', 'showdown'
 let activeSeat = -1;
 let handActive = false, handOver = true;
 let showdownData = null;  // { pots: [{amount, winners:[seat], name}], reveal:{seat:true} }
+let handResult = null, handCounter = 0;  // last finished hand's winners, so guests can tally stats
 let stats = { wins: 0, hands: 0 };
 
 const $ = id => document.getElementById(id);
@@ -455,13 +456,13 @@ function postflopStrength(seat) {
 function handStrength(seat) {
   return street === 'preflop' ? preflopStrength(players[seat].hole) : postflopStrength(seat);
 }
-function aiAction(seat, toCall, minRaiseTo) {
+function aiAction(seat, toCall, minRaiseTo, raiseOpen) {
   const p = players[seat];
   const s = handStrength(seat);
   const pot = potSize();
   const bluff = p.cpuName === 'Boone' ? 0.13 : 0.04;
   const r = Math.random();
-  const canRaise = p.stack > toCall;
+  const canRaise = raiseOpen && p.stack > toCall;
   const potBet = () => {
     let want = Math.max(minRaiseTo, currentBet + Math.round((pot + toCall) * (0.5 + Math.random() * 0.35)));
     want = Math.min(want, p.bet + p.stack);          // cap all-in
@@ -497,6 +498,7 @@ function buildView(forIdx) {
     pot: potSize(), toCall: currentBet, community: community.slice(),
     msg: $('message').textContent, you: forIdx,
     showdown: showdownData,
+    result: handResult ? { id: handResult.id, won: handResult.winners.includes(forIdx) } : null,
     players: players.map((p, i) => ({
       name: p.name, ai: p.ai, open: p.open, host: i === 0, remote: !!p.remote,
       stack: p.stack, bet: p.bet, folded: p.folded, allIn: p.allIn,
@@ -581,10 +583,9 @@ function render() {
 
 let actCtx = null, raiseTo = 0;
 
-function openActionUI(seat, toCall, minRaiseTo, submit) {
-  const p = players[seat];
-  const maxTo = p.bet + p.stack;
-  actCtx = { seat, toCall, minRaiseTo: Math.min(minRaiseTo, maxTo), maxTo, canRaise: p.stack > toCall, submit };
+function openActionUI(seat, opts, submit) {
+  const { toCall, maxTo, canRaise, pot, curBet } = opts;
+  actCtx = { seat, toCall, minRaiseTo: Math.min(opts.minRaiseTo, maxTo), maxTo, canRaise, pot, curBet, submit };
   raiseTo = actCtx.minRaiseTo;
   renderActionUI();
 }
@@ -592,7 +593,7 @@ function closeActionUI() { actCtx = null; $('opts').innerHTML = ''; }
 
 function renderActionUI() {
   if (!actCtx) { $('opts').innerHTML = ''; return; }
-  const { toCall, minRaiseTo, maxTo, canRaise } = actCtx;
+  const { toCall, minRaiseTo, maxTo, canRaise, pot, curBet } = actCtx;
   const box = $('opts');
   box.innerHTML = '';
   const wrap = document.createElement('div');
@@ -618,15 +619,14 @@ function renderActionUI() {
 
     const presets = document.createElement('div');
     presets.className = 'presets';
-    const pot = potSize();
     const mk = (label, val) => {
       const b = document.createElement('button');
       b.textContent = label;
       b.addEventListener('click', () => { raiseTo = Math.max(minRaiseTo, Math.min(maxTo, val)); renderActionUI(); });
       presets.appendChild(b);
     };
-    mk('½ pot', currentBet + Math.round((pot + toCall) * 0.5));
-    mk('Pot', currentBet + (pot + toCall));
+    mk('½ pot', curBet + Math.round((pot + toCall) * 0.5));
+    mk('Pot', curBet + (pot + toCall));
     mk('All in', maxTo);
     wrap.appendChild(presets);
   }
@@ -640,7 +640,7 @@ function renderActionUI() {
 
   const callBtn = document.createElement('button');
   if (toCall === 0) callBtn.textContent = 'Check';
-  else callBtn.textContent = (toCall >= actCtx.maxTo - players[actCtx.seat].bet) ? 'Call all in' : 'Call ' + toCall + '₵';
+  else callBtn.textContent = (curBet >= maxTo) ? 'Call all in' : 'Call ' + toCall + '₵';
   callBtn.addEventListener('click', () => submitAction({ kind: 'call' }));
   main.appendChild(callBtn);
 
@@ -656,43 +656,54 @@ function renderActionUI() {
 }
 function submitAction(a) { const s = actCtx.submit; closeActionUI(); s(a); }
 
-function getLocalAction(seat, toCall, minRaiseTo) {
-  return new Promise(res => openActionUI(seat, toCall, minRaiseTo, res));
+function getLocalAction(seat, toCall, minRaiseTo, raiseOpen) {
+  const p = players[seat];
+  return new Promise(res => openActionUI(seat, {
+    toCall, minRaiseTo, maxTo: p.bet + p.stack,
+    canRaise: raiseOpen && p.stack > toCall, pot: potSize(), curBet: currentBet,
+  }, res));
 }
-function getRemoteAction(seat, toCall, minRaiseTo) {
+function getRemoteAction(seat, toCall, minRaiseTo, raiseOpen) {
   const p = players[seat];
   render();
   return new Promise(resolve => {
     let settled = false;
     const finish = a => {
       if (settled) return;
-      settled = true; clearTimeout(timer); net.picker = null;
-      resolve(sanitize(a, seat, toCall));
+      settled = true; clearTimeout(timer); net.picker = null; net.pickerConn = null;
+      resolve(sanitize(a, seat, toCall, minRaiseTo, raiseOpen));
     };
-    const timer = setTimeout(() => { log(p.name + ' timed out — ' + (toCall === 0 ? 'checks' : 'folds') + '.'); finish(toCall === 0 ? { kind: 'call' } : { kind: 'fold' }); }, TURN_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      log(p.name + ' timed out — ' + (toCall === 0 ? 'checks' : 'folds') + '.');
+      if (p.remote && p.remote.open) p.remote.send({ type: 'cancel' });
+      finish(toCall === 0 ? { kind: 'call' } : { kind: 'fold' });
+    }, TURN_TIMEOUT_MS);
     net.picker = finish;
-    if (p.remote && p.remote.open) p.remote.send({ type: 'prompt', seat, toCall, minRaiseTo, maxTo: p.bet + p.stack, canRaise: p.stack > toCall, pot: potSize() });
+    net.pickerConn = p.remote;
+    if (p.remote && p.remote.open) p.remote.send({ type: 'prompt', seat, toCall, minRaiseTo, maxTo: p.bet + p.stack, canRaise: raiseOpen && p.stack > toCall, pot: potSize(), curBet: currentBet });
     else finish(toCall === 0 ? { kind: 'call' } : { kind: 'fold' });
   });
 }
-function sanitize(a, seat, toCall) {
+function sanitize(a, seat, toCall, minRaiseTo, raiseOpen) {
   const p = players[seat];
   if (!a || a.kind === 'fold') return toCall === 0 ? { kind: 'call' } : { kind: 'fold' };
   if (a.kind === 'call') return { kind: 'call' };
   if (a.kind === 'raise') {
-    let to = Math.floor(a.to);
+    if (!raiseOpen) return { kind: 'call' };
     const maxTo = p.bet + p.stack;
+    let to = Math.floor(Number(a.to) || 0);
+    to = Math.max(to, Math.min(minRaiseTo, maxTo));  // enforce the min raise; all in for less stays legal
     if (to > maxTo) to = maxTo;
     if (p.stack <= toCall || to <= currentBet) return { kind: 'call' };
     return { kind: 'raise', to };
   }
   return { kind: 'call' };
 }
-function getAction(seat, toCall, minRaiseTo) {
+function getAction(seat, toCall, minRaiseTo, raiseOpen) {
   const p = players[seat];
-  if (p.ai) return sleep(AI_THINK).then(() => aiAction(seat, toCall, minRaiseTo));
-  if (p.remote) return getRemoteAction(seat, toCall, minRaiseTo);
-  return getLocalAction(seat, toCall, minRaiseTo);
+  if (p.ai) return sleep(AI_THINK).then(() => aiAction(seat, toCall, minRaiseTo, raiseOpen));
+  if (p.remote) return getRemoteAction(seat, toCall, minRaiseTo, raiseOpen);
+  return getLocalAction(seat, toCall, minRaiseTo, raiseOpen);
 }
 
 /* ---------- betting round ---------- */
@@ -723,8 +734,10 @@ async function bettingRound(startPos) {
       : p.name + ' is thinking…');
     render();
 
-    let a = await getAction(seat, toCall, minRaiseTo);
-    a = sanitize(a, seat, toCall);
+    // if this player already acted, the bet in front of them is a short all in — call/fold only
+    const raiseOpen = !p.hasActed;
+    let a = await getAction(seat, toCall, minRaiseTo, raiseOpen);
+    a = sanitize(a, seat, toCall, minRaiseTo, raiseOpen);
 
     if (a.kind === 'fold') {
       p.folded = true; p.lastAction = 'fold';
@@ -773,7 +786,7 @@ async function playHand() {
     const p = players[s];
     p.hole = []; p.bet = 0; p.totalBet = 0; p.folded = false; p.allIn = false; p.hasActed = false; p.lastAction = '';
   }
-  community = []; showdownData = null; currentBet = 0; handActive = true; handOver = false;
+  community = []; showdownData = null; handResult = null; currentBet = 0; handActive = true; handOver = false;
 
   // button
   buttonSeat = (buttonSeat >= 0 && handSeats.includes(buttonSeat))
@@ -837,6 +850,7 @@ async function concludeHand() {
     setMessage((w === mySeatIdx ? 'You take' : players[w].name + ' takes') + ' ' + total + '₵. Everyone folded.');
     if (w === mySeatIdx) { stats.wins++; }
     stats.hands++; save();
+    handResult = { id: ++handCounter, winners: [w] };
     render();
     await sleep(STREET_PAUSE);
     return;
@@ -856,7 +870,10 @@ async function concludeHand() {
     const winners = contenders.filter(s => cmpRank(ranks[s], ranks[best]) === 0);
     const share = Math.floor(pot.amount / winners.length);
     let rem = pot.amount - share * winners.length;
-    for (const w of winners) { players[w].stack += share; if (rem > 0) { players[w].stack += 1; rem--; } }
+    // odd chips go to the winners closest to the button's left, per standard rules
+    const payOrder = [];
+    for (let i = 1; i <= players.length; i++) { const s = (buttonSeat + i) % players.length; if (winners.includes(s)) payOrder.push(s); }
+    for (const w of payOrder) { players[w].stack += share; if (rem > 0) { players[w].stack += 1; rem--; } }
     potResults.push({ amount: pot.amount, winners, name: handName(ranks[best]) });
   }
   showdownData = { pots: potResults, reveal };
@@ -869,6 +886,7 @@ async function concludeHand() {
     if (main.winners.includes(mySeatIdx)) stats.wins++;
   }
   stats.hands++; save();
+  handResult = { id: ++handCounter, winners: main ? main.winners : [] };
   render();
   await sleep(SHOWDOWN_PAUSE);
 }
@@ -886,6 +904,7 @@ async function playSession() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  if (handActive) { setMessage('Finish the hand first.'); return; }
   handActive = false; handOver = true; showdownData = null; community = []; handSeats = [];
   activeSeat = -1; buttonSeat = -1; currentBet = 0; street = '';
   for (const p of players) {
@@ -902,7 +921,7 @@ function newGame() {
    ============================================================ */
 
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
-              hostName: 'Host', picker: null, lastView: null,
+              hostName: 'Host', picker: null, pickerConn: null, lastView: null, lastResultId: 0,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
               joinTimer: null, joinRetries: 0, joinName: '', prompting: false,
               heartbeatsStarted: false, wakeLock: null };
@@ -1027,6 +1046,7 @@ function handleGuestMsg(conn, d) {
     const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
     if (prior) {
       try { prior.remote.close(); } catch (e) { /* stale */ }
+      if (net.pickerConn === prior.remote) net.pickerConn = conn;
       prior.remote = conn; conn._seat = prior;
       conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
       render(); return;
@@ -1042,7 +1062,7 @@ function handleGuestMsg(conn, d) {
     log(seat.name + (wasOpen ? ' takes an open seat (joins next hand).' : ' takes over ' + seat.cpuName + "'s seat."));
     updateNetBar(); render();
   } else if (d.type === 'action') {
-    if (net.picker) net.picker(d.action);
+    if (net.picker && net.pickerConn === conn) net.picker(d.action);
   }
 }
 
@@ -1051,7 +1071,7 @@ function dropGuest(conn) {
   if (!seat || seat.remote !== conn) return;
   seat.remote = null; seat.ai = true; seat.name = seat.cpuName;
   log(seat.name + ' left — a CPU takes the seat.');
-  if (net.picker) { const s = players.indexOf(seat); net.picker(currentBet - seat.bet === 0 ? { kind: 'call' } : { kind: 'fold' }); }
+  if (net.picker && net.pickerConn === conn) net.picker(currentBet - seat.bet === 0 ? { kind: 'call' } : { kind: 'fold' });
   updateNetBar(); render();
 }
 
@@ -1116,14 +1136,21 @@ function handleHostMsg(d) {
     updateNetBar();
     setMessage('Seated — waiting for the next hand…');
   } else if (d.type === 'state') {
-    net.lastView = d.view; renderView(d.view);
+    const v = d.view;
+    if (v.result && v.result.id !== net.lastResultId) {  // count each finished hand once
+      if (net.lastView) { stats.hands++; if (v.result.won) stats.wins++; save(); }
+      net.lastResultId = v.result.id;
+    }
+    net.lastView = v; renderView(v);
   } else if (d.type === 'prompt') {
     net.prompting = true;
-    openActionUI(d.seat, d.toCall, d.minRaiseTo, a => {
+    openActionUI(d.seat, d, a => {
       net.prompting = false;
       if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'action', action: a });
       setMessage('');
     });
+  } else if (d.type === 'cancel') {
+    if (net.prompting) { net.prompting = false; closeActionUI(); setMessage(''); }
   } else if (d.type === 'log') {
     const el = document.createElement('div');
     el.textContent = d.msg;
