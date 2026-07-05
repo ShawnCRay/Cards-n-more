@@ -395,6 +395,7 @@ let revealActive = false;
 let gameActive = false, gameOver = false, roundActive = false;
 let nextStarter = null;
 let lastWinnerIdx = -1;
+let epoch = 0;             // bumped by newGame() to abort in-flight game loops
 let stats = { wins: 0, games: 0 };
 
 const $ = id => document.getElementById(id);
@@ -426,12 +427,12 @@ function totalShowing(face) {
   return players.reduce((a, p) => a + (inPlay(p) ? p.dice.filter(d => d === face || d === 1).length : 0), 0);
 }
 function bidText(b) { return b.qty + ' ' + (b.qty === 1 ? FACE_NAME[b.face].replace(/s$/, '') : FACE_NAME[b.face]); }
-function isMe(seat) { return seat === mySeatIdx && net.mode !== 'guest' ? seat === mySeatIdx : seat === mySeatIdx; }
 
-function minRaise(b, total) {
+function minRaise(b, total) {   // null when no legal raise exists (bid is at the ceiling)
   if (!b) return { qty: 1, face: 2 };
   if (b.face < 6) return { qty: b.qty, face: b.face + 1 };
-  return { qty: Math.min(total, b.qty + 1), face: 2 };
+  if (b.qty < total) return { qty: b.qty + 1, face: 2 };
+  return null;
 }
 function raises(a, b) {
   if (a.face < 2 || a.face > 6 || a.qty < 1) return false;
@@ -493,6 +494,7 @@ function aiAction(p, b, total) {
   if (pTrue < thresh) return { kind: 'call' };
   // raise: prefer a face I actually hold, minimal quantity bump
   let raise = minRaise(b, total);
+  if (!raise) return { kind: 'call' };   // bid is maxed out — calling is the only move
   let bestF = raise.face, bestC = myCount(raise.face);
   for (let f = 2; f <= 6; f++) {
     const cand = { qty: raise.qty, face: f };
@@ -626,7 +628,7 @@ let turnCtx = null, bidSel = null;
 
 function openTurnUI(b, total, submit) {
   turnCtx = { bid: b, total, submit };
-  bidSel = minRaise(b, total);
+  bidSel = minRaise(b, total) || { qty: total, face: 6 };   // ceiling: Bid stays disabled, only Call
   if (bidSel.qty > total) bidSel.qty = total;
   renderTurnUI();
 }
@@ -705,10 +707,12 @@ function getRemoteAction(p, b, total) {
       settled = true;
       clearTimeout(timer);
       net.picker = null;
+      net.pickerConn = null;
       resolve(legalAction(a, b, total) || (b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }));
     };
     const timer = setTimeout(() => { log(p.name + ' took too long — calling it.'); finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }); }, TURN_TIMEOUT_MS);
     net.picker = finish;
+    net.pickerConn = p.remote;
     if (p.remote && p.remote.open) p.remote.send({ type: 'prompt', bid: b, total });
     else finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
   });
@@ -726,7 +730,7 @@ function beginRound() {
   return seats;
 }
 
-async function playRound() {
+async function playRound(myEpoch) {
   const seats = beginRound();
   bid = null; revealActive = false; roundActive = true;
   let startSeat = nextStarter;
@@ -736,7 +740,7 @@ async function playRound() {
   render();
   await sleep(600);
 
-  while (true) {
+  while (myEpoch === epoch) {
     const seat = seats[pos];
     const p = players[seat];
     const total = totalDice();
@@ -750,20 +754,22 @@ async function playRound() {
     if (p.ai) { await sleep(AI_THINK); action = aiAction(p, bid, total); }
     else if (p.remote) action = await getRemoteAction(p, bid, total);
     else action = await getLocalAction(bid, total);
+    if (myEpoch !== epoch) return;   // "New game" clicked while this turn was pending
     action = legalAction(action, bid, total) || (bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
 
-    if (action.kind === 'call') { await resolveCall(seat); break; }
+    if (action.kind === 'call') { await resolveCall(seat, myEpoch); break; }
     bid = { qty: action.qty, face: action.face, by: seat };
     log(p.name + ' bids ' + bidText(bid) + '.');
     render();
     await sleep(POST_BID);
     pos = (pos + 1) % seats.length;
   }
+  if (myEpoch !== epoch) return;
   activeSeat = -1;
   roundActive = false;
 }
 
-async function resolveCall(callerSeat) {
+async function resolveCall(callerSeat, myEpoch) {
   const b = bid;
   const caller = players[callerSeat], bidder = players[b.by];
   revealActive = true;
@@ -776,6 +782,7 @@ async function resolveCall(callerSeat) {
     + ' — ' + (truth ? 'the bid holds up' : bidder.name + ' was bluffing') + '. ' + loser.name + ' loses a die.');
   setMessage('Cups up! ' + bidText(b) + '? The table shows ' + actual + '. ' + loser.name + ' loses a die.');
   await sleep(REVEAL_MS);
+  if (myEpoch !== epoch) return;
   revealActive = false;
 
   loser.diceCount--;
@@ -797,12 +804,15 @@ async function resolveCall(callerSeat) {
 }
 
 async function playGame() {
+  const myEpoch = epoch;
   gameActive = true; gameOver = false;
   render();
   while (!gameOver) {
-    await playRound();
+    await playRound(myEpoch);
+    if (myEpoch !== epoch) return;
     if (gameOver) break;
     await sleep(800);
+    if (myEpoch !== epoch) return;
   }
   gameActive = false;
   stats.games++;
@@ -815,8 +825,18 @@ async function playGame() {
   render();
 }
 
+function resetSeats() {
+  for (const p of players) {
+    if (!p.open) { p.diceCount = START_DICE; p.out = false; p.waiting = false; p.dice = []; }
+  }
+}
+
 async function startPlay() {
   if (gameActive || net.mode === 'guest') return;
+  if (gameOver) {   // "Play again" — give everyone their dice back first
+    gameOver = false; bid = null; activeSeat = -1; nextStarter = null; lastWinnerIdx = -1;
+    resetSeats();
+  }
   if (alivePlayers().length < 2) { setMessage('Need at least two cups at the table.'); return; }
   $('round-controls').style.display = 'none';
   await playGame();
@@ -824,11 +844,11 @@ async function startPlay() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++;   // abort any in-flight game loop at its next await
+  closeTurnUI();
   gameActive = false; gameOver = false; roundActive = false; revealActive = false; bid = null;
   activeSeat = -1; nextStarter = null; lastWinnerIdx = -1;
-  for (const p of players) {
-    if (!p.open) { p.diceCount = START_DICE; p.out = false; p.waiting = false; p.dice = []; }
-  }
+  resetSeats();
   $('round-controls').style.display = '';
   $('btn-deal').textContent = 'Roll out';
   setMessage('Five dice each. Roll out when you’re ready.');
@@ -840,7 +860,7 @@ function newGame() {
    ============================================================ */
 
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
-              hostName: 'Host', picker: null, lastView: null,
+              hostName: 'Host', picker: null, pickerConn: null, lastView: null,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
               joinTimer: null, joinRetries: 0, joinName: '', prompting: false,
               heartbeatsStarted: false, wakeLock: null };
@@ -871,6 +891,8 @@ async function keepAwake() {
   try {
     if (!navigator.wakeLock) return;
     net.wakeLock = await navigator.wakeLock.request('screen');
+    if (net.wakeListenerAdded) return;
+    net.wakeListenerAdded = true;
     document.addEventListener('visibilitychange', async () => {
       try {
         if (document.visibilityState === 'visible' && net.mode !== 'solo')
@@ -1003,7 +1025,7 @@ function handleGuestMsg(conn, d) {
     updateNetBar();
     render();
   } else if (d.type === 'action') {
-    if (net.picker) net.picker(d.action);
+    if (net.picker && conn === net.pickerConn) net.picker(d.action);
   }
 }
 
@@ -1014,7 +1036,7 @@ function dropGuest(conn) {
   seat.ai = true;
   seat.name = seat.cpuName;
   log(seat.name + ' left — a CPU takes the cup.');
-  if (net.picker) net.picker(bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
+  if (net.picker && conn === net.pickerConn) net.picker(bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
   updateNetBar();
   render();
 }
@@ -1097,7 +1119,13 @@ function handleHostMsg(d) {
     updateNetBar();
     setMessage('Seated — waiting for the table…');
   } else if (d.type === 'state') {
+    const prev = net.lastView;
     net.lastView = d.view;
+    if (d.view.phase === 'over' && (!prev || prev.phase !== 'over')) {   // guests keep their own tally
+      stats.games++;
+      if (d.view.winner === d.view.you) stats.wins++;
+      save();
+    }
     renderView(d.view);
   } else if (d.type === 'prompt') {
     net.prompting = true;
