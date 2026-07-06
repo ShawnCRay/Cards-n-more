@@ -1339,21 +1339,9 @@ async function startRound() {
 
   const up = dealer.cards[0];
 
-  // insurance (player only; basic strategy never takes it, so CPUs pass)
-  if (up.rank === 'A' && player.bank >= player.hands[0].bet / 2) {
-    setMessage('Dealer shows an ace. Insurance?' +
-      (coachOn ? ' Coach says decline — insurance loses money long-run.' : ''));
-    $('insurance-controls').style.display = '';
-    const take = await new Promise(r => { playerResolver = r; });
-    playerResolver = null;
-    $('insurance-controls').style.display = 'none';
-    if (take) {
-      player.insurance = player.hands[0].bet / 2;
-      player.bank -= player.insurance;
-      log('You take insurance for ' + fmt(player.insurance) + '.');
-      render();
-    }
-  }
+  // insurance — offered to every human at the table (basic strategy never
+  // takes it, so CPUs pass). All eligible players decide at once.
+  if (up.rank === 'A') await offerInsurance();
 
   // dealer peek on ace or ten
   if (VAL[up.rank] >= 10 || up.rank === 'A') {
@@ -1362,9 +1350,11 @@ async function startRound() {
       dealer.holeHidden = false;
       setMessage('Dealer has blackjack.');
       log('Dealer flips over blackjack.');
-      if (player.insurance > 0) {
-        player.bank += player.insurance * 3;
-        log('Insurance pays ' + fmt(player.insurance * 2) + '.');
+      for (const seat of seats) {
+        if (seat.insurance > 0) {
+          seat.bank += seat.insurance * 3;   // stake back + 2:1
+          log((seat === player ? 'Your' : seat.name + "'s") + ' insurance pays ' + fmt(seat.insurance * 2) + '.');
+        }
       }
       render();
       await sleep(900);
@@ -1372,7 +1362,9 @@ async function startRound() {
       return;
     }
   }
-  if (player.insurance > 0) log('No dealer blackjack — insurance lost.');
+  for (const seat of seats) {
+    if (seat.insurance > 0) log((seat === player ? 'Your' : seat.name + "'s") + ' insurance is lost.');
+  }
 
   // play out each seat
   for (const seat of seats) {
@@ -1883,6 +1875,55 @@ function sanitizeAction(a, can) {
   return 'S';
 }
 
+async function offerInsurance() {
+  const eligible = seats.filter(s => !s.open && !s.ai && s.hands.length
+    && s.hands[0].bet > 0 && s.bank >= s.hands[0].bet / 2);
+  if (!eligible.length) return;
+  await Promise.all(eligible.map(askInsurance));
+}
+
+function askInsurance(seat) {
+  return new Promise(resolve => {
+    const idx = seats.indexOf(seat);
+    const cost = seat.hands[0].bet / 2;
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete net.resolvers[idx];
+      resolve();
+    };
+    const decide = take => {
+      if (take) {
+        seat.insurance = cost;
+        seat.bank -= cost;
+        log(seat.name + ' takes insurance for ' + fmt(cost) + '.');
+        render();
+      }
+      done();
+    };
+    const timer = setTimeout(() => { if (seat === player) { playerResolver = null; $('insurance-controls').style.display = 'none'; } decide(false); }, 30000);
+
+    if (seat === player) {
+      setMessage('Dealer shows an ace. Insurance?' +
+        (coachOn ? ' Coach says decline — insurance loses money long-run.' : ''));
+      $('insurance-controls').style.display = '';
+      playerResolver = take => {
+        playerResolver = null;
+        $('insurance-controls').style.display = 'none';
+        decide(!!take);
+      };
+    } else if (seat.remote) {
+      net.resolvers[idx] = a => decide(!!(a && a.ins));
+      if (seat.remote.open) seat.remote.send({ type: 'insurance', bet: seat.hands[0].bet });
+      else decide(false);
+    } else {
+      decide(false);
+    }
+  });
+}
+
 function getRemoteAction(seat, hand, can) {
   return new Promise(resolve => {
     const idx = seats.indexOf(seat);
@@ -2009,6 +2050,8 @@ function handleHostMsg(d) {
     syncGuestControls(d.view);
   } else if (d.type === 'turn') {
     showGuestActions(d.can, d.hand, d.up);
+  } else if (d.type === 'insurance') {
+    showGuestInsurance(d.bet);
   } else if (d.type === 'full') {
     $('overlay-status').textContent = 'That table is full (host + 5 friends).';
   }
@@ -2066,6 +2109,20 @@ function showGuestActions(can, hand, up) {
     playerResolver = null;
     setMessage('');
     if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'action', action });
+  };
+}
+
+function showGuestInsurance(bet) {
+  $('bet-controls').style.display = 'none';
+  $('action-controls').style.display = 'none';
+  $('insurance-controls').style.display = '';
+  setMessage('Dealer shows an ace. Insurance?' +
+    (coachOn ? ' Coach says decline — insurance loses money long-run.' : ''));
+  playerResolver = take => {
+    playerResolver = null;
+    $('insurance-controls').style.display = 'none';
+    setMessage('');
+    if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'action', action: { ins: !!take } });
   };
 }
 
