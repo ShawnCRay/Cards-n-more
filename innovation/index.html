@@ -410,7 +410,7 @@
       ends and the richest stash wins (landmarks break ties). Cass hoards, and
       Boone's demands come at gunpoint. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="help-close" class="primary">Got it</button><button id="btn-export-log">Export debug log</button></div>
   </div>
 </div>
 
@@ -581,6 +581,39 @@ function shuffle(arr) {
   return arr;
 }
 
+/* ---------- debug recorder: keeps the last 2 matches for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'eras-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
+}
+
 /* ---------- rules helpers ---------- */
 
 function topEra(p) {
@@ -594,6 +627,7 @@ function scavenge(p, era, silent) {
   if (e > 10) { endByWealth = true; gameOver = true; return null; }
   const c = eras[e].pop();
   p.pack.push(c);
+  recPush('scavenge', { player: p.name, wanted: era, era: e, card: c.n, remaining: eras[e].length });
   if (!silent) log(p.name + ' scavenges an era-' + e + ' tech.');
   return c;
 }
@@ -736,6 +770,18 @@ async function activate(p, card) {
   log(p.name + ' activates ' + card.n + ' — ' + fxText(card));
   const myIcons = iconCount(p, card.k);
   let anyShared = false;
+  try {
+    const others = players.filter(q => q !== p).map(q => {
+      const qi = iconCount(q, card.k);
+      return { player: q.name, icons: qi, shared: !card.dmd && qi >= myIcons, hit: card.dmd && qi < myIcons };
+    });
+    recPush('dogma', {
+      activator: p.name, card: card.n, icon: card.k, activatorIcons: myIcons,
+      demand: !!card.dmd, ops: card.fx.map(f => f[0]),
+      shares: card.dmd ? [] : others,
+      demands: card.dmd ? others : [],
+    });
+  } catch (e) {}
   if (card.dmd) {
     for (const q of players) {
       if (q === p || gameOver) continue;
@@ -800,6 +846,13 @@ async function takeAction(p, n) {
   }
   const pick = await choose(p, p.name + ' — action ' + n + ' of 2', opts);
   if (pick == null) return;
+  const _picked = opts.find(o => o.id === pick);
+  recPush('action', {
+    player: p.name, act: n,
+    type: pick === 'scav' ? 'scavenge' : String(pick).split(':')[0],
+    pick, chosen: _picked ? _picked.label : null,
+    options: opts.map(o => ({ id: o.id, label: o.label, score: o.score })),
+  });
   if (pick === 'scav') { scavenge(p, era); }
   else if (pick.startsWith('build:')) { meld(p, Number(pick.split(':')[1])); }
   else if (pick.startsWith('act:')) {
@@ -811,6 +864,7 @@ async function takeAction(p, n) {
     if (lm) {
       lm.by = players.indexOf(p);
       p.landmarks.push(e);
+      recPush('claim', { player: p.name, era: e, score: stashValue(p), stash: p.stash.length });
       log('★ ' + p.name + ' claims the Era ' + e + ' landmark: ' + ERA_NAME[e] + '.');
       if (landmarkWin(p)) { gameOver = true; lastWinnerIdx = players.indexOf(p); }
     }
@@ -827,6 +881,11 @@ async function playMatch() {
   lastWinnerIdx = -1;
   $('round-controls').style.display = 'none';
 
+  recStart({
+    players: players.map(p => ({ name: p.name, kind: p.ai ? 'cpu' : (p.remote ? 'remote' : 'human') })),
+    firstPlayer: 0,
+  });
+
   eras = {};
   for (const c of CARDS) (eras[c.e] = eras[c.e] || []).push({ ...c });
   for (let e = 1; e <= 10; e++) shuffle(eras[e] || (eras[e] = []));
@@ -834,6 +893,12 @@ async function playMatch() {
   for (let e = 1; e <= 9; e++) {
     if (eras[e].length) landmarks.push({ e, by: null, card: eras[e].pop() });
   }
+  // deck order is bottom-to-top; scavenge() pops the last element (top / next draw)
+  recPush('decks', {
+    eras: Object.fromEntries(Object.keys(eras).map(e => [e, (eras[e] || []).map(c => c.n)])),
+    sizes: Object.fromEntries(Object.keys(eras).map(e => [e, (eras[e] || []).length])),
+    landmarks: landmarks.map(l => ({ e: l.e, card: l.card ? l.card.n : null })),
+  });
   for (const p of players) {
     p.pack = []; p.stash = []; p.camps = {}; p.splay = {}; p.landmarks = [];
     scavenge(p, 1, true); scavenge(p, 1, true);
@@ -881,6 +946,10 @@ async function playMatch() {
   save();
   const winP = players[lastWinnerIdx];
   const tally = players.map(p => p.name + ' ' + stashValue(p) + '₵/' + p.landmarks.length + '★').join(' · ');
+  recFinish({
+    winner: winP.name, winnerIdx: lastWinnerIdx, endByWealth,
+    scores: players.map(p => ({ name: p.name, score: stashValue(p), stash: p.stash.length, landmarks: p.landmarks.slice() })),
+  });
   log('Final: ' + tally);
   setMessage(winP === me && net.mode === 'solo'
     ? '★ You rebuild the world (' + stashValue(me) + '₵, ' + me.landmarks.length + ' landmarks). The wasteland provides.'
@@ -1092,6 +1161,11 @@ async function choose(p, label, options) {
       const s = (o.score || 0) + Math.random() * 1.5;
       if (s > bs) { bs = s; best = o; }
     }
+    recPush('cpu', {
+      player: p.name, label,
+      options: options.map(o => ({ id: o.id, label: o.label, score: o.score })),
+      pick: best.id,
+    });
     return best.id;
   }
   if (p.remote) {
@@ -1479,6 +1553,7 @@ $('btn-deal').addEventListener('click', playMatch);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 load();
