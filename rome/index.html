@@ -396,7 +396,7 @@
       Boone play a solid economic game — watch your hand when they lead the
       legion. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -521,6 +521,40 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 matches for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+const recCard = c => c ? (c.jack ? 'JACK' : c.n + ':' + c.m) : null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rome-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -666,7 +700,8 @@ function showOptions(options, label) {
 
 async function choose(p, label, options) {
   if (!options.length) return null;
-  if (options.length === 1 && options[0].forced) return options[0].id;
+  const recAct = id => recPush('action', { player: p.name, label, chosen: id, options: options.map(o => o.id) });
+  if (options.length === 1 && options[0].forced) { recAct(options[0].id); return options[0].id; }
   if (p.ai) {
     await sleep(650);
     let best = options[0], bs = -1e9;
@@ -674,6 +709,8 @@ async function choose(p, label, options) {
       const s = (o.score || 0) + Math.random() * 2;
       if (s > bs) { bs = s; best = o; }
     }
+    recPush('cpu', { player: p.name, label, chosen: best.id, options: options.map(o => ({ id: o.id, score: o.score || 0 })) });
+    recAct(best.id);
     return best.id;
   }
   if (p.remote) {
@@ -687,7 +724,9 @@ async function choose(p, label, options) {
         settled = true;
         clearTimeout(timer);
         if (net.picker && net.picker.seq === seq) net.picker = null;
-        resolve(options.some(o => o.id === id) ? id : options[0].id);
+        const chosen = options.some(o => o.id === id) ? id : options[0].id;
+        recAct(chosen);
+        resolve(chosen);
       };
       const timer = setTimeout(() => {
         log(p.name + ' took too long — first option it is.');
@@ -701,14 +740,14 @@ async function choose(p, label, options) {
   }
   render();
   return new Promise(resolve => {
-    localChooser = { resolve };
+    localChooser = { resolve: id => { recAct(id); resolve(id); } };
     showOptions(options, label);
   });
 }
 
 /* ---------- game actions ---------- */
 
-function addToHand(p, c) { if (c) p.hand.push(c); }
+function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
 
 async function doThink(p) {
   const opts = [];
@@ -720,10 +759,11 @@ async function doThink(p) {
   if (pick === 'jack') {
     jacks--;
     p.hand.push({ jack: true });
+    recPush('draw', { player: p.name, card: 'JACK' });
     log(p.name + ' thinks and takes a Jack.');
   } else {
     let n = 0;
-    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; } }
+    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
     log(p.name + ' thinks and draws ' + n + '.');
   }
 }
@@ -881,7 +921,7 @@ async function actBUILDER(p, viaArchitect) {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
     addMaterial(p, Number(parts[2]), c, viaArchitect);
   }
-  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); log('Academy: ' + p.name + ' draws a card.'); } }
+  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
 }
 
 async function actLEGIONARY(p) {
@@ -920,12 +960,24 @@ async function actMERCHANT(p) {
 
 async function performRole(p, role, isBathEcho) {
   if (gameOver) return;
+  const recB = { stock: p.stockpile.length, vault: p.vault.length, clients: p.clients.length,
+                 buildings: p.buildings.length, done: p.buildings.filter(b => b.done).length,
+                 hand: p.hand.length, influence: p.influence };
   if (role === 'LABORER') await actLABORER(p);
   else if (role === 'PATRON') await actPATRON(p);
   else if (role === 'CRAFTSMAN') await actBUILDER(p, false);
   else if (role === 'ARCHITECT') await actBUILDER(p, true);
   else if (role === 'LEGIONARY') await actLEGIONARY(p);
   else if (role === 'MERCHANT') await actMERCHANT(p);
+  recPush('perform', { player: p.name, role, echo: !!isBathEcho, result: {
+    stockpiled: p.stockpile.length - recB.stock,
+    vaulted: p.vault.length - recB.vault,
+    hired: p.clients.length - recB.clients,
+    started: p.buildings.length - recB.buildings,
+    completed: p.buildings.filter(b => b.done).length - recB.done,
+    hand: p.hand.length - recB.hand,
+    influence: p.influence - recB.influence,
+  } });
   render();
 }
 
@@ -960,12 +1012,14 @@ async function playTurn(gen) {
   if (gen !== epoch) return;
 
   if (pick === 'think') {
+    recPush('turn', { leader: leader.name, role: 'think' });
     await doThink(leader);
     render();
     return;
   }
 
   const role = playLead(leader, pick);
+  recPush('turn', { leader: leader.name, role });
   log(leader.name + ' leads ' + role + '.');
   const participants = [leader];
   render();
@@ -1043,6 +1097,11 @@ async function playMatch() {
   jacks = 6;
   pool = [];
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  recStart({
+    players: players.map(p => ({ name: p.name, kind: p.remote ? 'remote' : (p.ai ? 'cpu' : 'human') })),
+    firstLeader: players[0].name,
+  });
+  recPush('deck', { cards: deck.map(c => recCard(c)), jacks: jacks, sites: Object.assign({}, sites) });
   for (const p of players) {
     p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = [];
     p.influence = 2; p.played = null;
@@ -1087,6 +1146,15 @@ async function playMatch() {
   stats.games++;
   if (lastWinnerIdx === mySeatIdx) stats.wins++;
   save();
+  recFinish({
+    winner: sharedWin || (players[lastWinnerIdx] ? players[lastWinnerIdx].name : null),
+    shared: sharedWin || null,
+    players: players.map(p => ({
+      name: p.name, score: score(p),
+      vault: p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0),
+      buildings: p.buildings.map(b => ({ n: b.n, done: !!b.done })),
+    })),
+  });
   const winP = players[lastWinnerIdx];
   const scores = players.map(p => p.name + ' ' + score(p)).join(' · ');
   log('Final: ' + scores);
@@ -1479,6 +1547,7 @@ $('btn-deal').addEventListener('click', playMatch);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */
