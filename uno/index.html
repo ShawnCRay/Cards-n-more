@@ -539,7 +539,10 @@
       no penalties here, just the dread. Cass and Boone hoard their wilds and
       aim their +4s with intent. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row">
+      <button id="btn-export-log">Export debug log</button>
+      <button id="help-close" class="primary">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -629,6 +632,7 @@ function drawCard() {
     discard = [top];
     log('Draw pile ran dry — reshuffled the discards.');
     if (!deck.length) deck = shuffle(buildDeck()); // pathological safety
+    recPush('shuffle', { reshuffle: true, deck: deck.map(recCard), top: recCard(top) });
   }
   return deck.pop();
 }
@@ -673,6 +677,44 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh start */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 games for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recCard(c) {
+  if (!c) return null;
+  if (c.c === 'w') return c.v === 'wd4' ? 'wild-d4' : 'wild';
+  return c.c.toUpperCase() + (typeof c.v === 'number' ? c.v : '-' + c.v);
+}
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'uno-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -904,20 +946,27 @@ function aiPickColor(p) {
 
 function aiChoose(p) {
   const pl = playableIdx(p);
-  if (!pl.length) return { type: 'draw' };
+  if (!pl.length) {
+    recPush('cpu', { player: p.name, playable: [], pick: 'draw' });
+    return { type: 'draw' };
+  }
   const next = nextSeat(players.indexOf(p));
   const nextLow = next && next.hand.length <= 2;
   let best = null, bestScore = -1;
+  const scored = [];
   for (const i of pl) {
     const c = p.hand[i];
     let s;
     if (c.c === 'w') s = c.v === 'wd4' ? (nextLow ? 6 : 0.5) : 0.8;
     else if (c.v === 'd2' || c.v === 'skip' || c.v === 'rev') s = nextLow ? 5 : 2;
     else s = 1 + c.v / 10;
+    scored.push({ idx: i, card: recCard(c), score: s });
     if (s > bestScore) { bestScore = s; best = i; }
   }
   const card = p.hand[best];
-  return { type: 'play', idx: best, color: card.c === 'w' ? aiPickColor(p) : undefined };
+  const color = card.c === 'w' ? aiPickColor(p) : undefined;
+  recPush('cpu', { player: p.name, playable: scored, nextLow: !!nextLow, pick: best, card: recCard(card), color });
+  return { type: 'play', idx: best, color };
 }
 
 /* ---------- engine (host/solo only) ---------- */
@@ -934,6 +983,7 @@ async function applyMove(p, action) {
   if (action.type === 'draw') {
     const c = drawCard();
     p.hand.push(c);
+    recPush('draw', { player: p.name, card: recCard(c), voluntary: true });
     log(p.name + ' draws a card.');
     render();
     if (playableOn(c)) {
@@ -957,6 +1007,7 @@ async function applyMove(p, action) {
 }
 
 function playCardFrom(p, idx, color) {
+  const recOptions = playableIdx(p).map(i => recCard(p.hand[i])); // legal set the engine offered
   const card = p.hand.splice(idx, 1)[0];
   if (!card) return { skipped: 0 };
   discard.push(card);
@@ -971,6 +1022,9 @@ function playCardFrom(p, idx, color) {
   }
   if (card.v === 'd2') { fx.drawN = 2; fx.skipped = 1; }
   if (card.v === 'wd4') { fx.drawN = 4; fx.skipped = 1; }
+  recPush('play', { player: p.name, card: recCard(card),
+    color: card.c === 'w' ? curColor : undefined,
+    dir, skipped: fx.skipped, drawN: fx.drawN || 0, left: p.hand.length, options: recOptions });
   log(msg);
   if (p.hand.length === 1) log('⚠ ' + p.name + ' has UNO!');
   return fx;
@@ -1008,6 +1062,7 @@ async function playRound() {
   roundNo++;
   $('round-controls').style.display = 'none';
   deck = shuffle(buildDeck());
+  const recDeckOrder = deck.map(recCard); // full ordered deck as built — deck-integrity signal
   discard = [];
   dir = 1;
   for (const p of players) {
@@ -1020,7 +1075,11 @@ async function playRound() {
   }
   log('— Round ' + roundNo + ' —');
 
-  for (let k = 0; k < 7; k++) for (const p of seated()) p.hand.push(drawCard());
+  for (let k = 0; k < 7; k++) for (const p of seated()) {
+    const c = drawCard();
+    p.hand.push(c);
+    recPush('draw', { player: p.name, card: recCard(c), voluntary: false, deal: true });
+  }
 
   // starter: wild +4 goes back in; other actions apply to the first player
   let starter = drawCard();
@@ -1030,6 +1089,7 @@ async function playRound() {
   }
   discard.push(starter);
   curColor = starter.c === 'w' ? COLORS[Math.floor(Math.random() * 4)] : starter.c;
+  recPush('shuffle', { round: roundNo, deck: recDeckOrder, starter: recCard(starter), color: curColor });
   log('Starter: ' + cardLabel(starter) + (starter.c === 'w' ? ' → ' + COLOR_NAMES[curColor] : '') + '.');
 
   let idx = (roundNo - 1) % players.length;
@@ -1048,7 +1108,12 @@ async function playRound() {
   while (!winner && safety-- > 0) {
     const p = players[idx];
     if (pendingFx.drawN) {
-      for (let k = 0; k < pendingFx.drawN; k++) p.hand.push(drawCard());
+      for (let k = 0; k < pendingFx.drawN; k++) {
+        const c = drawCard();
+        p.hand.push(c);
+        recPush('draw', { player: p.name, card: recCard(c), voluntary: false, penalty: true });
+      }
+      recPush('effect', { card: recCard(topCard()), target: p.name, drewN: pendingFx.drawN });
       log(p.name + ' draws ' + pendingFx.drawN + ' and loses the turn.');
       render();
       await sleep(850);
@@ -1058,6 +1123,7 @@ async function playRound() {
       continue;
     }
     if (pendingFx.skipped) {
+      recPush('effect', { card: recCard(topCard()), target: p.name, skipped: true });
       log(p.name + ' is skipped.');
       render();
       await sleep(750);
@@ -1083,7 +1149,12 @@ async function playRound() {
   // a winning +2/+4 still lands on the next player (and counts in the score)
   if (pendingFx.drawN) {
     const nxt = players[nextSeatIdx(idx)];
-    for (let k = 0; k < pendingFx.drawN; k++) nxt.hand.push(drawCard());
+    for (let k = 0; k < pendingFx.drawN; k++) {
+      const c = drawCard();
+      nxt.hand.push(c);
+      recPush('draw', { player: nxt.name, card: recCard(c), voluntary: false, penalty: true });
+    }
+    recPush('effect', { card: recCard(topCard()), target: nxt.name, drewN: pendingFx.drawN, winning: true });
     log(nxt.name + ' still draws ' + pendingFx.drawN + ' from the winning card.');
   }
 
@@ -1092,6 +1163,12 @@ async function playRound() {
   const gained = seated().filter(q => q !== winner)
     .reduce((sum, q) => sum + q.hand.reduce((a, c) => a + cardPoints(c), 0), 0);
   winner.score += gained;
+  recPush('round', {
+    round: roundNo, winner: winner.name, gained,
+    hands: seated().map(q => ({ player: q.name, count: q.hand.length,
+      value: q.hand.reduce((a, c) => a + cardPoints(c), 0), cards: q.hand.map(recCard) })),
+    scores: players.filter(q => !q.open).map(q => ({ player: q.name, score: q.score })),
+  });
   log('★ ' + winner.name + ' goes out and scores ' + gained + ' (total ' + winner.score + ').');
 
   if (winner.score >= TARGET) {
@@ -1100,6 +1177,8 @@ async function playRound() {
     stats.games++;
     if (winner === me) stats.wins++;
     save();
+    recFinish({ winner: winner.name, rounds: roundNo,
+      scores: players.filter(q => !q.open).map(q => ({ player: q.name, score: q.score })) });
     setTableMessage(winner === me && net.mode === 'solo'
       ? '★ You hit ' + me.score + ' and walk out rich. The wasteland provides.'
       : '★ ' + winner.name + ' hits ' + winner.score + ' first and walks out rich.');
@@ -1140,6 +1219,13 @@ function newGame() {
   $('turn-controls').style.display = 'none';
   $('drawn-controls').style.display = 'none';
   $('color-controls').style.display = 'none';
+  recStart({
+    target: TARGET,
+    players: players.map(p => ({
+      name: p.name,
+      kind: p.open ? 'open' : p.remote ? 'guest' : p.ai ? 'cpu' : 'human',
+    })),
+  });
   setTableMessage('Fresh deck. Deal when ready.');
   render();
 }
@@ -1587,6 +1673,7 @@ $('btn-deal').addEventListener('click', () => { if (gameOver) newGame(); else pl
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */
