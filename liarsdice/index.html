@@ -353,7 +353,7 @@
       <p>Cass plays the odds; Boone bluffs more than he should. Read them, and
       good luck out there.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -415,6 +415,39 @@ function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); 
 function load() {
   try { const d = JSON.parse(localStorage.getItem(STORE_KEY)); if (d && typeof d.wins === 'number') stats = d; }
   catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 games for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'liarsdice-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rules helpers ---------- */
@@ -484,6 +517,7 @@ function aiAction(p, b, total) {
     const unknown = total - mine.length;
     let qty = Math.max(1, Math.min(total, bestC + Math.round(unknown / 3)));
     if (Math.random() < 0.25 && qty < total) qty++;   // a little swagger
+    recPush('cpu', { name: p.cpuName, opening: true, face: bestF, myCount: bestC, unknown, pTrue: null, thresh: null, choice: 'bid', bid: { qty, face: bestF } });
     return { kind: 'bid', qty, face: bestF };
   }
   const k = myCount(b.face);
@@ -491,10 +525,11 @@ function aiAction(p, b, total) {
   const need = b.qty - k;
   const pTrue = binomAtLeast(unknown, need, 1 / 3);
   const thresh = 0.34 - bluffy + (Math.random() - 0.5) * 0.12;
-  if (pTrue < thresh) return { kind: 'call' };
+  const recCpu = (choice, out) => recPush('cpu', { name: p.cpuName, opening: false, face: b.face, myCount: k, unknown, need, pTrue, thresh, choice, bid: out || null });
+  if (pTrue < thresh) { recCpu('call'); return { kind: 'call' }; }
   // raise: prefer a face I actually hold, minimal quantity bump
   let raise = minRaise(b, total);
-  if (!raise) return { kind: 'call' };   // bid is maxed out — calling is the only move
+  if (!raise) { recCpu('call'); return { kind: 'call' }; }   // bid is maxed out — calling is the only move
   let bestF = raise.face, bestC = myCount(raise.face);
   for (let f = 2; f <= 6; f++) {
     const cand = { qty: raise.qty, face: f };
@@ -502,9 +537,10 @@ function aiAction(p, b, total) {
   }
   raise = { qty: raise.qty, face: bestF };
   if (!raises(raise, b) || raise.qty > total) raise = minRaise(b, total);
-  if (raise.qty > total) return { kind: 'call' };
+  if (raise.qty > total) { recCpu('call'); return { kind: 'call' }; }
   if ((pTrue > 0.82 || Math.random() < bluffy) && raise.qty < total && Math.random() < 0.45)
     raise = { qty: raise.qty + 1, face: raise.face };
+  recCpu('bid', { qty: raise.qty, face: raise.face });
   return { kind: 'bid', qty: raise.qty, face: raise.face };
 }
 
@@ -727,6 +763,10 @@ function beginRound() {
   }
   const seats = players.map((p, i) => i).filter(i => !players[i].open && !players[i].out);
   for (const i of seats) players[i].dice = rollN(players[i].diceCount);
+  recPush('roll', {
+    round: recEvents ? recEvents.filter(e => e.type === 'roll').length + 1 : 0,
+    seats: seats.map(i => ({ name: players[i].name, dice: players[i].dice.slice() })),
+  });
   return seats;
 }
 
@@ -758,7 +798,13 @@ async function playRound(myEpoch) {
     action = legalAction(action, bid, total) || (bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
 
     if (action.kind === 'call') { await resolveCall(seat, myEpoch); break; }
+    const prevBid = bid;
     bid = { qty: action.qty, face: action.face, by: seat };
+    recPush('bid', {
+      seat, name: p.name, qty: bid.qty, face: bid.face,
+      min: minRaise(prevBid, total),
+      prev: prevBid ? { qty: prevBid.qty, face: prevBid.face } : null,
+    });
     log(p.name + ' bids ' + bidText(bid) + '.');
     render();
     await sleep(POST_BID);
@@ -778,6 +824,11 @@ async function resolveCall(callerSeat, myEpoch) {
   const truth = actual >= b.qty;
   const loserSeat = truth ? callerSeat : b.by;
   const loser = players[loserSeat];
+  recPush('call', {
+    caller: caller.name,
+    bid: { qty: b.qty, face: b.face, by: b.by, bidder: bidder.name },
+    actual, truth, loser: loser.name,
+  });
   log(caller.name + ' calls liar on ' + bidder.name + ' (' + bidText(b) + '). The table shows ' + actual
     + ' — ' + (truth ? 'the bid holds up' : bidder.name + ' was bluffing') + '. ' + loser.name + ' loses a die.');
   setMessage('Cups up! ' + bidText(b) + '? The table shows ' + actual + '. ' + loser.name + ' loses a die.');
@@ -787,7 +838,7 @@ async function resolveCall(callerSeat, myEpoch) {
 
   loser.diceCount--;
   loser.dice = [];
-  if (loser.diceCount <= 0) { loser.out = true; log(loser.name + ' lost their last die — out of the game.'); }
+  if (loser.diceCount <= 0) { loser.out = true; recPush('out', { name: loser.name, seat: loserSeat }); log(loser.name + ' lost their last die — out of the game.'); }
   nextStarter = loser.out ? nextAliveSeat(loserSeat) : loserSeat;
 
   const alive = alivePlayers();
@@ -806,6 +857,9 @@ async function resolveCall(callerSeat, myEpoch) {
 async function playGame() {
   const myEpoch = epoch;
   gameActive = true; gameOver = false;
+  recStart({ players: players.filter(p => !p.open).map(p => ({
+    name: p.name, kind: p.ai ? 'cpu' : (p.remote ? 'remote' : 'human'), dice: p.diceCount,
+  })) });
   render();
   while (!gameOver) {
     await playRound(myEpoch);
@@ -815,6 +869,8 @@ async function playGame() {
     if (myEpoch !== epoch) return;
   }
   gameActive = false;
+  const recRounds = recEvents ? recEvents.filter(e => e.type === 'roll').length : 0;
+  recFinish({ winner: lastWinnerIdx >= 0 ? players[lastWinnerIdx].name : null, rounds: recRounds });
   stats.games++;
   if (lastWinnerIdx === mySeatIdx) stats.wins++;
   save();
@@ -1194,6 +1250,7 @@ $('btn-deal').addEventListener('click', startPlay);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 load();
