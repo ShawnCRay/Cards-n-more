@@ -113,62 +113,144 @@
     text-transform: uppercase;
     opacity: 0.45;
   }
+
+  /* ---------- room panel ---------- */
+  #room {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto 30px;
+    padding: 18px 20px;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(217,151,63,0.35);
+    border-radius: 14px;
+    box-shadow: inset 0 0 24px rgba(0,0,0,0.4);
+  }
+  #room .room-lead { font-size: 12.5px; line-height: 1.55; opacity: 0.85; margin-bottom: 14px; }
+  #room .room-lead b { color: var(--gold); letter-spacing: 1px; }
+  #room .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  #room input {
+    font: inherit; font-size: 13px; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5); background: rgba(0,0,0,0.4);
+    color: var(--cream); text-align: center;
+  }
+  #room input#room-code { text-transform: uppercase; letter-spacing: 3px; width: 130px; font-weight: 700; }
+  #room input#room-name { width: 150px; }
+  #room button {
+    font: inherit; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 9px 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(217,151,63,0.55); background: rgba(0,0,0,0.35); color: var(--cream);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  #room button:hover:not(:disabled) { border-color: var(--gold); background: rgba(217,151,63,0.12); }
+  #room button.primary { background: linear-gradient(180deg, #e0a850, #c2842e); color: var(--ink); border-color: var(--gold); font-weight: 700; }
+  #room button:disabled { opacity: 0.45; cursor: default; }
+  #room .code-badge { font-size: 15px; color: var(--gold); letter-spacing: 4px; font-weight: 700; }
+  #room .roster { margin-top: 12px; font-size: 12px; line-height: 1.7; opacity: 0.9; }
+  #room .roster .you { color: var(--gold); }
+  #room #room-status { font-size: 11.5px; color: #ffcc80; min-height: 15px; margin-top: 10px; }
+  #room .hint { font-size: 11px; opacity: 0.6; margin-top: 10px; letter-spacing: 0.5px; }
+
+  /* cards react to room state */
+  .games.picking a.game { cursor: pointer; }
+  a.game.locked { opacity: 0.4; pointer-events: none; }
+  a.game .pick-note {
+    display: none; margin-top: 10px; font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase; color: #ffcc80;
+  }
+  .games.picking a.game.locked .pick-note { display: block; }
+  .games.guests a.game { opacity: 0.5; pointer-events: none; position: relative; }
+  .games.guests a.game::after {
+    content: 'Host picks the game'; position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; text-align: center;
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold);
+    background: rgba(0,0,0,0.55); border-radius: inherit;
+  }
 </style>
 </head>
 <body>
   <h1>☢ VAULT 21 GAME ROOM</h1>
   <div class="sub">No ads · no accounts · caps only</div>
+
+  <div id="room" style="display:none">
+    <!-- default: no room open yet -->
+    <div id="room-idle">
+      <div class="room-lead">Open a <b>room</b> and your friends join once — then hop between games together.
+        Only the host picks the game and its settings.</div>
+      <div class="row">
+        <input id="room-name" maxlength="12" placeholder="Your name" autocomplete="off">
+        <button id="room-open" class="primary">Open a room</button>
+        <button id="room-join-toggle">Join a room</button>
+      </div>
+      <div class="row" id="room-join-row" style="display:none; margin-top:10px">
+        <input id="room-code" maxlength="6" placeholder="Code" autocomplete="off">
+        <button id="room-join" class="primary">Join</button>
+      </div>
+    </div>
+    <!-- active: hosting or joined -->
+    <div id="room-active" style="display:none">
+      <div class="room-lead" id="room-headline"></div>
+      <div class="row" id="room-host-actions" style="display:none">
+        <span class="code-badge" id="room-code-badge"></span>
+        <button id="room-copy"></button>
+        <button id="room-close">Close room</button>
+      </div>
+      <div class="roster" id="room-roster"></div>
+      <div class="hint" id="room-hint"></div>
+    </div>
+    <div id="room-status"></div>
+  </div>
+
   <div class="games">
-    <a class="game" href="blackjack/index.html">
+    <a class="game" data-game="blackjack" href="blackjack/index.html">
       <div class="icon">♠</div>
       <h2>BLACKJACK</h2>
       <p>The classic, against a dealer that stands on 17. Real odds, two CPU
       regulars, and seats for five friends over an invite link.</p>
       <div class="meta">Solo · Multiplayer · Coach for new players</div>
     </a>
-    <a class="game" href="flip7/index.html">
+    <a class="game" data-game="flip7" href="flip7/index.html">
       <div class="icon">7</div>
       <h2>FLIP 7</h2>
       <p>Push your luck: flip number cards until you stay, bust on a duplicate,
       or land seven uniques for the 15-point bonus. First to 200.</p>
       <div class="meta">Solo · Multiplayer · First to 200</div>
     </a>
-    <a class="game" href="caravan/index.html">
+    <a class="game" data-game="caravan" href="caravan/index.html">
       <div class="icon">🐂</div>
       <h2>CARAVAN</h2>
       <p>The New Vegas classic, one on one: build three caravans to 21–26,
       jack their aces, king your tens. Best two of three tracks.</p>
       <div class="meta">Solo vs Cass · 1v1 Multiplayer</div>
     </a>
-    <a class="game" href="uno/index.html">
+    <a class="game" data-game="uno" href="uno/index.html">
       <div class="icon">⇄</div>
       <h2>UNO</h2>
       <p>Match the color or the number, weaponize your skips and +4s, and
       dump your hand first. Round winner scores the table. First to 500.</p>
       <div class="meta">Solo · Multiplayer · Hidden hands</div>
     </a>
-    <a class="game" href="rome/index.html">
+    <a class="game" data-game="rome" href="rome/index.html">
       <div class="icon">◆</div>
       <h2>GLORY TO ROME</h2>
       <p>Lead roles, hire clients, raise buildings that bend the rules.
       Every card is a role, a material, and a building at once.</p>
       <div class="meta">Solo · Multiplayer · Engine builder</div>
     </a>
-    <a class="game" href="innovation/index.html">
+    <a class="game" data-game="innovation" href="innovation/index.html">
       <div class="icon">☢</div>
       <h2>ERAS OF THE WASTELAND</h2>
       <p>Rebuild civilization from Dust to a New World: scavenge techs,
       spread your camps, stash caps, and claim the landmarks.</p>
       <div class="meta">Solo · Multiplayer · Civilization builder</div>
     </a>
-    <a class="game" href="liarsdice/index.html">
+    <a class="game" data-game="liarsdice" href="liarsdice/index.html">
       <div class="icon">⚄</div>
       <h2>LIAR'S DICE</h2>
       <p>Five dice under a cup, 1s wild. Bluff the whole table on how many
       of a face are showing — raise the bid or call the liar out.</p>
       <div class="meta">Solo · Multiplayer · Hidden dice · Last cup wins</div>
     </a>
-    <a class="game" href="holdem/index.html">
+    <a class="game" data-game="holdem" href="holdem/index.html">
       <div class="icon">♣</div>
       <h2>TEXAS HOLD'EM</h2>
       <p>No-limit hold'em at a cash table. Two hole cards, five on the board,
@@ -177,5 +259,325 @@
     </a>
   </div>
   <div class="foot">Vault-Tec approved recreation — war never changes</div>
+
+<script>window.__V21_LOBBY__ = true;</script>
+<script src="peerjs.min.js"></script>
+<script src="room.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   Landing-page lobby. The host opens a room here; friends join with the code
+   and wait together. Only the host picks the game — clicking a card moves the
+   whole table into it. A friend who opens the invite link while the group is
+   already mid-game is answered by the game host and bounced straight in.
+
+   The heavy lifting (peer namespace, hop navigation, session identity) lives
+   in room.js via the V21 namespace. This file is the lobby's own UI + roster.
+   ============================================================ */
+(function () {
+  if (!window.V21 || !window.Peer) return; // PeerJS missing -> plain links only
+
+  var HEARTBEAT_MS = 3000, STALE_MS = 35000, MAX_GUESTS = 5;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  var panel = $('room');
+  var gamesEl = document.querySelector('.games');
+  panel.style.display = ''; // reveal the room panel now that PeerJS is present
+
+  // add a capacity note slot to every card
+  var cards = {};
+  [].forEach.call(gamesEl.querySelectorAll('a.game'), function (a) {
+    cards[a.getAttribute('data-game')] = a;
+    var note = document.createElement('div');
+    note.className = 'pick-note';
+    a.appendChild(note);
+  });
+
+  var state = 'idle';        // 'idle' | 'host' | 'guest'
+  var room = {};             // { code, peer, name, guests:[{name,conn}], hostName }
+  var joinRetries = 0, gone = false;
+
+  /* ---------------- shared roster rendering ---------------- */
+
+  function renderRoster(names, youIdx) {
+    var html = names.map(function (n, i) {
+      return '<div class="' + (i === youIdx ? 'you' : '') + '">' +
+        esc(n) + (i === 0 ? ' — host' : '') + (i === youIdx ? ' (you)' : '') + '</div>';
+    }).join('');
+    $('room-roster').innerHTML = html;
+  }
+
+  function guestCount() { return state === 'host' ? room.guests.length : Math.max(0, (room.roster || []).length - 1); }
+
+  function refreshCards() {
+    if (state === 'host') {
+      gamesEl.classList.add('picking'); gamesEl.classList.remove('guests');
+      var n = guestCount();
+      V21.GAMES.forEach(function (g) {
+        var a = cards[g.id]; if (!a) return;
+        var tooBig = g.cap < n;
+        a.classList.toggle('locked', tooBig);
+        a.querySelector('.pick-note').textContent = tooBig
+          ? (g.cap === 1 ? '1v1 — room too big' : 'seats ' + g.cap + ' — room too big') : '';
+      });
+    } else if (state === 'guest') {
+      gamesEl.classList.add('guests'); gamesEl.classList.remove('picking');
+    } else {
+      gamesEl.classList.remove('picking', 'guests');
+    }
+  }
+
+  /* ---------------- card clicks = host's game pick ---------------- */
+
+  gamesEl.addEventListener('click', function (e) {
+    var a = e.target.closest('a.game'); if (!a) return;
+    if (state === 'idle') return; // solo: let the link navigate normally
+    e.preventDefault();
+    if (state !== 'host') return; // guests can't pick
+    var id = a.getAttribute('data-game');
+    var g = V21.gameById(id);
+    if (g.cap < guestCount()) return; // locked
+    // opening the first game — no game in progress, so no confirm needed
+    room.hopping = true; // stop answering new joiners while we tear down
+    try { broadcast({ type: 'switch', game: id }); } catch (err) {}
+    setTimeout(function () {
+      try { room.peer && room.peer.destroy(); } catch (err) {}
+      V21.hopToGame(id, 'host', room.code, room.name);
+    }, 400);
+  });
+
+  /* ---------------- host side ---------------- */
+
+  function broadcast(msg) {
+    room.guests.forEach(function (gt) { if (gt.conn && gt.conn.open) gt.conn.send(msg); });
+  }
+  function rosterNames() { return [room.name].concat(room.guests.map(function (g) { return g.name; })); }
+  function pushRoster() { broadcast({ type: 'roster', roster: rosterNames() }); renderRoster(rosterNames(), 0); refreshCards(); }
+
+  function openRoom(code) {
+    state = 'host';
+    room = { code: code, name: room.name || 'Host', guests: [] };
+    $('room-idle').style.display = 'none';
+    $('room-active').style.display = '';
+    $('room-host-actions').style.display = '';
+    $('room-code-badge').textContent = code;
+    $('room-copy').textContent = navigator.share ? 'Share invite' : 'Copy invite';
+    $('room-headline').innerHTML = 'Room is open. Send the invite link, then pick a game below — everyone moves with you.';
+    $('room-hint').textContent = 'Up to ' + MAX_GUESTS + ' friends. They wait here until you choose.';
+    createHostPeer();
+    setInterval(ensureJoinable, 5000);
+    setInterval(function () { broadcast({ type: 'ping' }); }, HEARTBEAT_MS);
+    setInterval(function () {
+      var now = Date.now();
+      room.guests.slice().forEach(function (gt) {
+        if (gt.conn && gt.conn._lastSeen && now - gt.conn._lastSeen > STALE_MS) {
+          try { gt.conn.close(); } catch (e) {}
+          dropGuest(gt.conn);
+        }
+      });
+    }, 4000);
+    renderRoster(rosterNames(), 0);
+    refreshCards();
+  }
+
+  function createHostPeer() {
+    room.peer = V21.makeRoomPeer(V21.peerId(room.code));
+    room.peer.on('open', function () {
+      status('');
+      var url = new URL('index.html?join=' + room.code, location.href).href;
+      room.inviteUrl = url;
+    });
+    room.peer.on('connection', function (conn) {
+      conn.on('data', function (d) { onGuestMsg(conn, d); });
+      conn.on('close', function () { dropGuest(conn); });
+      conn.on('error', function () { dropGuest(conn); });
+    });
+    room.peer.on('error', function (e) {
+      var brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+      if (brokerTrouble.indexOf(e.type) >= 0) { status('Reconnecting to the lobby…'); setTimeout(ensureJoinable, 2000); }
+      else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') { status('Room error: ' + e.type); }
+    });
+  }
+  function ensureJoinable() {
+    if (state !== 'host' || !room.peer) return;
+    if (room.peer.destroyed) createHostPeer();
+    else if (room.peer.disconnected) { try { room.peer.reconnect(); } catch (e) { try { room.peer.destroy(); } catch (e2) {} createHostPeer(); } }
+  }
+
+  function onGuestMsg(conn, d) {
+    if (!d || typeof d !== 'object') return;
+    conn._lastSeen = Date.now();
+    if (room.hopping) return; // we're navigating the table into a game — stop seating
+    // only lobby probes (from the root page) get seated here. A plain hello is a
+    // game-page guest that reached this id during a hop — ignore it so it retries
+    // and finds the real game host instead of latching onto us.
+    if (d.type === 'hello' && d.lobby) {
+      var prior = room.guests.filter(function (g) { return g.conn && g.conn !== conn && g.conn.peer === conn.peer; })[0];
+      var nm = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+      if (prior) { try { prior.conn.close(); } catch (e) {} prior.conn = conn; prior.name = nm; }
+      else {
+        if (room.guests.length >= MAX_GUESTS) { conn.send({ type: 'full' }); setTimeout(function () { try { conn.close(); } catch (e) {} }, 300); return; }
+        room.guests.push({ conn: conn, name: nm });
+      }
+      conn.send({ type: 'welcome', hostName: room.name, roster: rosterNames() });
+      pushRoster();
+    }
+  }
+  function dropGuest(conn) {
+    var before = room.guests.length;
+    room.guests = room.guests.filter(function (g) { return g.conn !== conn; });
+    if (room.guests.length !== before) pushRoster();
+  }
+
+  /* ---------------- guest side ---------------- */
+
+  function joinLobby(code, name) {
+    state = 'guest';
+    room = { code: code, name: name, roster: [] };
+    gone = false; joinRetries = 0;
+    $('room-idle').style.display = 'none';
+    $('room-active').style.display = '';
+    $('room-host-actions').style.display = 'none';
+    $('room-headline').innerHTML = 'You’re in room <b>' + esc(code) + '</b>. The host picks the game — sit tight, you’ll be pulled in automatically.';
+    $('room-hint').textContent = '';
+    status('Connecting to the room…');
+    connectGuest();
+  }
+  function connectGuest() {
+    if (state !== 'guest') return;
+    if (room.peer && !room.peer.destroyed) room.peer.destroy();
+    room.peer = V21.makeRoomPeer();
+    room.peer.on('open', function () { guestDial(); });
+    room.peer.on('error', function (e) {
+      if (room.seated) return;
+      if (e.type === 'peer-unavailable') {
+        if (joinRetries < 20) { status('Room isn’t answering yet — retrying, attempt ' + joinRetries + '…'); setTimeout(guestDial, 4000); }
+        else status('No room with code ' + room.code + '. Ask the host to open it and try again.');
+      } else status('Connection failed (' + e.type + ').');
+    });
+  }
+  function guestDial() {
+    if (state !== 'guest' || !room.peer || room.peer.destroyed) return;
+    joinRetries++;
+    if (room.hostConn) { try { room.hostConn.close(); } catch (e) {} }
+    var conn = room.peer.connect(V21.peerId(room.code), { reliable: true });
+    room.hostConn = conn;
+    conn.on('open', function () { conn.send({ type: 'hello', name: room.name, lobby: 1 }); });
+    conn.on('data', function (d) { onHostMsg(d); });
+    conn.on('close', function () { if (state === 'guest' && room.hostConn === conn) hostGone(); });
+    setTimeout(function () {
+      if (state !== 'guest' || room.hostConn !== conn || conn.open) return;
+      try { conn.close(); } catch (e) {}
+      if (joinRetries < 20) { status('Room isn’t answering yet — retrying, attempt ' + joinRetries + '…'); guestDial(); }
+      else status('No luck reaching the room. Ask the host to keep it open, then rejoin.');
+    }, 8000);
+  }
+  function onHostMsg(d) {
+    if (!d || typeof d !== 'object') return;
+    room.lastSeen = Date.now();
+    if (d.type === 'switch') {
+      V21.switching = true;
+      if (d.game === 'lobby') return; // already here
+      V21.hopToGame(d.game, 'guest', room.code, room.name);
+    } else if (d.type === 'welcome') {
+      room.seated = true;
+      room.hostName = d.hostName;
+      status('');
+      if (!room.hb) {
+        room.hb = true;
+        setInterval(function () { if (room.hostConn && room.hostConn.open) room.hostConn.send({ type: 'ping' }); }, HEARTBEAT_MS);
+        setInterval(function () { if (state === 'guest' && !gone && Date.now() - room.lastSeen > STALE_MS) hostGone(); }, 4000);
+      }
+      showRoster(d.roster);
+    } else if (d.type === 'roster') {
+      showRoster(d.roster);
+    } else if (d.type === 'full') {
+      status('That room is full (host + ' + MAX_GUESTS + ' friends).');
+    }
+  }
+  function showRoster(names) {
+    room.roster = names || [];
+    var youIdx = room.roster.indexOf(room.name);
+    renderRoster(room.roster, youIdx);
+    refreshCards();
+  }
+  function hostGone() {
+    if (gone) return; gone = true;
+    status('Lost the host. The room closed — reopen or join another.');
+    $('room-headline').innerHTML = 'The host left and the room closed.';
+    $('room-roster').innerHTML = '';
+    var b = document.createElement('button'); b.className = 'primary'; b.textContent = 'Back to start';
+    b.style.marginTop = '8px';
+    b.addEventListener('click', function () { location.href = 'index.html'; });
+    $('room-active').appendChild(b);
+    gamesEl.classList.remove('guests');
+  }
+
+  /* ---------------- shared UI plumbing ---------------- */
+
+  function status(msg) { $('room-status').textContent = msg || ''; }
+
+  $('room-open').addEventListener('click', function () {
+    room.name = ($('room-name').value || '').trim().slice(0, 12) || 'Host';
+    openRoom(V21.randCode());
+  });
+  $('room-join-toggle').addEventListener('click', function () {
+    var r = $('room-join-row'); r.style.display = r.style.display === 'none' ? '' : 'none';
+    if (r.style.display !== 'none') $('room-code').focus();
+  });
+  $('room-join').addEventListener('click', function () {
+    var code = ($('room-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (code.length !== 6) { status('Enter the 6-character room code.'); return; }
+    var name = ($('room-name').value || '').trim().slice(0, 12) || 'Guest';
+    joinLobby(code, name);
+  });
+  $('room-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('room-open').click(); });
+  $('room-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('room-join').click(); });
+  $('room-copy').addEventListener('click', function () {
+    var url = room.inviteUrl || new URL('index.html?join=' + room.code, location.href).href;
+    if (navigator.share) navigator.share({ title: 'Vault 21 Game Room', text: 'Join my game room', url: url }).catch(function () {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { status('Invite link copied.'); }).catch(function () { prompt('Copy this invite link:', url); });
+    else prompt('Copy this invite link:', url);
+  });
+  $('room-close').addEventListener('click', function () {
+    if (!confirm('Close the room? Friends waiting here will be dropped.')) return;
+    try { broadcast({ type: 'switch', game: 'lobby' }); room.peer && room.peer.destroy(); } catch (e) {}
+    location.href = 'index.html';
+  });
+
+  /* ---------------- boot: honor URL params / stored session ---------------- */
+
+  var q = new URLSearchParams(location.search);
+  var sess = V21.loadSession() || {};
+  var pRoom = (q.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  var pRole = q.get('role');
+  var pJoin = (q.get('join') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+
+  if (pRoom.length === 6 && pRole === 'host') {
+    // arrived here from a "back to the game room" hop — reopen the same room
+    room.name = sess.name || 'Host';
+    $('room-name').value = room.name;
+    openRoom(pRoom);
+  } else if (pRoom.length === 6 && pRole === 'guest') {
+    // group came back to the lobby — rejoin automatically
+    joinLobby(pRoom, sess.name || 'Guest');
+  } else if (pJoin.length === 6) {
+    // invite link. If we already have a name, join straight away; else ask for one.
+    $('room-code').value = pJoin;
+    $('room-join-row').style.display = '';
+    if (sess.name) { $('room-name').value = sess.name; joinLobby(pJoin, sess.name); }
+    else { status('Enter a name, then tap Join.'); $('room-name').focus(); }
+  } else if (sess.code && sess.role === 'host') {
+    // a room we opened this session is still remembered — offer to resume
+    var resume = document.createElement('button');
+    resume.textContent = 'Resume room ' + sess.code;
+    resume.style.marginLeft = '8px';
+    resume.addEventListener('click', function () { room.name = sess.name || 'Host'; openRoom(sess.code); });
+    $('room-idle').querySelector('.row').appendChild(resume);
+  }
+})();
+</script>
 </body>
 </html>

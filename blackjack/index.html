@@ -857,6 +857,7 @@
 <script src="peerjs.min.js"></script>
 <script>
 'use strict';
+window.__V21_GAME__ = 'blackjack';
 
 /* ============================================================
    Rules: 6 decks, dealer stands on all 17s, blackjack pays 3:2,
@@ -1803,7 +1804,7 @@ function netBroadcast(msg) {
 }
 
 function inviteUrl() {
-  return location.origin + location.pathname + '?join=' + net.roomCode;
+  return new URL('../index.html?join=' + net.roomCode, location.href).href;
 }
 
 function copyInvite() {
@@ -1840,11 +1841,11 @@ function updateNetBar() {
 
 /* ----- host side ----- */
 
-function hostRoom() {
+function hostRoom(code) {
   if (net.mode === 'host') return; // second click while the broker is still answering
   setMessage('Setting up your table…');
   net.mode = 'host';
-  net.roomCode = randCode();
+  net.roomCode = code || randCode();
   createHostPeer();
   // phones freeze the tab (and kill the lobby socket) the moment the host
   // switches apps — e.g. to text the invite link. Re-register the table as
@@ -1867,7 +1868,7 @@ function hostRoom() {
 }
 
 function createHostPeer() {
-  net.peer = makePeer('bjsim-' + net.roomCode);
+  net.peer = makePeer('v21-' + net.roomCode);
   net.peer.on('open', () => {
     if (!net.hostAnnounced) {
       net.hostAnnounced = true;
@@ -2114,7 +2115,7 @@ function guestConnect() {
   if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
   net.joinRetries++;
   if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale attempt */ } }
-  const conn = net.peer.connect('bjsim-' + net.roomCode, { reliable: true });
+  const conn = net.peer.connect('v21-' + net.roomCode, { reliable: true });
   net.hostConn = conn;
   conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
   conn.on('data', d => handleHostMsg(d));
@@ -2308,7 +2309,7 @@ $('overlay-go').addEventListener('click', () => {
   if (overlayMode === 'host') {
     player.name = name || (player.name === 'You' ? 'Host' : player.name);
     $('overlay').style.display = 'none';
-    hostRoom();
+    hostRoom(overlayCode);
   } else {
     const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     if (code.length !== 6) { $('overlay-status').textContent = 'Enter the 6-character table code.'; return; }
@@ -2333,7 +2334,7 @@ $('help-close').addEventListener('click', () => { $('help').style.display = 'non
 $('btn-export-log').addEventListener('click', recExport);
 $('deck-select').addEventListener('change', () => {
   const v = Number($('deck-select').value);
-  if (roundActive || !DECK_CHOICES.includes(v)) { $('deck-select').value = String(numDecks); return; }
+  if (net.mode === 'guest' || roundActive || !DECK_CHOICES.includes(v)) { $('deck-select').value = String(numDecks); return; }
   numDecks = v;
   shuffleShoe();
   save();
@@ -2421,12 +2422,16 @@ $('deck-select').value = String(numDecks);
 $('btn-coach').textContent = 'Coach: ' + (coachOn ? 'on' : 'off');
 
 if (window.Peer) {
-  $('btn-invite').style.display = '';
-  $('btn-join').style.display = '';
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   if (joinCode) showOverlay('join', joinCode);
 }
+
+/* expose the game's const state to the shared room layer (room.js) */
+window.net = net;
+window.__V21_seats = seats;
+window.__V21_host = player;
 </script>
+<script src="../room.js"></script>
 </body>
 </html>

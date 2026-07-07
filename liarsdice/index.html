@@ -360,6 +360,7 @@
 <script src="peerjs.min.js"></script>
 <script>
 'use strict';
+window.__V21_GAME__ = 'liarsdice';
 
 /* ============================================================
    Vault 21 — Liar's Dice.  Host-authoritative; each cup's dice
@@ -966,7 +967,7 @@ function randCode() {
 }
 
 function netBroadcast(msg) { for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg); }
-function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+function inviteUrl() { return new URL('../index.html?join=' + net.roomCode, location.href).href; }
 function copyInvite() {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(inviteUrl())
@@ -993,10 +994,10 @@ function updateNetBar() {
   } else { bar.textContent = ''; }
 }
 
-function hostRoom() {
+function hostRoom(code) {
   setMessage('Setting up your table…');
   net.mode = 'host';
-  net.roomCode = randCode();
+  net.roomCode = code || randCode();
   createHostPeer();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') ensureJoinable();
@@ -1016,7 +1017,7 @@ function hostRoom() {
 }
 
 function createHostPeer() {
-  net.peer = makePeer('liardice-' + net.roomCode);
+  net.peer = makePeer('v21-' + net.roomCode);
   net.peer.on('open', () => {
     if (!net.hostAnnounced) {
       net.hostAnnounced = true;
@@ -1135,7 +1136,7 @@ function guestConnect() {
   if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
   net.joinRetries++;
   if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
-  const conn = net.peer.connect('liardice-' + net.roomCode, { reliable: true });
+  const conn = net.peer.connect('v21-' + net.roomCode, { reliable: true });
   net.hostConn = conn;
   conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
   conn.on('data', d => handleHostMsg(d));
@@ -1225,7 +1226,7 @@ $('overlay-go').addEventListener('click', () => {
   if (overlayMode === 'host') {
     me.name = name || (me.name === 'You' ? 'Host' : me.name);
     $('overlay').style.display = 'none';
-    hostRoom();
+    hostRoom(overlayCode);
     render();
   } else {
     const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -1258,12 +1259,16 @@ newGame();
 log('Welcome to the back room. Five dice, one cup, and a table full of liars.');
 
 if (window.Peer) {
-  $('btn-invite').style.display = '';
-  $('btn-join').style.display = '';
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   if (joinCode) showOverlay('join', joinCode);
 }
+
+/* expose the game's const state to the shared room layer (room.js) */
+window.net = net;
+window.__V21_seats = players;
+window.__V21_host = me;
 </script>
+<script src="../room.js"></script>
 </body>
 </html>

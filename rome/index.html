@@ -403,6 +403,7 @@
 <script src="peerjs.min.js"></script>
 <script>
 'use strict';
+window.__V21_GAME__ = 'rome';
 
 /* ============================================================
    Glory to Rome — fan adaptation with a curated building set.
@@ -1248,7 +1249,7 @@ function netBroadcast(msg) {
   for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
 }
 
-function inviteUrl() { return location.origin + location.pathname + '?join=' + net.roomCode; }
+function inviteUrl() { return new URL('../index.html?join=' + net.roomCode, location.href).href; }
 
 function copyInvite() {
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1282,10 +1283,10 @@ function updateNetBar() {
 
 /* ----- host side ----- */
 
-function hostRoom() {
+function hostRoom(code) {
   setMessage('Setting up your table…');
   net.mode = 'host';
-  net.roomCode = randCode();
+  net.roomCode = code || randCode();
   createHostPeer();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') ensureJoinable();
@@ -1305,7 +1306,7 @@ function hostRoom() {
 }
 
 function createHostPeer() {
-  net.peer = makePeer('romesim-' + net.roomCode);
+  net.peer = makePeer('v21-' + net.roomCode);
   net.peer.on('open', () => {
     if (!net.hostAnnounced) {
       net.hostAnnounced = true;
@@ -1432,7 +1433,7 @@ function guestConnect() {
   if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
   net.joinRetries++;
   if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
-  const conn = net.peer.connect('romesim-' + net.roomCode, { reliable: true });
+  const conn = net.peer.connect('v21-' + net.roomCode, { reliable: true });
   net.hostConn = conn;
   conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
   conn.on('data', d => handleHostMsg(d));
@@ -1522,7 +1523,7 @@ $('overlay-go').addEventListener('click', () => {
   if (overlayMode === 'host') {
     me.name = name || (me.name === 'You' ? 'Host' : me.name);
     $('overlay').style.display = 'none';
-    hostRoom();
+    hostRoom(overlayCode);
     render();
   } else {
     const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -1557,12 +1558,16 @@ newGame();
 log('Welcome to the forum. Lead well, build fast, and mind the legions.');
 
 if (window.Peer) {
-  $('btn-invite').style.display = '';
-  $('btn-join').style.display = '';
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
     .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   if (joinCode) showOverlay('join', joinCode);
 }
+
+/* expose the game's const state to the shared room layer (room.js) */
+window.net = net;
+window.__V21_seats = players;
+window.__V21_host = me;
 </script>
+<script src="../room.js"></script>
 </body>
 </html>
