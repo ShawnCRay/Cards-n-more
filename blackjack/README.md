@@ -66,6 +66,9 @@ Multiplayer notes:
   "BET $x" / "WAITING TO BET" badges during the betting phase and the host
   gets a note naming anyone who hasn't bet, since a guest without a bet in
   sits the round out.
+- The host doesn't have to play to deal: dealing with no bet in sits the
+  host out for that round while everyone else plays — so a host who's out
+  of chips can keep running the table for guests without buying back in.
 - Guests can pre-bet: while a hand is still playing out, the betting chips
   stay available and the button reads "Bet next hand" — the wager (badged
   "NEXT BET" for the table) is applied automatically when the next round's

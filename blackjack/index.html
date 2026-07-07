@@ -1244,7 +1244,9 @@ function enterBettingPhase() {
   $('btn-rebet').disabled = lastBet < MIN_BET || lastBet > player.bank + pendingBet;
   $('btn-buyin').style.display = (player.bank + pendingBet < MIN_BET) ? '' : 'none';
   if (player.bank + pendingBet < MIN_BET) {
-    setMessage("You're out of chips. Buy back in to keep playing.");
+    setMessage(net.mode === 'host'
+      ? "You're out of chips — buy back in, or just deal and sit the round out."
+      : "You're out of chips. Buy back in to keep playing.");
   } else {
     setMessage('Place your bet.');
   }
@@ -1276,7 +1278,10 @@ function cpuBet(seat) {
 
 async function startRound() {
   if (roundActive) return;
-  if (pendingBet < MIN_BET) { setMessage('Minimum bet is ' + fmt(MIN_BET) + '.'); return; }
+  // hosting: the dealer doesn't have to play — dealing with no bet in sits
+  // the host out for the round, so a broke host can still run the table
+  const sitOut = net.mode === 'host' && pendingBet === 0;
+  if (pendingBet < MIN_BET && !sitOut) { setMessage('Minimum bet is ' + fmt(MIN_BET) + '.'); return; }
   roundActive = true;
   $('bet-controls').style.display = 'none';
   $('deck-select').disabled = true;
@@ -1295,9 +1300,14 @@ async function startRound() {
   seats.forEach(s => { s.hands = []; s.insurance = 0; });
 
   // bets
-  lastBet = pendingBet;
-  player.bank -= pendingBet;
-  player.hands = [makeHand(pendingBet)];
+  if (sitOut) {
+    player.hands = [];
+    log('You deal this round sitting out — no bet in.');
+  } else {
+    lastBet = pendingBet;
+    player.bank -= pendingBet;
+    player.hands = [makeHand(pendingBet)];
+  }
   pendingBet = 0;
   for (const seat of seats) {
     if (seat === player) continue;
@@ -1589,7 +1599,8 @@ function settleRound(dealerBlackjack) {
 
   const yourResults = player.hands.map(h => h.result.text).join(', ');
   setMessage(yourResults ? 'Result: ' + yourResults : '');
-  log('Round over. Dealer ' + (dealerBust ? 'busts with ' + dv : 'has ' + dv) + '. You: ' + yourResults);
+  log('Round over. Dealer ' + (dealerBust ? 'busts with ' + dv : 'has ' + dv) + '. ' +
+      (yourResults ? 'You: ' + yourResults : 'You sat this one out.'));
 
   save();
   enterBettingPhase();
