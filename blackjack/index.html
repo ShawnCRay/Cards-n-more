@@ -836,7 +836,7 @@
       &ldquo;basic strategy&rdquo; the CPU players use. Great way to learn;
       switch it off whenever you're ready to fly solo. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -894,6 +894,7 @@ function shuffleShoe() {
     const j = Math.floor(Math.random() * (i + 1));
     [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
   }
+  recPush('shuffle', { decks: numDecks, shoe: shoe.map(c => c.rank + c.suit) });
 }
 
 function cutCount() {
@@ -916,7 +917,10 @@ function draw() {
       if (i !== -1) shoe.splice(i, 1);
     }
   }
-  return shoe.pop();
+  const card = shoe.pop();
+  recPush('draw', { card: card ? card.rank + card.suit : null, to: recDrawTo, shoeRemaining: shoe.length });
+  recDrawTo = null;
+  return card;
 }
 
 /* ---------- hand math ---------- */
@@ -1035,6 +1039,40 @@ function load() {
     if (typeof data.lastBet === 'number') lastBet = data.lastBet;
     if (DECK_CHOICES.includes(data.decks)) numDecks = data.decks;
   } catch (e) { /* corrupted store — start fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last few rounds for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 6;   // blackjack is round-based; keep the last 6 rounds
+let recEvents = null;
+let recDrawTo = null;   // recipient hint set right before each draw() call
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'blackjack-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- DOM helpers ---------- */
@@ -1303,6 +1341,16 @@ async function startRound() {
   $('deck-select').disabled = true;
   setMessage('');
 
+  recStart({
+    numDecks,
+    shoeRemaining: shoe.length,
+    seats: seats.filter(s => !s.open).map(s => ({
+      name: s.name,
+      kind: s.ai ? 'cpu' : (s.remote ? 'remote' : 'human'),
+      bet: s === player ? pendingBet : (s.remote ? s.netBet : null),
+    })),
+  });
+
   if (needsShuffle()) {
     shuffleShoe();
     log('Cut card out — shuffling a fresh ' + numDecks + '-deck shoe.');
@@ -1349,10 +1397,12 @@ async function startRound() {
   for (let pass = 0; pass < 2; pass++) {
     for (const seat of seats) {
       if (!seat.hands.length) continue;
+      recDrawTo = seat.name + '#0';
       seat.hands[0].cards.push(draw());
       render();
       await sleep(220);
     }
+    recDrawTo = 'dealer';
     dealer.cards.push(draw());
     render();
     await sleep(220);
@@ -1381,6 +1431,9 @@ async function startRound() {
     await sleep(400);
     if (handValue(dealer.cards).total === 21) {
       dealer.holeHidden = false;
+      recPush('dealer', { event: 'peek-bj',
+        hole: dealer.cards[1] ? dealer.cards[1].rank + dealer.cards[1].suit : null,
+        up: dealer.cards[0].rank + dealer.cards[0].suit, total: 21 });
       setMessage('Dealer has blackjack.');
       log('Dealer flips over blackjack.');
       if (player.insurance > 0) {
@@ -1403,6 +1456,9 @@ async function startRound() {
   // dealer's turn
   activeRef = null;
   dealer.holeHidden = false;
+  recPush('dealer', { event: 'reveal',
+    hole: dealer.cards[1] ? dealer.cards[1].rank + dealer.cards[1].suit : null,
+    up: dealer.cards[0].rank + dealer.cards[0].suit, total: handValue(dealer.cards).total });
   setMessage('Dealer plays…');
   render();
   await sleep(600);
@@ -1411,7 +1467,12 @@ async function startRound() {
     !h.busted && !h.surrendered && !isBlackjack(h)));
   if (anyLive) {
     while (handValue(dealer.cards).total < 17) {
+      recDrawTo = 'dealer';
       dealer.cards.push(draw());
+      recPush('dealer', { event: 'draw',
+        card: dealer.cards[dealer.cards.length - 1]
+          ? dealer.cards[dealer.cards.length - 1].rank + dealer.cards[dealer.cards.length - 1].suit : null,
+        total: handValue(dealer.cards).total });
       render();
       await sleep(550);
     }
@@ -1431,6 +1492,7 @@ async function playSeat(seat, up) {
       activeRef = { seat, hand };
       render();
       await sleep(350);
+      recDrawTo = seat.name + '#' + hi;
       hand.cards.push(draw());
       render();
       await sleep(350);
@@ -1464,6 +1526,8 @@ async function playSeat(seat, up) {
       if (seat.ai || seat.finishAsCpu) {
         await sleep(950);
         action = basicStrategy(hand, up, can);
+        recPush('cpu', { seat: seats.indexOf(seat), name: seat.name, hand: hi,
+          total: v.total, soft: v.soft, up: up.rank + up.suit, decision: action });
       } else if (seat.remote) {
         setMessage('Waiting for ' + seat.name + '…');
         action = await getRemoteAction(seat, hand, can);
@@ -1472,7 +1536,11 @@ async function playSeat(seat, up) {
         action = await getPlayerAction(can);
       }
 
+      recPush('action', { seat: seats.indexOf(seat), name: seat.name, hand: hi,
+        action, can: Object.assign({}, can), total: v.total, soft: v.soft });
+
       if (action === 'H') {
+        recDrawTo = seat.name + '#' + hi;
         hand.cards.push(draw());
         if (!seat.ai) setMessage('');
         render();
@@ -1483,6 +1551,7 @@ async function playSeat(seat, up) {
         seat.bank -= hand.bet;
         hand.bet *= 2;
         hand.doubled = true;
+        recDrawTo = seat.name + '#' + hi;
         hand.cards.push(draw());
         const dv = handValue(hand.cards);
         if (dv.total > 21) hand.busted = true;
@@ -1504,6 +1573,7 @@ async function playSeat(seat, up) {
         if (seat.ai) log(seat.name + ' splits.');
         render();
         await sleep(350);
+        recDrawTo = seat.name + '#' + hi;
         hand.cards.push(draw());
         render();
         await sleep(350);
@@ -1569,6 +1639,7 @@ function getPlayerAction(can) {
 function settleRound(dealerBlackjack) {
   const dv = handValue(dealer.cards).total;
   const dealerBust = dv > 21;
+  const bankBefore = seats.map(s => s.bank); // for per-seat bank deltas in the debug log
 
   for (const seat of seats) {
     for (const hand of seat.hands) {
@@ -1619,6 +1690,26 @@ function settleRound(dealerBlackjack) {
   const yourResults = player.hands.map(h => h.result.text).join(', ');
   setMessage(yourResults ? 'Result: ' + yourResults : '');
   log('Round over. Dealer ' + (dealerBust ? 'busts with ' + dv : 'has ' + dv) + '. You: ' + yourResults);
+
+  recFinish({
+    dealer: {
+      hand: dealer.cards.map(c => c.rank + c.suit),
+      value: dv, bust: dealerBust, blackjack: !!dealerBlackjack,
+    },
+    seats: seats.map((s, i) => s.open ? null : {
+      name: s.name,
+      kind: s.ai ? 'cpu' : (s.remote ? 'remote' : 'human'),
+      hands: s.hands.map(h => ({
+        cards: h.cards.map(c => c.rank + c.suit),
+        bet: h.bet,
+        outcome: h.result ? h.result.cls : (h.surrendered ? 'surr' : h.busted ? 'lose' : null),
+        result: h.result ? h.result.text : null,
+      })),
+      bankBefore: bankBefore[i],
+      bankAfter: s.bank,
+      bankDelta: s.bank - bankBefore[i],
+    }),
+  });
 
   save();
   enterBettingPhase();
@@ -2171,6 +2262,7 @@ $('btn-join').addEventListener('click', () => showOverlay('join'));
 
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('deck-select').addEventListener('change', () => {
   const v = Number($('deck-select').value);
   if (roundActive || !DECK_CHOICES.includes(v)) { $('deck-select').value = String(numDecks); return; }
