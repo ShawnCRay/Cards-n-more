@@ -396,7 +396,7 @@
       Boone play a solid economic game — watch your hand when they lead the
       legion. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -426,9 +426,9 @@ const ROLES = ['LABORER', 'CRAFTSMAN', 'LEGIONARY', 'ARCHITECT', 'MERCHANT', 'PA
 /* the curated building set: name, material, short power text, effect key */
 const BUILDINGS = [
   { n: 'Insula',      m: 'rubble',   fx: 'insula',      t: '+2 clientele limit' },
-  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Patron: also hire blind off the deck' },
+  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Patron: may instead hire blind off the deck' },
   { n: 'Road',        m: 'rubble',   fx: 'road',        t: 'Stone buildings accept any material' },
-  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Laborer: also stockpile a card from hand' },
+  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Laborer: may instead stockpile a card from hand' },
   { n: 'Market',      m: 'wood',     fx: 'market',      t: '+2 vault limit' },
   { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Legionary demands' },
   { n: 'Circus',      m: 'wood',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
@@ -459,6 +459,7 @@ let mySeatIdx = 0;
 let deck = [], jacks = 6, pool = [], sites = {};
 let leaderIdx = 0;
 let gameActive = false, gameOver = false, endFlag = false;
+let epoch = 0; // bumped on every new game/match; stale loops bail out
 let lastWinnerIdx = -1;
 let stats = { wins: 0, games: 0 };
 let localChooser = null; // {resolve, options}
@@ -520,6 +521,40 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 matches for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+const recCard = c => c ? (c.jack ? 'JACK' : c.n + ':' + c.m) : null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rome-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -651,7 +686,7 @@ function showOptions(options, label) {
       box.innerHTML = '';
       if (net.mode === 'guest') {
         net.guestPrompt = false;
-        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id });
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id, seq: net.promptSeq });
         setMessage('');
       } else if (localChooser) {
         const r = localChooser.resolve;
@@ -665,7 +700,8 @@ function showOptions(options, label) {
 
 async function choose(p, label, options) {
   if (!options.length) return null;
-  if (options.length === 1 && options[0].forced) return options[0].id;
+  const recAct = id => recPush('action', { player: p.name, label, chosen: id, options: options.map(o => o.id) });
+  if (options.length === 1 && options[0].forced) { recAct(options[0].id); return options[0].id; }
   if (p.ai) {
     await sleep(650);
     let best = options[0], bs = -1e9;
@@ -673,35 +709,45 @@ async function choose(p, label, options) {
       const s = (o.score || 0) + Math.random() * 2;
       if (s > bs) { bs = s; best = o; }
     }
+    recPush('cpu', { player: p.name, label, chosen: best.id, options: options.map(o => ({ id: o.id, score: o.score || 0 })) });
+    recAct(best.id);
     return best.id;
   }
   if (p.remote) {
     render();
     return new Promise(resolve => {
       let settled = false;
+      const seq = ++net.chooseSeq;
+      const msg = { type: 'choose', seq, label, options: options.map(o => ({ id: o.id, label: o.label })) };
       const finish = id => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        net.picker = null;
-        resolve(options.some(o => o.id === id) ? id : options[0].id);
+        if (net.picker && net.picker.seq === seq) net.picker = null;
+        const chosen = options.some(o => o.id === id) ? id : options[0].id;
+        recAct(chosen);
+        resolve(chosen);
       };
-      const timer = setTimeout(() => { log(p.name + ' took too long — first option it is.'); finish(options[0].id); }, TURN_TIMEOUT_MS);
-      net.picker = finish;
-      if (p.remote.open) p.remote.send({ type: 'choose', label, options: options.map(o => ({ id: o.id, label: o.label })) });
+      const timer = setTimeout(() => {
+        log(p.name + ' took too long — first option it is.');
+        if (p.remote && p.remote.open) p.remote.send({ type: 'closeprompt', seq });
+        finish(options[0].id);
+      }, TURN_TIMEOUT_MS);
+      net.picker = { conn: p.remote, seq, finish, msg };
+      if (p.remote.open) p.remote.send(msg);
       else finish(options[0].id);
     });
   }
   render();
   return new Promise(resolve => {
-    localChooser = { resolve };
+    localChooser = { resolve: id => { recAct(id); resolve(id); } };
     showOptions(options, label);
   });
 }
 
 /* ---------- game actions ---------- */
 
-function addToHand(p, c) { if (c) p.hand.push(c); }
+function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
 
 async function doThink(p) {
   const opts = [];
@@ -713,10 +759,11 @@ async function doThink(p) {
   if (pick === 'jack') {
     jacks--;
     p.hand.push({ jack: true });
+    recPush('draw', { player: p.name, card: 'JACK' });
     log(p.name + ' thinks and takes a Jack.');
   } else {
     let n = 0;
-    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; } }
+    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
     log(p.name + ' thinks and draws ' + n + '.');
   }
 }
@@ -729,9 +776,11 @@ function leadableOptions(p) {
   for (const role of ROLES) {
     if (byRole[role]) {
       opts.push({ id: 'lead:' + role + ':' + byRole[role][0], label: 'Lead ' + role + ' (' + p.hand[byRole[role][0]].n + ')', role });
-    } else if (hasJack) {
+    }
+    if (hasJack) {
       opts.push({ id: 'leadjack:' + role, label: 'Lead ' + role + ' (Jack)', role });
-    } else if (has(p, 'circus')) {
+    }
+    if (!byRole[role] && !hasJack && has(p, 'circus')) {
       // two same-role cards act as a jack for any role
       const pair = Object.values(byRole).find(a => a.length >= 2);
       if (pair) opts.push({ id: 'leadpair:' + role + ':' + pair[0] + ':' + pair[1], label: 'Lead ' + role + ' (Circus pair)', role });
@@ -872,7 +921,7 @@ async function actBUILDER(p, viaArchitect) {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
     addMaterial(p, Number(parts[2]), c, viaArchitect);
   }
-  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); log('Academy: ' + p.name + ' draws a card.'); } }
+  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
 }
 
 async function actLEGIONARY(p) {
@@ -911,12 +960,24 @@ async function actMERCHANT(p) {
 
 async function performRole(p, role, isBathEcho) {
   if (gameOver) return;
+  const recB = { stock: p.stockpile.length, vault: p.vault.length, clients: p.clients.length,
+                 buildings: p.buildings.length, done: p.buildings.filter(b => b.done).length,
+                 hand: p.hand.length, influence: p.influence };
   if (role === 'LABORER') await actLABORER(p);
   else if (role === 'PATRON') await actPATRON(p);
   else if (role === 'CRAFTSMAN') await actBUILDER(p, false);
   else if (role === 'ARCHITECT') await actBUILDER(p, true);
   else if (role === 'LEGIONARY') await actLEGIONARY(p);
   else if (role === 'MERCHANT') await actMERCHANT(p);
+  recPush('perform', { player: p.name, role, echo: !!isBathEcho, result: {
+    stockpiled: p.stockpile.length - recB.stock,
+    vaulted: p.vault.length - recB.vault,
+    hired: p.clients.length - recB.clients,
+    started: p.buildings.length - recB.buildings,
+    completed: p.buildings.filter(b => b.done).length - recB.done,
+    hand: p.hand.length - recB.hand,
+    influence: p.influence - recB.influence,
+  } });
   render();
 }
 
@@ -932,7 +993,7 @@ function checkForum(p) {
 
 /* ---------- turn & game flow (host/solo) ---------- */
 
-async function playTurn() {
+async function playTurn(gen) {
   const leader = players[leaderIdx];
   setMessage(leader.name + ' leads…');
   render();
@@ -944,17 +1005,21 @@ async function playTurn() {
     if (o.role === 'PATRON' && pool.length) s = 4.5;
     if (o.role === 'MERCHANT' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
     if (o.role === 'LABORER' && pool.length) s = 3.5;
+    if (o.id.startsWith('leadjack')) s -= 1; // CPU saves Jacks when a real card will do
     opts.push({ ...o, score: s });
   }
   const pick = await choose(leader, leader.name + ' — think or lead?', opts);
+  if (gen !== epoch) return;
 
   if (pick === 'think') {
+    recPush('turn', { leader: leader.name, role: 'think' });
     await doThink(leader);
     render();
     return;
   }
 
   const role = playLead(leader, pick);
+  recPush('turn', { leader: leader.name, role });
   log(leader.name + ' leads ' + role + '.');
   const participants = [leader];
   render();
@@ -965,16 +1030,32 @@ async function playTurn() {
     const jackIdx = q.hand.findIndex(c => c.jack);
     const fopts = [];
     if (followIdx >= 0) fopts.push({ id: 'follow:' + followIdx, label: 'Follow ' + role + ' (' + q.hand[followIdx].n + ')', score: 5 });
-    else if (jackIdx >= 0) fopts.push({ id: 'follow:' + jackIdx, label: 'Follow ' + role + ' (Jack)', score: 4 });
+    if (jackIdx >= 0) fopts.push({ id: 'follow:' + jackIdx, label: 'Follow ' + role + ' (Jack)', score: followIdx >= 0 ? 3.5 : 4 });
+    if (followIdx < 0 && jackIdx < 0 && has(q, 'circus')) {
+      // two same-role cards act as a jack when following, too
+      const byRole = {};
+      q.hand.forEach((c, i) => { if (!c.jack) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+      const pair = Object.values(byRole).find(a => a.length >= 2);
+      if (pair) fopts.push({ id: 'followpair:' + pair[0] + ':' + pair[1], label: 'Follow ' + role + ' (Circus pair)', score: 3.5 });
+    }
     fopts.push({ id: 'think', label: 'THINK instead', score: q.hand.length <= 2 ? 6 : 3 });
     const fp = await choose(q, q.name + ' — follow ' + role + ' or think?', fopts);
-    if (fp && fp.startsWith('follow')) {
+    if (gen !== epoch) return;
+    if (fp && fp.startsWith('followpair')) {
+      const i1 = Number(fp.split(':')[1]), i2 = Number(fp.split(':')[2]);
+      const cards = [q.hand[i1], q.hand[i2]];
+      q.hand = q.hand.filter((c, i) => i !== i1 && i !== i2);
+      q.played = cards;
+      participants.push(q);
+      log(q.name + ' follows with a Circus pair.');
+    } else if (fp && fp.startsWith('follow')) {
       const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
       q.played = [c];
       participants.push(q);
       log(q.name + ' follows.');
     } else {
       await doThink(q);
+      if (gen !== epoch) return;
     }
     render();
   }
@@ -982,12 +1063,15 @@ async function playTurn() {
   // perform: each participant acts once + once per matching client
   for (const p of participants) {
     if (gameOver) break;
+    const clientsBefore = [...p.clients]; // snapshot before acting: same-turn hires only act via Bath
     await performRole(p, role, false);
-    for (const c of [...p.clients]) {
+    if (gen !== epoch) return;
+    for (const c of clientsBefore) {
       if (gameOver) break;
       if (MAT_ROLE[c.m] === role) {
         log(p.name + "'s " + role + ' client acts.');
         await performRole(p, role, false);
+        if (gen !== epoch) return;
       }
     }
   }
@@ -1002,6 +1086,7 @@ async function playTurn() {
 
 async function playMatch() {
   if (gameActive || net.mode === 'guest') return;
+  const gen = ++epoch;
   gameActive = true;
   gameOver = false;
   endFlag = false;
@@ -1012,6 +1097,11 @@ async function playMatch() {
   jacks = 6;
   pool = [];
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  recStart({
+    players: players.map(p => ({ name: p.name, kind: p.remote ? 'remote' : (p.ai ? 'cpu' : 'human') })),
+    firstLeader: players[0].name,
+  });
+  recPush('deck', { cards: deck.map(c => recCard(c)), jacks: jacks, sites: Object.assign({}, sites) });
   for (const p of players) {
     p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = [];
     p.influence = 2; p.played = null;
@@ -1024,18 +1114,31 @@ async function playMatch() {
 
   let safety = 400;
   while (!gameOver && safety-- > 0) {
-    await playTurn();
-    if (gameOver) break;
-    if (endFlag) {
-      // deck or sites exhausted: score it
-      let best = -1, bi = 0;
-      players.forEach((p, i) => { const s = score(p); if (s > best) { best = s; bi = i; } });
-      lastWinnerIdx = bi;
-      gameOver = true;
-      break;
-    }
+    await playTurn(gen);
+    if (gen !== epoch) return;
+    if (gameOver || endFlag) break;
     leaderIdx = (leaderIdx + 1) % players.length;
     await sleep(550);
+    if (gen !== epoch) return;
+  }
+
+  let sharedWin = null;
+  if (!gameOver) {
+    // deck, sites, or the safety cap exhausted: score it
+    const vaultVal = p => p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0);
+    const best = Math.max(...players.map(p => score(p)));
+    let winners = players.filter(p => score(p) === best);
+    if (winners.length > 1) {
+      // tiebreak: higher vault value wins
+      const bv = Math.max(...winners.map(vaultVal));
+      winners = winners.filter(p => vaultVal(p) === bv);
+    }
+    lastWinnerIdx = players.indexOf(winners[0]);
+    if (winners.length > 1) {
+      sharedWin = winners.map(p => p.name).join(' & ');
+      log('Tie at ' + best + ' pts, vaults even — ' + sharedWin + ' share the win.');
+    }
+    gameOver = true;
   }
 
   gameActive = false;
@@ -1043,10 +1146,21 @@ async function playMatch() {
   stats.games++;
   if (lastWinnerIdx === mySeatIdx) stats.wins++;
   save();
+  recFinish({
+    winner: sharedWin || (players[lastWinnerIdx] ? players[lastWinnerIdx].name : null),
+    shared: sharedWin || null,
+    players: players.map(p => ({
+      name: p.name, score: score(p),
+      vault: p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0),
+      buildings: p.buildings.map(b => ({ n: b.n, done: !!b.done })),
+    })),
+  });
   const winP = players[lastWinnerIdx];
   const scores = players.map(p => p.name + ' ' + score(p)).join(' · ');
   log('Final: ' + scores);
-  setMessage(winP === me && net.mode === 'solo'
+  setMessage(sharedWin
+    ? '★ Shared win — ' + sharedWin + ' hold the city. ' + scores
+    : winP === me && net.mode === 'solo'
     ? '★ Your city stands above the rest (' + score(me) + ' pts). The wasteland provides.'
     : '★ ' + winP.name + ' takes the city — ' + scores);
   $('btn-deal').textContent = 'Play again';
@@ -1056,9 +1170,15 @@ async function playMatch() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++; // any running match loop bails at its next await
+  if (localChooser) { const r = localChooser.resolve; localChooser = null; r(null); }
+  if (net.picker) {
+    if (net.picker.conn && net.picker.conn.open) net.picker.conn.send({ type: 'closeprompt', seq: net.picker.seq });
+    net.picker.finish(null);
+  }
   gameOver = false;
   gameActive = false;
-  for (const p of players) { p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = []; p.influence = 2; }
+  for (const p of players) { p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = []; p.influence = 2; p.played = null; }
   deck = []; pool = []; jacks = 6;
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
   $('btn-deal').textContent = 'Start game';
@@ -1074,7 +1194,7 @@ function newGame() {
    ============================================================ */
 
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
-              hostName: 'Host', picker: null, lastView: null,
+              hostName: 'Host', picker: null, chooseSeq: 0, promptSeq: 0, lastView: null,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
               joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
               heartbeatsStarted: false, gameCounted: false, wakeLock: null };
@@ -1235,10 +1355,12 @@ function handleGuestMsg(conn, d) {
   if (d.type === 'hello') {
     const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
     if (prior) {
+      const pendingPick = net.picker && net.picker.conn === prior.remote ? net.picker : null;
       try { prior.remote.close(); } catch (e) { /* stale */ }
       prior.remote = conn;
       conn._seat = prior;
       conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      if (pendingPick) { pendingPick.conn = conn; conn.send(pendingPick.msg); }
       render();
       return;
     }
@@ -1253,7 +1375,7 @@ function handleGuestMsg(conn, d) {
     updateNetBar();
     render();
   } else if (d.type === 'pick') {
-    if (net.picker) net.picker(d.id);
+    if (net.picker && net.picker.conn === conn && d.seq === net.picker.seq) net.picker.finish(d.id);
   }
 }
 
@@ -1264,7 +1386,7 @@ function dropGuest(conn) {
   seat.ai = true;
   log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
   seat.name = seat.cpuName;
-  if (net.picker) net.picker(null);
+  if (net.picker && net.picker.conn === conn) net.picker.finish(null);
   updateNetBar();
   render();
 }
@@ -1357,7 +1479,14 @@ function handleHostMsg(d) {
     renderView(d.view);
   } else if (d.type === 'choose') {
     net.guestPrompt = true;
+    net.promptSeq = d.seq;
     showOptions(d.options, d.label);
+  } else if (d.type === 'closeprompt') {
+    if (d.seq === net.promptSeq) {
+      net.guestPrompt = false;
+      $('opts').innerHTML = '';
+      setMessage('');
+    }
   } else if (d.type === 'log') {
     const el = document.createElement('div');
     el.textContent = d.msg;
@@ -1418,6 +1547,7 @@ $('btn-deal').addEventListener('click', playMatch);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */

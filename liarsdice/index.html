@@ -353,7 +353,7 @@
       <p>Cass plays the odds; Boone bluffs more than he should. Read them, and
       good luck out there.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -395,6 +395,7 @@ let revealActive = false;
 let gameActive = false, gameOver = false, roundActive = false;
 let nextStarter = null;
 let lastWinnerIdx = -1;
+let epoch = 0;             // bumped by newGame() to abort in-flight game loops
 let stats = { wins: 0, games: 0 };
 
 const $ = id => document.getElementById(id);
@@ -416,6 +417,39 @@ function load() {
   catch (e) { /* fresh */ }
 }
 
+/* ---------- debug recorder: keeps the last 2 games for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'liarsdice-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
+}
+
 /* ---------- rules helpers ---------- */
 
 function rollN(n) { return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6)); }
@@ -426,12 +460,12 @@ function totalShowing(face) {
   return players.reduce((a, p) => a + (inPlay(p) ? p.dice.filter(d => d === face || d === 1).length : 0), 0);
 }
 function bidText(b) { return b.qty + ' ' + (b.qty === 1 ? FACE_NAME[b.face].replace(/s$/, '') : FACE_NAME[b.face]); }
-function isMe(seat) { return seat === mySeatIdx && net.mode !== 'guest' ? seat === mySeatIdx : seat === mySeatIdx; }
 
-function minRaise(b, total) {
+function minRaise(b, total) {   // null when no legal raise exists (bid is at the ceiling)
   if (!b) return { qty: 1, face: 2 };
   if (b.face < 6) return { qty: b.qty, face: b.face + 1 };
-  return { qty: Math.min(total, b.qty + 1), face: 2 };
+  if (b.qty < total) return { qty: b.qty + 1, face: 2 };
+  return null;
 }
 function raises(a, b) {
   if (a.face < 2 || a.face > 6 || a.qty < 1) return false;
@@ -483,6 +517,7 @@ function aiAction(p, b, total) {
     const unknown = total - mine.length;
     let qty = Math.max(1, Math.min(total, bestC + Math.round(unknown / 3)));
     if (Math.random() < 0.25 && qty < total) qty++;   // a little swagger
+    recPush('cpu', { name: p.cpuName, opening: true, face: bestF, myCount: bestC, unknown, pTrue: null, thresh: null, choice: 'bid', bid: { qty, face: bestF } });
     return { kind: 'bid', qty, face: bestF };
   }
   const k = myCount(b.face);
@@ -490,9 +525,11 @@ function aiAction(p, b, total) {
   const need = b.qty - k;
   const pTrue = binomAtLeast(unknown, need, 1 / 3);
   const thresh = 0.34 - bluffy + (Math.random() - 0.5) * 0.12;
-  if (pTrue < thresh) return { kind: 'call' };
+  const recCpu = (choice, out) => recPush('cpu', { name: p.cpuName, opening: false, face: b.face, myCount: k, unknown, need, pTrue, thresh, choice, bid: out || null });
+  if (pTrue < thresh) { recCpu('call'); return { kind: 'call' }; }
   // raise: prefer a face I actually hold, minimal quantity bump
   let raise = minRaise(b, total);
+  if (!raise) { recCpu('call'); return { kind: 'call' }; }   // bid is maxed out — calling is the only move
   let bestF = raise.face, bestC = myCount(raise.face);
   for (let f = 2; f <= 6; f++) {
     const cand = { qty: raise.qty, face: f };
@@ -500,9 +537,10 @@ function aiAction(p, b, total) {
   }
   raise = { qty: raise.qty, face: bestF };
   if (!raises(raise, b) || raise.qty > total) raise = minRaise(b, total);
-  if (raise.qty > total) return { kind: 'call' };
+  if (raise.qty > total) { recCpu('call'); return { kind: 'call' }; }
   if ((pTrue > 0.82 || Math.random() < bluffy) && raise.qty < total && Math.random() < 0.45)
     raise = { qty: raise.qty + 1, face: raise.face };
+  recCpu('bid', { qty: raise.qty, face: raise.face });
   return { kind: 'bid', qty: raise.qty, face: raise.face };
 }
 
@@ -626,7 +664,7 @@ let turnCtx = null, bidSel = null;
 
 function openTurnUI(b, total, submit) {
   turnCtx = { bid: b, total, submit };
-  bidSel = minRaise(b, total);
+  bidSel = minRaise(b, total) || { qty: total, face: 6 };   // ceiling: Bid stays disabled, only Call
   if (bidSel.qty > total) bidSel.qty = total;
   renderTurnUI();
 }
@@ -705,10 +743,12 @@ function getRemoteAction(p, b, total) {
       settled = true;
       clearTimeout(timer);
       net.picker = null;
+      net.pickerConn = null;
       resolve(legalAction(a, b, total) || (b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }));
     };
     const timer = setTimeout(() => { log(p.name + ' took too long — calling it.'); finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 }); }, TURN_TIMEOUT_MS);
     net.picker = finish;
+    net.pickerConn = p.remote;
     if (p.remote && p.remote.open) p.remote.send({ type: 'prompt', bid: b, total });
     else finish(b ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
   });
@@ -723,10 +763,14 @@ function beginRound() {
   }
   const seats = players.map((p, i) => i).filter(i => !players[i].open && !players[i].out);
   for (const i of seats) players[i].dice = rollN(players[i].diceCount);
+  recPush('roll', {
+    round: recEvents ? recEvents.filter(e => e.type === 'roll').length + 1 : 0,
+    seats: seats.map(i => ({ name: players[i].name, dice: players[i].dice.slice() })),
+  });
   return seats;
 }
 
-async function playRound() {
+async function playRound(myEpoch) {
   const seats = beginRound();
   bid = null; revealActive = false; roundActive = true;
   let startSeat = nextStarter;
@@ -736,7 +780,7 @@ async function playRound() {
   render();
   await sleep(600);
 
-  while (true) {
+  while (myEpoch === epoch) {
     const seat = seats[pos];
     const p = players[seat];
     const total = totalDice();
@@ -750,20 +794,28 @@ async function playRound() {
     if (p.ai) { await sleep(AI_THINK); action = aiAction(p, bid, total); }
     else if (p.remote) action = await getRemoteAction(p, bid, total);
     else action = await getLocalAction(bid, total);
+    if (myEpoch !== epoch) return;   // "New game" clicked while this turn was pending
     action = legalAction(action, bid, total) || (bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
 
-    if (action.kind === 'call') { await resolveCall(seat); break; }
+    if (action.kind === 'call') { await resolveCall(seat, myEpoch); break; }
+    const prevBid = bid;
     bid = { qty: action.qty, face: action.face, by: seat };
+    recPush('bid', {
+      seat, name: p.name, qty: bid.qty, face: bid.face,
+      min: minRaise(prevBid, total),
+      prev: prevBid ? { qty: prevBid.qty, face: prevBid.face } : null,
+    });
     log(p.name + ' bids ' + bidText(bid) + '.');
     render();
     await sleep(POST_BID);
     pos = (pos + 1) % seats.length;
   }
+  if (myEpoch !== epoch) return;
   activeSeat = -1;
   roundActive = false;
 }
 
-async function resolveCall(callerSeat) {
+async function resolveCall(callerSeat, myEpoch) {
   const b = bid;
   const caller = players[callerSeat], bidder = players[b.by];
   revealActive = true;
@@ -772,15 +824,21 @@ async function resolveCall(callerSeat) {
   const truth = actual >= b.qty;
   const loserSeat = truth ? callerSeat : b.by;
   const loser = players[loserSeat];
+  recPush('call', {
+    caller: caller.name,
+    bid: { qty: b.qty, face: b.face, by: b.by, bidder: bidder.name },
+    actual, truth, loser: loser.name,
+  });
   log(caller.name + ' calls liar on ' + bidder.name + ' (' + bidText(b) + '). The table shows ' + actual
     + ' — ' + (truth ? 'the bid holds up' : bidder.name + ' was bluffing') + '. ' + loser.name + ' loses a die.');
   setMessage('Cups up! ' + bidText(b) + '? The table shows ' + actual + '. ' + loser.name + ' loses a die.');
   await sleep(REVEAL_MS);
+  if (myEpoch !== epoch) return;
   revealActive = false;
 
   loser.diceCount--;
   loser.dice = [];
-  if (loser.diceCount <= 0) { loser.out = true; log(loser.name + ' lost their last die — out of the game.'); }
+  if (loser.diceCount <= 0) { loser.out = true; recPush('out', { name: loser.name, seat: loserSeat }); log(loser.name + ' lost their last die — out of the game.'); }
   nextStarter = loser.out ? nextAliveSeat(loserSeat) : loserSeat;
 
   const alive = alivePlayers();
@@ -797,14 +855,22 @@ async function resolveCall(callerSeat) {
 }
 
 async function playGame() {
+  const myEpoch = epoch;
   gameActive = true; gameOver = false;
+  recStart({ players: players.filter(p => !p.open).map(p => ({
+    name: p.name, kind: p.ai ? 'cpu' : (p.remote ? 'remote' : 'human'), dice: p.diceCount,
+  })) });
   render();
   while (!gameOver) {
-    await playRound();
+    await playRound(myEpoch);
+    if (myEpoch !== epoch) return;
     if (gameOver) break;
     await sleep(800);
+    if (myEpoch !== epoch) return;
   }
   gameActive = false;
+  const recRounds = recEvents ? recEvents.filter(e => e.type === 'roll').length : 0;
+  recFinish({ winner: lastWinnerIdx >= 0 ? players[lastWinnerIdx].name : null, rounds: recRounds });
   stats.games++;
   if (lastWinnerIdx === mySeatIdx) stats.wins++;
   save();
@@ -815,8 +881,18 @@ async function playGame() {
   render();
 }
 
+function resetSeats() {
+  for (const p of players) {
+    if (!p.open) { p.diceCount = START_DICE; p.out = false; p.waiting = false; p.dice = []; }
+  }
+}
+
 async function startPlay() {
   if (gameActive || net.mode === 'guest') return;
+  if (gameOver) {   // "Play again" — give everyone their dice back first
+    gameOver = false; bid = null; activeSeat = -1; nextStarter = null; lastWinnerIdx = -1;
+    resetSeats();
+  }
   if (alivePlayers().length < 2) { setMessage('Need at least two cups at the table.'); return; }
   $('round-controls').style.display = 'none';
   await playGame();
@@ -824,11 +900,11 @@ async function startPlay() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++;   // abort any in-flight game loop at its next await
+  closeTurnUI();
   gameActive = false; gameOver = false; roundActive = false; revealActive = false; bid = null;
   activeSeat = -1; nextStarter = null; lastWinnerIdx = -1;
-  for (const p of players) {
-    if (!p.open) { p.diceCount = START_DICE; p.out = false; p.waiting = false; p.dice = []; }
-  }
+  resetSeats();
   $('round-controls').style.display = '';
   $('btn-deal').textContent = 'Roll out';
   setMessage('Five dice each. Roll out when you’re ready.');
@@ -840,7 +916,7 @@ function newGame() {
    ============================================================ */
 
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
-              hostName: 'Host', picker: null, lastView: null,
+              hostName: 'Host', picker: null, pickerConn: null, lastView: null,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
               joinTimer: null, joinRetries: 0, joinName: '', prompting: false,
               heartbeatsStarted: false, wakeLock: null };
@@ -871,6 +947,8 @@ async function keepAwake() {
   try {
     if (!navigator.wakeLock) return;
     net.wakeLock = await navigator.wakeLock.request('screen');
+    if (net.wakeListenerAdded) return;
+    net.wakeListenerAdded = true;
     document.addEventListener('visibilitychange', async () => {
       try {
         if (document.visibilityState === 'visible' && net.mode !== 'solo')
@@ -1003,7 +1081,7 @@ function handleGuestMsg(conn, d) {
     updateNetBar();
     render();
   } else if (d.type === 'action') {
-    if (net.picker) net.picker(d.action);
+    if (net.picker && conn === net.pickerConn) net.picker(d.action);
   }
 }
 
@@ -1014,7 +1092,7 @@ function dropGuest(conn) {
   seat.ai = true;
   seat.name = seat.cpuName;
   log(seat.name + ' left — a CPU takes the cup.');
-  if (net.picker) net.picker(bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
+  if (net.picker && conn === net.pickerConn) net.picker(bid ? { kind: 'call' } : { kind: 'bid', qty: 1, face: 2 });
   updateNetBar();
   render();
 }
@@ -1097,7 +1175,13 @@ function handleHostMsg(d) {
     updateNetBar();
     setMessage('Seated — waiting for the table…');
   } else if (d.type === 'state') {
+    const prev = net.lastView;
     net.lastView = d.view;
+    if (d.view.phase === 'over' && (!prev || prev.phase !== 'over')) {   // guests keep their own tally
+      stats.games++;
+      if (d.view.winner === d.view.you) stats.wins++;
+      save();
+    }
     renderView(d.view);
   } else if (d.type === 'prompt') {
     net.prompting = true;
@@ -1166,6 +1250,7 @@ $('btn-deal').addEventListener('click', startPlay);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 load();

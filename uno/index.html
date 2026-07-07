@@ -539,7 +539,10 @@
       no penalties here, just the dread. Cass and Boone hoard their wilds and
       aim their +4s with intent. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row">
+      <button id="btn-export-log">Export debug log</button>
+      <button id="help-close" class="primary">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -572,16 +575,16 @@ const SYM = { skip: '⊘\nSKIP', rev: '⇄\nREV', d2: '+2', wild: 'WILD', wd4: '
 
 function openSeat() {
   return { name: 'Open', cpuName: null, open: true, ai: false, remote: null, finishAsCpu: false,
-           score: 0, hand: [] };
+           sitOut: false, score: 0, hand: [] };
 }
 function cpuSeat(name) {
   return { name, cpuName: name, open: false, ai: true, remote: null, finishAsCpu: false,
-           score: 0, hand: [] };
+           sitOut: false, score: 0, hand: [] };
 }
 const players = [
   cpuSeat('Cass'),
   openSeat(),
-  { name: 'You', cpuName: null, open: false, ai: false, remote: null, finishAsCpu: false, score: 0, hand: [] },
+  { name: 'You', cpuName: null, open: false, ai: false, remote: null, finishAsCpu: false, sitOut: false, score: 0, hand: [] },
   openSeat(),
   cpuSeat('Boone'),
   openSeat(),
@@ -599,6 +602,7 @@ let lastWinnerIdx = -1;
 let activePlayer = null;
 let stats = { wins: 0, games: 0 };
 let localPrompt = null; // resolver for the local human's turn
+let epoch = 0; // bumped by newGame so a running round loop knows to stand down
 
 /* ---------- deck ---------- */
 
@@ -628,6 +632,7 @@ function drawCard() {
     discard = [top];
     log('Draw pile ran dry — reshuffled the discards.');
     if (!deck.length) deck = shuffle(buildDeck()); // pathological safety
+    recPush('shuffle', { reshuffle: true, deck: deck.map(recCard), top: recCard(top) });
   }
   return deck.pop();
 }
@@ -647,8 +652,10 @@ function log(msg) {
   if (net.mode === 'host') netBroadcast({ type: 'log', msg });
 }
 function setMessage(m) { $('message').textContent = m || ''; }
+let tableMsg = ''; // broadcast-safe status — never carries a private prompt
+function setTableMessage(m) { tableMsg = m || ''; setMessage(m); }
 
-function seated() { return players.filter(p => !p.open); }
+function seated() { return players.filter(p => !p.open && !p.sitOut); }
 function topCard() { return discard[discard.length - 1]; }
 function playableOn(card) {
   return card.c === 'w' || card.c === curColor || card.v === topCard().v;
@@ -670,6 +677,44 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh start */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 games for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recCard(c) {
+  if (!c) return null;
+  if (c.c === 'w') return c.v === 'wd4' ? 'wild-d4' : 'wild';
+  return c.c.toUpperCase() + (typeof c.v === 'number' ? c.v : '-' + c.v);
+}
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'uno-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -720,7 +765,7 @@ function buildView(forIdx) {
     active: players.indexOf(activePlayer),
     hostSeat: players.indexOf(me),
     winner: lastWinnerIdx,
-    msg: $('message').textContent,
+    msg: tableMsg,
     players: players.map((p, i) => ({
       name: p.name, ai: p.ai, open: p.open, score: p.score,
       count: p.hand.length,
@@ -862,9 +907,10 @@ function finishAnswer(action) {
   $('drawn-controls').style.display = 'none';
   $('color-controls').style.display = 'none';
   if (net.mode === 'guest') {
+    const nonce = net.guestPrompt && net.guestPrompt.nonce;
     net.guestPrompt = null;
     setMessage('');
-    if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'move', action });
+    if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'move', action, nonce });
     render();
   } else {
     const r = localPrompt && localPrompt.resolve;
@@ -878,6 +924,7 @@ function finishAnswer(action) {
 function getLocalMove(playable, drawn) {
   return new Promise(resolve => {
     localPrompt = { playable, drawn: drawn == null ? null : drawn, resolve };
+    tableMsg = 'Waiting for ' + me.name + '…'; // guests never see the private prompt below
     if (drawn == null) {
       $('turn-controls').style.display = '';
       setMessage(playable.length ? 'Your move — play a card or draw.' : 'Nothing playable — draw a card.');
@@ -899,35 +946,44 @@ function aiPickColor(p) {
 
 function aiChoose(p) {
   const pl = playableIdx(p);
-  if (!pl.length) return { type: 'draw' };
+  if (!pl.length) {
+    recPush('cpu', { player: p.name, playable: [], pick: 'draw' });
+    return { type: 'draw' };
+  }
   const next = nextSeat(players.indexOf(p));
   const nextLow = next && next.hand.length <= 2;
   let best = null, bestScore = -1;
+  const scored = [];
   for (const i of pl) {
     const c = p.hand[i];
     let s;
     if (c.c === 'w') s = c.v === 'wd4' ? (nextLow ? 6 : 0.5) : 0.8;
     else if (c.v === 'd2' || c.v === 'skip' || c.v === 'rev') s = nextLow ? 5 : 2;
     else s = 1 + c.v / 10;
+    scored.push({ idx: i, card: recCard(c), score: s });
     if (s > bestScore) { bestScore = s; best = i; }
   }
   const card = p.hand[best];
-  return { type: 'play', idx: best, color: card.c === 'w' ? aiPickColor(p) : undefined };
+  const color = card.c === 'w' ? aiPickColor(p) : undefined;
+  recPush('cpu', { player: p.name, playable: scored, nextLow: !!nextLow, pick: best, card: recCard(card), color });
+  return { type: 'play', idx: best, color };
 }
 
 /* ---------- engine (host/solo only) ---------- */
 
 function nextSeatIdx(from) {
   let i = from;
-  do { i = (i + dir + players.length) % players.length; } while (players[i].open);
+  do { i = (i + dir + players.length) % players.length; } while (players[i].open || players[i].sitOut);
   return i;
 }
 function nextSeat(from) { return players[nextSeatIdx(from)]; }
 
 async function applyMove(p, action) {
+  const gen = epoch;
   if (action.type === 'draw') {
     const c = drawCard();
     p.hand.push(c);
+    recPush('draw', { player: p.name, card: recCard(c), voluntary: true });
     log(p.name + ' draws a card.');
     render();
     if (playableOn(c)) {
@@ -940,6 +996,7 @@ async function applyMove(p, action) {
       } else {
         follow = await getLocalMove([idx], idx);
       }
+      if (gen !== epoch) return { skipped: 0 }; // newGame reset the table mid-prompt
       if (follow && follow.type === 'play' && follow.idx === idx) {
         return playCardFrom(p, idx, follow.color);
       }
@@ -950,6 +1007,7 @@ async function applyMove(p, action) {
 }
 
 function playCardFrom(p, idx, color) {
+  const recOptions = playableIdx(p).map(i => recCard(p.hand[i])); // legal set the engine offered
   const card = p.hand.splice(idx, 1)[0];
   if (!card) return { skipped: 0 };
   discard.push(card);
@@ -964,27 +1022,34 @@ function playCardFrom(p, idx, color) {
   }
   if (card.v === 'd2') { fx.drawN = 2; fx.skipped = 1; }
   if (card.v === 'wd4') { fx.drawN = 4; fx.skipped = 1; }
+  recPush('play', { player: p.name, card: recCard(card),
+    color: card.c === 'w' ? curColor : undefined,
+    dir, skipped: fx.skipped, drawN: fx.drawN || 0, left: p.hand.length, options: recOptions });
   log(msg);
   if (p.hand.length === 1) log('⚠ ' + p.name + ' has UNO!');
   return fx;
 }
 
 async function takeTurn(p) {
+  const gen = epoch;
   activePlayer = p;
   render();
   let action;
   if (p.ai || p.finishAsCpu) {
     await sleep(1100);
+    if (gen !== epoch) return { skipped: 0 };
     action = aiChoose(p);
   } else if (p.remote) {
-    setMessage('Waiting for ' + p.name + '…');
+    setTableMessage('Waiting for ' + p.name + '…');
     render();
     action = await getRemoteMove(p, playableIdx(p), null);
   } else {
     action = await getLocalMove(playableIdx(p), null);
     if (action.type === 'play' && !playableIdx(p).includes(action.idx)) action = { type: 'draw' };
   }
+  if (gen !== epoch) return { skipped: 0 }; // newGame reset the table mid-turn
   const fx = await applyMove(p, action);
+  if (gen !== epoch) return { skipped: 0 };
   activePlayer = null;
   render();
   return fx;
@@ -993,9 +1058,11 @@ async function takeTurn(p) {
 async function playRound() {
   if (roundActive || gameOver || net.mode === 'guest') return;
   roundActive = true;
+  const gen = ++epoch; // this round's generation — newGame bumps it to cancel us
   roundNo++;
   $('round-controls').style.display = 'none';
   deck = shuffle(buildDeck());
+  const recDeckOrder = deck.map(recCard); // full ordered deck as built — deck-integrity signal
   discard = [];
   dir = 1;
   for (const p of players) {
@@ -1004,10 +1071,15 @@ async function playRound() {
       p.open = true; p.ai = false; p.name = 'Open'; p.score = 0;
     }
     p.finishAsCpu = false;
+    p.sitOut = false; // mid-round joiners get dealt in now
   }
   log('— Round ' + roundNo + ' —');
 
-  for (let k = 0; k < 7; k++) for (const p of seated()) p.hand.push(drawCard());
+  for (let k = 0; k < 7; k++) for (const p of seated()) {
+    const c = drawCard();
+    p.hand.push(c);
+    recPush('draw', { player: p.name, card: recCard(c), voluntary: false, deal: true });
+  }
 
   // starter: wild +4 goes back in; other actions apply to the first player
   let starter = drawCard();
@@ -1017,42 +1089,73 @@ async function playRound() {
   }
   discard.push(starter);
   curColor = starter.c === 'w' ? COLORS[Math.floor(Math.random() * 4)] : starter.c;
+  recPush('shuffle', { round: roundNo, deck: recDeckOrder, starter: recCard(starter), color: curColor });
   log('Starter: ' + cardLabel(starter) + (starter.c === 'w' ? ' → ' + COLOR_NAMES[curColor] : '') + '.');
 
   let idx = (roundNo - 1) % players.length;
   while (players[idx].open) idx = (idx + 1) % players.length;
   let pendingFx = { skipped: 0 };
   if (starter.v === 'skip') pendingFx.skipped = 1;
-  if (starter.v === 'rev') dir = -1;
+  if (starter.v === 'rev') { dir = -1; if (seated().length === 2) pendingFx.skipped = 1; }
   if (starter.v === 'd2') { pendingFx.drawN = 2; pendingFx.skipped = 1; }
-  setMessage('Round ' + roundNo + ' — ' + players[idx].name + ' leads off.');
+  setTableMessage('Round ' + roundNo + ' — ' + players[idx].name + ' leads off.');
   render();
   await sleep(600);
+  if (gen !== epoch) return;
 
   let winner = null;
   let safety = 2000;
   while (!winner && safety-- > 0) {
     const p = players[idx];
     if (pendingFx.drawN) {
-      for (let k = 0; k < pendingFx.drawN; k++) p.hand.push(drawCard());
+      for (let k = 0; k < pendingFx.drawN; k++) {
+        const c = drawCard();
+        p.hand.push(c);
+        recPush('draw', { player: p.name, card: recCard(c), voluntary: false, penalty: true });
+      }
+      recPush('effect', { card: recCard(topCard()), target: p.name, drewN: pendingFx.drawN });
       log(p.name + ' draws ' + pendingFx.drawN + ' and loses the turn.');
       render();
       await sleep(850);
+      if (gen !== epoch) return;
       pendingFx = { skipped: 0 };
       idx = nextSeatIdx(idx);
       continue;
     }
     if (pendingFx.skipped) {
+      recPush('effect', { card: recCard(topCard()), target: p.name, skipped: true });
       log(p.name + ' is skipped.');
       render();
       await sleep(750);
+      if (gen !== epoch) return;
       pendingFx = { skipped: 0 };
       idx = nextSeatIdx(idx);
       continue;
     }
     pendingFx = await takeTurn(p);
-    if (p.hand.length === 0) { winner = p; break; }
+    if (gen !== epoch) return;
+    if (p.hand.length === 0 && !p.sitOut) { winner = p; break; }
     idx = nextSeatIdx(idx);
+  }
+
+  if (!winner) { // safety guard tripped — abandon rather than crash
+    roundActive = false;
+    log('Round abandoned.');
+    $('round-controls').style.display = '';
+    render();
+    return;
+  }
+
+  // a winning +2/+4 still lands on the next player (and counts in the score)
+  if (pendingFx.drawN) {
+    const nxt = players[nextSeatIdx(idx)];
+    for (let k = 0; k < pendingFx.drawN; k++) {
+      const c = drawCard();
+      nxt.hand.push(c);
+      recPush('draw', { player: nxt.name, card: recCard(c), voluntary: false, penalty: true });
+    }
+    recPush('effect', { card: recCard(topCard()), target: nxt.name, drewN: pendingFx.drawN, winning: true });
+    log(nxt.name + ' still draws ' + pendingFx.drawN + ' from the winning card.');
   }
 
   // score the round
@@ -1060,6 +1163,12 @@ async function playRound() {
   const gained = seated().filter(q => q !== winner)
     .reduce((sum, q) => sum + q.hand.reduce((a, c) => a + cardPoints(c), 0), 0);
   winner.score += gained;
+  recPush('round', {
+    round: roundNo, winner: winner.name, gained,
+    hands: seated().map(q => ({ player: q.name, count: q.hand.length,
+      value: q.hand.reduce((a, c) => a + cardPoints(c), 0), cards: q.hand.map(recCard) })),
+    scores: players.filter(q => !q.open).map(q => ({ player: q.name, score: q.score })),
+  });
   log('★ ' + winner.name + ' goes out and scores ' + gained + ' (total ' + winner.score + ').');
 
   if (winner.score >= TARGET) {
@@ -1068,12 +1177,14 @@ async function playRound() {
     stats.games++;
     if (winner === me) stats.wins++;
     save();
-    setMessage(winner === me && net.mode === 'solo'
+    recFinish({ winner: winner.name, rounds: roundNo,
+      scores: players.filter(q => !q.open).map(q => ({ player: q.name, score: q.score })) });
+    setTableMessage(winner === me && net.mode === 'solo'
       ? '★ You hit ' + me.score + ' and walk out rich. The wasteland provides.'
       : '★ ' + winner.name + ' hits ' + winner.score + ' first and walks out rich.');
     $('btn-deal').textContent = 'Play again';
   } else {
-    setMessage(winner.name + ' takes round ' + roundNo + ' for ' + gained + '. First to ' + TARGET + '.');
+    setTableMessage(winner.name + ' takes round ' + roundNo + ' for ' + gained + '. First to ' + TARGET + '.');
     $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
   }
   $('round-controls').style.display = '';
@@ -1083,7 +1194,20 @@ async function playRound() {
 
 function newGame() {
   if (net.mode === 'guest') return;
-  for (const p of players) { p.score = 0; p.hand = []; }
+  epoch++; // any round loop still awaiting will bail out
+  if (localPrompt) { // resolve the host's pending prompt so its awaiter can stand down
+    const r = localPrompt.resolve;
+    localPrompt = null;
+    if (r) r({ type: 'pass' });
+  }
+  for (const k in net.movers) { // cancel pending guest prompts too
+    const m = net.movers[k];
+    const q = players[k];
+    if (q && q.remote && q.remote.open) q.remote.send({ type: 'turn-cancel', nonce: m.nonce });
+    m.resolve(null);
+  }
+  activePlayer = null;
+  for (const p of players) { p.score = 0; p.hand = []; p.sitOut = false; }
   deck = shuffle(buildDeck());
   discard = [];
   roundNo = 0;
@@ -1095,7 +1219,14 @@ function newGame() {
   $('turn-controls').style.display = 'none';
   $('drawn-controls').style.display = 'none';
   $('color-controls').style.display = 'none';
-  setMessage('Fresh deck. Deal when ready.');
+  recStart({
+    target: TARGET,
+    players: players.map(p => ({
+      name: p.name,
+      kind: p.open ? 'open' : p.remote ? 'guest' : p.ai ? 'cpu' : 'human',
+    })),
+  });
+  setTableMessage('Fresh deck. Deal when ready.');
   render();
 }
 
@@ -1105,7 +1236,7 @@ function newGame() {
    ============================================================ */
 
 const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
-              hostName: 'Host', movers: {}, lastView: null,
+              hostName: 'Host', movers: {}, turnNonce: 0, lastView: null,
               lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
               joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: null,
               heartbeatsStarted: false, gameCounted: false, wakeLock: null };
@@ -1271,6 +1402,8 @@ function handleGuestMsg(conn, d) {
       conn._seat = prior;
       conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
       render();
+      const m = net.movers[players.indexOf(prior)];
+      if (m) conn.send(m.msg); // it's still their turn — re-send the pending prompt
       return;
     }
     const seat = players.find(p => p.open && !p.remote) || players.find(p => p.ai && !p.remote);
@@ -1279,12 +1412,12 @@ function handleGuestMsg(conn, d) {
     seat.open = false;
     seat.ai = false;
     seat.remote = conn;
-    seat.finishAsCpu = roundActive; // mid-round: the book finishes this hand
+    seat.finishAsCpu = roundActive && !tookOpenSeat; // mid-round takeover: the book finishes this hand
     seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
     if (tookOpenSeat) {
       seat.score = 0;
       seat.hand = [];
-      // joining mid-round at an open seat: deal them in next round
+      seat.sitOut = roundActive; // joining mid-round at an open seat: deal them in next round
     }
     conn._seat = seat;
     conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
@@ -1296,8 +1429,8 @@ function handleGuestMsg(conn, d) {
   } else if (d.type === 'move') {
     const seat = conn._seat;
     if (!seat) return;
-    const r = net.movers[players.indexOf(seat)];
-    if (r) r(d.action);
+    const m = net.movers[players.indexOf(seat)];
+    if (m && d.nonce === m.nonce) m.resolve(d.action); // stale moves from an earlier turn are dropped
   }
 }
 
@@ -1324,8 +1457,8 @@ function dropGuest(conn) {
       seat.hand = [];
     }
   }
-  const r = net.movers[idx];
-  if (r) r({ type: 'draw' });
+  const m = net.movers[idx];
+  if (m) m.resolve({ type: 'draw' });
   updateNetBar();
   render();
 }
@@ -1333,6 +1466,7 @@ function dropGuest(conn) {
 function getRemoteMove(p, playable, drawn) {
   return new Promise(resolve => {
     const idx = players.indexOf(p);
+    const nonce = ++net.turnNonce;
     let settled = false;
     const finish = a => {
       if (settled) return;
@@ -1346,10 +1480,11 @@ function getRemoteMove(p, playable, drawn) {
     };
     const timer = setTimeout(() => {
       log(p.name + ' took too long — drawing.');
+      if (p.remote && p.remote.open) p.remote.send({ type: 'turn-cancel', nonce });
       finish(null);
     }, TURN_TIMEOUT_MS);
-    net.movers[idx] = finish;
-    if (p.remote && p.remote.open) p.remote.send({ type: 'turn', playable, drawn });
+    net.movers[idx] = { resolve: finish, nonce, msg: { type: 'turn', playable, drawn, nonce } };
+    if (p.remote && p.remote.open) p.remote.send(net.movers[idx].msg);
     else finish(null);
   });
 }
@@ -1448,7 +1583,7 @@ function handleHostMsg(d) {
     net.lastView = d.view;
     renderView(d.view);
   } else if (d.type === 'turn') {
-    net.guestPrompt = { playable: d.playable, drawn: d.drawn == null ? null : d.drawn };
+    net.guestPrompt = { playable: d.playable, drawn: d.drawn == null ? null : d.drawn, nonce: d.nonce };
     if (d.drawn == null) {
       $('turn-controls').style.display = '';
       setMessage(d.playable.length ? 'Your move — play a card or draw.' : 'Nothing playable — draw a card.');
@@ -1459,6 +1594,15 @@ function handleHostMsg(d) {
       setMessage('You drew ' + (c ? cardLabel(c) : 'a card') + ' — play it?');
     }
     render();
+  } else if (d.type === 'turn-cancel') {
+    if (net.guestPrompt && net.guestPrompt.nonce === d.nonce) {
+      net.guestPrompt = null;
+      $('turn-controls').style.display = 'none';
+      $('drawn-controls').style.display = 'none';
+      $('color-controls').style.display = 'none';
+      setMessage('');
+      render();
+    }
   } else if (d.type === 'log') {
     const el = document.createElement('div');
     el.textContent = d.msg;
@@ -1529,6 +1673,7 @@ $('btn-deal').addEventListener('click', () => { if (gameOver) newGame(); else pl
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */

@@ -617,7 +617,10 @@
       their showing cards. Busted players bank nothing. Cass and Boone play the
       odds — the deck runs thin and they know it. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row">
+      <button id="btn-export-log">Export debug log</button>
+      <button id="help-close" class="primary">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -667,6 +670,7 @@ const me = players[2];
 let mySeatIdx = players.indexOf(me);
 
 let deck = [];
+let discards = [];
 let vengeance = false;   // chosen before round 1, locked for the whole game
 let roundNo = 0;
 let roundActive = false;
@@ -674,6 +678,7 @@ let gameOver = false;
 let lastWinnerIdx = -1;
 let activePlayer = null;
 let playerResolver = null;
+let epoch = 0;
 let stats = { wins: 0, games: 0 };
 
 /* ---------- deck ---------- */
@@ -711,8 +716,16 @@ function shuffle(arr) {
 
 function draw() {
   if (!deck.length) {
-    deck = shuffle(buildDeck());
-    log('Deck ran dry — shuffled a fresh one.');
+    if (discards.length) {
+      deck = shuffle(discards);
+      discards = [];
+      log('Deck ran dry — shuffled the discards back in.');
+      recPush('shuffle', { reason: 'reshuffle-discards', size: deck.length, deck: deck.map(recCard) });
+    } else {
+      deck = shuffle(buildDeck());
+      log('Deck ran dry — shuffled a fresh one.');
+      recPush('shuffle', { reason: 'fresh-deck', size: deck.length, deck: deck.map(recCard) });
+    }
   }
   return deck.pop();
 }
@@ -766,6 +779,45 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh start */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 games for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recCard(c) {
+  if (!c) return null;
+  if (c.t === 'num' || c.t === 'bust') return c.t + ':' + c.v;
+  if (c.t === 'mod') return 'mod:+' + c.v;
+  return c.t;
+}
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'flip7-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -909,29 +961,38 @@ function render() {
 
 /* ---------- card resolution (host/solo only) ---------- */
 
-async function flipCard(p) {
+async function flipCard(p, ep) {
   const card = draw();
   if (card.t === 'num') {
     if (p.cards.includes(card.v)) {
       // reveal the offending duplicate before it resolves, so the flip is seen
       p.bustCard = card.v;
       if (p.second) {
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'second-chance-eaten' });
         log(p.name + ' flips a duplicate ' + card.v + ' — 2nd Chance eats it.');
         render();
         await sleep(750);
+        if (ep !== epoch) return;
         p.second = false;
         p.bustCard = null;
+        discards.push(card, { t: 'second' });
       } else {
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'duplicate-bust' });
         log(p.name + ' flips a duplicate ' + card.v + ' and BUSTS.');
         render();
         await sleep(750);
+        if (ep !== epoch) return;
         p.status = 'busted';
+        discards.push(card);
       }
     } else {
       p.cards.push(card.v);
       if (numbersShowing(p) === 7) {
         p.status = 'flip7';
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'flip7' });
         log('★ ' + p.name + ' FLIPS 7! Round over, +15 bonus.');
+      } else {
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'kept' });
       }
     }
   } else if (card.t === 'mod' && card.v < 0) {
@@ -940,6 +1001,7 @@ async function flipCard(p) {
     log(p.name + ' slaps ' + card.v + ' on ' + (target === p ? 'themselves' : target.name) + '.');
   } else if (card.t === 'mod') {
     p.mods.push(card.v);
+    recPush('flip', { player: p.name, card: recCard(card), outcome: 'kept' });
     log(p.name + ' flips +' + card.v + '.');
   } else if (card.t === 'half') {
     const target = await chooseTarget(p, '÷2', standingPlayers());
@@ -1030,38 +1092,55 @@ async function flipCard(p) {
     }
   } else if (card.t === 'x2') {
     p.x2 = true;
+    recPush('flip', { player: p.name, card: recCard(card), outcome: 'kept' });
     log(p.name + ' flips ×2 — number points doubled.');
   } else if (card.t === 'second') {
     if (!p.second) {
       p.second = true;
+      recPush('flip', { player: p.name, card: recCard(card), outcome: 'kept' });
       log(p.name + ' pockets a 2nd Chance.');
     } else {
       const takers = activePlayers().filter(q => q !== p && !q.second);
       if (takers.length) {
         const taker = await chooseTarget(p, '2nd Chance', takers);
+        if (ep !== epoch) return;
         taker.second = true;
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'action-assigned' });
+        recPush('assign', { by: p.name, card: 'second', target: taker.name });
         log(p.name + ' already has one — the spare 2nd Chance goes to ' + taker.name + '.');
       } else {
+        recPush('flip', { player: p.name, card: recCard(card), outcome: 'kept' });
         log(p.name + ' flips a spare 2nd Chance — nobody can take it. Discarded.');
+        discards.push(card);
       }
     }
   } else if (card.t === 'freeze') {
     const targets = activePlayers();
     const target = targets.length ? await chooseTarget(p, 'Freeze', targets) : null;
+    if (ep !== epoch) return;
+    discards.push(card);
     if (target) {
       target.status = 'frozen';
+      recPush('flip', { player: p.name, card: recCard(card), outcome: 'action-assigned' });
+      recPush('assign', { by: p.name, card: 'freeze', target: target.name });
       log(p.name + ' flips FREEZE → ' + target.name + ' banks ' + roundPointsOf(target) + ' and is out.');
     }
   } else if (card.t === 'flip3') {
     const targets = activePlayers();
     const target = targets.length ? await chooseTarget(p, 'Flip Three', targets) : null;
+    if (ep !== epoch) return;
+    discards.push(card);
     if (target) {
+      recPush('flip', { player: p.name, card: recCard(card), outcome: 'action-assigned' });
+      recPush('assign', { by: p.name, card: 'flip3', target: target.name });
       log(p.name + ' flips FLIP THREE → ' + target.name + ' must take three.');
       render();
       for (let i = 0; i < 3; i++) {
         if (target.status !== 'active' || roundEnded()) break;
         await sleep(500);
-        await flipCard(target);
+        if (ep !== epoch) return;
+        await flipCard(target, ep);
+        if (ep !== epoch) return;
         render();
       }
     }
@@ -1134,11 +1213,15 @@ function aiWantsHit(p) {
   const dupes = deck.filter(c => c.t === 'num' && p.cards.includes(c.v)).length;
   const risk = deck.length ? dupes / deck.length : 0.2;
   const pts = roundPointsOf(p);
-  if (p.total + pts >= TARGET) return false;
-  if (numbersShowing(p) >= 6) return risk < 0.42;
-  if (pts >= 24) return false;
-  if (pts >= 18 && risk > 0.18) return false;
-  return risk < 0.24 + (p.second ? 0.15 : 0);
+  let hit;
+  if (p.total + pts >= TARGET) hit = false;
+  else if (numbersShowing(p) >= 6) hit = risk < 0.42;
+  else if (pts >= 24) hit = false;
+  else if (pts >= 18 && risk > 0.18) hit = false;
+  else hit = risk < 0.24 + (p.second ? 0.15 : 0);
+  recPush('cpu', { player: p.name, risk, dupes, deckLeft: deck.length,
+                   unique: numbersShowing(p), pts, total: p.total, second: p.second, hit });
+  return hit;
 }
 
 function getPlayerAction() {
@@ -1153,30 +1236,33 @@ function getPlayerAction() {
   });
 }
 
-async function takeTurn(p) {
+async function takeTurn(p, ep) {
   activePlayer = p;
   render();
   if (p.ai || p.finishAsCpu) {
     await sleep(1000);
-    if (p.status !== 'active') return;
+    if (ep !== epoch || p.status !== 'active') return;
     if (aiWantsHit(p)) {
-      await flipCard(p);
+      recPush('action', { player: p.name, choice: 'hit', roundPts: roundPointsOf(p) });
+      await flipCard(p, ep);
     } else {
+      recPush('action', { player: p.name, choice: 'stay', roundPts: roundPointsOf(p) });
       p.status = 'stayed';
       log(p.name + ' stays on ' + roundPointsOf(p) + '.');
     }
   } else if (p.remote) {
     setMessage('Waiting for ' + p.name + '…');
     const a = await getRemoteAction(p);
-    if (p.status !== 'active') return;
-    if (a === 'H') await flipCard(p);
-    else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
+    if (ep !== epoch || p.status !== 'active') return;
+    if (a === 'H') { recPush('action', { player: p.name, choice: 'hit', roundPts: roundPointsOf(p) }); await flipCard(p, ep); }
+    else { recPush('action', { player: p.name, choice: 'stay', roundPts: roundPointsOf(p) }); p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   } else {
     const a = await getPlayerAction();
-    if (p.status !== 'active') return;
-    if (a === 'H') await flipCard(p);
-    else { p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
+    if (ep !== epoch || p.status !== 'active') return;
+    if (a === 'H') { recPush('action', { player: p.name, choice: 'hit', roundPts: roundPointsOf(p) }); await flipCard(p, ep); }
+    else { recPush('action', { player: p.name, choice: 'stay', roundPts: roundPointsOf(p) }); p.status = 'stayed'; log(p.name + ' stays on ' + roundPointsOf(p) + '.'); }
   }
+  if (ep !== epoch) return;
   activePlayer = null;
   render();
 }
@@ -1185,6 +1271,7 @@ async function takeTurn(p) {
 
 async function playRound() {
   if (roundActive || gameOver || net.mode === 'guest') return;
+  const ep = epoch;
   roundActive = true;
   roundNo++;
   $('round-controls').style.display = 'none';
@@ -1201,7 +1288,9 @@ async function playRound() {
   for (const p of seated()) {
     if (p.status !== 'active') continue;
     await sleep(600);
-    await flipCard(p);
+    if (ep !== epoch) return;
+    await flipCard(p, ep);
+    if (ep !== epoch) return;
     if (roundEnded()) break;
   }
 
@@ -1210,32 +1299,47 @@ async function playRound() {
     for (let i = 0; i < players.length; i++) {
       const p = players[(start + i) % players.length];
       if (p.open || p.status !== 'active') continue;
-      await takeTurn(p);
+      await takeTurn(p, ep);
+      if (ep !== epoch) return;
       if (roundEnded()) break;
     }
   }
 
   activePlayer = null;
   const lines = [];
+  const recResults = [];
   for (const p of seated()) {
     const pts = roundPointsOf(p);
     p.total += pts;
     lines.push(p.name + ' +' + pts);
+    recResults.push({ name: p.name, pts, total: p.total, status: p.status });
+    for (const v of p.cards) discards.push({ t: 'num', v });
+    for (const v of p.mods) discards.push({ t: 'mod', v });
+    if (p.x2) discards.push({ t: 'x2' });
+    if (p.second) discards.push({ t: 'second' });
   }
   log('Round ' + roundNo + ': ' + lines.join(' · '));
+  recPush('round', { roundNo, results: recResults });
 
   const live = seated();
   const leader = live.reduce((a, b) => (a.total > b.total ? a : b));
-  if (leader.total >= TARGET) {
+  const tiedForLead = live.filter(p => p.total === leader.total).length > 1;
+  if (leader.total >= TARGET && !tiedForLead) {
     gameOver = true;
     lastWinnerIdx = players.indexOf(leader);
     stats.games++;
     if (leader === me) stats.wins++;
     save();
+    recFinish({ winner: leader.name, rounds: roundNo,
+                totals: seated().map(p => ({ name: p.name, total: p.total })) });
     setMessage(leader === me && net.mode === 'solo'
       ? '★ You hit ' + me.total + ' and walk out rich. The wasteland provides.'
       : '★ ' + leader.name + ' hits ' + leader.total + ' first and walks out rich.');
     $('btn-deal').textContent = 'Play again';
+  } else if (leader.total >= TARGET) {
+    log('Tied at the top — one more round!');
+    setMessage('Tied at ' + leader.total + ' — one more round decides it.');
+    $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
   } else {
     setMessage('Round over. ' + leader.name + ' leads with ' + leader.total + '.');
     $('btn-deal').textContent = 'Deal round ' + (roundNo + 1);
@@ -1247,16 +1351,22 @@ async function playRound() {
 
 function newGame() {
   if (net.mode === 'guest') return;
+  epoch++;
+  playerResolver = null;
   for (const p of players) {
     p.total = 0; p.cards = []; p.mods = []; p.x2 = false; p.second = false; p.bustCard = null;
     p.lucky = false; p.half = false;
     p.status = p.open ? 'out' : 'waiting';
   }
   deck = shuffle(buildDeck());
+  discards = [];
   roundNo = 0;
   gameOver = false;
   lastWinnerIdx = -1;
   roundActive = false;
+  recStart({ target: TARGET, vengeance,
+             players: players.map(p => ({ name: p.name, kind: p.open ? 'open' : p.ai ? 'cpu' : 'human' })) });
+  recPush('shuffle', { reason: 'new-game', size: deck.length, deck: deck.map(recCard) });
   $('btn-deal').textContent = 'Deal round 1';
   $('round-controls').style.display = '';
   $('action-controls').style.display = 'none';
@@ -1518,12 +1628,14 @@ function dropGuest(conn) {
 function getRemoteAction(p) {
   return new Promise(resolve => {
     const idx = players.indexOf(p);
+    const ep = epoch;
     let settled = false;
     const finish = a => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      delete net.resolvers[idx];
+      if (net.resolvers[idx] === finish) delete net.resolvers[idx];
+      if (ep !== epoch) return;
       resolve(a === 'H' ? 'H' : 'S');
     };
     const timer = setTimeout(() => {
@@ -1539,12 +1651,14 @@ function getRemoteAction(p) {
 function getRemoteTarget(p, label, candidates) {
   return new Promise(resolve => {
     const idx = players.indexOf(p);
+    const ep = epoch;
     let settled = false;
     const finish = i => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      delete net.choosers[idx];
+      if (net.choosers[idx] === finish) delete net.choosers[idx];
+      if (ep !== epoch) return;
       const pick = players[i];
       resolve(candidates.includes(pick) ? pick : heuristicTarget(p, label, candidates));
     };
@@ -1742,9 +1856,11 @@ $('btn-deal').addEventListener('click', () => { if (gameOver) newGame(); else pl
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 document.addEventListener('keydown', e => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
   if (!playerResolver) return;
   const k = e.key.toLowerCase();
   if (k === 'h') playerResolver('H');
