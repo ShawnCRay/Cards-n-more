@@ -648,6 +648,7 @@ const RULES_VENGEANCE = 'WITH A VENGEANCE  •  NUMBERS RUN TO 13  •  NO S
 const HEARTBEAT_MS = 3000;
 const STALE_MS = 35000;
 const TURN_TIMEOUT_MS = 45000;
+const TARGET_AUTO_MS = 10000;   // action-card target auto-picks after 10s if the player doesn't choose
 
 function openSeat() {
   return { name: 'Open', cpuName: null, open: true, ai: false, remote: null, finishAsCpu: false,
@@ -1185,23 +1186,50 @@ function choosePrompt(label) {
 }
 
 async function chooseTarget(chooser, label, candidates) {
-  if (candidates.length === 1) return candidates[0];
+  if (!candidates.length) return heuristicTarget(chooser, label, candidates);   // nothing valid
   if (chooser.ai || chooser.finishAsCpu) return heuristicTarget(chooser, label, candidates);
   if (chooser.remote) return getRemoteTarget(chooser, label, candidates);
+  return localChooseTarget(chooser, label, candidates);
+}
+
+// Show every seat as a button — even when only one target is legal — greying
+// out the seats you can't play on, and auto-pick a sensible legal target after
+// TARGET_AUTO_MS if the player doesn't click. Works in both game modes.
+function localChooseTarget(chooser, label, candidates) {
   return new Promise(resolve => {
-    $('action-controls').style.display = 'none';
+    const ep = epoch;
+    const valid = new Set(candidates);
     const box = $('target-buttons');
     box.innerHTML = '';
-    setMessage(choosePrompt(label));
-    for (const c of candidates) {
+    $('action-controls').style.display = 'none';
+    let done = false, timer = null, tick = null;
+    const finish = pick => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer); clearInterval(tick);
+      $('target-controls').style.display = 'none';
+      resolve(pick);
+    };
+    for (const c of players) {
+      if (c.open) continue;                                  // skip empty seats
       const b = document.createElement('button');
       b.textContent = c === chooser ? 'Yourself' : c.name;
-      b.addEventListener('click', () => {
-        $('target-controls').style.display = 'none';
-        resolve(c);
-      });
+      if (valid.has(c)) b.addEventListener('click', () => finish(c));
+      else b.disabled = true;                                // greyed via button:disabled
       box.appendChild(b);
     }
+    const base = choosePrompt(label);
+    let left = Math.round(TARGET_AUTO_MS / 1000);
+    setMessage(base + ' (auto in ' + left + 's)');
+    tick = setInterval(() => {
+      if (done) return;
+      if (ep !== epoch) { finish(candidates[0]); return; }   // game reset — bail, don't clobber the message
+      if (left > 0) left--;
+      setMessage(base + ' (auto in ' + left + 's)');
+    }, 1000);
+    timer = setTimeout(() => {
+      finish(ep === epoch ? heuristicTarget(chooser, label, candidates) : candidates[0]);
+    }, TARGET_AUTO_MS);
     $('target-controls').style.display = '';
   });
 }
@@ -1665,7 +1693,8 @@ function getRemoteTarget(p, label, candidates) {
     const timer = setTimeout(() => finish(-1), TURN_TIMEOUT_MS);
     net.choosers[idx] = finish;
     if (p.remote && p.remote.open) {
-      p.remote.send({ type: 'choose', label, cands: candidates.map(c => players.indexOf(c)) });
+      const all = players.reduce((a, q, i) => { if (!q.open) a.push(i); return a; }, []);
+      p.remote.send({ type: 'choose', label, cands: candidates.map(c => players.indexOf(c)), all });
     } else {
       finish(-1);
     }
@@ -1776,22 +1805,41 @@ function handleHostMsg(d) {
   } else if (d.type === 'choose') {
     net.prompting = true;
     $('action-controls').style.display = 'none';
+    clearTimeout(net.chooseTimer);
     const box = $('target-buttons');
     box.innerHTML = '';
-    setMessage(choosePrompt(d.label));
-    for (const idx of d.cands) {
+    const cands = d.cands || [];
+    const universe = (d.all && d.all.length) ? d.all : cands;
+    const validSet = new Set(cands);
+    const sendTarget = idx => {
+      clearTimeout(net.chooseTimer);
+      clearInterval(net.chooseTick);
+      $('target-controls').style.display = 'none';
+      net.prompting = false;
+      setMessage('');
+      if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'target', idx });
+    };
+    for (const idx of universe) {
       const b = document.createElement('button');
       const nm = net.lastView && net.lastView.players[idx] ? net.lastView.players[idx].name : 'Seat ' + idx;
       b.textContent = idx === mySeatIdx ? 'Yourself' : nm;
-      b.addEventListener('click', () => {
-        $('target-controls').style.display = 'none';
-        net.prompting = false;
-        setMessage('');
-        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'target', idx });
-      });
+      if (validSet.has(idx)) b.addEventListener('click', () => sendTarget(idx));
+      else b.disabled = true;                                // greyed via button:disabled
       box.appendChild(b);
     }
+    let left = Math.round(TARGET_AUTO_MS / 1000);
+    const base = choosePrompt(d.label);
+    setMessage(base + ' (auto in ' + left + 's)');
+    net.chooseTick = setInterval(() => {
+      if (!net.prompting) { clearInterval(net.chooseTick); return; }
+      if (left > 0) left--;
+      setMessage(base + ' (auto in ' + left + 's)');
+    }, 1000);
     $('target-controls').style.display = '';
+    net.chooseTimer = setTimeout(() => {
+      clearInterval(net.chooseTick);
+      if (cands.length) sendTarget(cands[0]);               // auto-force a legal target
+    }, TARGET_AUTO_MS);
   } else if (d.type === 'log') {
     const el = document.createElement('div');
     el.textContent = d.msg;
