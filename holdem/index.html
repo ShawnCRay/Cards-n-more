@@ -247,7 +247,7 @@
       <b>10/20</b>, and you top back up to 1,000 whenever you bust. Cass plays
       tight and Boone likes to bluff.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row"><button id="btn-export">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
 </div>
 
@@ -318,6 +318,39 @@ function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); 
 function load() {
   try { const d = JSON.parse(localStorage.getItem(STORE_KEY)); if (d && typeof d.wins === 'number') stats = d; }
   catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last few hands for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 6;   // hand-based; keep the last 6 hands
+let recEvents = null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'holdem-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
 }
 
 /* ---------- deck & cards ---------- */
@@ -463,20 +496,26 @@ function aiAction(seat, toCall, minRaiseTo, raiseOpen) {
   const bluff = p.cpuName === 'Boone' ? 0.13 : 0.04;
   const r = Math.random();
   const canRaise = raiseOpen && p.stack > toCall;
+  const recCpu = dec => {
+    recPush('cpu', { seat, street, strength: +s.toFixed(4), pot, toCall,
+      potOdds: toCall > 0 ? +(toCall / (pot + toCall)).toFixed(4) : 0,
+      bluff, r: +r.toFixed(4), canRaise, choice: dec.kind, to: dec.to });
+    return dec;
+  };
   const potBet = () => {
     let want = Math.max(minRaiseTo, currentBet + Math.round((pot + toCall) * (0.5 + Math.random() * 0.35)));
     want = Math.min(want, p.bet + p.stack);          // cap all-in
     return { kind: 'raise', to: want };
   };
   if (toCall === 0) {
-    if (canRaise && (s > 0.62 || r < bluff)) return potBet();
-    return { kind: 'call' };  // check
+    if (canRaise && (s > 0.62 || r < bluff)) return recCpu(potBet());
+    return recCpu({ kind: 'call' });  // check
   }
   const potOdds = toCall / (pot + toCall);
-  if (canRaise && s > 0.80 && r < 0.7) return potBet();          // value raise
-  if (s > 0.5 || r < bluff) return { kind: 'call' };
-  if (s >= potOdds + 0.03) return { kind: 'call' };               // priced in
-  return { kind: 'fold' };
+  if (canRaise && s > 0.80 && r < 0.7) return recCpu(potBet());          // value raise
+  if (s > 0.5 || r < bluff) return recCpu({ kind: 'call' });
+  if (s >= potOdds + 0.03) return recCpu({ kind: 'call' });               // priced in
+  return recCpu({ kind: 'fold' });
 }
 
 /* ---------- rendering ---------- */
@@ -736,6 +775,8 @@ async function bettingRound(startPos) {
 
     // if this player already acted, the bet in front of them is a short all in — call/fold only
     const raiseOpen = !p.hasActed;
+    const recMaxTo = p.bet + p.stack, recCanRaise = raiseOpen && p.stack > toCall;  // what the engine offered
+    let recAmount = 0;
     let a = await getAction(seat, toCall, minRaiseTo, raiseOpen);
     a = sanitize(a, seat, toCall, minRaiseTo, raiseOpen);
 
@@ -744,6 +785,7 @@ async function bettingRound(startPos) {
       log(p.name + ' folds.');
     } else if (a.kind === 'call') {
       const pay = commit(seat, toCall);
+      recAmount = pay;
       p.hasActed = true;
       p.lastAction = toCall === 0 ? 'check' : (p.allIn ? 'all in' : 'call');
       log(p.name + (toCall === 0 ? ' checks.' : (p.allIn ? ' calls all in (' + pay + '₵).' : ' calls ' + pay + '₵.')));
@@ -751,6 +793,7 @@ async function bettingRound(startPos) {
       let to = Math.min(a.to, p.bet + p.stack);
       const inc = to - currentBet;
       commit(seat, to - p.bet);
+      recAmount = to;
       const fullRaise = inc >= lastRaise;
       p.lastAction = p.allIn ? 'all in' : (toCall === 0 ? 'bet' : 'raise');
       log(p.name + (p.allIn ? ' is all in for ' + to + '₵.' : (toCall === 0 ? ' bets ' + to + '₵.' : ' raises to ' + to + '₵.')));
@@ -758,6 +801,8 @@ async function bettingRound(startPos) {
       if (fullRaise) { lastRaise = inc; for (const s of handSeats) if (!players[s].folded && s !== seat) players[s].hasActed = false; }
       p.hasActed = true;
     }
+    recPush('action', { seat, street, action: p.allIn ? 'all-in' : p.lastAction,
+      amount: recAmount, toCall, minRaiseTo, canRaise: recCanRaise, maxTo: recMaxTo });
     render();
     await sleep(STEP_PAUSE);
     pos = nextSeatOrder(pos);
@@ -793,7 +838,16 @@ async function playHand() {
     ? seatAfter(buttonSeat, s => handSeats.includes(s))
     : handSeats[0];
 
+  const recStartStacks = {};
+  for (const s of handSeats) recStartStacks[s] = players[s].stack;
+  recStart({
+    button: buttonSeat, blinds: { sb: SMALL_BLIND, bb: BIG_BLIND },
+    seats: handSeats.map(s => ({ seat: s, name: players[s].name,
+      kind: players[s].ai ? 'cpu' : (players[s].remote ? 'remote' : 'human'), stack: players[s].stack })),
+  });
+
   deck = shuffle(buildDeck());
+  recPush('shuffle', { deck: deck.map(cardStr) });
 
   const heads = handSeats.length === 2;
   const sbSeat = heads ? buttonSeat : seatAfter(buttonSeat, s => handSeats.includes(s));
@@ -805,6 +859,7 @@ async function playHand() {
 
   // deal two hole cards each
   for (let round = 0; round < 2; round++) for (const s of handSeats) players[s].hole.push(deck.pop());
+  recPush('deal', { street: 'preflop', hole: handSeats.map(s => ({ seat: s, cards: players[s].hole.map(cardStr) })) });
   street = 'preflop';
   render();
   await sleep(STREET_PAUSE);
@@ -818,8 +873,11 @@ async function playHand() {
     // reset street bets
     for (const s of handSeats) players[s].bet = 0;
     currentBet = 0;
-    if (stage === 'flop') { deck.pop(); community.push(deck.pop(), deck.pop(), deck.pop()); }
-    else { deck.pop(); community.push(deck.pop()); }
+    const recBefore = community.length, recBurns = [];
+    if (stage === 'flop') { recBurns.push(deck.pop()); community.push(deck.pop(), deck.pop(), deck.pop()); }
+    else { recBurns.push(deck.pop()); community.push(deck.pop()); }
+    recPush('deal', { street: stage, cards: community.slice(recBefore).map(cardStr),
+      board: community.map(cardStr), burns: recBurns.map(cardStr) });
     street = stage;
     render();
     await sleep(STREET_PAUSE);
@@ -831,6 +889,10 @@ async function playHand() {
   }
 
   await concludeHand();
+  recFinish({
+    winners: handResult ? handResult.winners.slice() : [],
+    deltas: handSeats.map(s => ({ seat: s, delta: players[s].stack - recStartStacks[s] })),
+  });
   for (const s of handSeats) { players[s].bet = 0; players[s].totalBet = 0; }  // pot settled into stacks
   handActive = false;
   handOver = true;
@@ -844,6 +906,8 @@ async function concludeHand() {
     const w = live[0];
     const total = pots.reduce((a, pt) => a + pt.amount, 0);
     players[w].stack += total;
+    recPush('showdown', { foldWin: true, board: community.map(cardStr), winner: w, amount: total,
+      pots: pots.map(pt => ({ amount: pt.amount, eligible: pt.eligible.slice() })) });
     activeSeat = -1;
     showdownData = null;
     log(players[w].name + ' takes ' + total + '₵ — everyone folded.');
@@ -876,6 +940,22 @@ async function concludeHand() {
     for (const w of payOrder) { players[w].stack += share; if (rem > 0) { players[w].stack += 1; rem--; } }
     potResults.push({ amount: pot.amount, winners, name: handName(ranks[best]) });
   }
+  // read-only mirror of the payout for the debug log (does not touch stacks / the audited math above)
+  const recPots = pots.map(pot => {
+    const contenders = pot.eligible.filter(s => !players[s].folded);
+    if (!contenders.length) return null;
+    let best = null;
+    for (const s of contenders) if (best === null || cmpRank(ranks[s], ranks[best]) > 0) best = s;
+    const winners = contenders.filter(s => cmpRank(ranks[s], ranks[best]) === 0);
+    const share = Math.floor(pot.amount / winners.length);
+    let rem = pot.amount - share * winners.length;
+    const pays = [];
+    for (let i = 1; i <= players.length; i++) { const s = (buttonSeat + i) % players.length; if (winners.includes(s)) { pays.push({ seat: s, amount: share + (rem > 0 ? 1 : 0) }); if (rem > 0) rem--; } }
+    return { amount: pot.amount, eligible: pot.eligible.slice(), winners: winners.slice(), name: handName(ranks[best]), pays };
+  }).filter(Boolean);
+  recPush('showdown', { board: community.map(cardStr),
+    hands: live.map(s => ({ seat: s, hole: players[s].hole.map(cardStr), rank: ranks[s].slice(), name: handName(ranks[s]) })),
+    pots: recPots });
   showdownData = { pots: potResults, reveal };
   activeSeat = -1;
   const main = potResults[0];
@@ -1208,6 +1288,7 @@ $('btn-deal').addEventListener('click', playSession);
 $('btn-new').addEventListener('click', () => { if (confirm('Reset every stack to ' + START_STACK + '₵?')) newGame(); });
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 load();
