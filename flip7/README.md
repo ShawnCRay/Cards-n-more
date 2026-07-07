@@ -20,6 +20,31 @@ sits out), Flip Three (target must flip three in a row), and Second Chance
 Wins are tracked per device via `localStorage`. Keyboard: **H**it, **S**tay.
 "How to play" in the footer covers the rules in plain English.
 
+## With a Vengeance
+
+An optional mode picked before round 1 (the host chooses it; once the first
+card is dealt it's locked for the whole game — "New game" lets you choose
+again). The deck grows to 108 cards, numbers run to **13**, and every safety
+net is gone — no Freeze, Flip Three or Second Chance. Instead:
+
+- **−2/−4/−6/−8/−10** — handed to any player still standing (stayed players
+  included); subtracts at scoring. Round scores never drop below zero.
+- **÷2** — handed to anyone still standing; halves their number-card points
+  (rounded up).
+- **Flip Four** (×2) — a player still in must flip four in a row.
+- **Just One More** (×2) — a player still in flips one card, then must stay.
+- **Steal** (×2) — take the best number card you can use from another
+  player's row; it can even complete your Flip 7.
+- **Swap** (×2) — pick two players; their biggest numbers trade places, and a
+  duplicate busts on arrival.
+- **Discard** (×2) — a player of your choice loses their biggest number.
+- **Unlucky 7** — the seventh 7. Flip it and your row burns: numbers and
+  modifiers gone, only that 7 remains.
+- **Lucky 13** — the thirteenth 13. Never busts, coexists with a regular 13,
+  and counts toward your seven.
+- **The 0** is cursed: while it's showing you score nothing that round unless
+  you Flip 7.
+
 ## Playing with friends
 
 Same setup as the blackjack room: tap **Play with friends**, pick a name, and
