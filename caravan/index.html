@@ -449,7 +449,10 @@
       disband. Run out of cards entirely and you lose the match. Cass has run
       this route for years; watch her jacks. Good luck out there, dweller.</p>
     </div>
-    <div class="btn-row"><button id="help-close" class="primary">Got it</button></div>
+    <div class="btn-row">
+      <button id="btn-export-debug">Export debug log</button>
+      <button id="help-close" class="primary">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -564,15 +567,18 @@ function applyMove(p, move) {
     if (card.f === 'J') {
       cv.entries.splice(move.ei, 1);
       recalc(cv);
+      recCaravan(move.cv, move.side, cv);                // Jack removal
       log(p.name + ' plays a Jack — kills the ' + (entry.v === 1 ? 'Ace' : entry.v) + ' on ' + owner.name + "'s caravan.");
     } else if (card.f === 'K') {
       entry.kings++;
+      recCaravan(move.cv, move.side, cv);                // King double
       log(p.name + ' plays a King — doubles a ' + (entry.v === 1 ? 'Ace' : entry.v) + ' on ' + owner.name + "'s caravan.");
     } else if (card.f === 'Q') {
       entry.q = card.s;
       entry.rev++;
       cv.suit = card.s;
       cv.dir = -cv.dir;
+      recCaravan(move.cv, move.side, cv);                // Queen reversal
       log(p.name + ' plays a Queen — bends ' + owner.name + "'s caravan to " + card.s + '.');
     } else if (card.f === '★') {
       entry.joker = true;
@@ -584,6 +590,7 @@ function applyMove(p, move) {
           recalc(c2);
         }
       }
+      recCaravan(move.cv, move.side, cv);                // Joker removal
       log(p.name + ' plays a JOKER on the ' + (isAce ? 'Ace of ' + entry.s + ' — every other ' + entry.s + ' card burns.'
                                                      : entry.v + ' — every other ' + entry.v + ' burns.'));
     }
@@ -663,6 +670,61 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && typeof d.wins === 'number') stats = d;
   } catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 matches for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'caravan-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
+}
+/* compact, JSON-serializable projections used only by the recorder */
+function recCard(c) {
+  if (!c) return null;
+  const o = {};
+  if (c.f) o.f = c.f;                                   // face flag if any (J/Q/K/★)
+  if (c.s) o.s = c.s;
+  if (c.v != null) o.v = c.v;
+  return o;
+}
+function recMove(m) {
+  if (!m) return null;
+  const o = { k: m.kind };
+  if (m.hi != null) o.hi = m.hi;
+  if (m.cv != null) o.cv = m.cv;
+  if (m.side != null) o.side = m.side;
+  if (m.ei != null) o.ei = m.ei;
+  return o;
+}
+function recCaravan(which, side, cv) {
+  const val = cvValue(cv);
+  recPush('caravan', { which, side, dir: cv.dir, suit: cv.suit, value: val, sold: inRange(val) });
 }
 
 /* ---------- rendering ---------- */
@@ -861,6 +923,7 @@ function aiChoose(p) {
   const moves = legalMoves(p);
   if (!moves.length) return null;
   let best = null, bestScore = -1e9;
+  const recCand = recEvents ? [] : null;               // only collect while recording
   for (const m of moves) {
     let s = -5;
     if (m.kind === 'number') {
@@ -908,8 +971,10 @@ function aiChoose(p) {
       s = c.f ? -8 : -2 - (10 - Math.abs(5.5 - c.v)); // shed middling numbers first
     }
     s += Math.random() * 3;
+    if (recCand) recCand.push({ move: recMove(m), score: s });
     if (s > bestScore) { bestScore = s; best = m; }
   }
+  if (recCand) recPush('cpu', { player: p.name, candidates: recCand, chosen: recMove(best) });
   return best;
 }
 
@@ -960,12 +1025,21 @@ async function playMatch() {
   gameOver = false;
   lastWinner = -1;
   $('round-controls').style.display = 'none';
+  recStart({
+    players: players.map(p => ({ name: p.name, kind: p.ai ? 'cpu' : (p.remote ? 'remote' : 'human') })),
+    firstPlayer: 0,
+  });
   for (const p of players) {
     p.deck = shuffle(buildDeck());
     p.hand = [];
     p.cvs = [newCv(), newCv(), newCv()];
     p.opening = 0;
-    for (let i = 0; i < 8; i++) p.hand.push(p.deck.pop());
+    recPush('shuffle', { player: p.name, deck: p.deck.map(recCard) });   // deck-integrity signal
+    for (let i = 0; i < 8; i++) {
+      const c = p.deck.pop();
+      p.hand.push(c);
+      recPush('draw', { player: p.name, card: recCard(c) });
+    }
   }
   turnIdx = 0;
   log('— New caravan match: ' + players[0].name + ' vs ' + players[1].name + ' —');
@@ -1000,8 +1074,18 @@ async function playMatch() {
       if (!move) { lastWinner = 1 - turnIdx; break; }
     }
     if (p.opening < 3 && move.kind === 'number') p.opening++;
+    recPush('move', {
+      player: p.name, kind: move.kind,
+      card: move.hi != null ? recCard(p.hand[move.hi]) : null,
+      cv: move.cv, side: move.side, ei: move.ei,
+      legal: legalMoves(p).map(recMove),                 // illegal-looking-move signal
+    });
     applyMove(p, move);
-    if (p.hand.length < 5 && p.deck.length) p.hand.push(p.deck.pop());
+    if (p.hand.length < 5 && p.deck.length) {
+      const c = p.deck.pop();
+      p.hand.push(c);
+      recPush('draw', { player: p.name, card: recCard(c) });
+    }
     render();
 
     const w = matchWinner();
@@ -1014,10 +1098,19 @@ async function playMatch() {
   }
 
   gameActive = false;
+  const recSummary = w => ({
+    winner: w >= 0 ? players[w].name : null, winnerIdx: w,
+    tracks: [0, 1, 2].map(i => ({
+      you: cvValue(players[0].cvs[i]), foe: cvValue(players[1].cvs[i]),
+      youSold: inRange(cvValue(players[0].cvs[i])), foeSold: inRange(cvValue(players[1].cvs[i])),
+      state: trackState(i),
+    })),
+  });
   if (lastWinner === -1) {                       // safety cap hit — no winner
     gameOver = false;
     setMessage('The match stalls out — no winner. Deal again.');
     log('— The caravan match ends with no winner. —');
+    recFinish(recSummary(-1));
     $('btn-deal').textContent = 'Play again';
     $('round-controls').style.display = '';
     render();
@@ -1032,6 +1125,7 @@ async function playMatch() {
     ? '★ Your caravans sell. The route is yours — the wasteland provides.'
     : '★ ' + winP.name + ' takes the match — two of three caravans sold.');
   log('★ ' + winP.name + ' wins the caravan match.');
+  recFinish(recSummary(lastWinner));
   $('btn-deal').textContent = 'Play again';
   $('round-controls').style.display = '';
   render();
@@ -1406,6 +1500,7 @@ $('btn-deal').addEventListener('click', playMatch);
 $('btn-new').addEventListener('click', newGame);
 $('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
 $('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-debug').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */
