@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#191f14">
+<title>Holotape Library — Audiobook Reader</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --ink: #241d12;
+    --panel: rgba(0,0,0,0.30);
+    --line: rgba(217,151,63,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 25%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 78%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 84% 18%, rgba(0,0,0,0.24), transparent),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+  button, select, input, textarea { font: inherit; color: var(--cream); }
+  button {
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(217,151,63,0.55); background: rgba(0,0,0,0.35);
+    transition: border-color 0.2s, background 0.2s;
+  }
+  button:hover:not(:disabled) { border-color: var(--gold); background: rgba(217,151,63,0.12); }
+  button.primary { background: linear-gradient(180deg, #e0a850, #c2842e); color: var(--ink); border-color: var(--gold); font-weight: 700; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  select, input[type=text], textarea {
+    font-size: 13px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5); background: rgba(0,0,0,0.4);
+    max-width: 100%;
+  }
+  select { appearance: none; -webkit-appearance: none; padding-right: 22px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%23d9973f"/></svg>');
+    background-repeat: no-repeat; background-position: right 8px center; }
+  input[type=range] { accent-color: var(--gold); }
+  .hidden { display: none !important; }
+
+  /* ================= library screen ================= */
+  #lib { max-width: 680px; margin: 0 auto; padding: 28px 16px 60px; text-align: center; }
+  #lib h1 { color: var(--gold); letter-spacing: 4px; font-size: clamp(20px, 5vw, 30px); text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+  #lib .sub { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin: 6px 0 26px; }
+  .book {
+    text-align: left; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px 9px 13px 10px / 10px 14px 9px 13px;
+    box-shadow: inset 0 0 24px rgba(0,0,0,0.45);
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .book h2 { color: var(--gold); font-size: 16px; letter-spacing: 1px; margin-bottom: 6px; word-break: break-word; }
+  .book .meta { font-size: 11px; opacity: 0.7; margin-bottom: 10px; }
+  .bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.5); border: 1px solid rgba(217,151,63,0.25); overflow: hidden; margin-bottom: 12px; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #c2842e, #e0a850); }
+  .book .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  #lib .add-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  #lib .empty { font-size: 12.5px; line-height: 1.7; opacity: 0.75; margin: 30px 0 6px; }
+  #lib .foot { margin-top: 40px; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.45; }
+  #lib .foot a { color: var(--gold); }
+
+  /* ================= reader screen ================= */
+  #reader { display: flex; flex-direction: column; height: 100vh; height: 100svh; }
+  #rhead {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.35); border-bottom: 1px solid var(--line);
+  }
+  #rhead .title { flex: 1; min-width: 0; text-align: center; }
+  #rhead .title b { display: block; color: var(--gold); font-size: 13px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #rhead .title span { display: block; font-size: 10px; opacity: 0.6; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #rhead button { padding: 8px 11px; }
+
+  #text {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 22px 18px 40vh; max-width: 720px; width: 100%; margin: 0 auto;
+    font-family: Georgia, 'Times New Roman', serif;
+    line-height: 1.75; font-size: 17px;
+  }
+  #text.fs-0 { font-size: 15px; } #text.fs-1 { font-size: 17px; } #text.fs-2 { font-size: 20px; }
+  #text h3 { font-family: inherit; color: var(--gold); letter-spacing: 1px; text-align: center; margin-bottom: 22px; font-size: 1.15em; }
+  #text p { margin-bottom: 1em; cursor: pointer; }
+  #text .seg { border-radius: 4px; transition: background 0.25s; }
+  #text .seg.dlg { color: #f4e8c8; }
+  #text .seg.active { background: rgba(217,151,63,0.28); box-shadow: 0 0 0 3px rgba(217,151,63,0.28); }
+  .spk-0.dlg { border-bottom: 1px solid rgba(120,190,255,0.5); }
+  .spk-1.dlg { border-bottom: 1px solid rgba(255,150,130,0.5); }
+  .spk-2.dlg { border-bottom: 1px solid rgba(150,230,150,0.5); }
+  .spk-3.dlg { border-bottom: 1px solid rgba(240,160,240,0.5); }
+  .spk-4.dlg { border-bottom: 1px solid rgba(255,220,120,0.6); }
+  .spk-5.dlg { border-bottom: 1px solid rgba(140,220,220,0.5); }
+  .spk-6.dlg { border-bottom: 1px solid rgba(255,170,200,0.5); }
+  .spk-7.dlg { border-bottom: 1px solid rgba(200,200,255,0.5); }
+  #text .fin { text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; margin-top: 30px; }
+
+  #rbar {
+    background: rgba(0,0,0,0.45); border-top: 1px solid var(--line);
+    padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  #rbar .row { display: flex; gap: 8px; align-items: center; max-width: 720px; margin: 0 auto; }
+  #rbar .row + .row { margin-top: 10px; }
+  #chapSel { flex: 1; min-width: 0; font-size: 12px; }
+  #rateSel, #sleepSel { font-size: 12px; }
+  #rbar .ctl { justify-content: center; }
+  #rbar .ctl button { font-size: 16px; padding: 10px 18px; border-radius: 12px; }
+  #playBtn { font-size: 22px !important; padding: 12px 34px !important; min-width: 110px; }
+
+  /* ================= modals ================= */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.65);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  @media (min-width: 600px) { .overlay { align-items: center; } }
+  .sheet {
+    background: linear-gradient(180deg, #232b1c, #171d11);
+    border: 1px solid var(--line); border-bottom: none;
+    border-radius: 18px 18px 0 0; width: 100%; max-width: 620px;
+    max-height: 88vh; max-height: 88svh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 18px 18px 26px; box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+  }
+  @media (min-width: 600px) { .sheet { border-radius: 16px; border-bottom: 1px solid var(--line); } }
+  .sheet h2 { color: var(--gold); font-size: 15px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .sheet .lead { font-size: 12px; line-height: 1.6; opacity: 0.75; margin-bottom: 16px; }
+  .sheet .close { float: right; margin: -4px -4px 0 10px; }
+
+  /* add-book */
+  #addSheet label { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; margin: 14px 0 6px; }
+  #addTitle { width: 100%; }
+  #addText { width: 100%; height: 160px; resize: vertical; font-family: Georgia, serif; font-size: 14px; }
+  #addSheet .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  #addFileNote { font-size: 11px; color: #ffcc80; margin-top: 6px; min-height: 14px; }
+
+  /* cast */
+  .castrow {
+    border: 1px solid rgba(217,151,63,0.3); border-radius: 12px;
+    background: rgba(0,0,0,0.25); padding: 12px 14px; margin-bottom: 10px;
+  }
+  .castrow .who { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .castrow .who b { color: var(--gold); font-size: 13px; letter-spacing: 1px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .castrow .who .n { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .castrow .sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .castrow select { width: 100%; font-size: 12px; margin-bottom: 10px; }
+  .castrow .sliders { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .castrow .sliders label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 130px; }
+  .castrow .sliders input { flex: 1; min-width: 60px; }
+  .castrow .sliders button { padding: 7px 12px; font-size: 12px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%);
+    z-index: 90; background: rgba(0,0,0,0.85); border: 1px solid var(--gold);
+    color: var(--cream); font-size: 12px; letter-spacing: 1px;
+    padding: 10px 18px; border-radius: 10px; pointer-events: none;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ================= LIBRARY ================= -->
+<div id="lib">
+  <h1>⌬ HOLOTAPE LIBRARY</h1>
+  <div class="sub">audiobook reader · no ads · no accounts</div>
+  <div id="shelf"></div>
+  <div class="empty hidden" id="libEmpty">
+    No holotapes on the shelf yet.<br>
+    Add a book as plain text (paste it or pick a .txt file) and the reader will
+    detect chapters and characters, then perform it aloud with a different
+    voice per character.
+  </div>
+  <div class="add-row">
+    <button class="primary" id="btnAdd">＋ Add a book</button>
+    <button id="btnSample">Load the sample</button>
+  </div>
+  <div class="foot"><a href="../index.html">← back to the game room</a></div>
+</div>
+
+<!-- ================= READER ================= -->
+<div id="reader" class="hidden">
+  <div id="rhead">
+    <button id="btnBack" title="Back to library">‹</button>
+    <div class="title"><b id="rTitle"></b><span id="rChap"></span></div>
+    <button id="btnCast" title="Character voices">🎭</button>
+    <button id="btnFont" title="Text size">Aa</button>
+  </div>
+  <div id="text" class="fs-1"></div>
+  <div id="rbar">
+    <div class="row">
+      <select id="chapSel"></select>
+      <select id="rateSel" title="Reading speed">
+        <option value="0.75">0.75×</option><option value="0.9">0.9×</option>
+        <option value="1" selected>1×</option><option value="1.1">1.1×</option>
+        <option value="1.25">1.25×</option><option value="1.5">1.5×</option>
+        <option value="1.75">1.75×</option><option value="2">2×</option>
+      </select>
+      <select id="sleepSel" title="Sleep timer">
+        <option value="0">🌙 off</option><option value="15">🌙 15m</option>
+        <option value="30">🌙 30m</option><option value="45">🌙 45m</option>
+        <option value="60">🌙 60m</option><option value="ch">🌙 end of chapter</option>
+      </select>
+    </div>
+    <div class="row ctl">
+      <button id="btnPrev" title="Previous paragraph">⏮</button>
+      <button id="playBtn" class="primary" title="Play / pause">▶</button>
+      <button id="btnNext" title="Next paragraph">⏭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADD BOOK ================= -->
+<div id="addSheet" class="overlay hidden">
+  <div class="sheet">
+    <button class="close" data-close="addSheet">✕</button>
+    <h2>Add a book</h2>
+    <div class="lead">Plain text works best — paste the whole book, or pick a .txt
+      file (Project Gutenberg's "Plain Text UTF-8" downloads are perfect).</div>
+    <label>Title</label>
+    <input type="text" id="addTitle" maxlength="80" placeholder="Book title">
+    <label>Pick a file…</label>
+    <button id="btnFile">Choose .txt file</button>
+    <input type="file" id="fileInp" accept=".txt,text/plain" class="hidden">
+    <div id="addFileNote"></div>
+    <label>…or paste the text</label>
+    <textarea id="addText" placeholder="Paste the book text here"></textarea>
+    <div class="row">
+      <button class="primary" id="btnSaveBook">Add to library</button>
+      <button data-close="addSheet">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CAST ================= -->
+<div id="castSheet" class="overlay hidden">
+  <div class="sheet">
+    <button class="close" data-close="castSheet">✕</button>
+    <h2>The cast</h2>
+    <div class="lead">Every speaker the book's dialogue was traced to. Give each a
+      voice, pitch and pace — ▶ auditions them with one of their own lines.
+      Voices come from this phone; installing more voices in your device's
+      text-to-speech settings expands the cast.</div>
+    <div id="castList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   Holotape Library — a text-to-speech audiobook reader.
+
+   Pipeline: raw text -> paragraphs -> chapters -> per-paragraph
+   dialogue/narration segments, each attributed to a speaker via the
+   quote-attribution heuristics below. Playback walks the segments and
+   speaks each through the Web Speech API with that speaker's assigned
+   voice/pitch/rate. Books live in IndexedDB; positions and voice
+   assignments in localStorage.
+   ============================================================ */
+(function () {
+
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+var synth = window.speechSynthesis || null;
+
+/* ---------------- storage: IndexedDB for book text ---------------- */
+
+var idb = null;
+function openDB() {
+  return new Promise(function (res, rej) {
+    if (idb) return res(idb);
+    var rq = indexedDB.open('holotape', 1);
+    rq.onupgradeneeded = function () { rq.result.createObjectStore('books', { keyPath: 'id' }); };
+    rq.onsuccess = function () { idb = rq.result; res(idb); };
+    rq.onerror = function () { rej(rq.error); };
+  });
+}
+function dbAll() {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var rq = db.transaction('books').objectStore('books').getAll();
+      rq.onsuccess = function () { res(rq.result || []); };
+      rq.onerror = function () { rej(rq.error); };
+    });
+  });
+}
+function dbPut(book) {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var tx = db.transaction('books', 'readwrite');
+      tx.objectStore('books').put(book);
+      tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+    });
+  });
+}
+function dbDel(id) {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var tx = db.transaction('books', 'readwrite');
+      tx.objectStore('books').delete(id);
+      tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+    });
+  });
+}
+
+function lsGet(k, fb) { try { var v = JSON.parse(localStorage.getItem(k)); return v === null || v === undefined ? fb : v; } catch (e) { return fb; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+/* ---------------- book parsing ---------------- */
+
+var SPEECH_VERBS = /^(said|says|say|asked|asks|replied|replies|answered|answers|added|adds|admitted|agreed|announced|argued|barked|began|begged|bellowed|blurted|boasted|breathed|called|chirped|complained|conceded|concluded|confessed|continued|countered|cried|croaked|crowed|declared|demanded|drawled|echoed|exclaimed|explained|gasped|groaned|growled|grumbled|hissed|howled|inquired|insisted|interrupted|laughed|mumbled|murmured|mused|muttered|noted|objected|observed|offered|ordered|panted|pleaded|prayed|pressed|promised|proposed|protested|purred|questioned|quipped|rasped|remarked|repeated|responded|retorted|roared|sang|scoffed|screamed|shouted|shrieked|sighed|snapped|snarled|sneered|snorted|sobbed|spat|sputtered|squeaked|stammered|stated|suggested|thundered|urged|ventured|wailed|warned|wheezed|whimpered|whined|whispered|wondered|yelled)$/i;
+var PRONOUNS = /^(he|she|they|i|we|you|it)$/i;
+var NOT_NAMES = /^(The|A|An|And|But|Or|Then|So|As|At|On|In|Of|To|If|Not|No|Yes|Oh|Well|Now|Here|There|That|This|These|Those|What|When|Where|Why|How|Who|He|She|They|I|We|You|It|Him|Her|His|Hers|Them|Their|Theirs|My|Mine|Your|Yours|Our|Ours|Its|Chapter|Part|Book|Mr|Mrs|Ms|Dr|Miss)$/;
+var HONORIFICS = /^(Mr\.?|Mrs\.?|Ms\.?|Dr\.?|Miss|Lady|Lord|Sir|Aunt|Uncle|Captain|Colonel|Major|Sergeant|General|Professor|Father|Mother|Sister|Brother|King|Queen|Prince|Princess|Old|Young|Little)$/;
+
+function stripPunct(w) { return w.replace(/^[^\w'’]+|[^\w'’]+$/g, ''); }
+function isCapWord(w) { return /^[A-Z][\w'’-]*$/.test(w) && !NOT_NAMES.test(w.replace(/\.$/, '')); }
+
+/* Look for "<verb> <Name>" or "<Name> <verb>" in a narration snippet next to a
+   quote. Returns {name} for an explicit name, {pronoun:true} for "he said"
+   style, or null. */
+function attribution(nar) {
+  var toks = nar.replace(/[,;:—–\-()]/g, ' ').split(/\s+/).filter(Boolean);
+  for (var vi = 0; vi < toks.length && vi < 12; vi++) {
+    if (!SPEECH_VERBS.test(stripPunct(toks[vi]))) continue;
+    var name = nameAt(toks, vi + 1) || nameAt(toks, vi - 1, true);
+    if (name) return { name: name };
+    var near = (toks[vi + 1] || '') + ' ' + (toks[vi - 1] || '');
+    if (PRONOUNS.test(stripPunct(toks[vi + 1] || '')) || PRONOUNS.test(stripPunct(toks[vi - 1] || '')))
+      return { pronoun: true };
+    void near;
+  }
+  return null;
+}
+/* Try to read a proper name starting at toks[i] (forward) or ending at
+   toks[i] (backward). Understands "the Cat", "Mr. Bennet", "Tom Sawyer". */
+function nameAt(toks, i, backward) {
+  if (i < 0 || i >= toks.length) return null;
+  if (backward) {
+    var w = stripPunct(toks[i]);
+    if (!isCapWord(w)) return null;
+    var pre = i > 0 ? stripPunct(toks[i - 1]) : '';
+    if (HONORIFICS.test(pre) || (isCapWord(pre) && !SPEECH_VERBS.test(pre))) return pre + ' ' + w;
+    if (/^the$/i.test(pre)) return 'the ' + w;
+    return w;
+  }
+  var a = stripPunct(toks[i]);
+  if (/^the$/i.test(a)) {
+    var b = stripPunct(toks[i + 1] || '');
+    if (!isCapWord(b)) return null;
+    var b2 = stripPunct(toks[i + 2] || '');
+    return isCapWord(b2) && !SPEECH_VERBS.test(b2) ? 'the ' + b + ' ' + b2 : 'the ' + b;
+  }
+  if (HONORIFICS.test(a)) {
+    var c = stripPunct(toks[i + 1] || '');
+    return isCapWord(c) ? a + ' ' + c : a;
+  }
+  if (!isCapWord(a)) return null;
+  var d = stripPunct(toks[i + 1] || '');
+  if (isCapWord(d) && !SPEECH_VERBS.test(d)) return a + ' ' + d;
+  return a;
+}
+
+/* Split one paragraph into alternating narration/quote segments. */
+function splitQuotes(p) {
+  var segs = [], buf = '', inQ = false, closeCh = '';
+  for (var i = 0; i < p.length; i++) {
+    var ch = p[i];
+    if (!inQ && (ch === '“' || ch === '"' || ch === '«')) {
+      if (buf.trim()) segs.push({ t: buf.trim(), q: false });
+      buf = ''; inQ = true;
+      closeCh = ch === '“' ? '”' : ch === '«' ? '»' : '"';
+    } else if (inQ && ch === closeCh) {
+      if (buf.trim()) segs.push({ t: buf.trim(), q: true });
+      buf = ''; inQ = false;
+    } else buf += ch;
+  }
+  if (buf.trim()) segs.push({ t: buf.trim(), q: inQ });
+  return { segs: segs, openEnd: inQ };
+}
+
+function looksLikeHeading(p) {
+  if (p.length > 70) return false;
+  return /^(chapter|part|book|canto|act|scene|stave|prologue|epilogue|interlude|appendix|introduction|preface|foreword)\b/i.test(p) ||
+         /^[IVXLCDM]+\.?$/.test(p) || /^\d{1,3}\.?$/.test(p);
+}
+
+/* Full parse: text -> {chapters:[{title, paras:[[{t,s}]]}], speakers:[...]} */
+function parseBook(text) {
+  text = String(text).replace(/\r\n?/g, '\n').replace(/­/g, '')
+    .replace(/[‘’]/g, '’'); // normalize single curlies to apostrophe
+  var rawParas;
+  if (/\n[ \t]*\n/.test(text)) {
+    rawParas = text.split(/\n[ \t]*\n+/).map(function (p) {
+      return p.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    });
+  } else {
+    rawParas = text.split(/\n+/).map(function (p) { return p.trim(); });
+  }
+  rawParas = rawParas.filter(Boolean);
+
+  // group into chapters
+  var chapters = [], cur = null;
+  rawParas.forEach(function (p) {
+    if (looksLikeHeading(p)) { cur = { title: p, src: [] }; chapters.push(cur); }
+    else {
+      if (!cur) { cur = { title: '', src: [] }; chapters.push(cur); }
+      cur.src.push(p);
+    }
+  });
+  chapters = chapters.filter(function (c) { return c.src.length; });
+  // no headings found and it's long -> cut into sections for navigation
+  if (chapters.length === 1 && !chapters[0].title && chapters[0].src.length > 120) {
+    var all = chapters[0].src; chapters = [];
+    for (var i = 0; i < all.length; i += 100)
+      chapters.push({ title: 'Section ' + (chapters.length + 1), src: all.slice(i, i + 100) });
+  }
+  if (!chapters.length) chapters = [{ title: '', src: ['(This book appears to be empty.)'] }];
+
+  // attribute dialogue, chapter by chapter
+  var speakers = {}; // id -> {name, lines, sample}
+  function reg(name) {
+    // "the March Hare" and "March Hare" are the same character
+    var id = name.toLowerCase().replace(/^the\s+/, '').replace(/\.$/, '');
+    if (!speakers[id]) speakers[id] = { id: id, name: name, lines: 0, sample: '' };
+    return speakers[id];
+  }
+  /* last mid-sentence capitalized word in a narration passage — the best
+     guess for who "she said" means when no conversation is underway yet */
+  function lastMentionIn(text, fallback) {
+    var m = fallback;
+    (text.match(/[^.!?…]+/g) || []).forEach(function (sent) {
+      var toks = sent.split(/\s+/).filter(Boolean);
+      for (var i = 1; i < toks.length; i++) {
+        var w = stripPunct(toks[i]);
+        if (isCapWord(w) && !SPEECH_VERBS.test(w)) m = w;
+      }
+    });
+    return m;
+  }
+  chapters.forEach(function (ch) {
+    var last = null, prev = null, narrRun = 0, carry = null, mention = null;
+    ch.paras = ch.src.map(function (p) {
+      var sq = splitQuotes(p);
+      var segs = sq.segs;
+      var hasQ = segs.some(function (s) { return s.q; });
+      if (!hasQ) {
+        narrRun++;
+        if (narrRun >= 3) { last = prev = null; }
+        carry = null;
+        mention = lastMentionIn(p, mention);
+        return segs.map(function (s) { return { t: s.t, s: 'narrator' }; });
+      }
+      narrRun = 0;
+      // explicit attribution anywhere in the paragraph wins
+      var spk = null, sawPronoun = false;
+      for (var i = 0; i < segs.length && !spk; i++) {
+        if (!segs[i].q) continue;
+        var after = segs[i + 1] && !segs[i + 1].q ? segs[i + 1].t.slice(0, 90) : '';
+        var before = segs[i - 1] && !segs[i - 1].q ? segs[i - 1].t.slice(-90) : '';
+        var at = (after && attribution(after)) || (before && attribution(before)) || null;
+        if (at && at.name) spk = reg(at.name).id;
+        else if (at && at.pronoun) sawPronoun = true;
+      }
+      if (!spk) {
+        // unattributed / pronoun-only: continue a multi-paragraph speech, else
+        // assume the two most recent speakers are trading lines, else fall
+        // back to whoever the narration last mentioned
+        if (carry && segs[0] && segs[0].q) spk = carry;
+        else if (sawPronoun && last && !prev) spk = last;
+        else if (prev && last && prev !== last) spk = prev;
+        if (!spk) spk = last || (mention ? reg(mention).id : reg('Unknown speaker').id);
+      }
+      var rec = speakers[spk];
+      segs.forEach(function (s) {
+        if (!s.q) return;
+        rec.lines++;
+        if (!rec.sample && s.t.length > 8) rec.sample = s.t.slice(0, 110);
+      });
+      if (spk !== last) { prev = last; last = spk; }
+      carry = sq.openEnd ? spk : null;
+      return segs.map(function (s) { return { t: s.t, s: s.q ? spk : 'narrator' }; });
+    });
+    delete ch.src;
+  });
+
+  var list = Object.keys(speakers).map(function (k) { return speakers[k]; });
+  list.sort(function (a, b) { return b.lines - a.lines; });
+  // sample line for the narrator = first decent narration segment
+  var narSample = '';
+  outer: for (var ci = 0; ci < chapters.length; ci++)
+    for (var pi = 0; pi < chapters[ci].paras.length; pi++)
+      for (var gi = 0; gi < chapters[ci].paras[pi].length; gi++) {
+        var g = chapters[ci].paras[pi][gi];
+        if (g.s === 'narrator' && g.t.length > 40) { narSample = g.t.slice(0, 110); break outer; }
+      }
+  return { chapters: chapters, speakers: list, narSample: narSample };
+}
+
+/* ---------------- voices ---------------- */
+
+var VOICES = [];
+function loadVoices() {
+  if (!synth) return;
+  var v = synth.getVoices() || [];
+  if (v.length) {
+    VOICES = v.slice().sort(function (a, b) {
+      var ae = /^en/i.test(a.lang) ? 0 : 1, be = /^en/i.test(b.lang) ? 0 : 1;
+      return ae - be || a.name.localeCompare(b.name);
+    });
+  }
+}
+if (synth) { loadVoices(); synth.onvoiceschanged = loadVoices; }
+
+function voiceByURI(uri) {
+  for (var i = 0; i < VOICES.length; i++) if (VOICES[i].voiceURI === uri) return VOICES[i];
+  return null;
+}
+function enPool() {
+  var en = VOICES.filter(function (v) { return /^en/i.test(v.lang); });
+  return en.length ? en : VOICES;
+}
+
+var PITCH_CYCLE = [1, 1.18, 0.84, 1.08, 0.9, 1.3, 0.76, 1.12];
+
+/* Effective voice settings for a speaker: user override, else a deterministic
+   auto-assignment that spreads the device's voices (and pitches) around. */
+function castFor(spkId) {
+  var ov = state.cast[spkId];
+  if (ov && (ov.v !== undefined || ov.p !== undefined || ov.r !== undefined)) {
+    return { v: ov.v !== undefined ? ov.v : autoCast(spkId).v,
+             p: ov.p !== undefined ? ov.p : 1,
+             r: ov.r !== undefined ? ov.r : 1 };
+  }
+  return autoCast(spkId);
+}
+function autoCast(spkId) {
+  var pool = enPool();
+  if (!pool.length) return { v: null, p: 1, r: 1 };
+  var nar = pool.filter(function (v) { return v.default; })[0] || pool[0];
+  if (spkId === 'narrator') return { v: nar.voiceURI, p: 1, r: 1 };
+  var idx = 0;
+  for (var i = 0; i < state.speakers.length; i++)
+    if (state.speakers[i].id === spkId) { idx = i; break; }
+  var others = pool.filter(function (v) { return v !== nar; });
+  var list = others.length ? others : pool;
+  return { v: list[idx % list.length].voiceURI, p: PITCH_CYCLE[idx % PITCH_CYCLE.length], r: 1 };
+}
+
+/* ---------------- app state ---------------- */
+
+var state = {
+  book: null,       // {id, title, text, addedAt}
+  chapters: [],
+  speakers: [],
+  narSample: '',
+  cast: {},         // speaker id -> {v, p, r} overrides
+  pos: { c: 0, p: 0, g: 0 },
+  totalParas: 0,
+};
+var player = { playing: false, epoch: 0, u: null };
+var globalRate = lsGet('htl-rate', 1);
+var fontSize = lsGet('htl-font', 1);
+var sleep = { timer: null, mode: '0' };
+
+/* ---------------- library screen ---------------- */
+
+function showLib() {
+  $('reader').classList.add('hidden');
+  $('lib').classList.remove('hidden');
+  dbAll().then(function (books) {
+    books.sort(function (a, b) { return b.addedAt - a.addedAt; });
+    $('libEmpty').classList.toggle('hidden', books.length > 0);
+    $('shelf').innerHTML = books.map(function (b) {
+      var pos = lsGet('htl-pos-' + b.id, null);
+      var pct = pos && b.paraCount ? Math.min(100, Math.round(100 * (pos.n || 0) / b.paraCount)) : 0;
+      var words = b.wordCount ? (b.wordCount >= 1000 ? Math.round(b.wordCount / 1000) + 'k' : b.wordCount) + ' words' : '';
+      return '<div class="book" data-id="' + b.id + '">' +
+        '<h2>' + esc(b.title) + '</h2>' +
+        '<div class="meta">' + esc(words) + (b.chapCount ? ' · ' + b.chapCount + ' chapters' : '') +
+          (b.spkCount ? ' · ' + b.spkCount + ' speakers' : '') + (pct ? ' · ' + pct + '%' : '') + '</div>' +
+        '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="row">' +
+          '<button class="primary" data-open="' + b.id + '">' + (pct ? '▶ Continue' : '▶ Read') + '</button>' +
+          '<button data-del="' + b.id + '">Remove</button>' +
+        '</div></div>';
+    }).join('');
+  });
+}
+
+$('shelf').addEventListener('click', function (e) {
+  var open = e.target.getAttribute('data-open');
+  var del = e.target.getAttribute('data-del');
+  if (open) openBook(open);
+  if (del) {
+    var card = e.target.closest('.book');
+    var name = card ? card.querySelector('h2').textContent : 'this book';
+    if (!confirm('Remove "' + name + '" from the library?')) return;
+    dbDel(del).then(function () { lsDel('htl-pos-' + del); lsDel('htl-cast-' + del); showLib(); });
+  }
+});
+
+/* ---------------- add book ---------------- */
+
+var pendingFileText = null;
+function openSheet(id) { $(id).classList.remove('hidden'); }
+function closeSheet(id) { $(id).classList.add('hidden'); }
+document.addEventListener('click', function (e) {
+  var c = e.target.getAttribute && e.target.getAttribute('data-close');
+  if (c) closeSheet(c);
+});
+
+$('btnAdd').addEventListener('click', function () {
+  pendingFileText = null;
+  $('addTitle').value = ''; $('addText').value = ''; $('addFileNote').textContent = '';
+  openSheet('addSheet');
+});
+$('btnFile').addEventListener('click', function () { $('fileInp').click(); });
+$('fileInp').addEventListener('change', function () {
+  var f = $('fileInp').files[0];
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    pendingFileText = String(rd.result || '');
+    $('addFileNote').textContent = '✓ ' + f.name + ' loaded (' + Math.round(pendingFileText.length / 1024) + ' KB)';
+    if (!$('addTitle').value) $('addTitle').value = f.name.replace(/\.txt$/i, '').replace(/[_-]+/g, ' ');
+  };
+  rd.readAsText(f);
+  $('fileInp').value = '';
+});
+$('btnSaveBook').addEventListener('click', function () {
+  var text = pendingFileText || $('addText').value;
+  if (!text || text.trim().length < 40) { toast('Give it some text first'); return; }
+  var title = $('addTitle').value.trim() || (text.trim().split('\n')[0] || 'Untitled').slice(0, 60);
+  addBook(title, text);
+});
+
+function addBook(title, text) {
+  var parsed = parseBook(text);
+  var paraCount = 0;
+  parsed.chapters.forEach(function (c) { paraCount += c.paras.length; });
+  var book = {
+    id: 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    title: title, text: text, addedAt: Date.now(),
+    wordCount: (text.match(/\S+/g) || []).length,
+    paraCount: paraCount, chapCount: parsed.chapters.length,
+    spkCount: parsed.speakers.filter(function (s) { return s.id !== 'unknown speaker'; }).length,
+  };
+  dbPut(book).then(function () {
+    closeSheet('addSheet');
+    openBook(book.id, book);
+  }).catch(function () { toast('Could not save the book (storage full?)'); });
+}
+
+$('btnSample').addEventListener('click', function () { addBook('Alice in Wonderland (sample)', SAMPLE); });
+
+/* ---------------- reader ---------------- */
+
+function openBook(id, preloaded) {
+  (preloaded ? Promise.resolve([preloaded]) : dbAll()).then(function (books) {
+    var b = null;
+    for (var i = 0; i < books.length; i++) if (books[i].id === id) b = books[i];
+    if (!b) { toast('Book not found'); return; }
+    state.book = b;
+    var parsed = parseBook(b.text);
+    state.chapters = parsed.chapters;
+    state.speakers = parsed.speakers;
+    state.narSample = parsed.narSample;
+    state.cast = lsGet('htl-cast-' + b.id, {});
+    state.totalParas = 0;
+    state.chapters.forEach(function (c) { state.totalParas += c.paras.length; });
+    var pos = lsGet('htl-pos-' + b.id, null);
+    state.pos = pos && state.chapters[pos.c] && state.chapters[pos.c].paras[pos.p]
+      ? { c: pos.c, p: pos.p, g: 0 } : { c: 0, p: 0, g: 0 };
+    $('lib').classList.add('hidden');
+    $('reader').classList.remove('hidden');
+    $('rTitle').textContent = b.title;
+    $('rateSel').value = String(globalRate);
+    setFont(fontSize);
+    buildChapSel();
+    renderChapter();
+    highlight(false);
+  });
+}
+
+function buildChapSel() {
+  $('chapSel').innerHTML = state.chapters.map(function (c, i) {
+    return '<option value="' + i + '">' + esc(c.title || 'Chapter ' + (i + 1)) + '</option>';
+  }).join('');
+}
+
+function spkClass(spkId) {
+  for (var i = 0; i < state.speakers.length && i < 8; i++)
+    if (state.speakers[i].id === spkId) return ' spk-' + i;
+  return '';
+}
+
+function renderChapter() {
+  var ch = state.chapters[state.pos.c];
+  $('chapSel').value = String(state.pos.c);
+  $('rChap').textContent = ch.title || 'Chapter ' + (state.pos.c + 1);
+  var html = ch.title ? '<h3>' + esc(ch.title) + '</h3>' : '';
+  html += ch.paras.map(function (segs, pi) {
+    return '<p data-p="' + pi + '">' + segs.map(function (s, gi) {
+      var cls = 'seg' + (s.s !== 'narrator' ? ' dlg' + spkClass(s.s) : '');
+      var quoted = s.s !== 'narrator' ? '“' + esc(s.t) + '”' : esc(s.t);
+      return '<span class="' + cls + '" data-g="' + gi + '">' + quoted + '</span>';
+    }).join(' ') + '</p>';
+  }).join('');
+  if (state.pos.c === state.chapters.length - 1) html += '<div class="fin">— end of holotape —</div>';
+  $('text').innerHTML = html;
+  $('text').scrollTop = 0;
+}
+
+function highlight(scroll) {
+  var old = $('text').querySelector('.seg.active');
+  if (old) old.classList.remove('active');
+  var p = $('text').querySelector('p[data-p="' + state.pos.p + '"]');
+  if (!p) return;
+  var seg = p.querySelector('.seg[data-g="' + state.pos.g + '"]') || p.querySelector('.seg');
+  if (!seg) return;
+  seg.classList.add('active');
+  if (scroll !== false) seg.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+$('text').addEventListener('click', function (e) {
+  var p = e.target.closest('p[data-p]');
+  if (!p) return;
+  jumpTo(state.pos.c, parseInt(p.getAttribute('data-p'), 10), 0);
+});
+
+/* ---------------- position & progress ---------------- */
+
+function globalParaIndex() {
+  var n = 0;
+  for (var i = 0; i < state.pos.c; i++) n += state.chapters[i].paras.length;
+  return n + state.pos.p;
+}
+function savePos() {
+  if (!state.book) return;
+  lsSet('htl-pos-' + state.book.id, { c: state.pos.c, p: state.pos.p, n: globalParaIndex() });
+}
+
+/* Move to the next segment. Returns 'seg' | 'chapter' | false (book done). */
+function advance() {
+  var ch = state.chapters[state.pos.c];
+  state.pos.g++;
+  if (state.pos.g < ch.paras[state.pos.p].length) return 'seg';
+  state.pos.g = 0; state.pos.p++;
+  if (state.pos.p < ch.paras.length) { savePos(); return 'seg'; }
+  state.pos.p = 0; state.pos.c++;
+  if (state.pos.c < state.chapters.length) { savePos(); return 'chapter'; }
+  state.pos.c = state.chapters.length - 1;
+  state.pos.p = state.chapters[state.pos.c].paras.length - 1;
+  state.pos.g = 0;
+  return false;
+}
+
+/* ---------------- speech engine ---------------- */
+
+function currentSeg() {
+  var ch = state.chapters[state.pos.c];
+  var para = ch && ch.paras[state.pos.p];
+  return para ? para[state.pos.g] || null : null;
+}
+
+/* Chunk text into utterance-sized sentences: long single utterances get
+   silently truncated by some engines, so keep them short. */
+function sentences(t) {
+  var parts = t.match(/[^.!?…]+[.!?…]+[”"'’)\]]*\s*|[^.!?…]+$/g) || [t];
+  var out = [];
+  parts.forEach(function (s) {
+    s = s.trim();
+    while (s.length > 240) {
+      var cut = s.lastIndexOf(',', 240);
+      if (cut < 80) cut = s.lastIndexOf(' ', 240);
+      if (cut < 80) cut = 240;
+      out.push(s.slice(0, cut + 1).trim());
+      s = s.slice(cut + 1).trim();
+    }
+    if (s) out.push(s);
+  });
+  return out.length ? out : [t];
+}
+
+function applyVoice(u, spkId) {
+  var c = castFor(spkId);
+  var v = c.v ? voiceByURI(c.v) : null;
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.pitch = Math.max(0.1, Math.min(2, c.p || 1));
+  u.rate = Math.max(0.5, Math.min(2.5, (c.r || 1) * globalRate));
+}
+
+function play() {
+  if (!synth) { toast('This browser has no speech support'); return; }
+  if (player.playing) return;
+  player.playing = true;
+  $('playBtn').textContent = '⏸';
+  requestWake();
+  var ep = ++player.epoch;
+  synth.cancel();
+  speakSeg(ep);
+}
+function pause(silent) {
+  player.playing = false;
+  player.epoch++;
+  if (synth) synth.cancel();
+  $('playBtn').textContent = '▶';
+  releaseWake();
+  savePos();
+  if (!silent) highlight(false);
+}
+
+function speakSeg(ep) {
+  if (ep !== player.epoch || !player.playing) return;
+  var seg = currentSeg();
+  if (!seg) { stepOver(ep); return; }
+  highlight();
+  var chunks = sentences(seg.t);
+  var i = 0;
+  var next = function () {
+    if (ep !== player.epoch || !player.playing) return;
+    if (i >= chunks.length) { stepOver(ep); return; }
+    var u = new SpeechSynthesisUtterance(chunks[i++]);
+    applyVoice(u, seg.s);
+    player.u = u; // hold a reference: iOS GCs live utterances otherwise
+    u.onend = function () { setTimeout(next, 0); };
+    u.onerror = function (e) {
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      setTimeout(next, 120); // skip an unspeakable chunk rather than stall
+    };
+    synth.speak(u);
+  };
+  next();
+}
+function stepOver(ep) {
+  var r = advance();
+  if (r === 'chapter') {
+    renderChapter();
+    if (sleep.mode === 'ch') { sleepFire(); return; }
+  }
+  if (!r) { pause(true); highlight(); toast('End of book'); savePos(); return; }
+  speakSeg(ep);
+}
+
+function jumpTo(c, p, g) {
+  var was = player.playing;
+  player.epoch++;
+  if (synth) synth.cancel();
+  var chapterChanged = c !== state.pos.c;
+  state.pos = { c: c, p: p, g: g || 0 };
+  if (chapterChanged) renderChapter();
+  savePos();
+  highlight();
+  if (was) { var ep = ++player.epoch; speakSeg(ep); }
+}
+
+$('playBtn').addEventListener('click', function () { player.playing ? pause() : play(); });
+$('btnNext').addEventListener('click', function () {
+  var ch = state.chapters[state.pos.c];
+  if (state.pos.p + 1 < ch.paras.length) jumpTo(state.pos.c, state.pos.p + 1, 0);
+  else if (state.pos.c + 1 < state.chapters.length) jumpTo(state.pos.c + 1, 0, 0);
+});
+$('btnPrev').addEventListener('click', function () {
+  if (state.pos.g > 0 || state.pos.p === 0) { jumpTo(state.pos.c, state.pos.p, 0); return; }
+  jumpTo(state.pos.c, state.pos.p - 1, 0);
+});
+$('chapSel').addEventListener('change', function () { jumpTo(parseInt($('chapSel').value, 10), 0, 0); });
+$('rateSel').addEventListener('change', function () {
+  globalRate = parseFloat($('rateSel').value) || 1;
+  lsSet('htl-rate', globalRate);
+  if (player.playing) { var ep = ++player.epoch; synth.cancel(); speakSeg(ep); }
+});
+$('btnBack').addEventListener('click', function () { pause(true); state.book = null; showLib(); });
+
+/* Some desktop engines go silent on utterances after ~15s of continuous
+   speech; a periodic pause/resume nudge prevents it. Android's engine
+   dislikes the nudge, so skip it there. */
+setInterval(function () {
+  if (!synth || !player.playing) return;
+  if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) return;
+  if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
+}, 12000);
+
+/* ---------------- sleep timer ---------------- */
+
+$('sleepSel').addEventListener('change', function () {
+  if (sleep.timer) { clearTimeout(sleep.timer); sleep.timer = null; }
+  sleep.mode = $('sleepSel').value;
+  if (sleep.mode !== '0' && sleep.mode !== 'ch') {
+    sleep.timer = setTimeout(sleepFire, parseInt(sleep.mode, 10) * 60000);
+    toast('Sleeping in ' + sleep.mode + ' min');
+  } else if (sleep.mode === 'ch') toast('Sleeping at the end of this chapter');
+});
+function sleepFire() {
+  sleep.mode = '0'; sleep.timer = null;
+  $('sleepSel').value = '0';
+  pause();
+  toast('Sleep timer — goodnight');
+}
+
+/* ---------------- font size ---------------- */
+
+function setFont(n) {
+  fontSize = ((n % 3) + 3) % 3;
+  $('text').className = 'fs-' + fontSize;
+  lsSet('htl-font', fontSize);
+}
+$('btnFont').addEventListener('click', function () { setFont(fontSize + 1); });
+
+/* ---------------- wake lock (screen off kills speech on phones) -------- */
+
+var wakeLock = null;
+function requestWake() {
+  if (!('wakeLock' in navigator)) return;
+  navigator.wakeLock.request('screen').then(function (wl) { wakeLock = wl; }).catch(function () {});
+}
+function releaseWake() {
+  if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && player.playing) requestWake();
+});
+window.addEventListener('pagehide', function () { if (player.playing) pause(true); });
+
+/* ---------------- cast panel ---------------- */
+
+$('btnCast').addEventListener('click', function () { buildCast(); openSheet('castSheet'); });
+
+function buildCast() {
+  loadVoices();
+  var rows = [{ id: 'narrator', name: 'Narrator', lines: 0, sample: state.narSample }]
+    .concat(state.speakers);
+  $('castList').innerHTML = rows.map(function (s, ri) {
+    var c = castFor(s.id);
+    var swColors = ['#78beff', '#ff9682', '#96e696', '#f0a0f0', '#ffdc78', '#8cdcdc', '#ffaac8', '#c8c8ff'];
+    var swIdx = -1;
+    for (var i = 0; i < state.speakers.length && i < 8; i++) if (state.speakers[i].id === s.id) swIdx = i;
+    var opts = VOICES.map(function (v) {
+      return '<option value="' + esc(v.voiceURI) + '"' + (v.voiceURI === c.v ? ' selected' : '') + '>' +
+        esc(v.name + ' (' + v.lang + ')') + '</option>';
+    }).join('');
+    if (!VOICES.length) opts = '<option value="">(no voices found yet — tap ▶ once, then reopen)</option>';
+    return '<div class="castrow" data-spk="' + esc(s.id) + '">' +
+      '<div class="who">' +
+        (swIdx >= 0 ? '<span class="sw" style="background:' + swColors[swIdx] + '"></span>' : '') +
+        '<b>' + esc(s.name) + '</b>' +
+        '<span class="n">' + (s.id === 'narrator' ? 'narration' : s.lines + ' line' + (s.lines === 1 ? '' : 's')) + '</span>' +
+      '</div>' +
+      '<select data-cv>' + opts + '</select>' +
+      '<div class="sliders">' +
+        '<label>pitch <input type="range" data-cp min="0.5" max="1.6" step="0.05" value="' + c.p + '"></label>' +
+        '<label>pace <input type="range" data-cr min="0.6" max="1.5" step="0.05" value="' + c.r + '"></label>' +
+        '<button data-try title="Audition">▶</button>' +
+      '</div></div>';
+  }).join('');
+  void rows.length;
+}
+
+$('castList').addEventListener('change', function (e) { castRowChanged(e.target); });
+$('castList').addEventListener('input', function (e) {
+  if (e.target.hasAttribute('data-cp') || e.target.hasAttribute('data-cr')) castRowChanged(e.target);
+});
+function castRowChanged(el) {
+  var row = el.closest('.castrow'); if (!row) return;
+  var spk = row.getAttribute('data-spk');
+  var ov = state.cast[spk] || (state.cast[spk] = {});
+  var sel = row.querySelector('[data-cv]');
+  if (sel && sel.value) ov.v = sel.value;
+  ov.p = parseFloat(row.querySelector('[data-cp]').value);
+  ov.r = parseFloat(row.querySelector('[data-cr]').value);
+  if (state.book) lsSet('htl-cast-' + state.book.id, state.cast);
+}
+$('castList').addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-try]'); if (!btn) return;
+  var row = btn.closest('.castrow');
+  var spk = row.getAttribute('data-spk');
+  if (player.playing) pause();
+  synth.cancel();
+  var sample = spk === 'narrator' ? state.narSample : '';
+  for (var i = 0; i < state.speakers.length; i++)
+    if (state.speakers[i].id === spk) sample = state.speakers[i].sample;
+  var u = new SpeechSynthesisUtterance(sample || 'War. War never changes.');
+  applyVoice(u, spk);
+  player.u = u;
+  synth.speak(u);
+});
+
+/* ---------------- toast ---------------- */
+
+var toastT = null;
+function toast(msg) {
+  $('toast').textContent = msg;
+  $('toast').classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(function () { $('toast').classList.remove('show'); }, 2200);
+}
+
+/* ---------------- sample book ---------------- */
+
+var SAMPLE = [
+  'Chapter I — Advice from a Cat',
+  '',
+  'Alice was a little startled by seeing the Cheshire Cat sitting on a bough of a tree a few yards off. The Cat only grinned when it saw Alice. It looked good-natured, she thought: still it had very long claws and a great many teeth, so she felt that it ought to be treated with respect.',
+  '',
+  '“Cheshire Puss,” she began, rather timidly. “Would you tell me, please, which way I ought to go from here?”',
+  '',
+  '“That depends a good deal on where you want to get to,” said the Cat.',
+  '',
+  '“I don’t much care where—” said Alice.',
+  '',
+  '“Then it doesn’t matter which way you go,” said the Cat.',
+  '',
+  '“—so long as I get somewhere,” Alice added as an explanation.',
+  '',
+  '“Oh, you’re sure to do that,” said the Cat, “if you only walk long enough.”',
+  '',
+  'Alice felt that this could not be denied, so she tried another question. “What sort of people live about here?”',
+  '',
+  '“In that direction,” the Cat said, waving its right paw round, “lives a Hatter: and in that direction lives a March Hare. Visit either you like: they’re both mad.”',
+  '',
+  '“But I don’t want to go among mad people,” Alice remarked.',
+  '',
+  '“Oh, you can’t help that,” said the Cat: “we’re all mad here. I’m mad. You’re mad.”',
+  '',
+  '“How do you know I’m mad?” said Alice.',
+  '',
+  '“You must be,” said the Cat, “or you wouldn’t have come here.”',
+  '',
+  'Alice didn’t think that proved it at all; however, she went on. “And how do you know that you’re mad?”',
+  '',
+  '“To begin with,” said the Cat, “a dog’s not mad. You grant that?”',
+  '',
+  '“I suppose so,” said Alice.',
+  '',
+  '“Well, then,” the Cat went on, “you see, a dog growls when it’s angry, and wags its tail when it’s pleased. Now I growl when I’m pleased, and wag my tail when I’m angry. Therefore I’m mad.”',
+  '',
+  'Chapter II — A Mad Tea-Party',
+  '',
+  'There was a table set out under a tree in front of the house, and the March Hare and the Hatter were having tea at it: a Dormouse was sitting between them, fast asleep. The table was a large one, but the three were all crowded together at one corner of it.',
+  '',
+  '“No room! No room!” they cried out when they saw Alice coming.',
+  '',
+  '“There’s plenty of room!” said Alice indignantly, and she sat down in a large arm-chair at one end of the table.',
+  '',
+  '“Have some wine,” the March Hare said in an encouraging tone.',
+  '',
+  'Alice looked all round the table, but there was nothing on it but tea. “I don’t see any wine,” she remarked.',
+  '',
+  '“There isn’t any,” said the March Hare.',
+  '',
+  '“Then it wasn’t very civil of you to offer it,” said Alice angrily.',
+  '',
+  '“It wasn’t very civil of you to sit down without being invited,” said the March Hare.',
+  '',
+  '“Your hair wants cutting,” said the Hatter. He had been looking at Alice for some time with great curiosity, and this was his first speech.',
+  '',
+  '“You should learn not to make personal remarks,” Alice said with some severity: “it’s very rude.”',
+  '',
+  'The Hatter opened his eyes very wide on hearing this; but all he said was, “Why is a raven like a writing-desk?”',
+].join('\n');
+
+/* ---------------- boot ---------------- */
+
+showLib();
+
+})();
+</script>
+</body>
+</html>

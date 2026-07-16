@@ -15,6 +15,12 @@ ads. Open the file in a browser to play.
 | Liar's Dice | [`liarsdice/`](liarsdice/) | Bluffing dice, last cup wins |
 | Texas Hold'em | [`holdem/`](holdem/) | No-limit cash table, hidden hands |
 
+## Off the felt
+
+| App | Folder | Notes |
+|---|---|---|
+| Holotape Library | [`audiobook/`](audiobook/) | Text-to-speech audiobook reader — load any book as plain text, dialogue is traced to its characters and each gets its own voice, pitch and pace. Chapter navigation, sleep timer, adjustable speed, remembers your spot. Solo only; not part of the game room. |
+
 ## The game room
 
 Multiplayer is peer-to-peer (PeerJS) and works across the whole collection as
