@@ -19,7 +19,7 @@ ads. Open the file in a browser to play.
 
 | App | Folder | Notes |
 |---|---|---|
-| Holotape Library | [`audiobook/`](audiobook/) | Text-to-speech audiobook reader — load any book as plain text, dialogue is traced to its characters and each gets its own voice, pitch and pace. Chapter navigation, sleep timer, adjustable speed, remembers your spot. Solo only; not part of the game room. |
+| Holotape Library | [`audiobook/`](audiobook/) | Text-to-speech audiobook reader — load any book as plain text, dialogue is traced to its characters and each gets its own voice, pitch and pace. Chapter navigation, sleep timer, adjustable speed, remembers your spot. Optional premium narration through an OpenAI API key: natural voices with per-character acting directions, generated once and cached on-device, with lock-screen controls and screen-off playback. Solo only; not part of the game room. |
 
 ## The game room
 
