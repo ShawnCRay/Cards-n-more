@@ -141,6 +141,21 @@
   #addSheet .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
   #addFileNote { font-size: 11px; color: #ffcc80; margin-top: 6px; min-height: 14px; }
 
+  /* narration settings */
+  .engopt {
+    display: block; border: 1px solid rgba(217,151,63,0.3); border-radius: 12px;
+    background: rgba(0,0,0,0.25); padding: 12px 14px; margin-bottom: 10px;
+    font-size: 12.5px; line-height: 1.55; cursor: pointer;
+  }
+  .engopt input { accent-color: var(--gold); margin-right: 6px; }
+  .engopt b { color: var(--gold); }
+  .engopt.on { border-color: var(--gold); }
+  #setSheet label.fld { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; margin: 14px 0 6px; }
+  #oaiKey { width: 100%; }
+  #setSheet .note { font-size: 11px; line-height: 1.6; opacity: 0.65; margin-top: 8px; }
+  #setSheet .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  #cacheInfo { font-size: 11px; opacity: 0.7; }
+
   /* cast */
   .castrow {
     border: 1px solid rgba(217,151,63,0.3); border-radius: 12px;
@@ -192,6 +207,7 @@
     <button id="btnBack" title="Back to library">‹</button>
     <div class="title"><b id="rTitle"></b><span id="rChap"></span></div>
     <button id="btnCast" title="Character voices">🎭</button>
+    <button id="btnSet" title="Narration settings">⚙</button>
     <button id="btnFont" title="Text size">Aa</button>
   </div>
   <div id="text" class="fs-1"></div>
@@ -240,15 +256,42 @@
   </div>
 </div>
 
+<!-- ================= NARRATION SETTINGS ================= -->
+<div id="setSheet" class="overlay hidden">
+  <div class="sheet">
+    <button class="close" data-close="setSheet">✕</button>
+    <h2>Narration</h2>
+    <div class="lead">Choose what performs the book.</div>
+    <label class="engopt" id="engDevice"><input type="radio" name="eng" value="device">
+      <b>This phone's voices</b> — free and offline. Quality depends on the voices
+      installed on the device (on iPhone: Settings → Accessibility → Spoken Content
+      → Voices, download an Enhanced or Premium voice).</label>
+    <label class="engopt" id="engOpenai"><input type="radio" name="eng" value="openai">
+      <b>OpenAI narration</b> — natural, expressive voices with per-character acting
+      directions. Needs an API key; costs roughly 1–2¢ per minute of audio the first
+      time a line is heard, then it's cached on this phone and replays free. Keeps
+      playing with the screen locked.</label>
+    <label class="fld">OpenAI API key</label>
+    <input type="password" id="oaiKey" placeholder="sk-…" autocomplete="off">
+    <div class="note">Created at platform.openai.com → API keys. Stored only in this
+      browser and sent only to api.openai.com — never anywhere else.</div>
+    <div class="row">
+      <button id="btnClearCache">Clear audio cache</button>
+      <span id="cacheInfo"></span>
+    </div>
+  </div>
+</div>
+
 <!-- ================= CAST ================= -->
 <div id="castSheet" class="overlay hidden">
   <div class="sheet">
     <button class="close" data-close="castSheet">✕</button>
     <h2>The cast</h2>
     <div class="lead">Every speaker the book's dialogue was traced to. Give each a
-      voice, pitch and pace — ▶ auditions them with one of their own lines.
-      Voices come from this phone; installing more voices in your device's
-      text-to-speech settings expands the cast.</div>
+      voice and pace — ▶ auditions them with one of their own lines. With device
+      voices, installing more in your phone's text-to-speech settings expands the
+      cast; with OpenAI narration you also get an acting direction per character
+      (changing voice or direction re-generates their lines).</div>
     <div id="castList"></div>
   </div>
 </div>
@@ -281,10 +324,50 @@ var idb = null;
 function openDB() {
   return new Promise(function (res, rej) {
     if (idb) return res(idb);
-    var rq = indexedDB.open('holotape', 1);
-    rq.onupgradeneeded = function () { rq.result.createObjectStore('books', { keyPath: 'id' }); };
+    var rq = indexedDB.open('holotape', 2);
+    rq.onupgradeneeded = function () {
+      var db = rq.result;
+      if (!db.objectStoreNames.contains('books')) db.createObjectStore('books', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('audio')) db.createObjectStore('audio', { keyPath: 'k' });
+    };
     rq.onsuccess = function () { idb = rq.result; res(idb); };
     rq.onerror = function () { rej(rq.error); };
+  });
+}
+function dbAudioGet(k) {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var rq = db.transaction('audio').objectStore('audio').get(k);
+      rq.onsuccess = function () { res(rq.result || null); };
+      rq.onerror = function () { rej(rq.error); };
+    });
+  });
+}
+function dbAudioPut(rec) {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var tx = db.transaction('audio', 'readwrite');
+      tx.objectStore('audio').put(rec);
+      tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+    });
+  });
+}
+function dbAudioAll() {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var rq = db.transaction('audio').objectStore('audio').getAll();
+      rq.onsuccess = function () { res(rq.result || []); };
+      rq.onerror = function () { rej(rq.error); };
+    });
+  });
+}
+function dbAudioClear() {
+  return openDB().then(function (db) {
+    return new Promise(function (res, rej) {
+      var tx = db.transaction('audio', 'readwrite');
+      tx.objectStore('audio').clear();
+      tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+    });
   });
 }
 function dbAll() {
@@ -693,6 +776,7 @@ function openBook(id, preloaded) {
     buildChapSel();
     renderChapter();
     highlight(false);
+    setMediaSession();
   });
 }
 
@@ -805,19 +889,22 @@ function applyVoice(u, spkId) {
 }
 
 function play() {
-  if (!synth) { toast('This browser has no speech support'); return; }
+  if (engine === 'openai' && !oaiKey) { toast('Add your OpenAI API key first'); syncSettings(); openSheet('setSheet'); return; }
+  if (!useOpenAI() && !synth) { toast('This browser has no speech support'); return; }
   if (player.playing) return;
   player.playing = true;
   $('playBtn').textContent = '⏸';
   requestWake();
+  setMediaSession();
   var ep = ++player.epoch;
-  synth.cancel();
+  if (synth) synth.cancel();
   speakSeg(ep);
 }
 function pause(silent) {
   player.playing = false;
   player.epoch++;
   if (synth) synth.cancel();
+  try { audioEl.pause(); } catch (e) {}
   $('playBtn').textContent = '▶';
   releaseWake();
   savePos();
@@ -826,6 +913,7 @@ function pause(silent) {
 
 function speakSeg(ep) {
   if (ep !== player.epoch || !player.playing) return;
+  if (useOpenAI()) { speakSegOpenAI(ep); return; }
   var seg = currentSeg();
   if (!seg) { stepOver(ep); return; }
   highlight();
@@ -850,6 +938,7 @@ function stepOver(ep) {
   var r = advance();
   if (r === 'chapter') {
     renderChapter();
+    setMediaSession();
     if (sleep.mode === 'ch') { sleepFire(); return; }
   }
   if (!r) { pause(true); highlight(); toast('End of book'); savePos(); return; }
@@ -860,9 +949,10 @@ function jumpTo(c, p, g) {
   var was = player.playing;
   player.epoch++;
   if (synth) synth.cancel();
+  try { audioEl.pause(); } catch (e) {}
   var chapterChanged = c !== state.pos.c;
   state.pos = { c: c, p: p, g: g || 0 };
-  if (chapterChanged) renderChapter();
+  if (chapterChanged) { renderChapter(); setMediaSession(); }
   savePos();
   highlight();
   if (was) { var ep = ++player.epoch; speakSeg(ep); }
@@ -882,7 +972,13 @@ $('chapSel').addEventListener('change', function () { jumpTo(parseInt($('chapSel
 $('rateSel').addEventListener('change', function () {
   globalRate = parseFloat($('rateSel').value) || 1;
   lsSet('htl-rate', globalRate);
-  if (player.playing) { var ep = ++player.epoch; synth.cancel(); speakSeg(ep); }
+  if (useOpenAI()) {
+    // generated audio changes speed live, no need to restart the segment
+    var seg = currentSeg();
+    audioEl.playbackRate = Math.max(0.5, Math.min(3, (seg ? oaiCastFor(seg.s).r : 1) * globalRate));
+    return;
+  }
+  if (player.playing && synth) { var ep = ++player.epoch; synth.cancel(); speakSeg(ep); }
 });
 $('btnBack').addEventListener('click', function () { pause(true); state.book = null; showLib(); });
 
@@ -936,52 +1032,274 @@ document.addEventListener('visibilitychange', function () {
 });
 window.addEventListener('pagehide', function () { if (player.playing) pause(true); });
 
+/* ---------------- OpenAI narration engine ----------------
+   Real generated audio instead of the device synthesizer: each segment is
+   sent to the speech endpoint with the speaker's voice + acting direction,
+   cached in IndexedDB forever, and played through an <audio> element (which,
+   unlike speechSynthesis, keeps playing with the screen locked and gets
+   lock-screen controls via the Media Session API). */
+
+var engine = lsGet('htl-engine', 'device');
+var oaiKey = lsGet('htl-oai-key', '');
+var OAI_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'];
+var OAI_CHAR_VOICES = ['nova', 'onyx', 'coral', 'echo', 'shimmer', 'ash', 'ballad', 'sage', 'verse', 'alloy'];
+
+function useOpenAI() { return engine === 'openai' && !!oaiKey; }
+
+function oaiCastFor(spkId) {
+  var ov = state.cast[spkId] || {};
+  var d;
+  if (spkId === 'narrator') {
+    d = { v: 'fable', style: 'Narrate warmly and clearly, like a seasoned audiobook narrator.' };
+  } else {
+    var idx = 0;
+    for (var i = 0; i < state.speakers.length; i++)
+      if (state.speakers[i].id === spkId) { idx = i; break; }
+    d = { v: OAI_CHAR_VOICES[idx % OAI_CHAR_VOICES.length],
+          style: 'Perform this as spoken dialogue, in character.' };
+  }
+  return { v: ov.ov || d.v,
+           style: ov.style !== undefined ? ov.style : d.style,
+           r: ov.or !== undefined ? ov.or : 1 };
+}
+
+function h32(s) {
+  var h = 2166136261;
+  for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+
+/* The speech endpoint takes up to 4096 chars; split rare monster paragraphs. */
+function oaiChunks(t) {
+  if (t.length <= 3500) return [t];
+  var out = [], buf = '';
+  sentences(t).forEach(function (s) {
+    if (buf && buf.length + s.length > 3000) { out.push(buf); buf = ''; }
+    buf += (buf ? ' ' : '') + s;
+  });
+  if (buf) out.push(buf);
+  return out;
+}
+
+var oaiInflight = {};
+function getAudio(text, spkId) {
+  var c = oaiCastFor(spkId);
+  var k = h32(text) + h32(c.v + '|' + (c.style || '')) + text.length.toString(36);
+  if (oaiInflight[k]) return oaiInflight[k];
+  var p = dbAudioGet(k).then(function (rec) {
+    if (rec && rec.blob) return rec.blob;
+    return fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts', input: text, voice: c.v,
+        instructions: c.style || undefined, response_format: 'mp3',
+      }),
+    }).then(function (r) {
+      if (r.status === 401) throw new Error('OpenAI rejected the API key — check it in ⚙');
+      if (r.status === 429) throw new Error('OpenAI rate limit hit — wait a moment and press ▶');
+      if (!r.ok) throw new Error('OpenAI error ' + r.status);
+      return r.blob();
+    }).then(function (blob) {
+      dbAudioPut({ k: k, blob: blob, bytes: blob.size, ts: Date.now() }).catch(function () {});
+      return blob;
+    });
+  });
+  oaiInflight[k] = p;
+  p.then(function () { delete oaiInflight[k]; }, function () { delete oaiInflight[k]; });
+  return p;
+}
+
+var audioEl = new Audio();
+audioEl.preload = 'auto';
+try { audioEl.preservesPitch = true; audioEl.mozPreservesPitch = true; } catch (e) {}
+
+function playBlob(blob, rate, onended) {
+  var url = URL.createObjectURL(blob);
+  audioEl.src = url;
+  audioEl.onended = function () { URL.revokeObjectURL(url); if (onended) onended(); };
+  audioEl.onerror = function () { URL.revokeObjectURL(url); if (onended) onended(); };
+  var pr = audioEl.play();
+  audioEl.playbackRate = Math.max(0.5, Math.min(3, rate || 1));
+  if (pr && pr.catch) pr.catch(function () { pause(); toast('Tap ▶ to start playback'); });
+}
+
+function speakSegOpenAI(ep) {
+  if (ep !== player.epoch || !player.playing) return;
+  var seg = currentSeg();
+  if (!seg) { stepOver(ep); return; }
+  highlight();
+  var chunks = oaiChunks(seg.t);
+  var i = 0;
+  var next = function () {
+    if (ep !== player.epoch || !player.playing) return;
+    if (i >= chunks.length) { stepOver(ep); return; }
+    var mine = chunks[i++];
+    $('playBtn').textContent = '…';
+    getAudio(mine, seg.s).then(function (blob) {
+      if (ep !== player.epoch || !player.playing) return;
+      $('playBtn').textContent = '⏸';
+      playBlob(blob, oaiCastFor(seg.s).r * globalRate, function () {
+        if (ep === player.epoch && player.playing) next();
+      });
+      prefetchAhead();
+    }).catch(function (e) {
+      if (ep !== player.epoch || !player.playing) return;
+      pause();
+      toast(String(e.message || e));
+    });
+  };
+  next();
+}
+
+/* Pure walk to the following segment — advance() without the side effects. */
+function nextPosOf(pos) {
+  var c = pos.c, p = pos.p, g = pos.g + 1;
+  var ch = state.chapters[c];
+  if (g < ch.paras[p].length) return { c: c, p: p, g: g };
+  g = 0; p++;
+  if (p < ch.paras.length) return { c: c, p: p, g: g };
+  p = 0; c++;
+  return c < state.chapters.length ? { c: c, p: p, g: g } : null;
+}
+function prefetchAhead() {
+  if (!useOpenAI()) return;
+  var pos = state.pos, chain = Promise.resolve();
+  for (var i = 0; i < 3; i++) {
+    pos = nextPosOf(pos);
+    if (!pos) break;
+    (function (pp) {
+      chain = chain.then(function () {
+        var seg = state.chapters[pp.c].paras[pp.p][pp.g];
+        return seg ? getAudio(oaiChunks(seg.t)[0], seg.s).catch(function () {}) : null;
+      });
+    })(pos);
+  }
+}
+
+/* lock-screen / headphone controls */
+function setMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    var ch = state.chapters[state.pos.c];
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: state.book ? state.book.title : 'Holotape Library',
+      artist: ch ? (ch.title || 'Chapter ' + (state.pos.c + 1)) : '',
+      album: 'Holotape Library',
+    });
+    navigator.mediaSession.setActionHandler('play', function () { play(); });
+    navigator.mediaSession.setActionHandler('pause', function () { pause(); });
+    navigator.mediaSession.setActionHandler('nexttrack', function () { $('btnNext').click(); });
+    navigator.mediaSession.setActionHandler('previoustrack', function () { $('btnPrev').click(); });
+  } catch (e) {}
+}
+
+/* settings sheet */
+$('btnSet').addEventListener('click', function () { syncSettings(); openSheet('setSheet'); });
+function syncSettings() {
+  var r = document.querySelector('input[name=eng][value="' + engine + '"]');
+  if (r) r.checked = true;
+  $('engDevice').classList.toggle('on', engine === 'device');
+  $('engOpenai').classList.toggle('on', engine === 'openai');
+  $('oaiKey').value = oaiKey;
+  updateCacheInfo();
+}
+document.querySelectorAll('input[name=eng]').forEach(function (r) {
+  r.addEventListener('change', function () {
+    if (player.playing) pause();
+    engine = r.value;
+    lsSet('htl-engine', engine);
+    syncSettings();
+    if (engine === 'openai' && !oaiKey) toast('Paste your OpenAI API key below');
+  });
+});
+$('oaiKey').addEventListener('input', function () {
+  oaiKey = $('oaiKey').value.trim();
+  lsSet('htl-oai-key', oaiKey);
+});
+$('btnClearCache').addEventListener('click', function () {
+  dbAudioClear().then(function () { updateCacheInfo(); toast('Audio cache cleared'); });
+});
+function updateCacheInfo() {
+  dbAudioAll().then(function (rows) {
+    var bytes = 0;
+    rows.forEach(function (r) { bytes += r.bytes || 0; });
+    $('cacheInfo').textContent = rows.length
+      ? rows.length + ' clips · ' + (bytes / 1048576).toFixed(1) + ' MB cached'
+      : 'nothing cached yet';
+  }).catch(function () { $('cacheInfo').textContent = ''; });
+}
+
 /* ---------------- cast panel ---------------- */
 
 $('btnCast').addEventListener('click', function () { buildCast(); openSheet('castSheet'); });
 
 function buildCast() {
   loadVoices();
+  var oai = useOpenAI();
   var rows = [{ id: 'narrator', name: 'Narrator', lines: 0, sample: state.narSample }]
     .concat(state.speakers);
-  $('castList').innerHTML = rows.map(function (s, ri) {
-    var c = castFor(s.id);
+  $('castList').innerHTML = rows.map(function (s) {
     var swColors = ['#78beff', '#ff9682', '#96e696', '#f0a0f0', '#ffdc78', '#8cdcdc', '#ffaac8', '#c8c8ff'];
     var swIdx = -1;
     for (var i = 0; i < state.speakers.length && i < 8; i++) if (state.speakers[i].id === s.id) swIdx = i;
-    var opts = VOICES.map(function (v) {
-      return '<option value="' + esc(v.voiceURI) + '"' + (v.voiceURI === c.v ? ' selected' : '') + '>' +
-        esc(v.name + ' (' + v.lang + ')') + '</option>';
-    }).join('');
-    if (!VOICES.length) opts = '<option value="">(no voices found yet — tap ▶ once, then reopen)</option>';
+    var opts, controls;
+    if (oai) {
+      var oc = oaiCastFor(s.id);
+      opts = OAI_VOICES.map(function (v) {
+        return '<option value="' + v + '"' + (v === oc.v ? ' selected' : '') + '>' + v + '</option>';
+      }).join('');
+      controls =
+        '<select data-cv>' + opts + '</select>' +
+        '<input type="text" data-cs placeholder="Acting direction, e.g. gravelly old prospector" ' +
+          'value="' + esc(oc.style || '') + '" style="width:100%; font-size:12px; margin-bottom:10px">' +
+        '<div class="sliders">' +
+          '<label>pace <input type="range" data-cr min="0.6" max="1.5" step="0.05" value="' + oc.r + '"></label>' +
+          '<button data-try title="Audition">▶</button>' +
+        '</div>';
+    } else {
+      var c = castFor(s.id);
+      opts = VOICES.map(function (v) {
+        return '<option value="' + esc(v.voiceURI) + '"' + (v.voiceURI === c.v ? ' selected' : '') + '>' +
+          esc(v.name + ' (' + v.lang + ')') + '</option>';
+      }).join('');
+      if (!VOICES.length) opts = '<option value="">(no voices found yet — tap ▶ once, then reopen)</option>';
+      controls =
+        '<select data-cv>' + opts + '</select>' +
+        '<div class="sliders">' +
+          '<label>pitch <input type="range" data-cp min="0.5" max="1.6" step="0.05" value="' + c.p + '"></label>' +
+          '<label>pace <input type="range" data-cr min="0.6" max="1.5" step="0.05" value="' + c.r + '"></label>' +
+          '<button data-try title="Audition">▶</button>' +
+        '</div>';
+    }
     return '<div class="castrow" data-spk="' + esc(s.id) + '">' +
       '<div class="who">' +
         (swIdx >= 0 ? '<span class="sw" style="background:' + swColors[swIdx] + '"></span>' : '') +
         '<b>' + esc(s.name) + '</b>' +
         '<span class="n">' + (s.id === 'narrator' ? 'narration' : s.lines + ' line' + (s.lines === 1 ? '' : 's')) + '</span>' +
-      '</div>' +
-      '<select data-cv>' + opts + '</select>' +
-      '<div class="sliders">' +
-        '<label>pitch <input type="range" data-cp min="0.5" max="1.6" step="0.05" value="' + c.p + '"></label>' +
-        '<label>pace <input type="range" data-cr min="0.6" max="1.5" step="0.05" value="' + c.r + '"></label>' +
-        '<button data-try title="Audition">▶</button>' +
-      '</div></div>';
+      '</div>' + controls + '</div>';
   }).join('');
-  void rows.length;
 }
 
 $('castList').addEventListener('change', function (e) { castRowChanged(e.target); });
 $('castList').addEventListener('input', function (e) {
-  if (e.target.hasAttribute('data-cp') || e.target.hasAttribute('data-cr')) castRowChanged(e.target);
+  if (e.target.hasAttribute('data-cp') || e.target.hasAttribute('data-cr') || e.target.hasAttribute('data-cs'))
+    castRowChanged(e.target);
 });
 function castRowChanged(el) {
   var row = el.closest('.castrow'); if (!row) return;
   var spk = row.getAttribute('data-spk');
   var ov = state.cast[spk] || (state.cast[spk] = {});
   var sel = row.querySelector('[data-cv]');
-  if (sel && sel.value) ov.v = sel.value;
-  ov.p = parseFloat(row.querySelector('[data-cp]').value);
-  ov.r = parseFloat(row.querySelector('[data-cr]').value);
+  if (useOpenAI()) {
+    if (sel && sel.value) ov.ov = sel.value;
+    ov.style = row.querySelector('[data-cs]').value;
+    ov.or = parseFloat(row.querySelector('[data-cr]').value);
+  } else {
+    if (sel && sel.value) ov.v = sel.value;
+    ov.p = parseFloat(row.querySelector('[data-cp]').value);
+    ov.r = parseFloat(row.querySelector('[data-cr]').value);
+  }
   if (state.book) lsSet('htl-cast-' + state.book.id, state.cast);
 }
 $('castList').addEventListener('click', function (e) {
@@ -989,11 +1307,21 @@ $('castList').addEventListener('click', function (e) {
   var row = btn.closest('.castrow');
   var spk = row.getAttribute('data-spk');
   if (player.playing) pause();
-  synth.cancel();
   var sample = spk === 'narrator' ? state.narSample : '';
   for (var i = 0; i < state.speakers.length; i++)
     if (state.speakers[i].id === spk) sample = state.speakers[i].sample;
-  var u = new SpeechSynthesisUtterance(sample || 'War. War never changes.');
+  sample = sample || 'War. War never changes.';
+  if (useOpenAI()) {
+    btn.textContent = '…';
+    getAudio(sample, spk).then(function (blob) {
+      btn.textContent = '▶';
+      playBlob(blob, oaiCastFor(spk).r * globalRate, null);
+    }).catch(function (err) { btn.textContent = '▶'; toast(String(err.message || err)); });
+    return;
+  }
+  if (!synth) return;
+  synth.cancel();
+  var u = new SpeechSynthesisUtterance(sample);
   applyVoice(u, spk);
   player.u = u;
   synth.speak(u);
