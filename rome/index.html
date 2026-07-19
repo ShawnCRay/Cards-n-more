@@ -558,6 +558,7 @@ const BUILDINGS = [
   { n: 'Overdrive Stim-Station', m: 'chems',    fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
   { n: 'Vault Mascot Monument',      m: 'hightech',   fx: 'statue',      t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
   { n: 'Overseer’s Command Center',      m: 'hightech',   fx: 'temple',      t: 'Passive: Max HAND size +4' },
+  { n: 'Security Checkpoint',        m: 'concrete',   fx: 'tribunal',    t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech',   fx: 'forum',       t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
@@ -953,6 +954,12 @@ async function doResearch(p) {
     let n = 0;
     for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
     log(p.name + ' researches and draws ' + n + '.');
+  }
+  if (has(p, 'tribunal') && strangers > 0) {
+    strangers--;
+    p.hand.push({ stranger: true });
+    recPush('draw', { player: p.name, card: 'STRANGER' });
+    log('Security Checkpoint: ' + p.name + ' draws a Mysterious Stranger.');
   }
 }
 
