@@ -549,6 +549,7 @@ const BUILDINGS = [
   { n: 'Supply Closet',      m: 'rations',     fx: 'market',      t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Perimeter Fencing',    m: 'rations',     fx: 'palisade',    t: 'Passive: Immune to RAIDER actions' },
   { n: 'Commissary',      m: 'rations',     fx: 'circus',      t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Nutrient Infusion Station',      m: 'rations',     fx: 'crane',       t: 'Passive: May use any card to follow OVERSEER actions' },
   { n: 'Technical Library',      m: 'tech',    fx: 'shrine',      t: 'Passive: Max HAND size +2' },
   { n: 'Blind Requisition Bureau',      m: 'tech',    fx: 'atrium',      t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Decontamination Shower',        m: 'tech',    fx: 'bath',        t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
@@ -1249,6 +1250,13 @@ async function playTurn(gen) {
     const fopts = [];
     if (followIdx >= 0) fopts.push({ id: 'follow:' + followIdx, label: 'Follow ' + role + ' (' + q.hand[followIdx].n + ')', score: 5 });
     if (strangerIdx >= 0) fopts.push({ id: 'follow:' + strangerIdx, label: 'Follow ' + role + ' (Mysterious Stranger)', score: followIdx >= 0 ? 3.5 : 4 });
+    if (role === 'OVERSEER' && has(q, 'crane')) {
+      q.hand.forEach((c, i) => {
+        if (!c.stranger && MAT_ROLE[c.m] !== role) {
+          fopts.push({ id: 'follow:' + i, label: 'Follow OVERSEER (' + c.n + ')', score: 3 + MAT_VAL[c.m] });
+        }
+      });
+    }
     if (followIdx < 0 && strangerIdx < 0 && has(q, 'circus')) {
       // two same-role cards act as a stranger when following, too
       const byRole = {};
