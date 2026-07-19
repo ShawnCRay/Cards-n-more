@@ -426,7 +426,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 
 /* the curated building set: name, material, short power text, effect key */
 const BUILDINGS = [
-  { n: 'Insula',      m: 'scrap',   fx: 'insula',      t: '+2 dwellers limit' },
+  { n: 'Barracks',      m: 'scrap',   fx: 'insula',      t: 'Passive: Max DWELLER size +2' },
   { n: 'Bar',         m: 'scrap',   fx: 'bar',         t: 'Recruiter: may instead hire blind off the deck' },
   { n: 'Road',        m: 'scrap',   fx: 'road',        t: 'Chems buildings accept any material' },
   { n: 'Dock',        m: 'rations',     fx: 'dock',        t: 'Scavenger: may instead stockpile a card from hand' },
@@ -1185,7 +1185,7 @@ function newGame() {
   $('btn-deal').textContent = 'Start game';
   $('round-controls').style.display = '';
   $('opts').innerHTML = '';
-  setMessage('Lead roles, hire dwellers, raise buildings. Start when ready.');
+  setMessage('Lead roles, hire dwellers, build rooms. Start when ready.');
   render();
 }
 
