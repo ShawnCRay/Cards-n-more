@@ -563,6 +563,7 @@ const BUILDINGS = [
   { n: 'Vault Mascot Monument',      m: 'hightech',   fx: 'statue',      t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
   { n: 'Overseer\'s Command Center',      m: 'hightech',   fx: 'temple',      t: 'Passive: Max HAND size +4' },
   { n: 'Security Checkpoint',        m: 'concrete',   fx: 'tribunal',    t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
+  { n: 'Heavy Fabrication Area',     m: 'concrete',   fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech',   fx: 'forum',       t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
@@ -1099,6 +1100,13 @@ async function onCompletion(p, b) {
   if (fx === 'domus') {
     log(p.name + ' completes Mess Hall — performing a RECRUITER action.');
     await actRECRUITER(p);
+  }
+  if (fx === 'amphitheatre') {
+    const count = p.population;
+    log(p.name + ' completes Heavy Fabrication Area — performing ' + count + ' ENGINEER actions.');
+    for (let i = 0; i < count; i++) {
+      await actBUILDER(p, false);
+    }
   }
 }
 
