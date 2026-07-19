@@ -544,6 +544,7 @@ const BUILDINGS = [
   { n: 'Wasteland Speakeasy', m: 'scrap',   fx: 'bar',         t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
   { n: 'Chemical Synthesis Lab',        m: 'scrap',   fx: 'road',        t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Scrap Compactor',        m: 'scrap',   fx: 'latrine',     t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
+  { n: 'Mess Hall',        m: 'rations',     fx: 'domus',       t: 'Upon Completion: Perform 1 RECRUITER action' },
   { n: 'Internal Loading Dock',        m: 'rations',     fx: 'dock',        t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Supply Closet',      m: 'rations',     fx: 'market',      t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Perimeter Fencing',    m: 'rations',     fx: 'palisade',    t: 'Passive: Immune to RAIDER actions' },
@@ -1075,7 +1076,7 @@ function buildTargets(p, mat, viaOverseer) {
   return t;
 }
 
-function addMaterial(p, bIdx, card, viaOverseer) {
+async function addMaterial(p, bIdx, card, viaOverseer) {
   const b = p.buildings[bIdx];
   b.mats.push(card);
   let complete = b.mats.length >= MAT_VAL[b.site];
@@ -1087,6 +1088,15 @@ function addMaterial(p, bIdx, card, viaOverseer) {
     p.population += MAT_VAL[b.site];
     log(p.name + ' gains ' + MAT_VAL[b.site] + ' population (' + p.population + ').');
     checkForum(p);
+    await onCompletion(p, b);
+  }
+}
+
+async function onCompletion(p, b) {
+  const fx = BLD[b.n].fx;
+  if (fx === 'domus') {
+    log(p.name + ' completes Mess Hall — performing a RECRUITER action.');
+    await actRECRUITER(p);
   }
 }
 
@@ -1127,7 +1137,7 @@ async function actBUILDER(p, viaOverseer) {
     if (Object.values(sites).every(n => n <= 0)) endFlag = true;
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
-    addMaterial(p, Number(parts[2]), c, viaOverseer);
+    await addMaterial(p, Number(parts[2]), c, viaOverseer);
   }
   if (!viaOverseer && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
 }
