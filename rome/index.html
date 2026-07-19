@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vault 21 Glory to Rome</title>
+<title>Vault 21 · Fallout Glory to Rome</title>
 <style>
   :root {
     --felt: #333f2a;
@@ -297,7 +297,7 @@
 <div id="lamp"></div>
 
 <div id="topbar">
-  <span class="title">☢ VAULT 21 · GLORY TO ROME</span>
+  <span class="title">☢ VAULT 21 · FALLOUT GLORY TO ROME</span>
   <span class="stat">Deck <b id="stat-deck">—</b></span>
   <span class="stat">Jacks <b id="stat-jacks">—</b></span>
   <span class="stat">Leader <b id="stat-leader">—</b></span>
@@ -371,16 +371,16 @@
       <b>client</b>. Played cards land in the shared <b>pool</b>.</p>
       <p><b>The six roles</b> (each tied to a material):</p>
       <ul>
-        <li><b>LABORER</b> (rubble) — take a pool card into your stockpile.</li>
-        <li><b>PATRON</b> (marble) — hire a pool card as a client. Clients act
+        <li><b>SCAVENGER</b> (rubble) — take a pool card into your stockpile.</li>
+        <li><b>RECRUITER</b> (marble) — hire a pool card as a client. Clients act
         with you every time their role runs.</li>
-        <li><b>CRAFTSMAN</b> (wood) — start a building on a matching site, or add
+        <li><b>ENGINEER</b> (wood) — start a building on a matching site, or add
         a matching material from your hand.</li>
-        <li><b>ARCHITECT</b> (concrete) — like the craftsman, but builds with
+        <li><b>OVERSEER</b> (concrete) — like the engineer, but builds with
         materials from your stockpile.</li>
-        <li><b>LEGIONARY</b> (brick) — demand a material: take it from the pool
+        <li><b>RAIDER</b> (brick) — demand a material: take it from the pool
         and from every rival's hand.</li>
-        <li><b>MERCHANT</b> (stone) — bank a stockpile material in your vault
+        <li><b>TRADER</b> (stone) — bank a stockpile material in your vault
         (points at game end).</li>
       </ul>
       <p><b>Buildings</b> complete when they hold materials equal to their
@@ -392,9 +392,9 @@
       influence + vault wins. Complete the <b>FORUM</b> with a client of every
       role and you win on the spot.</p>
       <p>Simplifications vs the tabletop original: a trimmed building list, no
-      out-of-town sites, no petitions, and no merchant majority bonus. Cass and
+      out-of-town sites, no petitions, and no trader majority bonus. Cass and
       Boone play a solid economic game — watch your hand when they lead the
-      legion. Good luck out there, dweller.</p>
+      raiders. Good luck out there, dweller.</p>
     </div>
     <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
@@ -421,26 +421,26 @@ const TURN_TIMEOUT_MS = 60000;
 
 const MATS = ['rubble', 'wood', 'brick', 'concrete', 'stone', 'marble'];
 const MAT_VAL = { rubble: 1, wood: 1, brick: 2, concrete: 2, stone: 3, marble: 3 };
-const MAT_ROLE = { rubble: 'LABORER', wood: 'CRAFTSMAN', brick: 'LEGIONARY', concrete: 'ARCHITECT', stone: 'MERCHANT', marble: 'PATRON' };
-const ROLES = ['LABORER', 'CRAFTSMAN', 'LEGIONARY', 'ARCHITECT', 'MERCHANT', 'PATRON'];
+const MAT_ROLE = { rubble: 'SCAVENGER', wood: 'ENGINEER', brick: 'RAIDER', concrete: 'OVERSEER', stone: 'TRADER', marble: 'RECRUITER' };
+const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUITER'];
 
 /* the curated building set: name, material, short power text, effect key */
 const BUILDINGS = [
   { n: 'Insula',      m: 'rubble',   fx: 'insula',      t: '+2 clientele limit' },
-  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Patron: may instead hire blind off the deck' },
+  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Recruiter: may instead hire blind off the deck' },
   { n: 'Road',        m: 'rubble',   fx: 'road',        t: 'Stone buildings accept any material' },
-  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Laborer: may instead stockpile a card from hand' },
+  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Scavenger: may instead stockpile a card from hand' },
   { n: 'Market',      m: 'wood',     fx: 'market',      t: '+2 vault limit' },
-  { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Legionary demands' },
+  { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Raider demands' },
   { n: 'Circus',      m: 'wood',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
   { n: 'Shrine',      m: 'brick',    fx: 'shrine',      t: '+2 hand limit' },
-  { n: 'Atrium',      m: 'brick',    fx: 'atrium',      t: 'Merchant: may vault blind off the deck' },
+  { n: 'Atrium',      m: 'brick',    fx: 'atrium',      t: 'Trader: may vault blind off the deck' },
   { n: 'Bath',        m: 'brick',    fx: 'bath',        t: 'New clients act immediately when hired' },
-  { n: 'Academy',     m: 'brick',    fx: 'academy',     t: 'Draw a card after each Craftsman action' },
-  { n: 'Aqueduct',    m: 'concrete', fx: 'aqueduct',    t: 'Patron: may hire from hand; clientele limit ×2' },
-  { n: 'Wall',        m: 'concrete', fx: 'wall',        t: 'Legionary-proof; +1 pt per 2 stockpile' },
+  { n: 'Academy',     m: 'brick',    fx: 'academy',     t: 'Draw a card after each Engineer action' },
+  { n: 'Aqueduct',    m: 'concrete', fx: 'aqueduct',    t: 'Recruiter: may hire from hand; clientele limit ×2' },
+  { n: 'Wall',        m: 'concrete', fx: 'wall',        t: 'Raider-proof; +1 pt per 2 stockpile' },
   { n: 'Tower',       m: 'concrete', fx: 'tower',       t: 'Rubble may be built into anything' },
-  { n: 'Villa',       m: 'stone',    fx: 'villa',       t: 'Architect completes it with one material' },
+  { n: 'Villa',       m: 'stone',    fx: 'villa',       t: 'Overseer completes it with one material' },
   { n: 'Scriptorium', m: 'stone',    fx: 'scriptorium', t: 'One marble completes any building' },
   { n: 'Statue',      m: 'marble',   fx: 'statue',      t: '+3 pts; builds on any site' },
   { n: 'Temple',      m: 'marble',   fx: 'temple',      t: '+4 hand limit' },
@@ -813,30 +813,30 @@ function poolOptions(role, p) {
   // options to take/hire pool cards, scored for the CPU by usefulness
   return pool.map((c, i) => {
     let s = MAT_VAL[c.m];
-    if (role === 'PATRON') s = MAT_VAL[c.m] + (p.clients.some(q => q.m === c.m) ? -1 : 2);
-    if (role === 'LABORER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
+    if (role === 'RECRUITER') s = MAT_VAL[c.m] + (p.clients.some(q => q.m === c.m) ? -1 : 2);
+    if (role === 'SCAVENGER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
     return { id: 'pool:' + i, label: c.n + ' [' + c.m + ']', score: s };
   });
 }
 
-async function actLABORER(p) {
-  const opts = poolOptions('LABORER', p);
+async function actSCAVENGER(p) {
+  const opts = poolOptions('SCAVENGER', p);
   if (has(p, 'dock')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'From hand: ' + cardLabel(c), score: 1 }); });
   opts.push({ id: 'skip', label: 'Skip', score: -5 });
-  const pick = await choose(p, p.name + ': Laborer — take a material', opts);
+  const pick = await choose(p, p.name + ': Scavenger — take a material', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   const c = (src === 'pool' ? pool : p.hand).splice(Number(idx), 1)[0];
   if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
 }
 
-async function actPATRON(p) {
+async function actRECRUITER(p) {
   if (p.clients.length >= clientLimit(p)) return;
-  const opts = poolOptions('PATRON', p);
+  const opts = poolOptions('RECRUITER', p);
   if (has(p, 'aqueduct')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'Hire from hand: ' + cardLabel(c), score: 2 }); });
   if (has(p, 'bar') && deck.length) opts.push({ id: 'deck:0', label: 'Hire blind off the deck', score: 1.5 });
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
-  const pick = await choose(p, p.name + ': Patron — hire a client', opts);
+  const pick = await choose(p, p.name + ': Recruiter — hire a client', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   let c = null;
@@ -853,7 +853,7 @@ async function actPATRON(p) {
   }
 }
 
-function buildTargets(p, mat, viaArchitect) {
+function buildTargets(p, mat, viaOverseer) {
   // incomplete buildings this material could go into
   const t = [];
   p.buildings.forEach((b, i) => {
@@ -868,12 +868,12 @@ function buildTargets(p, mat, viaArchitect) {
   return t;
 }
 
-function addMaterial(p, bIdx, card, viaArchitect) {
+function addMaterial(p, bIdx, card, viaOverseer) {
   const b = p.buildings[bIdx];
   b.mats.push(card);
   let complete = b.mats.length >= MAT_VAL[b.site];
   if (card.m === 'marble' && has(p, 'scriptorium')) complete = true;
-  if (viaArchitect && BLD[b.n].fx === 'villa') complete = true;
+  if (viaOverseer && BLD[b.n].fx === 'villa') complete = true;
   log(p.name + ' adds ' + card.m + ' to ' + b.n + (complete ? ' — COMPLETE!' : ' (' + b.mats.length + '/' + MAT_VAL[b.site] + ').'));
   if (complete) {
     b.done = true;
@@ -883,7 +883,7 @@ function addMaterial(p, bIdx, card, viaArchitect) {
   }
 }
 
-async function actBUILDER(p, viaArchitect) {
+async function actBUILDER(p, viaOverseer) {
   const opts = [];
   // start a new building
   p.hand.forEach((c, i) => {
@@ -896,18 +896,18 @@ async function actBUILDER(p, viaArchitect) {
     }
   });
   // add material
-  const srcArr = viaArchitect ? p.stockpile : p.hand;
+  const srcArr = viaOverseer ? p.stockpile : p.hand;
   srcArr.forEach((c, i) => {
     if (c.jack) return;
-    for (const bIdx of buildTargets(p, c.m, viaArchitect)) {
+    for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
       const b = p.buildings[bIdx];
-      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaArchitect && BLD[b.n].fx === 'villa') || (c.m === 'marble' && has(p, 'scriptorium'));
+      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa') || (c.m === 'marble' && has(p, 'scriptorium'));
       opts.push({ id: 'add:' + i + ':' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''),
                   score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
     }
   });
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
-  const roleName = viaArchitect ? 'Architect' : 'Craftsman';
+  const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
   if (!pick || pick === 'skip') return;
   const parts = pick.split(':');
@@ -920,12 +920,12 @@ async function actBUILDER(p, viaArchitect) {
     if (Object.values(sites).every(n => n <= 0)) endFlag = true;
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
-    addMaterial(p, Number(parts[2]), c, viaArchitect);
+    addMaterial(p, Number(parts[2]), c, viaOverseer);
   }
-  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
+  if (!viaOverseer && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
 }
 
-async function actLEGIONARY(p) {
+async function actRAIDER(p) {
   const mats = [...new Set(p.hand.filter(c => !c.jack).map(c => c.m))];
   const opts = mats.map(m => {
     const inPool = pool.some(c => c.m === m);
@@ -933,7 +933,7 @@ async function actLEGIONARY(p) {
     return { id: 'demand:' + m, label: 'Demand ' + m + (inPool ? ' (pool has one)' : ''), score: (inPool ? 2 : 0) + victims * 2 + MAT_VAL[m] };
   });
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
-  const pick = await choose(p, p.name + ': Legionary — demand a material', opts);
+  const pick = await choose(p, p.name + ': Raider — demand a material', opts);
   if (!pick || pick === 'skip') return;
   const m = pick.split(':')[1];
   log(p.name + ' demands ' + m + '!');
@@ -947,12 +947,12 @@ async function actLEGIONARY(p) {
   }
 }
 
-async function actMERCHANT(p) {
+async function actTRADER(p) {
   if (p.vault.length >= vaultLimit(p)) return;
   const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Vault ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
   if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Vault blind off the deck', score: 4 });
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
-  const pick = await choose(p, p.name + ': Merchant — bank a material', opts);
+  const pick = await choose(p, p.name + ': Trader — bank a material', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   const c = src === 'stock' ? p.stockpile.splice(Number(idx), 1)[0] : draw1();
@@ -964,12 +964,12 @@ async function performRole(p, role, isBathEcho) {
   const recB = { stock: p.stockpile.length, vault: p.vault.length, clients: p.clients.length,
                  buildings: p.buildings.length, done: p.buildings.filter(b => b.done).length,
                  hand: p.hand.length, influence: p.influence };
-  if (role === 'LABORER') await actLABORER(p);
-  else if (role === 'PATRON') await actPATRON(p);
-  else if (role === 'CRAFTSMAN') await actBUILDER(p, false);
-  else if (role === 'ARCHITECT') await actBUILDER(p, true);
-  else if (role === 'LEGIONARY') await actLEGIONARY(p);
-  else if (role === 'MERCHANT') await actMERCHANT(p);
+  if (role === 'SCAVENGER') await actSCAVENGER(p);
+  else if (role === 'RECRUITER') await actRECRUITER(p);
+  else if (role === 'ENGINEER') await actBUILDER(p, false);
+  else if (role === 'OVERSEER') await actBUILDER(p, true);
+  else if (role === 'RAIDER') await actRAIDER(p);
+  else if (role === 'TRADER') await actTRADER(p);
   recPush('perform', { player: p.name, role, echo: !!isBathEcho, result: {
     stockpiled: p.stockpile.length - recB.stock,
     vaulted: p.vault.length - recB.vault,
@@ -1002,10 +1002,10 @@ async function playTurn(gen) {
   const opts = [{ id: 'think', label: 'THINK (draw cards)', score: leader.hand.length <= 2 ? 8 : 2 }];
   for (const o of leadableOptions(leader)) {
     let s = 3;
-    if (o.role === 'CRAFTSMAN' || o.role === 'ARCHITECT') s = 5;
-    if (o.role === 'PATRON' && pool.length) s = 4.5;
-    if (o.role === 'MERCHANT' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
-    if (o.role === 'LABORER' && pool.length) s = 3.5;
+    if (o.role === 'ENGINEER' || o.role === 'OVERSEER') s = 5;
+    if (o.role === 'RECRUITER' && pool.length) s = 4.5;
+    if (o.role === 'TRADER' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
+    if (o.role === 'SCAVENGER' && pool.length) s = 3.5;
     if (o.id.startsWith('leadjack')) s -= 1; // CPU saves Jacks when a real card will do
     opts.push({ ...o, score: s });
   }
@@ -1555,7 +1555,7 @@ $('btn-games').addEventListener('click', () => { location.href = '../index.html'
 
 load();
 newGame();
-log('Welcome to the forum. Lead well, build fast, and mind the legions.');
+log('Welcome to the wasteland. Scavenge well, build fast, and mind the raiders.');
 
 if (window.Peer) {
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
