@@ -277,6 +277,118 @@
   #help .help-body li { margin-bottom: 4px; }
   #help .help-body b { color: var(--gold); }
 
+  /* pip-boy card inspection popup */
+  #cardtip {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    min-width: 200px;
+    max-width: 270px;
+    background: #0b120b;
+    border: 2px solid var(--m-scrap);
+    box-shadow: 0 0 20px rgba(0,255,0,0.12), inset 0 0 24px rgba(0,255,0,0.03), 0 8px 32px rgba(0,0,0,0.7);
+    font-family: 'Courier New', Consolas, "Lucida Console", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #cardtip .ct-wrap {
+    border: 1px solid rgba(51,255,102,0.1);
+    margin: 3px;
+    padding: 6px 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  #cardtip .ct-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.03) 2px, rgba(0,255,0,0.03) 4px);
+    pointer-events: none;
+  }
+  #cardtip .ct-scanner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(51,255,102,0.07);
+    animation: ctScan 4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes ctScan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+  #cardtip .ct-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(51,255,102,0.18);
+    padding-bottom: 3px;
+    margin-bottom: 3px;
+  }
+  #cardtip .ct-title {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: #3f6;
+  }
+  #cardtip .ct-caps {
+    border: 1px solid rgba(217,151,63,0.5);
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    color: var(--gold);
+    border-radius: 2px;
+    background: rgba(0,0,0,0.3);
+  }
+  #cardtip .ct-body {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 2px;
+    min-height: 26px;
+    color: #3f6;
+  }
+  #cardtip .ct-role {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding-right: 3px;
+    border-right: 1px solid rgba(51,255,102,0.12);
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+  #cardtip .ct-fx {
+    flex: 1;
+    padding-left: 3px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    line-height: 1.5;
+    color: #3f6;
+  }
+  #cardtip .ct-mat {
+    border-top: 1px solid rgba(51,255,102,0.18);
+    padding-top: 3px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    color: #3f6;
+  }
+  #cardtip.c-scrap   { border-color: #d4a84b; }
+  #cardtip.c-rations     { border-color: #5a8a3a; }
+  #cardtip.c-tech    { border-color: #b84530; }
+  #cardtip.c-concrete { border-color: #7a8280; }
+  #cardtip.c-chems    { border-color: #3f78a0; }
+  #cardtip.c-hightech   { border-color: #8a6ab0; }
+  #cardtip.c-stranger   { border-color: var(--gold); box-shadow: 0 0 20px rgba(217,151,63,0.15), inset 0 0 24px rgba(217,151,63,0.03), 0 8px 32px rgba(0,0,0,0.7); }
+
   @media (max-width: 720px) {
     #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
     #topbar .title { display: none; }
@@ -356,6 +468,8 @@
     <div id="overlay-status"></div>
   </div>
 </div>
+
+<div id="cardtip"></div>
 
 <div id="help" style="display:none">
   <div class="panel">
@@ -508,6 +622,44 @@ function cardLabel(c) {
   return c.stranger ? 'Mysterious Stranger (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
 }
 
+function popupHTML(c) {
+  if (c.stranger) {
+    return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+      '<div class="ct-header"><span class="ct-title">MYSTERIOUS STRANGER</span><span class="ct-caps">★</span></div>' +
+      '<div class="ct-body"><span class="ct-role">ANY</span><div class="ct-fx">Can be used to lead or follow any role</div></div>' +
+      '<div class="ct-mat">wild</div></div>';
+  }
+  const bld = BLD[c.n];
+  return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+    '<div class="ct-header"><span class="ct-title">' + escapeHtml(c.n) + '</span><span class="ct-caps">' + MAT_VAL[c.m] + '</span></div>' +
+    '<div class="ct-body"><span class="ct-role">' + MAT_ROLE[c.m] + '</span><div class="ct-fx">' + escapeHtml(bld ? bld.t : '') + '</div></div>' +
+    '<div class="ct-mat">' + c.m + '</div></div>';
+}
+function bldgPopupHTML(b) {
+  const bld = BLD[b.n];
+  const mat = bld ? bld.m : b.site;
+  return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+    '<div class="ct-header"><span class="ct-title">' + escapeHtml(b.n) + '</span><span class="ct-caps">' + MAT_VAL[mat] + '</span></div>' +
+    '<div class="ct-body"><span class="ct-role">' + MAT_ROLE[mat] + '</span><div class="ct-fx">' + escapeHtml(bld ? bld.t : '') + '</div></div>' +
+    '<div class="ct-mat">' + (b.done ? 'COMPLETE' : b.mats.length + '/' + MAT_VAL[b.site]) + '</div></div>';
+}
+function showTip(ev, html, borderClass) {
+  ev.stopPropagation();
+  const tip = $('cardtip');
+  tip.className = 'c-' + borderClass;
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  let top = r.top - th - 8;
+  if (top < 8) top = r.bottom + 8;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideTip() { const t = $('cardtip'); if (t) t.style.display = 'none'; }
+
 function log(msg) {
   const el = document.createElement('div');
   el.textContent = msg;
@@ -565,6 +717,7 @@ function chip(c) {
   el.className = 'mchip mat-' + (c.stranger ? 'stranger' : c.m);
   el.textContent = c.stranger ? 'STRANGER' : c.n;
   el.title = c.stranger ? 'Mysterious Stranger' : (BLD[c.n].t + ' — ' + c.m + ' / ' + MAT_ROLE[c.m]);
+  el.addEventListener('click', ev => showTip(ev, popupHTML(c), c.stranger ? 'stranger' : c.m));
   return el;
 }
 
@@ -621,17 +774,51 @@ function renderView(view) {
       '<div class="hdr"><span class="nm">' + escapeHtml(p.name) + ' <span class="tag">' + tag + '</span></span>' +
       '<span class="inf">◆ ' + p.population + scoreTxt + '</span></div>' +
       '<div class="row"><span class="lbl">hand ' + p.handN + ' · safe ' + p.safeN + '</span></div>';
-    const rows = [
-      ['buildings', p.buildings.map(b =>
-        '<span class="bldg' + (b.done ? ' done' : '') + '">' + escapeHtml(b.n) +
-        ' <span class="prog">' + (b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site]) + '</span></span>').join('')],
-      ['dwellers', p.dwellers.map(c => '<span class="mchip mat-' + c.m + '">' + MAT_ROLE[c.m].slice(0, 4) + '</span>').join('')],
-      ['stockpile', p.stockpile.map(c => '<span class="mchip mat-' + c.m + '">' + c.m.slice(0, 4) + '</span>').join('')],
+    const rowDefs = [
+      { lbl: 'buildings', items: p.buildings },
+      { lbl: 'dwellers', items: p.dwellers },
+      { lbl: 'stockpile', items: p.stockpile },
     ];
-    for (const [lbl, html] of rows) {
+    for (const rd of rowDefs) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = '<span class="lbl">' + lbl + '</span><div class="chips">' + html + '</div>';
+      const lb = document.createElement('span');
+      lb.className = 'lbl';
+      lb.textContent = rd.lbl;
+      row.appendChild(lb);
+      const chips = document.createElement('div');
+      chips.className = 'chips';
+      if (rd.lbl === 'buildings') {
+        for (const b of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'bldg' + (b.done ? ' done' : '');
+          sp.textContent = b.n + ' ';
+          const prog = document.createElement('span');
+          prog.className = 'prog';
+          prog.textContent = b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site];
+          sp.appendChild(prog);
+          const bld = BLD[b.n];
+          sp.addEventListener('click', ev => showTip(ev, bldgPopupHTML(b), bld ? bld.m : b.site));
+          chips.appendChild(sp);
+        }
+      } else if (rd.lbl === 'dwellers') {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = MAT_ROLE[c.m].slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      } else {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = c.m.slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      }
+      row.appendChild(chips);
       el.appendChild(row);
     }
     tb.appendChild(el);
@@ -1552,6 +1739,9 @@ $('btn-export-log').addEventListener('click', recExport);
 $('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
 
 /* ---------- boot ---------- */
+
+document.addEventListener('click', hideTip);
+window.addEventListener('scroll', hideTip, true);
 
 load();
 newGame();
