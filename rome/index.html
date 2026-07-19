@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vault 21 Glory to Rome</title>
+<title>Vault 21 · Fallout Glory to Rome</title>
 <style>
   :root {
     --felt: #333f2a;
@@ -13,12 +13,12 @@
     --cream: #e6d9b8;
     --red: #b8452f;
     --ink: #241d12;
-    --m-rubble: #8a7a5a;
-    --m-wood: #5a7a35;
-    --m-brick: #9c3a26;
+    --m-scrap: #8a7a5a;
+    --m-rations: #5a7a35;
+    --m-tech: #9c3a26;
     --m-concrete: #6b7570;
-    --m-stone: #3f6875;
-    --m-marble: #a89a7a;
+    --m-chems: #3f6875;
+    --m-hightech: #a89a7a;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -97,7 +97,7 @@
 
   #board { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 6px 10px 0; font-size: 12px; }
 
-  /* pool & sites */
+  /* wasteland & sites */
   #common {
     display: flex;
     gap: 10px;
@@ -111,7 +111,7 @@
     flex-wrap: wrap;
   }
   #common .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 3px; }
-  #pool-cards { display: flex; flex-wrap: wrap; gap: 3px; min-height: 22px; max-width: 100%; }
+  #wasteland-cards { display: flex; flex-wrap: wrap; gap: 3px; min-height: 22px; max-width: 100%; }
   #sites-row { display: flex; gap: 5px; flex-wrap: wrap; }
   .sitechip {
     font-size: 10px;
@@ -135,13 +135,13 @@
     box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
     white-space: nowrap;
   }
-  .mat-rubble   { background: var(--m-rubble); }
-  .mat-wood     { background: var(--m-wood); }
-  .mat-brick    { background: var(--m-brick); }
+  .mat-scrap   { background: var(--m-scrap); }
+  .mat-rations     { background: var(--m-rations); }
+  .mat-tech    { background: var(--m-tech); }
   .mat-concrete { background: var(--m-concrete); }
-  .mat-stone    { background: var(--m-stone); }
-  .mat-marble   { background: var(--m-marble); color: #241d12; text-shadow: none; }
-  .mat-jack     { background: #241d12; color: var(--gold); border-color: var(--gold); }
+  .mat-chems    { background: var(--m-chems); }
+  .mat-hightech   { background: var(--m-hightech); color: #241d12; text-shadow: none; }
+  .mat-stranger     { background: #241d12; color: var(--gold); border-color: var(--gold); }
 
   /* player tableaus */
   #tableaus { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
@@ -277,6 +277,118 @@
   #help .help-body li { margin-bottom: 4px; }
   #help .help-body b { color: var(--gold); }
 
+  /* pip-boy card inspection popup */
+  #cardtip {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    min-width: 200px;
+    max-width: 270px;
+    background: #0b120b;
+    border: 2px solid var(--m-scrap);
+    box-shadow: 0 0 20px rgba(0,255,0,0.12), inset 0 0 24px rgba(0,255,0,0.03), 0 8px 32px rgba(0,0,0,0.7);
+    font-family: 'Courier New', Consolas, "Lucida Console", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #cardtip .ct-wrap {
+    border: 1px solid rgba(51,255,102,0.1);
+    margin: 3px;
+    padding: 6px 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  #cardtip .ct-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,0,0.03) 2px, rgba(0,255,0,0.03) 4px);
+    pointer-events: none;
+  }
+  #cardtip .ct-scanner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(51,255,102,0.07);
+    animation: ctScan 4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes ctScan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+  #cardtip .ct-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(51,255,102,0.18);
+    padding-bottom: 3px;
+    margin-bottom: 3px;
+  }
+  #cardtip .ct-title {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: #3f6;
+  }
+  #cardtip .ct-caps {
+    border: 1px solid rgba(217,151,63,0.5);
+    padding: 0 5px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    color: var(--gold);
+    border-radius: 2px;
+    background: rgba(0,0,0,0.3);
+  }
+  #cardtip .ct-body {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 2px;
+    min-height: 26px;
+    color: #3f6;
+  }
+  #cardtip .ct-role {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding-right: 3px;
+    border-right: 1px solid rgba(51,255,102,0.12);
+    opacity: 0.75;
+    white-space: nowrap;
+  }
+  #cardtip .ct-fx {
+    flex: 1;
+    padding-left: 3px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    line-height: 1.5;
+    color: #3f6;
+  }
+  #cardtip .ct-mat {
+    border-top: 1px solid rgba(51,255,102,0.18);
+    padding-top: 3px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    color: #3f6;
+  }
+  #cardtip.c-scrap   { border-color: #d4a84b; }
+  #cardtip.c-rations     { border-color: #5a8a3a; }
+  #cardtip.c-tech    { border-color: #b84530; }
+  #cardtip.c-concrete { border-color: #7a8280; }
+  #cardtip.c-chems    { border-color: #3f78a0; }
+  #cardtip.c-hightech   { border-color: #8a6ab0; }
+  #cardtip.c-stranger   { border-color: var(--gold); box-shadow: 0 0 20px rgba(217,151,63,0.15), inset 0 0 24px rgba(217,151,63,0.03), 0 8px 32px rgba(0,0,0,0.7); }
+
   @media (max-width: 720px) {
     #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
     #topbar .title { display: none; }
@@ -297,9 +409,9 @@
 <div id="lamp"></div>
 
 <div id="topbar">
-  <span class="title">☢ VAULT 21 · GLORY TO ROME</span>
+  <span class="title">☢ VAULT 21 · FALLOUT GLORY TO ROME</span>
   <span class="stat">Deck <b id="stat-deck">—</b></span>
-  <span class="stat">Jacks <b id="stat-jacks">—</b></span>
+  <span class="stat">M. Strangers <b id="stat-strangers">—</b></span>
   <span class="stat">Leader <b id="stat-leader">—</b></span>
   <span class="stat">Wins <b id="stat-wins">0</b></span>
 </div>
@@ -307,11 +419,11 @@
 <div id="board">
   <div id="common">
     <div style="flex:1 1 55%">
-      <div class="lbl">Pool</div>
-      <div id="pool-cards"></div>
+      <div class="lbl">Wasteland</div>
+      <div id="wasteland-cards"></div>
     </div>
     <div>
-      <div class="lbl">Building sites</div>
+      <div class="lbl">Wasteland Sites</div>
       <div id="sites-row"></div>
     </div>
   </div>
@@ -357,44 +469,46 @@
   </div>
 </div>
 
+<div id="cardtip"></div>
+
 <div id="help" style="display:none">
   <div class="panel">
     <h2>How to play</h2>
     <div class="help-body">
       <p>A fan adaptation of the classic city-building card game, with a curated
       set of buildings. Every card is three things at once: a <b>role</b> to
-      lead, a <b>material</b> to build with, and a <b>building</b> to construct.</p>
-      <p><b>On your turn</b> either <b>THINK</b> (refill your hand, or draw one,
-      or take a Jack — a wild role card) or <b>LEAD</b> a role by playing a card.
-      Everyone else may <b>follow</b> (play a matching card) or think. Everyone
+      lead, a <b>material</b> to build with, and a <b>blueprint</b> to construct.</p>
+      <p><b>On your turn</b> either <b>RESEARCH</b> (refill your hand, or draw one,
+      or take a Mysterious Stranger — a wild role card) or <b>LEAD</b> a role by playing a card.
+      Everyone else may <b>follow</b> (play a matching card) or research. Everyone
       who joined performs the action — once themselves, plus once per matching
-      <b>client</b>. Played cards land in the shared <b>pool</b>.</p>
+      <b>dweller</b>. Played cards land in the shared <b>wasteland</b>.</p>
       <p><b>The six roles</b> (each tied to a material):</p>
       <ul>
-        <li><b>LABORER</b> (rubble) — take a pool card into your stockpile.</li>
-        <li><b>PATRON</b> (marble) — hire a pool card as a client. Clients act
+        <li><b>SCAVENGER</b> (scrap) — take a wasteland card into your stockpile.</li>
+        <li><b>RECRUITER</b> (hightech) — hire a wasteland card as a dweller. Dwellers act
         with you every time their role runs.</li>
-        <li><b>CRAFTSMAN</b> (wood) — start a building on a matching site, or add
+        <li><b>ENGINEER</b> (rations) — start a building on a matching site, or add
         a matching material from your hand.</li>
-        <li><b>ARCHITECT</b> (concrete) — like the craftsman, but builds with
+        <li><b>OVERSEER</b> (concrete) — like the engineer, but builds with
         materials from your stockpile.</li>
-        <li><b>LEGIONARY</b> (brick) — demand a material: take it from the pool
+        <li><b>RAIDER</b> (tech) — demand a material: take it from the wasteland
         and from every rival's hand.</li>
-        <li><b>MERCHANT</b> (stone) — bank a stockpile material in your vault
+        <li><b>TRADER</b> (chems) — bank a stockpile material in your safe
         (points at game end).</li>
       </ul>
-      <p><b>Buildings</b> complete when they hold materials equal to their
-      value (rubble/wood 1, brick/concrete 2, stone/marble 3). Completing one
-      grants that much <b>influence</b> — which raises your clientele and vault
-      limits — and switches on the building's power. The powers are where the
+      <p><b>Vault Rooms</b> complete when they hold materials equal to their
+      value (scrap/rations 1, tech/concrete 2, chems/hightech 3). Completing one
+      grants that much <b>population</b> — which raises your dwellers and safe
+      limits — and switches on the rooms's power. The powers are where the
       game lives: read them on your hand cards.</p>
       <p><b>Game end:</b> the deck runs dry or the building sites do; highest
-      influence + vault wins. Complete the <b>FORUM</b> with a client of every
-      role and you win on the spot.</p>
+      population + safe wins. Complete the <b>Vault-Tec Simulation Hub</b> 
+      with a dweller of every role and you win on the spot.</p>
       <p>Simplifications vs the tabletop original: a trimmed building list, no
-      out-of-town sites, no petitions, and no merchant majority bonus. Cass and
+       wasteland sites, no petitions, and no trader majority bonus. Cass and
       Boone play a solid economic game — watch your hand when they lead the
-      legion. Good luck out there, dweller.</p>
+      raiders. Good luck out there, dweller.</p>
     </div>
     <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
   </div>
@@ -407,8 +521,8 @@ window.__V21_GAME__ = 'rome';
 
 /* ============================================================
    Glory to Rome — fan adaptation with a curated building set.
-   Core loop: think or lead; follow; role actions for performers
-   and their clients; played cards feed the shared pool.
+   Core loop: research or lead; follow; role actions for performers
+   and their dwellers; played cards feed the shared wasteland.
    Every decision is a labeled option list, which one generic
    chooser presents to the local player, remote guests, or the
    CPU scorer alike.
@@ -419,32 +533,32 @@ const HEARTBEAT_MS = 3000;
 const STALE_MS = 35000;
 const TURN_TIMEOUT_MS = 60000;
 
-const MATS = ['rubble', 'wood', 'brick', 'concrete', 'stone', 'marble'];
-const MAT_VAL = { rubble: 1, wood: 1, brick: 2, concrete: 2, stone: 3, marble: 3 };
-const MAT_ROLE = { rubble: 'LABORER', wood: 'CRAFTSMAN', brick: 'LEGIONARY', concrete: 'ARCHITECT', stone: 'MERCHANT', marble: 'PATRON' };
-const ROLES = ['LABORER', 'CRAFTSMAN', 'LEGIONARY', 'ARCHITECT', 'MERCHANT', 'PATRON'];
+const MATS = ['scrap', 'rations', 'tech', 'concrete', 'chems', 'hightech'];
+const MAT_VAL = { scrap: 1, rations: 1, tech: 2, concrete: 2, chems: 3, hightech: 3 };
+const MAT_ROLE = { scrap: 'SCAVENGER', rations: 'ENGINEER', tech: 'RAIDER', concrete: 'OVERSEER', chems: 'TRADER', hightech: 'RECRUITER' };
+const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUITER'];
 
 /* the curated building set: name, material, short power text, effect key */
 const BUILDINGS = [
-  { n: 'Insula',      m: 'rubble',   fx: 'insula',      t: '+2 clientele limit' },
-  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Patron: may instead hire blind off the deck' },
-  { n: 'Road',        m: 'rubble',   fx: 'road',        t: 'Stone buildings accept any material' },
-  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Laborer: may instead stockpile a card from hand' },
-  { n: 'Market',      m: 'wood',     fx: 'market',      t: '+2 vault limit' },
-  { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Legionary demands' },
-  { n: 'Circus',      m: 'wood',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
-  { n: 'Shrine',      m: 'brick',    fx: 'shrine',      t: '+2 hand limit' },
-  { n: 'Atrium',      m: 'brick',    fx: 'atrium',      t: 'Merchant: may vault blind off the deck' },
-  { n: 'Bath',        m: 'brick',    fx: 'bath',        t: 'New clients act immediately when hired' },
-  { n: 'Academy',     m: 'brick',    fx: 'academy',     t: 'Draw a card after each Craftsman action' },
-  { n: 'Aqueduct',    m: 'concrete', fx: 'aqueduct',    t: 'Patron: may hire from hand; clientele limit ×2' },
-  { n: 'Wall',        m: 'concrete', fx: 'wall',        t: 'Legionary-proof; +1 pt per 2 stockpile' },
-  { n: 'Tower',       m: 'concrete', fx: 'tower',       t: 'Rubble may be built into anything' },
-  { n: 'Villa',       m: 'stone',    fx: 'villa',       t: 'Architect completes it with one material' },
-  { n: 'Scriptorium', m: 'stone',    fx: 'scriptorium', t: 'One marble completes any building' },
-  { n: 'Statue',      m: 'marble',   fx: 'statue',      t: '+3 pts; builds on any site' },
-  { n: 'Temple',      m: 'marble',   fx: 'temple',      t: '+4 hand limit' },
-  { n: 'Forum',       m: 'marble',   fx: 'forum',       t: 'WIN with a client of every role' },
+  { n: 'Barracks',      m: 'scrap',   fx: 'insula',      t: 'Passive: Max DWELLER size +2' },
+  { n: 'Wasteland Speakeasy', m: 'scrap',   fx: 'bar',         t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
+  { n: 'Chemical Synthesis Lab',        m: 'scrap',   fx: 'road',        t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
+  { n: 'Internal Loading Dock',        m: 'rations',     fx: 'dock',        t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
+  { n: 'Supply Closet',      m: 'rations',     fx: 'market',      t: 'Passive: Max OVERSEER\'S SAFE size +2' },
+  { n: 'Perimeter Fencing',    m: 'rations',     fx: 'palisade',    t: 'Passive: Immune to RAIDER actions' },
+  { n: 'Commissary',      m: 'rations',     fx: 'circus',      t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Technical Library',      m: 'tech',    fx: 'shrine',      t: 'Passive: Max HAND size +2' },
+  { n: 'Blind Requisition Bureau',      m: 'tech',    fx: 'atrium',      t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
+  { n: 'Decontamination Shower',        m: 'tech',    fx: 'bath',        t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
+  { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',     t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
+  { n: 'High-Capacity Utility Main',    m: 'concrete', fx: 'aqueduct',    t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
+  { n: 'Reinforced Vault Door',        m: 'concrete', fx: 'wall',        t: 'Passive: Immune to RAIDER demands. Endgame: +1 Cap for every two materials in your STOCKPILE' },
+  { n: 'Wasteland Outpost',       m: 'concrete', fx: 'tower',       t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
+  { n: 'Prefab Room',       m: 'chems',    fx: 'villa',       t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
+  { n: 'Overdrive Stim-Station', m: 'chems',    fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
+  { n: 'Vault Mascot Monument',      m: 'hightech',   fx: 'statue',      t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
+  { n: 'Overseer’s Command Center',      m: 'hightech',   fx: 'temple',      t: 'Passive: Max HAND size +4' },
+  { n: 'Vault-Tec Simulation Hub',       m: 'hightech',   fx: 'forum',       t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
 
@@ -453,11 +567,11 @@ const players = [
   { name: 'You',  cpuName: null,   ai: false, remote: null },
   { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null },
   { name: 'Boone', cpuName: 'Boone', ai: true, remote: null },
-].map(p => ({ ...p, hand: [], stockpile: [], vault: [], clients: [], buildings: [], influence: 2 }));
+].map(p => ({ ...p, hand: [], stockpile: [], safe: [], dwellers: [], buildings: [], population: 2 }));
 const me = players[0];
 let mySeatIdx = 0;
 
-let deck = [], jacks = 6, pool = [], sites = {};
+let deck = [], strangers = 6, wasteland = [], sites = {};
 let leaderIdx = 0;
 let gameActive = false, gameOver = false, endFlag = false;
 let epoch = 0; // bumped on every new game/match; stale loops bail out
@@ -495,18 +609,56 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g,
 
 function has(p, fx) { return p.buildings.some(b => b.done && BLD[b.n].fx === fx); }
 function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple') ? 4 : 0); }
-function clientLimit(p) { return (p.influence + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
-function vaultLimit(p) { return p.influence + (has(p, 'market') ? 2 : 0); }
-function roleOf(card) { return card.jack ? 'JACK' : MAT_ROLE[card.m]; }
+function dwellerLimit(p) { return (p.population + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
+function safeLimit(p) { return p.population + (has(p, 'market') ? 2 : 0); }
+function roleOf(card) { return card.stranger ? 'STRANGER' : MAT_ROLE[card.m]; }
 function score(p) {
-  let s = p.influence + p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0);
+  let s = p.population + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
   for (const b of p.buildings) if (b.done && BLD[b.n].fx === 'statue') s += 3;
   if (has(p, 'wall')) s += Math.floor(p.stockpile.length / 2);
   return s;
 }
 function cardLabel(c) {
-  return c.jack ? 'Jack (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
+  return c.stranger ? 'Mysterious Stranger (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
 }
+
+function popupHTML(c) {
+  if (c.stranger) {
+    return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+      '<div class="ct-header"><span class="ct-title">MYSTERIOUS STRANGER</span><span class="ct-caps">★</span></div>' +
+      '<div class="ct-body"><span class="ct-role">ANY</span><div class="ct-fx">Can be used to lead or follow any role</div></div>' +
+      '<div class="ct-mat">wild</div></div>';
+  }
+  const bld = BLD[c.n];
+  return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+    '<div class="ct-header"><span class="ct-title">' + escapeHtml(c.n) + '</span><span class="ct-caps">' + MAT_VAL[c.m] + '</span></div>' +
+    '<div class="ct-body"><span class="ct-role">' + MAT_ROLE[c.m] + '</span><div class="ct-fx">' + escapeHtml(bld ? bld.t : '') + '</div></div>' +
+    '<div class="ct-mat">' + c.m + '</div></div>';
+}
+function bldgPopupHTML(b) {
+  const bld = BLD[b.n];
+  const mat = bld ? bld.m : b.site;
+  return '<div class="ct-wrap"><div class="ct-scanner"></div>' +
+    '<div class="ct-header"><span class="ct-title">' + escapeHtml(b.n) + '</span><span class="ct-caps">' + MAT_VAL[mat] + '</span></div>' +
+    '<div class="ct-body"><span class="ct-role">' + MAT_ROLE[mat] + '</span><div class="ct-fx">' + escapeHtml(bld ? bld.t : '') + '</div></div>' +
+    '<div class="ct-mat">' + (b.done ? 'COMPLETE' : b.mats.length + '/' + MAT_VAL[b.site]) + '</div></div>';
+}
+function showTip(ev, html, borderClass) {
+  ev.stopPropagation();
+  const tip = $('cardtip');
+  tip.className = 'c-' + borderClass;
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  let top = r.top - th - 8;
+  if (top < 8) top = r.bottom + 8;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideTip() { const t = $('cardtip'); if (t) t.style.display = 'none'; }
 
 function log(msg) {
   const el = document.createElement('div');
@@ -528,7 +680,7 @@ function load() {
 const REC_KEY = STORE_KEY + ':rec';
 const REC_MAX = 2;
 let recEvents = null;
-const recCard = c => c ? (c.jack ? 'JACK' : c.n + ':' + c.m) : null;
+const recCard = c => c ? (c.stranger ? 'STRANGER' : c.n + ':' + c.m) : null;
 function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
 function recPush(type, data) {
   if (!recEvents) return;
@@ -562,28 +714,29 @@ function recExport() {
 
 function chip(c) {
   const el = document.createElement('span');
-  el.className = 'mchip mat-' + (c.jack ? 'jack' : c.m);
-  el.textContent = c.jack ? 'JACK' : c.n;
-  el.title = c.jack ? 'Wild role' : (BLD[c.n].t + ' — ' + c.m + ' / ' + MAT_ROLE[c.m]);
+  el.className = 'mchip mat-' + (c.stranger ? 'stranger' : c.m);
+  el.textContent = c.stranger ? 'STRANGER' : c.n;
+  el.title = c.stranger ? 'Mysterious Stranger' : (BLD[c.n].t + ' — ' + c.m + ' / ' + MAT_ROLE[c.m]);
+  el.addEventListener('click', ev => showTip(ev, popupHTML(c), c.stranger ? 'stranger' : c.m));
   return el;
 }
 
 function buildView(forIdx) {
   return {
     phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
-    deck: deck.length, jacks,
+    deck: deck.length, strangers,
     leader: leaderIdx,
     winner: lastWinnerIdx,
     msg: $('message').textContent,
-    pool: pool,
+    wasteland: wasteland,
     sites: sites,
     players: players.map((p, i) => ({
       name: p.name, ai: p.ai,
-      influence: p.influence,
+      population: p.population,
       handN: p.hand.length,
-      vaultN: p.vault.length,
+      safeN: p.safe.length,
       stockpile: p.stockpile,
-      clients: p.clients,
+      dwellers: p.dwellers,
       buildings: p.buildings,
       score: gameOver ? score(p) : null,
       hand: i === forIdx ? p.hand : null,
@@ -593,9 +746,9 @@ function buildView(forIdx) {
 
 function renderView(view) {
   // common area
-  const pc = $('pool-cards');
+  const pc = $('wasteland-cards');
   pc.innerHTML = '';
-  view.pool.forEach(c => pc.appendChild(chip(c)));
+  view.wasteland.forEach(c => pc.appendChild(chip(c)));
   const sr = $('sites-row');
   sr.innerHTML = '';
   for (const m of MATS) {
@@ -605,7 +758,7 @@ function renderView(view) {
     sr.appendChild(el);
   }
   $('stat-deck').textContent = view.deck;
-  $('stat-jacks').textContent = view.jacks;
+  $('stat-strangers').textContent = view.strangers;
   $('stat-leader').textContent = view.players[view.leader].name;
   $('stat-wins').textContent = stats.wins;
 
@@ -619,19 +772,53 @@ function renderView(view) {
     const scoreTxt = p.score != null ? ' · ' + p.score + ' pts' : '';
     el.innerHTML =
       '<div class="hdr"><span class="nm">' + escapeHtml(p.name) + ' <span class="tag">' + tag + '</span></span>' +
-      '<span class="inf">◆ ' + p.influence + scoreTxt + '</span></div>' +
-      '<div class="row"><span class="lbl">hand ' + p.handN + ' · vault ' + p.vaultN + '</span></div>';
-    const rows = [
-      ['buildings', p.buildings.map(b =>
-        '<span class="bldg' + (b.done ? ' done' : '') + '">' + escapeHtml(b.n) +
-        ' <span class="prog">' + (b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site]) + '</span></span>').join('')],
-      ['clients', p.clients.map(c => '<span class="mchip mat-' + c.m + '">' + MAT_ROLE[c.m].slice(0, 4) + '</span>').join('')],
-      ['stockpile', p.stockpile.map(c => '<span class="mchip mat-' + c.m + '">' + c.m.slice(0, 4) + '</span>').join('')],
+      '<span class="inf">◆ ' + p.population + scoreTxt + '</span></div>' +
+      '<div class="row"><span class="lbl">hand ' + p.handN + ' · safe ' + p.safeN + '</span></div>';
+    const rowDefs = [
+      { lbl: 'buildings', items: p.buildings },
+      { lbl: 'dwellers', items: p.dwellers },
+      { lbl: 'stockpile', items: p.stockpile },
     ];
-    for (const [lbl, html] of rows) {
+    for (const rd of rowDefs) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = '<span class="lbl">' + lbl + '</span><div class="chips">' + html + '</div>';
+      const lb = document.createElement('span');
+      lb.className = 'lbl';
+      lb.textContent = rd.lbl;
+      row.appendChild(lb);
+      const chips = document.createElement('div');
+      chips.className = 'chips';
+      if (rd.lbl === 'buildings') {
+        for (const b of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'bldg' + (b.done ? ' done' : '');
+          sp.textContent = b.n + ' ';
+          const prog = document.createElement('span');
+          prog.className = 'prog';
+          prog.textContent = b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site];
+          sp.appendChild(prog);
+          const bld = BLD[b.n];
+          sp.addEventListener('click', ev => showTip(ev, bldgPopupHTML(b), bld ? bld.m : b.site));
+          chips.appendChild(sp);
+        }
+      } else if (rd.lbl === 'dwellers') {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = MAT_ROLE[c.m].slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      } else {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = c.m.slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      }
+      row.appendChild(chips);
       el.appendChild(row);
     }
     tb.appendChild(el);
@@ -750,39 +937,39 @@ async function choose(p, label, options) {
 
 function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
 
-async function doThink(p) {
+async function doResearch(p) {
   const opts = [];
   const limit = handLimit(p);
   const refillN = Math.max(1, limit - p.hand.length);
   opts.push({ id: 'refill', label: 'Draw ' + refillN + ' (to hand limit ' + limit + ')', score: refillN * 3 });
-  if (jacks > 0) opts.push({ id: 'jack', label: 'Take a Jack', score: 4 });
-  const pick = await choose(p, p.name + ' thinks…', opts);
-  if (pick === 'jack') {
-    jacks--;
-    p.hand.push({ jack: true });
-    recPush('draw', { player: p.name, card: 'JACK' });
-    log(p.name + ' thinks and takes a Jack.');
+  if (strangers > 0) opts.push({ id: 'stranger', label: 'Take a Mysterious Stranger', score: 4 });
+  const pick = await choose(p, p.name + ' researches…', opts);
+  if (pick === 'stranger') {
+    strangers--;
+    p.hand.push({ stranger: true });
+    recPush('draw', { player: p.name, card: 'STRANGER' });
+    log(p.name + ' researches and takes a Mysterious Stranger.');
   } else {
     let n = 0;
     for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
-    log(p.name + ' thinks and draws ' + n + '.');
+    log(p.name + ' researches and draws ' + n + '.');
   }
 }
 
 function leadableOptions(p) {
   const opts = [];
   const byRole = {};
-  p.hand.forEach((c, i) => { if (!c.jack) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
-  const hasJack = p.hand.some(c => c.jack);
+  p.hand.forEach((c, i) => { if (!c.stranger) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+  const hasStranger = p.hand.some(c => c.stranger);
   for (const role of ROLES) {
     if (byRole[role]) {
       opts.push({ id: 'lead:' + role + ':' + byRole[role][0], label: 'Lead ' + role + ' (' + p.hand[byRole[role][0]].n + ')', role });
     }
-    if (hasJack) {
-      opts.push({ id: 'leadjack:' + role, label: 'Lead ' + role + ' (Jack)', role });
+    if (hasStranger) {
+      opts.push({ id: 'leadstranger:' + role, label: 'Lead ' + role + ' (Mysterious Stranger)', role });
     }
-    if (!byRole[role] && !hasJack && has(p, 'circus')) {
-      // two same-role cards act as a jack for any role
+    if (!byRole[role] && !hasStranger && has(p, 'circus')) {
+      // two same-role cards act as a stranger for any role
       const pair = Object.values(byRole).find(a => a.length >= 2);
       if (pair) opts.push({ id: 'leadpair:' + role + ':' + pair[0] + ':' + pair[1], label: 'Lead ' + role + ' (Circus pair)', role });
     }
@@ -795,8 +982,8 @@ function playLead(p, id) {
   if (parts[0] === 'lead') {
     const c = p.hand.splice(Number(parts[2]), 1)[0];
     p.played = [c];
-  } else if (parts[0] === 'leadjack') {
-    const ji = p.hand.findIndex(c => c.jack);
+  } else if (parts[0] === 'leadstranger') {
+    const ji = p.hand.findIndex(c => c.stranger);
     p.played = [p.hand.splice(ji, 1)[0]];
   } else {
     const i1 = Number(parts[2]), i2 = Number(parts[3]);
@@ -809,85 +996,85 @@ function playLead(p, id) {
 
 /* ----- role performances ----- */
 
-function poolOptions(role, p) {
-  // options to take/hire pool cards, scored for the CPU by usefulness
-  return pool.map((c, i) => {
+function wastelandOptions(role, p) {
+  // options to take/hire wasteland cards, scored for the CPU by usefulness
+  return wasteland.map((c, i) => {
     let s = MAT_VAL[c.m];
-    if (role === 'PATRON') s = MAT_VAL[c.m] + (p.clients.some(q => q.m === c.m) ? -1 : 2);
-    if (role === 'LABORER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
-    return { id: 'pool:' + i, label: c.n + ' [' + c.m + ']', score: s };
+    if (role === 'RECRUITER') s = MAT_VAL[c.m] + (p.dwellers.some(q => q.m === c.m) ? -1 : 2);
+    if (role === 'SCAVENGER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
+    return { id: 'wasteland:' + i, label: c.n + ' [' + c.m + ']', score: s };
   });
 }
 
-async function actLABORER(p) {
-  const opts = poolOptions('LABORER', p);
-  if (has(p, 'dock')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'From hand: ' + cardLabel(c), score: 1 }); });
+async function actSCAVENGER(p) {
+  const opts = wastelandOptions('SCAVENGER', p);
+  if (has(p, 'dock')) p.hand.forEach((c, i) => { if (!c.stranger) opts.push({ id: 'hand:' + i, label: 'From hand: ' + cardLabel(c), score: 1 }); });
   opts.push({ id: 'skip', label: 'Skip', score: -5 });
-  const pick = await choose(p, p.name + ': Laborer — take a material', opts);
+  const pick = await choose(p, p.name + ': Scavenger — take a material', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
-  const c = (src === 'pool' ? pool : p.hand).splice(Number(idx), 1)[0];
+  const c = (src === 'wasteland' ? wasteland : p.hand).splice(Number(idx), 1)[0];
   if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
 }
 
-async function actPATRON(p) {
-  if (p.clients.length >= clientLimit(p)) return;
-  const opts = poolOptions('PATRON', p);
-  if (has(p, 'aqueduct')) p.hand.forEach((c, i) => { if (!c.jack) opts.push({ id: 'hand:' + i, label: 'Hire from hand: ' + cardLabel(c), score: 2 }); });
+async function actRECRUITER(p) {
+  if (p.dwellers.length >= dwellerLimit(p)) return;
+  const opts = wastelandOptions('RECRUITER', p);
+  if (has(p, 'aqueduct')) p.hand.forEach((c, i) => { if (!c.stranger) opts.push({ id: 'hand:' + i, label: 'Hire from hand: ' + cardLabel(c), score: 2 }); });
   if (has(p, 'bar') && deck.length) opts.push({ id: 'deck:0', label: 'Hire blind off the deck', score: 1.5 });
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
-  const pick = await choose(p, p.name + ': Patron — hire a client', opts);
+  const pick = await choose(p, p.name + ': Recruiter — hire a dweller', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   let c = null;
-  if (src === 'pool') c = pool.splice(Number(idx), 1)[0];
+  if (src === 'wasteland') c = wasteland.splice(Number(idx), 1)[0];
   else if (src === 'hand') c = p.hand.splice(Number(idx), 1)[0];
   else c = draw1();
   if (!c) return;
-  p.clients.push(c);
-  log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' client (' + c.n + ').');
+  p.dwellers.push(c);
+  log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' dweller (' + c.n + ').');
   checkForum(p);
   if (has(p, 'bath')) {
-    log('Bath: the new client gets right to work.');
+    log('Bath: the new dweller gets right to work.');
     await performRole(p, MAT_ROLE[c.m], true);
   }
 }
 
-function buildTargets(p, mat, viaArchitect) {
+function buildTargets(p, mat, viaOverseer) {
   // incomplete buildings this material could go into
   const t = [];
   p.buildings.forEach((b, i) => {
     if (b.done) return;
     const siteM = b.site;
     const ok = mat === siteM ||
-      (mat === 'rubble' && has(p, 'tower')) ||
-      (siteM === 'stone' && has(p, 'road')) ||
-      (mat === 'marble' && has(p, 'scriptorium'));
+      (mat === 'scrap' && has(p, 'tower')) ||
+      (siteM === 'chems' && has(p, 'road')) ||
+      (mat === 'hightech' && has(p, 'scriptorium'));
     if (ok) t.push(i);
   });
   return t;
 }
 
-function addMaterial(p, bIdx, card, viaArchitect) {
+function addMaterial(p, bIdx, card, viaOverseer) {
   const b = p.buildings[bIdx];
   b.mats.push(card);
   let complete = b.mats.length >= MAT_VAL[b.site];
-  if (card.m === 'marble' && has(p, 'scriptorium')) complete = true;
-  if (viaArchitect && BLD[b.n].fx === 'villa') complete = true;
+  if (card.m === 'hightech' && has(p, 'scriptorium')) complete = true;
+  if (viaOverseer && BLD[b.n].fx === 'villa') complete = true;
   log(p.name + ' adds ' + card.m + ' to ' + b.n + (complete ? ' — COMPLETE!' : ' (' + b.mats.length + '/' + MAT_VAL[b.site] + ').'));
   if (complete) {
     b.done = true;
-    p.influence += MAT_VAL[b.site];
-    log(p.name + ' gains ' + MAT_VAL[b.site] + ' influence (' + p.influence + ').');
+    p.population += MAT_VAL[b.site];
+    log(p.name + ' gains ' + MAT_VAL[b.site] + ' population (' + p.population + ').');
     checkForum(p);
   }
 }
 
-async function actBUILDER(p, viaArchitect) {
+async function actBUILDER(p, viaOverseer) {
   const opts = [];
   // start a new building
   p.hand.forEach((c, i) => {
-    if (c.jack || p.buildings.some(b => b.n === c.n)) return;
+    if (c.stranger || p.buildings.some(b => b.n === c.n)) return;
     const anySite = BLD[c.n].fx === 'statue';
     const siteMats = anySite ? MATS.filter(m => sites[m] > 0) : (sites[c.m] > 0 ? [c.m] : []);
     for (const sm of siteMats) {
@@ -896,18 +1083,18 @@ async function actBUILDER(p, viaArchitect) {
     }
   });
   // add material
-  const srcArr = viaArchitect ? p.stockpile : p.hand;
+  const srcArr = viaOverseer ? p.stockpile : p.hand;
   srcArr.forEach((c, i) => {
-    if (c.jack) return;
-    for (const bIdx of buildTargets(p, c.m, viaArchitect)) {
+    if (c.stranger) return;
+    for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
       const b = p.buildings[bIdx];
-      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaArchitect && BLD[b.n].fx === 'villa') || (c.m === 'marble' && has(p, 'scriptorium'));
+      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa') || (c.m === 'hightech' && has(p, 'scriptorium'));
       opts.push({ id: 'add:' + i + ':' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''),
                   score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
     }
   });
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
-  const roleName = viaArchitect ? 'Architect' : 'Craftsman';
+  const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
   if (!pick || pick === 'skip') return;
   const parts = pick.split(':');
@@ -920,75 +1107,75 @@ async function actBUILDER(p, viaArchitect) {
     if (Object.values(sites).every(n => n <= 0)) endFlag = true;
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
-    addMaterial(p, Number(parts[2]), c, viaArchitect);
+    addMaterial(p, Number(parts[2]), c, viaOverseer);
   }
-  if (!viaArchitect && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
+  if (!viaOverseer && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
 }
 
-async function actLEGIONARY(p) {
-  const mats = [...new Set(p.hand.filter(c => !c.jack).map(c => c.m))];
+async function actRAIDER(p) {
+  const mats = [...new Set(p.hand.filter(c => !c.stranger).map(c => c.m))];
   const opts = mats.map(m => {
-    const inPool = pool.some(c => c.m === m);
-    const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.jack && c.m === m)).length;
-    return { id: 'demand:' + m, label: 'Demand ' + m + (inPool ? ' (pool has one)' : ''), score: (inPool ? 2 : 0) + victims * 2 + MAT_VAL[m] };
+    const inWasteland = wasteland.some(c => c.m === m);
+    const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.stranger && c.m === m)).length;
+    return { id: 'demand:' + m, label: 'Demand ' + m + (inWasteland ? ' (wasteland has one)' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] };
   });
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
-  const pick = await choose(p, p.name + ': Legionary — demand a material', opts);
+  const pick = await choose(p, p.name + ': Raider — demand a material', opts);
   if (!pick || pick === 'skip') return;
   const m = pick.split(':')[1];
   log(p.name + ' demands ' + m + '!');
-  const pi = pool.findIndex(c => c.m === m);
-  if (pi >= 0) { p.stockpile.push(pool.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the pool.'); }
+  const pi = wasteland.findIndex(c => c.m === m);
+  if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
   for (const q of players) {
     if (q === p) continue;
     if (has(q, 'palisade') || has(q, 'wall')) { log(q.name + "'s defenses hold."); continue; }
-    const hi = q.hand.findIndex(c => !c.jack && c.m === m);
+    const hi = q.hand.findIndex(c => !c.stranger && c.m === m);
     if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); }
   }
 }
 
-async function actMERCHANT(p) {
-  if (p.vault.length >= vaultLimit(p)) return;
-  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Vault ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
-  if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Vault blind off the deck', score: 4 });
+async function actTRADER(p) {
+  if (p.safe.length >= safeLimit(p)) return;
+  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Safe ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
+  if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Safe blind off the deck', score: 4 });
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
-  const pick = await choose(p, p.name + ': Merchant — bank a material', opts);
+  const pick = await choose(p, p.name + ': Trader — bank a material', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   const c = src === 'stock' ? p.stockpile.splice(Number(idx), 1)[0] : draw1();
-  if (c) { p.vault.push(c); log(p.name + ' banks a material in the vault.'); }
+  if (c) { p.safe.push(c); log(p.name + ' banks a material in the safe.'); }
 }
 
 async function performRole(p, role, isBathEcho) {
   if (gameOver) return;
-  const recB = { stock: p.stockpile.length, vault: p.vault.length, clients: p.clients.length,
+  const recB = { stock: p.stockpile.length, safe: p.safe.length, dwellers: p.dwellers.length,
                  buildings: p.buildings.length, done: p.buildings.filter(b => b.done).length,
-                 hand: p.hand.length, influence: p.influence };
-  if (role === 'LABORER') await actLABORER(p);
-  else if (role === 'PATRON') await actPATRON(p);
-  else if (role === 'CRAFTSMAN') await actBUILDER(p, false);
-  else if (role === 'ARCHITECT') await actBUILDER(p, true);
-  else if (role === 'LEGIONARY') await actLEGIONARY(p);
-  else if (role === 'MERCHANT') await actMERCHANT(p);
+                 hand: p.hand.length, population: p.population };
+  if (role === 'SCAVENGER') await actSCAVENGER(p);
+  else if (role === 'RECRUITER') await actRECRUITER(p);
+  else if (role === 'ENGINEER') await actBUILDER(p, false);
+  else if (role === 'OVERSEER') await actBUILDER(p, true);
+  else if (role === 'RAIDER') await actRAIDER(p);
+  else if (role === 'TRADER') await actTRADER(p);
   recPush('perform', { player: p.name, role, echo: !!isBathEcho, result: {
     stockpiled: p.stockpile.length - recB.stock,
-    vaulted: p.vault.length - recB.vault,
-    hired: p.clients.length - recB.clients,
+    safed: p.safe.length - recB.safe,
+    hired: p.dwellers.length - recB.dwellers,
     started: p.buildings.length - recB.buildings,
     completed: p.buildings.filter(b => b.done).length - recB.done,
     hand: p.hand.length - recB.hand,
-    influence: p.influence - recB.influence,
+    population: p.population - recB.population,
   } });
   render();
 }
 
 function checkForum(p) {
   if (!has(p, 'forum')) return;
-  const roles = new Set(p.clients.map(c => MAT_ROLE[c.m]));
+  const roles = new Set(p.dwellers.map(c => MAT_ROLE[c.m]));
   if (ROLES.every(r => roles.has(r))) {
     gameOver = true;
     lastWinnerIdx = players.indexOf(p);
-    log('★ FORUM! ' + p.name + ' has a client of every role and WINS.');
+    log('★ FORUM! ' + p.name + ' has a dweller of every role and WINS.');
   }
 }
 
@@ -999,22 +1186,22 @@ async function playTurn(gen) {
   setMessage(leader.name + ' leads…');
   render();
 
-  const opts = [{ id: 'think', label: 'THINK (draw cards)', score: leader.hand.length <= 2 ? 8 : 2 }];
+  const opts = [{ id: 'research', label: 'RESEARCH (draw cards)', score: leader.hand.length <= 2 ? 8 : 2 }];
   for (const o of leadableOptions(leader)) {
     let s = 3;
-    if (o.role === 'CRAFTSMAN' || o.role === 'ARCHITECT') s = 5;
-    if (o.role === 'PATRON' && pool.length) s = 4.5;
-    if (o.role === 'MERCHANT' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
-    if (o.role === 'LABORER' && pool.length) s = 3.5;
-    if (o.id.startsWith('leadjack')) s -= 1; // CPU saves Jacks when a real card will do
+    if (o.role === 'ENGINEER' || o.role === 'OVERSEER') s = 5;
+    if (o.role === 'RECRUITER' && wasteland.length) s = 4.5;
+    if (o.role === 'TRADER' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
+    if (o.role === 'SCAVENGER' && wasteland.length) s = 3.5;
+    if (o.id.startsWith('leadstranger')) s -= 1; // CPU saves Mysterious Strangers when a real card will do
     opts.push({ ...o, score: s });
   }
-  const pick = await choose(leader, leader.name + ' — think or lead?', opts);
+  const pick = await choose(leader, leader.name + ' — research or lead?', opts);
   if (gen !== epoch) return;
 
-  if (pick === 'think') {
-    recPush('turn', { leader: leader.name, role: 'think' });
-    await doThink(leader);
+  if (pick === 'research') {
+    recPush('turn', { leader: leader.name, role: 'research' });
+    await doResearch(leader);
     render();
     return;
   }
@@ -1027,20 +1214,20 @@ async function playTurn(gen) {
 
   for (let k = 1; k < players.length; k++) {
     const q = players[(leaderIdx + k) % players.length];
-    const followIdx = q.hand.findIndex(c => !c.jack && MAT_ROLE[c.m] === role);
-    const jackIdx = q.hand.findIndex(c => c.jack);
+    const followIdx = q.hand.findIndex(c => !c.stranger && MAT_ROLE[c.m] === role);
+    const strangerIdx = q.hand.findIndex(c => c.stranger);
     const fopts = [];
     if (followIdx >= 0) fopts.push({ id: 'follow:' + followIdx, label: 'Follow ' + role + ' (' + q.hand[followIdx].n + ')', score: 5 });
-    if (jackIdx >= 0) fopts.push({ id: 'follow:' + jackIdx, label: 'Follow ' + role + ' (Jack)', score: followIdx >= 0 ? 3.5 : 4 });
-    if (followIdx < 0 && jackIdx < 0 && has(q, 'circus')) {
-      // two same-role cards act as a jack when following, too
+    if (strangerIdx >= 0) fopts.push({ id: 'follow:' + strangerIdx, label: 'Follow ' + role + ' (Mysterious Stranger)', score: followIdx >= 0 ? 3.5 : 4 });
+    if (followIdx < 0 && strangerIdx < 0 && has(q, 'circus')) {
+      // two same-role cards act as a stranger when following, too
       const byRole = {};
-      q.hand.forEach((c, i) => { if (!c.jack) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+      q.hand.forEach((c, i) => { if (!c.stranger) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
       const pair = Object.values(byRole).find(a => a.length >= 2);
       if (pair) fopts.push({ id: 'followpair:' + pair[0] + ':' + pair[1], label: 'Follow ' + role + ' (Circus pair)', score: 3.5 });
     }
-    fopts.push({ id: 'think', label: 'THINK instead', score: q.hand.length <= 2 ? 6 : 3 });
-    const fp = await choose(q, q.name + ' — follow ' + role + ' or think?', fopts);
+    fopts.push({ id: 'research', label: 'RESEARCH instead', score: q.hand.length <= 2 ? 6 : 3 });
+    const fp = await choose(q, q.name + ' — follow ' + role + ' or research?', fopts);
     if (gen !== epoch) return;
     if (fp && fp.startsWith('followpair')) {
       const i1 = Number(fp.split(':')[1]), i2 = Number(fp.split(':')[2]);
@@ -1055,31 +1242,31 @@ async function playTurn(gen) {
       participants.push(q);
       log(q.name + ' follows.');
     } else {
-      await doThink(q);
+      await doResearch(q);
       if (gen !== epoch) return;
     }
     render();
   }
 
-  // perform: each participant acts once + once per matching client
+  // perform: each participant acts once + once per matching dweller
   for (const p of participants) {
     if (gameOver) break;
-    const clientsBefore = [...p.clients]; // snapshot before acting: same-turn hires only act via Bath
+    const dwellersBefore = [...p.dwellers]; // snapshot before acting: same-turn hires only act via Bath
     await performRole(p, role, false);
     if (gen !== epoch) return;
-    for (const c of clientsBefore) {
+    for (const c of dwellersBefore) {
       if (gameOver) break;
       if (MAT_ROLE[c.m] === role) {
-        log(p.name + "'s " + role + ' client acts.');
+        log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
       }
     }
   }
 
-  // played cards wash into the pool
+  // played cards wash into the wasteland
   for (const p of participants) {
-    for (const c of (p.played || [])) { if (!c.jack) pool.push(c); else jacks++; }
+    for (const c of (p.played || [])) { if (!c.stranger) wasteland.push(c); else strangers++; }
     p.played = null;
   }
   render();
@@ -1095,20 +1282,20 @@ async function playMatch() {
   $('round-controls').style.display = 'none';
 
   deck = shuffle(buildDeck());
-  jacks = 6;
-  pool = [];
+  strangers = 6;
+  wasteland = [];
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
   recStart({
     players: players.map(p => ({ name: p.name, kind: p.remote ? 'remote' : (p.ai ? 'cpu' : 'human') })),
     firstLeader: players[0].name,
   });
-  recPush('deck', { cards: deck.map(c => recCard(c)), jacks: jacks, sites: Object.assign({}, sites) });
+  recPush('deck', { cards: deck.map(c => recCard(c)), strangers: strangers, sites: Object.assign({}, sites) });
   for (const p of players) {
-    p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = [];
-    p.influence = 2; p.played = null;
+    p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = [];
+    p.population = 2; p.played = null;
     for (let i = 0; i < 4; i++) addToHand(p, draw1());
   }
-  for (const p of players) pool.push(draw1()); // prime the pool
+  for (const p of players) wasteland.push(draw1()); // prime the wasteland
   leaderIdx = 0;
   log('— New game: the city rises again. —');
   render();
@@ -1126,18 +1313,18 @@ async function playMatch() {
   let sharedWin = null;
   if (!gameOver) {
     // deck, sites, or the safety cap exhausted: score it
-    const vaultVal = p => p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0);
+    const safeVal = p => p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
     const best = Math.max(...players.map(p => score(p)));
     let winners = players.filter(p => score(p) === best);
     if (winners.length > 1) {
-      // tiebreak: higher vault value wins
-      const bv = Math.max(...winners.map(vaultVal));
-      winners = winners.filter(p => vaultVal(p) === bv);
+      // tiebreak: higher safe value wins
+      const bv = Math.max(...winners.map(safeVal));
+      winners = winners.filter(p => safeVal(p) === bv);
     }
     lastWinnerIdx = players.indexOf(winners[0]);
     if (winners.length > 1) {
       sharedWin = winners.map(p => p.name).join(' & ');
-      log('Tie at ' + best + ' pts, vaults even — ' + sharedWin + ' share the win.');
+      log('Tie at ' + best + ' pts, safes even — ' + sharedWin + ' share the win.');
     }
     gameOver = true;
   }
@@ -1152,7 +1339,7 @@ async function playMatch() {
     shared: sharedWin || null,
     players: players.map(p => ({
       name: p.name, score: score(p),
-      vault: p.vault.reduce((a, c) => a + MAT_VAL[c.m], 0),
+      safe: p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0),
       buildings: p.buildings.map(b => ({ n: b.n, done: !!b.done })),
     })),
   });
@@ -1179,13 +1366,13 @@ function newGame() {
   }
   gameOver = false;
   gameActive = false;
-  for (const p of players) { p.hand = []; p.stockpile = []; p.vault = []; p.clients = []; p.buildings = []; p.influence = 2; p.played = null; }
-  deck = []; pool = []; jacks = 6;
+  for (const p of players) { p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = []; p.population = 2; p.played = null; }
+  deck = []; wasteland = []; strangers = 6;
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
   $('btn-deal').textContent = 'Start game';
   $('round-controls').style.display = '';
   $('opts').innerHTML = '';
-  setMessage('Lead roles, hire clients, raise buildings. Start when ready.');
+  setMessage('Lead roles, hire dwellers, build rooms. Start when ready.');
   render();
 }
 
@@ -1553,9 +1740,12 @@ $('btn-games').addEventListener('click', () => { location.href = '../index.html'
 
 /* ---------- boot ---------- */
 
+document.addEventListener('click', hideTip);
+window.addEventListener('scroll', hideTip, true);
+
 load();
 newGame();
-log('Welcome to the forum. Lead well, build fast, and mind the legions.');
+log('Welcome to the wasteland. Scavenge well, build fast, and mind the raiders.');
 
 if (window.Peer) {
   const joinCode = (new URLSearchParams(location.search).get('join') || '')
