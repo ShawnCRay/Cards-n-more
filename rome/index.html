@@ -944,16 +944,16 @@ async function doResearch(p) {
   const refillN = Math.max(1, limit - p.hand.length);
   opts.push({ id: 'refill', label: 'Draw ' + refillN + ' (to hand limit ' + limit + ')', score: refillN * 3 });
   if (strangers > 0) opts.push({ id: 'stranger', label: 'Take a Mysterious Stranger', score: 4 });
-  const pick = await choose(p, p.name + ' researches…', opts);
+  const pick = await choose(p, p.name + (p.name === 'You' ? ' research' : ' researches') + '…', opts);
   if (pick === 'stranger') {
     strangers--;
     p.hand.push({ stranger: true });
     recPush('draw', { player: p.name, card: 'STRANGER' });
-    log(p.name + ' researches and takes a Mysterious Stranger.');
+    log(p.name + (p.name === 'You' ? ' research' : ' researches') + ' and takes a Mysterious Stranger.');
   } else {
     let n = 0;
     for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
-    log(p.name + ' researches and draws ' + n + '.');
+    log(p.name + (p.name === 'You' ? ' research' : ' researches') + ' and draws ' + n + '.');
   }
   if (has(p, 'tribunal') && strangers > 0) {
     strangers--;
@@ -970,7 +970,9 @@ function leadableOptions(p) {
   const hasStranger = p.hand.some(c => c.stranger);
   for (const role of ROLES) {
     if (byRole[role]) {
-      opts.push({ id: 'lead:' + role + ':' + byRole[role][0], label: 'Lead ' + role + ' (' + p.hand[byRole[role][0]].n + ')', role });
+      for (const idx of byRole[role]) {
+        opts.push({ id: 'lead:' + role + ':' + idx, label: 'Lead ' + role + ' (' + p.hand[idx].n + ')', role });
+      }
     }
     if (hasStranger) {
       opts.push({ id: 'leadstranger:' + role, label: 'Lead ' + role + ' (Mysterious Stranger)', role });
