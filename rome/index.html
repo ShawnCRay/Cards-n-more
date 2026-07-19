@@ -554,6 +554,7 @@ const BUILDINGS = [
   { n: 'Blind Requisition Bureau',      m: 'tech',    fx: 'atrium',      t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Decontamination Shower',        m: 'tech',    fx: 'bath',        t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',     t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
+  { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'High-Capacity Utility Main',    m: 'concrete', fx: 'aqueduct',    t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
   { n: 'Reinforced Vault Door',        m: 'concrete', fx: 'wall',        t: 'Passive: Immune to RAIDER demands. Endgame: +1 Cap for every two materials in your STOCKPILE' },
   { n: 'Wasteland Outpost',       m: 'concrete', fx: 'tower',       t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
@@ -1124,6 +1125,17 @@ async function actBUILDER(p, viaOverseer) {
                   score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
     }
   });
+  if (viaOverseer && has(p, 'archway')) {
+    wasteland.forEach((c, wi) => {
+      if (c.stranger) return;
+      for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
+        const b = p.buildings[bIdx];
+        const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa');
+        opts.push({ id: 'wastelandadd:' + wi + ':' + bIdx, label: 'Add ' + c.m + ' (from wasteland) to ' + b.n + (finishing ? ' (completes!)' : ''),
+                    score: finishing ? 12 + MAT_VAL[b.site] * 2 : 7 });
+      }
+    });
+  }
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
   const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
@@ -1136,6 +1148,9 @@ async function actBUILDER(p, viaOverseer) {
     p.buildings.push({ n: c.n, site: sm, mats: [], done: false });
     log(p.name + ' starts ' + c.n + ' on a ' + sm + ' site.');
     if (Object.values(sites).every(n => n <= 0)) endFlag = true;
+  } else if (parts[0] === 'wastelandadd') {
+    const c = wasteland.splice(Number(parts[1]), 1)[0];
+    await addMaterial(p, Number(parts[2]), c, viaOverseer);
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
     await addMaterial(p, Number(parts[2]), c, viaOverseer);
