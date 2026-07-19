@@ -543,6 +543,7 @@ const BUILDINGS = [
   { n: 'Barracks',      m: 'scrap',   fx: 'insula',      t: 'Passive: Max DWELLER size +2' },
   { n: 'Wasteland Speakeasy', m: 'scrap',   fx: 'bar',         t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
   { n: 'Chemical Synthesis Lab',        m: 'scrap',   fx: 'road',        t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
+  { n: 'Scrap Compactor',        m: 'scrap',   fx: 'latrine',     t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
   { n: 'Internal Loading Dock',        m: 'rations',     fx: 'dock',        t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Supply Closet',      m: 'rations',     fx: 'market',      t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Perimeter Fencing',    m: 'rations',     fx: 'palisade',    t: 'Passive: Immune to RAIDER actions' },
@@ -557,7 +558,7 @@ const BUILDINGS = [
   { n: 'Prefab Room',       m: 'chems',    fx: 'villa',       t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
   { n: 'Overdrive Stim-Station', m: 'chems',    fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
   { n: 'Vault Mascot Monument',      m: 'hightech',   fx: 'statue',      t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
-  { n: 'Overseer’s Command Center',      m: 'hightech',   fx: 'temple',      t: 'Passive: Max HAND size +4' },
+  { n: 'Overseer\'s Command Center',      m: 'hightech',   fx: 'temple',      t: 'Passive: Max HAND size +4' },
   { n: 'Security Checkpoint',        m: 'concrete',   fx: 'tribunal',    t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech',   fx: 'forum',       t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
 ];
@@ -939,6 +940,16 @@ async function choose(p, label, options) {
 function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
 
 async function doResearch(p) {
+  if (has(p, 'latrine') && p.hand.some(c => !c.stranger)) {
+    const lopts = p.hand.map((c, i) => c.stranger ? null : { id: 'discard:' + i, label: cardLabel(c), score: MAT_VAL[c.m] + (p.dwellers.some(d => d.m === c.m) ? 1 : 0) }).filter(Boolean);
+    lopts.push({ id: 'skip', label: 'Skip', score: -2 });
+    const pick = await choose(p, p.name + ': Scrap Compactor — may discard 1 card to the WASTELAND', lopts);
+    if (pick && pick !== 'skip') {
+      const ci = Number(pick.split(':')[1]);
+      wasteland.push(p.hand.splice(ci, 1)[0]);
+      log(p.name + ' discards a card to the Wasteland (Scrap Compactor).');
+    }
+  }
   const opts = [];
   const limit = handLimit(p);
   const refillN = Math.max(1, limit - p.hand.length);
