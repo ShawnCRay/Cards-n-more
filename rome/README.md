@@ -1,4 +1,4 @@
-# Vault 21 Glory to Rome
+# Vault 21 · Fallout Glory to Rome
 
 A fan adaptation of Carl Chudyk's classic engine-building card game, single-
 file in the game room's post-war skin. Open `index.html` in any browser — no
@@ -11,11 +11,11 @@ Every order card is three things: a role to lead, a material to build with,
 and a building to construct. On your turn, THINK (refill your hand, or take
 a wild Jack) or LEAD a role; others follow or think; everyone who joined
 performs the action once plus once per matching client. Played cards wash
-into the shared pool that Laborers, Patrons, and Legionaries feed on.
+into the shared pool that Scavengers, Recruiters, and Raiders feed on.
 
-Roles: Laborer (stockpile from pool), Patron (hire clients), Craftsman
-(build from hand), Architect (build from stockpile), Legionary (demand
-materials from the pool and every rival's hand), Merchant (bank stockpile
+Roles: Scavenger (stockpile from pool), Recruiter (hire clients), Engineer
+(build from hand), Overseer (build from stockpile), Raider (demand
+materials from the pool and every rival's hand), Trader (bank stockpile
 into your vault for points).
 
 Buildings complete at materials = site value (1/2/3), grant that much
@@ -27,7 +27,7 @@ you win instantly.
 
 Game ends when the deck or the sites run out; influence + vault decides it.
 Simplifications vs the tabletop original: trimmed building list, no
-out-of-town sites, no petitions, no merchant majority bonus.
+out-of-town sites, no petitions, no trader majority bonus.
 
 ## Multiplayer
 

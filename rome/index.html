@@ -13,12 +13,12 @@
     --cream: #e6d9b8;
     --red: #b8452f;
     --ink: #241d12;
-    --m-rubble: #8a7a5a;
-    --m-wood: #5a7a35;
-    --m-brick: #9c3a26;
+    --m-scrap: #8a7a5a;
+    --m-rations: #5a7a35;
+    --m-tech: #9c3a26;
     --m-concrete: #6b7570;
-    --m-stone: #3f6875;
-    --m-marble: #a89a7a;
+    --m-chems: #3f6875;
+    --m-hightech: #a89a7a;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -135,12 +135,12 @@
     box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
     white-space: nowrap;
   }
-  .mat-rubble   { background: var(--m-rubble); }
-  .mat-wood     { background: var(--m-wood); }
-  .mat-brick    { background: var(--m-brick); }
+  .mat-scrap   { background: var(--m-scrap); }
+  .mat-rations     { background: var(--m-rations); }
+  .mat-tech    { background: var(--m-tech); }
   .mat-concrete { background: var(--m-concrete); }
-  .mat-stone    { background: var(--m-stone); }
-  .mat-marble   { background: var(--m-marble); color: #241d12; text-shadow: none; }
+  .mat-chems    { background: var(--m-chems); }
+  .mat-hightech   { background: var(--m-hightech); color: #241d12; text-shadow: none; }
   .mat-jack     { background: #241d12; color: var(--gold); border-color: var(--gold); }
 
   /* player tableaus */
@@ -371,20 +371,20 @@
       <b>client</b>. Played cards land in the shared <b>pool</b>.</p>
       <p><b>The six roles</b> (each tied to a material):</p>
       <ul>
-        <li><b>SCAVENGER</b> (rubble) — take a pool card into your stockpile.</li>
-        <li><b>RECRUITER</b> (marble) — hire a pool card as a client. Clients act
+        <li><b>SCAVENGER</b> (scrap) — take a pool card into your stockpile.</li>
+        <li><b>RECRUITER</b> (hightech) — hire a pool card as a client. Clients act
         with you every time their role runs.</li>
-        <li><b>ENGINEER</b> (wood) — start a building on a matching site, or add
+        <li><b>ENGINEER</b> (rations) — start a building on a matching site, or add
         a matching material from your hand.</li>
         <li><b>OVERSEER</b> (concrete) — like the engineer, but builds with
         materials from your stockpile.</li>
-        <li><b>RAIDER</b> (brick) — demand a material: take it from the pool
+        <li><b>RAIDER</b> (tech) — demand a material: take it from the pool
         and from every rival's hand.</li>
-        <li><b>TRADER</b> (stone) — bank a stockpile material in your vault
+        <li><b>TRADER</b> (chems) — bank a stockpile material in your vault
         (points at game end).</li>
       </ul>
       <p><b>Buildings</b> complete when they hold materials equal to their
-      value (rubble/wood 1, brick/concrete 2, stone/marble 3). Completing one
+      value (scrap/rations 1, tech/concrete 2, chems/hightech 3). Completing one
       grants that much <b>influence</b> — which raises your clientele and vault
       limits — and switches on the building's power. The powers are where the
       game lives: read them on your hand cards.</p>
@@ -419,32 +419,32 @@ const HEARTBEAT_MS = 3000;
 const STALE_MS = 35000;
 const TURN_TIMEOUT_MS = 60000;
 
-const MATS = ['rubble', 'wood', 'brick', 'concrete', 'stone', 'marble'];
-const MAT_VAL = { rubble: 1, wood: 1, brick: 2, concrete: 2, stone: 3, marble: 3 };
-const MAT_ROLE = { rubble: 'SCAVENGER', wood: 'ENGINEER', brick: 'RAIDER', concrete: 'OVERSEER', stone: 'TRADER', marble: 'RECRUITER' };
+const MATS = ['scrap', 'rations', 'tech', 'concrete', 'chems', 'hightech'];
+const MAT_VAL = { scrap: 1, rations: 1, tech: 2, concrete: 2, chems: 3, hightech: 3 };
+const MAT_ROLE = { scrap: 'SCAVENGER', rations: 'ENGINEER', tech: 'RAIDER', concrete: 'OVERSEER', chems: 'TRADER', hightech: 'RECRUITER' };
 const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUITER'];
 
 /* the curated building set: name, material, short power text, effect key */
 const BUILDINGS = [
-  { n: 'Insula',      m: 'rubble',   fx: 'insula',      t: '+2 clientele limit' },
-  { n: 'Bar',         m: 'rubble',   fx: 'bar',         t: 'Recruiter: may instead hire blind off the deck' },
-  { n: 'Road',        m: 'rubble',   fx: 'road',        t: 'Stone buildings accept any material' },
-  { n: 'Dock',        m: 'wood',     fx: 'dock',        t: 'Scavenger: may instead stockpile a card from hand' },
-  { n: 'Market',      m: 'wood',     fx: 'market',      t: '+2 vault limit' },
-  { n: 'Palisade',    m: 'wood',     fx: 'palisade',    t: 'Immune to Raider demands' },
-  { n: 'Circus',      m: 'wood',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
-  { n: 'Shrine',      m: 'brick',    fx: 'shrine',      t: '+2 hand limit' },
-  { n: 'Atrium',      m: 'brick',    fx: 'atrium',      t: 'Trader: may vault blind off the deck' },
-  { n: 'Bath',        m: 'brick',    fx: 'bath',        t: 'New clients act immediately when hired' },
-  { n: 'Academy',     m: 'brick',    fx: 'academy',     t: 'Draw a card after each Engineer action' },
+  { n: 'Insula',      m: 'scrap',   fx: 'insula',      t: '+2 clientele limit' },
+  { n: 'Bar',         m: 'scrap',   fx: 'bar',         t: 'Recruiter: may instead hire blind off the deck' },
+  { n: 'Road',        m: 'scrap',   fx: 'road',        t: 'Chems buildings accept any material' },
+  { n: 'Dock',        m: 'rations',     fx: 'dock',        t: 'Scavenger: may instead stockpile a card from hand' },
+  { n: 'Market',      m: 'rations',     fx: 'market',      t: '+2 vault limit' },
+  { n: 'Palisade',    m: 'rations',     fx: 'palisade',    t: 'Immune to Raider demands' },
+  { n: 'Circus',      m: 'rations',     fx: 'circus',      t: 'Two same-role cards act as a Jack' },
+  { n: 'Shrine',      m: 'tech',    fx: 'shrine',      t: '+2 hand limit' },
+  { n: 'Atrium',      m: 'tech',    fx: 'atrium',      t: 'Trader: may vault blind off the deck' },
+  { n: 'Bath',        m: 'tech',    fx: 'bath',        t: 'New clients act immediately when hired' },
+  { n: 'Academy',     m: 'tech',    fx: 'academy',     t: 'Draw a card after each Engineer action' },
   { n: 'Aqueduct',    m: 'concrete', fx: 'aqueduct',    t: 'Recruiter: may hire from hand; clientele limit ×2' },
   { n: 'Wall',        m: 'concrete', fx: 'wall',        t: 'Raider-proof; +1 pt per 2 stockpile' },
-  { n: 'Tower',       m: 'concrete', fx: 'tower',       t: 'Rubble may be built into anything' },
-  { n: 'Villa',       m: 'stone',    fx: 'villa',       t: 'Overseer completes it with one material' },
-  { n: 'Scriptorium', m: 'stone',    fx: 'scriptorium', t: 'One marble completes any building' },
-  { n: 'Statue',      m: 'marble',   fx: 'statue',      t: '+3 pts; builds on any site' },
-  { n: 'Temple',      m: 'marble',   fx: 'temple',      t: '+4 hand limit' },
-  { n: 'Forum',       m: 'marble',   fx: 'forum',       t: 'WIN with a client of every role' },
+  { n: 'Tower',       m: 'concrete', fx: 'tower',       t: 'Scrap may be built into anything' },
+  { n: 'Villa',       m: 'chems',    fx: 'villa',       t: 'Overseer completes it with one material' },
+  { n: 'Scriptorium', m: 'chems',    fx: 'scriptorium', t: 'One hightech completes any building' },
+  { n: 'Statue',      m: 'hightech',   fx: 'statue',      t: '+3 pts; builds on any site' },
+  { n: 'Temple',      m: 'hightech',   fx: 'temple',      t: '+4 hand limit' },
+  { n: 'Forum',       m: 'hightech',   fx: 'forum',       t: 'WIN with a client of every role' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
 
@@ -860,9 +860,9 @@ function buildTargets(p, mat, viaOverseer) {
     if (b.done) return;
     const siteM = b.site;
     const ok = mat === siteM ||
-      (mat === 'rubble' && has(p, 'tower')) ||
-      (siteM === 'stone' && has(p, 'road')) ||
-      (mat === 'marble' && has(p, 'scriptorium'));
+      (mat === 'scrap' && has(p, 'tower')) ||
+      (siteM === 'chems' && has(p, 'road')) ||
+      (mat === 'hightech' && has(p, 'scriptorium'));
     if (ok) t.push(i);
   });
   return t;
@@ -872,7 +872,7 @@ function addMaterial(p, bIdx, card, viaOverseer) {
   const b = p.buildings[bIdx];
   b.mats.push(card);
   let complete = b.mats.length >= MAT_VAL[b.site];
-  if (card.m === 'marble' && has(p, 'scriptorium')) complete = true;
+  if (card.m === 'hightech' && has(p, 'scriptorium')) complete = true;
   if (viaOverseer && BLD[b.n].fx === 'villa') complete = true;
   log(p.name + ' adds ' + card.m + ' to ' + b.n + (complete ? ' — COMPLETE!' : ' (' + b.mats.length + '/' + MAT_VAL[b.site] + ').'));
   if (complete) {
@@ -901,7 +901,7 @@ async function actBUILDER(p, viaOverseer) {
     if (c.jack) return;
     for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
       const b = p.buildings[bIdx];
-      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa') || (c.m === 'marble' && has(p, 'scriptorium'));
+      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa') || (c.m === 'hightech' && has(p, 'scriptorium'));
       opts.push({ id: 'add:' + i + ':' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''),
                   score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
     }
