@@ -1026,7 +1026,7 @@ function wastelandOptions(role, p) {
     let s = MAT_VAL[c.m];
     if (role === 'RECRUITER') s = MAT_VAL[c.m] + (p.dwellers.some(q => q.m === c.m) ? -1 : 2);
     if (role === 'SCAVENGER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
-    return { id: 'wasteland:' + i, label: c.n + ' [' + c.m + ']', score: s };
+    return { id: 'wasteland:' + i, label: c.n + ' [' + (role === 'RECRUITER' ? MAT_ROLE[c.m] : c.m) + ']', score: s };
   });
 }
 
