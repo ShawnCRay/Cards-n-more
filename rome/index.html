@@ -558,6 +558,7 @@ const BUILDINGS = [
   { n: 'Reinforced Vault Door',          m: 'concrete', fx: 'wall',     t: 'Passive: Immune to RAIDER demands. Endgame: +1 Cap for every two materials in your STOCKPILE' },
   { n: 'Scrap Compactor',                m: 'scrap',   fx: 'latrine',   t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
   { n: 'Security Checkpoint',            m: 'concrete', fx: 'tribunal', t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
+  { n: 'Signal Repeater',                m: 'hightech', fx: 'stairway', t: 'OVERSEER Action: Add a material to an opponent\'s completed vault room to grant its function to all players' },
   { n: 'Supply Closet',                  m: 'rations', fx: 'market',    t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Technical Library',              m: 'tech',    fx: 'shrine',    t: 'Passive: Max HAND size +2' },
   { n: 'Vault Mascot Monument',          m: 'hightech', fx: 'statue',   t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
@@ -578,6 +579,7 @@ const me = players[0];
 let mySeatIdx = 0;
 
 let deck = [], strangers = 6, wasteland = [], sites = {};
+let sharedFx = new Set();
 let leaderIdx = 0;
 let gameActive = false, gameOver = false, endFlag = false;
 let epoch = 0; // bumped on every new game/match; stale loops bail out
@@ -613,7 +615,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const escapeHtml = s => String(s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function has(p, fx) { return p.buildings.some(b => b.done && BLD[b.n].fx === fx); }
+function has(p, fx) { return p.buildings.some(b => b.done && BLD[b.n].fx === fx) || sharedFx.has(fx); }
 function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple') ? 4 : 0); }
 function dwellerLimit(p) { return (p.population + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
 function safeLimit(p) { return p.population + (has(p, 'market') ? 2 : 0); }
@@ -1144,6 +1146,22 @@ async function actBUILDER(p, viaOverseer) {
       }
     });
   }
+  if (viaOverseer && has(p, 'stairway')) {
+    players.forEach((q, qi) => {
+      if (q === p) return;
+      q.buildings.forEach((b, bi) => {
+        if (!b.done || sharedFx.has(BLD[b.n].fx)) return;
+        p.stockpile.forEach((c, si) => {
+          if (c.stranger) return;
+          opts.push({
+            id: 'stairway:' + si + ':' + qi + ':' + bi,
+            label: 'Add ' + c.m + ' to ' + q.name + "'s " + b.n + ' (share)',
+            score: 10 + MAT_VAL[c.m],
+          });
+        });
+      });
+    });
+  }
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
   const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
@@ -1159,6 +1177,14 @@ async function actBUILDER(p, viaOverseer) {
   } else if (parts[0] === 'wastelandadd') {
     const c = wasteland.splice(Number(parts[1]), 1)[0];
     await addMaterial(p, Number(parts[2]), c, viaOverseer);
+  } else if (parts[0] === 'stairway') {
+    const si = Number(parts[1]), qi = Number(parts[2]), bi = Number(parts[3]);
+    const c = p.stockpile.splice(si, 1)[0];
+    const target = players[qi];
+    const b = target.buildings[bi];
+    b.mats.push(c);
+    sharedFx.add(BLD[b.n].fx);
+    log(p.name + ' adds ' + c.m + ' to ' + target.name + "'s " + b.n + ' via Signal Repeater — ' + b.n + ' is now shared.');
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
     await addMaterial(p, Number(parts[2]), c, viaOverseer);
@@ -1354,6 +1380,7 @@ async function playMatch() {
   strangers = 6;
   wasteland = [];
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  sharedFx = new Set();
   recStart({
     players: players.map(p => ({ name: p.name, kind: p.remote ? 'remote' : (p.ai ? 'cpu' : 'human') })),
     firstLeader: players[0].name,
@@ -1438,6 +1465,7 @@ function newGame() {
   for (const p of players) { p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = []; p.population = 2; p.played = null; }
   deck = []; wasteland = []; strangers = 6;
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  sharedFx = new Set();
   $('btn-deal').textContent = 'Start game';
   $('round-controls').style.display = '';
   $('opts').innerHTML = '';
