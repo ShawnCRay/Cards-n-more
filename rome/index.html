@@ -576,6 +576,7 @@ const BUILDINGS = [
   { n: 'Technical Library',              m: 'tech',    fx: 'shrine',    t: 'Passive: Max HAND size +2' },
   { n: 'VATS Training Lab',              m: 'hightech', fx: 'ludus',    t: 'Passive: TRADER dwellers count as any role' },
   { n: 'Vault Mascot Monument',          m: 'hightech', fx: 'statue',   t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
+  { n: 'Vault-Tec Regional Headquarters', m: 'hightech', fx: 'romanum',  t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role and at least 1 MATERIAL of each type in your STOCKPILE' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech', fx: 'forum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
   { n: 'Wasteland Outpost',              m: 'concrete', fx: 'tower',    t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
@@ -1079,7 +1080,7 @@ async function actSCAVENGER(p) {
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
   const c = (src === 'wasteland' ? wasteland : p.hand).splice(Number(idx), 1)[0];
-  if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
+  if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); checkRomanum(p); }
 }
 
 async function actRECRUITER(p) {
@@ -1099,6 +1100,7 @@ async function actRECRUITER(p) {
   p.dwellers.push(c);
   log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' dweller (' + c.n + ').');
   checkForum(p);
+  checkRomanum(p);
   checkPlebian();
   if (has(p, 'bath')) {
     log('Bath: the new dweller gets right to work.');
@@ -1199,6 +1201,7 @@ async function onCompletion(p, b) {
     }
   }
   if (fx === 'plebian') checkPlebian();
+  if (fx === 'romanum') checkRomanum(p);
 }
 
 async function actBUILDER(p, viaOverseer) {
@@ -1328,6 +1331,7 @@ async function actRAIDER(p) {
     const hi = q.hand.findIndex(c => !c.stranger && c.m === m);
     if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); }
   }
+  checkRomanum(p);
 }
 
 async function actTRADER(p) {
@@ -1382,6 +1386,25 @@ function checkForum(p) {
       lastWinnerIdx = players.indexOf(p);
       log('★ FORUM! ' + p.name + ' has every role covered (TRADER counts as any via VATS Training Lab) and WINS.');
     }
+  }
+}
+
+function checkRomanum(p) {
+  if (!has(p, 'romanum')) return;
+  const dwellerRoles = p.dwellers.map(c => MAT_ROLE[c.m]);
+  const roles = new Set(dwellerRoles);
+  const stockpileMats = new Set(p.stockpile.map(c => c.m));
+  let rolesOk = false;
+  if (ROLES.every(r => roles.has(r))) {
+    rolesOk = true;
+  } else if (has(p, 'ludus') && dwellerRoles.some(r => r === 'TRADER')) {
+    const nonTrader = new Set(dwellerRoles.filter(r => r !== 'TRADER'));
+    if (nonTrader.size >= ROLES.length - 1) rolesOk = true;
+  }
+  if (rolesOk && MATS.every(m => stockpileMats.has(m))) {
+    gameOver = true;
+    lastWinnerIdx = players.indexOf(p);
+    log('★ VAULT-TEC REGIONAL HEADQUARTERS! ' + p.name + ' has every dweller role and every material type — WIN.');
   }
 }
 
