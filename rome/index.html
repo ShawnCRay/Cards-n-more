@@ -545,6 +545,7 @@ const BUILDINGS = [
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
   { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
@@ -1374,6 +1375,18 @@ async function playTurn(gen) {
         log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
+        if (has(p, 'triclinium')) {
+          const freezeOpts = [
+            { id: 'freeze', label: 'Freeze ' + MAT_ROLE[c.m] + ' dweller to safe (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 },
+            { id: 'skip', label: 'Keep dweller', score: 0 },
+          ];
+          const pick = await choose(p, p.name + ': Cryo-Stasis Vault — freeze this dweller?', freezeOpts);
+          if (pick === 'freeze') {
+            p.safe.push(c);
+            p.dwellers = p.dwellers.filter(d => d !== c);
+            log(p.name + ' cryo-freezes a ' + MAT_ROLE[c.m] + ' dweller to the safe.');
+          }
+        }
       }
     }
   }
