@@ -575,6 +575,7 @@ const BUILDINGS = [
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
   { n: 'Wasteland Outpost',              m: 'concrete', fx: 'tower',    t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
   { n: 'Wasteland Speakeasy',            m: 'scrap',   fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
+  { n: 'ZAX Supercomputer',              m: 'hightech', fx: 'palace',    t: 'Passive: May lead/follow with multiple identical cards for additional actions' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
 
@@ -583,7 +584,7 @@ const players = [
   { name: 'You',  cpuName: null,   ai: false, remote: null },
   { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null },
   { name: 'Boone', cpuName: 'Boone', ai: true, remote: null },
-].map(p => ({ ...p, hand: [], stockpile: [], safe: [], dwellers: [], buildings: [], population: 2 }));
+].map(p => ({ ...p, hand: [], stockpile: [], safe: [], dwellers: [], buildings: [], population: 2, palaceActs: 0 }));
 const me = players[0];
 let mySeatIdx = 0;
 
@@ -1007,6 +1008,9 @@ function leadableOptions(p) {
       for (const idx of byRole[role]) {
         opts.push({ id: 'lead:' + role + ':' + idx, label: 'Lead ' + role + ' (' + p.hand[idx].n + ')', role });
       }
+      if (byRole[role].length >= 2 && has(p, 'palace')) {
+        opts.push({ id: 'leadmulti:' + role + ':' + byRole[role].join(','), label: 'Lead ' + role + ' with ' + byRole[role].length + ' cards (ZAX)', role });
+      }
     }
     if (hasStranger) {
       opts.push({ id: 'leadstranger:' + role, label: 'Lead ' + role + ' (Mysterious Stranger)', role });
@@ -1025,16 +1029,25 @@ function playLead(p, id) {
   if (parts[0] === 'lead') {
     const c = p.hand.splice(Number(parts[2]), 1)[0];
     p.played = [c];
+    p.palaceActs = 0;
+  } else if (parts[0] === 'leadmulti') {
+    const indices = parts[2].split(',').map(Number);
+    const cards = indices.map(i => p.hand[i]);
+    p.hand = p.hand.filter((c, i) => !indices.includes(i));
+    p.played = cards;
+    p.palaceActs = cards.length - 1;
   } else if (parts[0] === 'leadstranger') {
     const ji = p.hand.findIndex(c => c.stranger);
     p.played = [p.hand.splice(ji, 1)[0]];
+    p.palaceActs = 0;
   } else {
     const i1 = Number(parts[2]), i2 = Number(parts[3]);
     const cards = [p.hand[i1], p.hand[i2]];
     p.hand = p.hand.filter((c, i) => i !== i1 && i !== i2);
     p.played = cards;
+    p.palaceActs = 0;
   }
-  return parts[1];
+  return parts[parts[0] === 'leadmulti' ? 1 : 1];
 }
 
 /* ----- role performances ----- */
@@ -1382,7 +1395,11 @@ async function playTurn(gen) {
         }
       });
     }
-    const hasMatch = q.hand.some(c => !c.stranger && MAT_ROLE[c.m] === role);
+    const matchingIdxs = q.hand.map((c, i) => !c.stranger && MAT_ROLE[c.m] === role ? i : -1).filter(i => i >= 0);
+    if (matchingIdxs.length >= 2 && has(q, 'palace')) {
+      fopts.push({ id: 'followmulti:' + matchingIdxs.join(','), label: 'Follow ' + role + ' with ' + matchingIdxs.length + ' cards (ZAX)', score: 5 + matchingIdxs.length * 2 });
+    }
+    const hasMatch = matchingIdxs.length > 0;
     const hasStranger = q.hand.some(c => c.stranger);
     if (!hasMatch && !hasStranger && has(q, 'circus')) {
       // two same-role cards act as a stranger when following, too
@@ -1394,16 +1411,26 @@ async function playTurn(gen) {
     fopts.push({ id: 'research', label: 'RESEARCH instead', score: q.hand.length <= 2 ? 6 : 3 });
     const fp = await choose(q, q.name + ' — follow ' + role + ' or research?', fopts);
     if (gen !== epoch) return;
-    if (fp && fp.startsWith('followpair')) {
+    if (fp && fp.startsWith('followmulti')) {
+      const indices = fp.split(':')[1].split(',').map(Number);
+      const cards = indices.map(i => q.hand[i]);
+      q.hand = q.hand.filter((c, i) => !indices.includes(i));
+      q.played = cards;
+      q.palaceActs = cards.length - 1;
+      participants.push(q);
+      log(q.name + ' follows with ' + cards.length + ' cards (ZAX Supercomputer).');
+    } else if (fp && fp.startsWith('followpair')) {
       const i1 = Number(fp.split(':')[1]), i2 = Number(fp.split(':')[2]);
       const cards = [q.hand[i1], q.hand[i2]];
       q.hand = q.hand.filter((c, i) => i !== i1 && i !== i2);
       q.played = cards;
+      q.palaceActs = 0;
       participants.push(q);
       log(q.name + ' follows with a Circus pair.');
     } else if (fp && fp.startsWith('follow')) {
       const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
       q.played = [c];
+      q.palaceActs = 0;
       participants.push(q);
       log(q.name + ' follows.');
     } else {
@@ -1413,7 +1440,7 @@ async function playTurn(gen) {
     render();
   }
 
-  // perform: each participant acts once + once per matching dweller
+  // perform: each participant acts once + once per matching dweller + palace extra actions
   for (const p of participants) {
     if (gameOver) break;
     const dwellersBefore = [...p.dwellers]; // snapshot before acting: same-turn hires only act via Bath
@@ -1439,6 +1466,14 @@ async function playTurn(gen) {
           }
         }
       }
+    }
+    const palaceN = p.palaceActs || 0;
+    delete p.palaceActs;
+    for (let i = 0; i < palaceN; i++) {
+      if (gameOver) break;
+      log(p.name + "'s ZAX Supercomputer grants an extra " + role + ' action.');
+      await performRole(p, role, false);
+      if (gen !== epoch) return;
     }
   }
 
@@ -1481,7 +1516,7 @@ async function playMatch() {
   recPush('deck', { cards: deck.map(c => recCard(c)), strangers: strangers, sites: Object.assign({}, sites) });
   for (const p of players) {
     p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = [];
-    p.population = 2; p.played = null;
+    p.population = 2; p.played = null; p.palaceActs = 0;
     for (let i = 0; i < 4; i++) addToHand(p, draw1());
   }
   for (const p of players) wasteland.push(draw1()); // prime the wasteland
@@ -1555,7 +1590,7 @@ function newGame() {
   }
   gameOver = false;
   gameActive = false;
-  for (const p of players) { p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = []; p.population = 2; p.played = null; }
+  for (const p of players) { p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = []; p.population = 2; p.played = null; p.palaceActs = 0; }
   deck = []; wasteland = []; strangers = 6;
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
   sharedFx = new Set();
