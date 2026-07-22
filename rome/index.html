@@ -575,6 +575,7 @@ const BUILDINGS = [
   { n: 'Supercomputer Terminal',         m: 'tech',    fx: 'school',    t: 'Upon Completion: Execute RESEARCH for each Population' },
   { n: 'Supply Closet',                  m: 'rations', fx: 'market',    t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Technical Library',              m: 'tech',    fx: 'shrine',    t: 'Passive: Max HAND size +2' },
+  { n: 'Turbo-Fluid Grid',               m: 'chems',   fx: 'maximus',    t: 'Passive: Each matching DWELLER performs its action twice' },
   { n: 'VATS Training Lab',              m: 'hightech', fx: 'ludus',    t: 'Passive: TRADER dwellers count as any role' },
   { n: 'Vault Mascot Monument',          m: 'hightech', fx: 'statue',   t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
   { n: 'Vault-Tec Regional Headquarters', m: 'hightech', fx: 'romanum',  t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role and at least 1 MATERIAL of each type in your STOCKPILE' },
@@ -1553,6 +1554,11 @@ async function playTurn(gen) {
         log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
+        if (has(p, 'maximus')) {
+          log(p.name + "'s " + role + ' dweller acts again (Turbo-Fluid Grid).');
+          await performRole(p, role, false);
+          if (gen !== epoch) return;
+        }
         if (has(p, 'triclinium')) {
           const freezeOpts = [
             { id: 'freeze', label: 'Freeze ' + MAT_ROLE[c.m] + ' dweller to safe (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 },
