@@ -553,6 +553,7 @@ const BUILDINGS = [
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
+  { n: 'Industrial Workshop',            m: 'tech',    fx: 'foundry',    t: 'Upon Completion: Perform 1 SCAVENGER action per POPULATION' },
   { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
   { n: 'Mess Hall',                      m: 'rations', fx: 'domus',     t: 'Upon Completion: Perform 1 RECRUITER action' },
@@ -1168,6 +1169,13 @@ async function onCompletion(p, b) {
     log(p.name + ' completes Conditioning Center — performing ' + count + ' RECRUITER actions.');
     for (let i = 0; i < count; i++) {
       await actRECRUITER(p);
+    }
+  }
+  if (fx === 'foundry') {
+    const count = p.population;
+    log(p.name + ' completes Industrial Workshop — performing ' + count + ' SCAVENGER actions.');
+    for (let i = 0; i < count; i++) {
+      await actSCAVENGER(p);
     }
   }
   if (fx === 'prison') {
