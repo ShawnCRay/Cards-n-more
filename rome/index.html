@@ -551,6 +551,7 @@ const BUILDINGS = [
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
   { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
+  { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
   { n: 'Mess Hall',                      m: 'rations', fx: 'domus',     t: 'Upon Completion: Perform 1 RECRUITER action' },
   { n: 'Nutrient Infusion Station',      m: 'rations', fx: 'crane',     t: 'Passive: May use any card to follow OVERSEER actions' },
   { n: 'Overseer\'s Command Center',     m: 'hightech', fx: 'temple',   t: 'Passive: Max HAND size +4' },
@@ -1371,7 +1372,7 @@ async function playTurn(gen) {
     if (gen !== epoch) return;
     for (const c of dwellersBefore) {
       if (gameOver) break;
-      if (MAT_ROLE[c.m] === role) {
+      if (MAT_ROLE[c.m] === role || (role === 'SCAVENGER' && has(p, 'storeroom'))) {
         log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
