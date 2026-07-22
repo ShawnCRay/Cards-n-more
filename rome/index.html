@@ -546,6 +546,7 @@ const BUILDINGS = [
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
   { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
   { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
@@ -1159,6 +1160,13 @@ async function onCompletion(p, b) {
     log(p.name + ' completes Supercomputer Terminal — executing RESEARCH ' + count + ' time' + (count > 1 ? 's' : '') + '.');
     for (let i = 0; i < count; i++) {
       await doResearch(p);
+    }
+  }
+  if (fx === 'garden') {
+    const count = p.population;
+    log(p.name + ' completes Conditioning Center — performing ' + count + ' RECRUITER actions.');
+    for (let i = 0; i < count; i++) {
+      await actRECRUITER(p);
     }
   }
   if (fx === 'prison') {
