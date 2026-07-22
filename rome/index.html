@@ -558,6 +558,7 @@ const BUILDINGS = [
   { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
   { n: 'Mess Hall',                      m: 'rations', fx: 'domus',     t: 'Upon Completion: Perform 1 RECRUITER action' },
+  { n: 'Neuro-Stasis Array',             m: 'chems',   fx: 'catacomb',  t: 'Upon Completion: End the game immediately and score as usual' },
   { n: 'Nutrient Infusion Station',      m: 'rations', fx: 'crane',     t: 'Passive: May use any card to follow OVERSEER actions' },
   { n: 'Overseer\'s Command Center',     m: 'hightech', fx: 'temple',   t: 'Passive: Max HAND size +4' },
   { n: 'Overdrive Stim-Station',         m: 'chems',   fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
@@ -1204,6 +1205,10 @@ async function onCompletion(p, b) {
   }
   if (fx === 'plebian') checkPlebian();
   if (fx === 'romanum') checkRomanum(p);
+  if (fx === 'catacomb') {
+    log(p.name + ' completes Neuro-Stasis Array — the game ends immediately!');
+    endFlag = true;
+  }
 }
 
 async function actBUILDER(p, viaOverseer) {
