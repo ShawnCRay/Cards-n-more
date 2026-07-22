@@ -540,6 +540,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
+  { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
   { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
@@ -1242,6 +1243,9 @@ async function actBUILDER(p, viaOverseer) {
       });
     });
   }
+  if (!viaOverseer && has(p, 'fountain') && deck.length) {
+    opts.push({ id: 'fountain:draw', label: 'Draw from deck as material (Fountain)', score: 7 });
+  }
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
   const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
@@ -1265,6 +1269,30 @@ async function actBUILDER(p, viaOverseer) {
     b.mats.push(c);
     sharedFx.add(BLD[b.n].fx);
     log(p.name + ' adds ' + c.m + ' to ' + target.name + "'s " + b.n + ' via Signal Repeater — ' + b.n + ' is now shared.');
+  } else if (parts[0] === 'fountain') {
+    const c = draw1();
+    if (c) {
+      const targets = buildTargets(p, c.m, viaOverseer);
+      if (targets.length > 0) {
+        const tOpts = targets.map(bIdx => {
+          const b = p.buildings[bIdx];
+          const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (c.m === 'hightech' && has(p, 'scriptorium'));
+          return { id: 'ftarget:' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''), score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 };
+        });
+        tOpts.push({ id: 'ftarget:keep', label: 'Keep ' + c.n + ' in hand', score: 1 });
+        const tPick = await choose(p, p.name + ': Fountain — add ' + c.n + ' to a room?', tOpts);
+        if (tPick && tPick.startsWith('ftarget:')) {
+          const bIdx = Number(tPick.split(':')[1]);
+          await addMaterial(p, bIdx, c, viaOverseer);
+        } else {
+          p.hand.push(c);
+          log(p.name + ' keeps ' + c.n + ' in hand (Fountain).');
+        }
+      } else {
+        p.hand.push(c);
+        log(p.name + ' draws ' + c.n + ' and keeps it (Fountain).');
+      }
+    }
   } else {
     const c = srcArr.splice(Number(parts[1]), 1)[0];
     await addMaterial(p, Number(parts[2]), c, viaOverseer);
