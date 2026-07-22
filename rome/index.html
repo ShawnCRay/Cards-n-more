@@ -548,6 +548,7 @@ const BUILDINGS = [
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
+  { n: 'Conversion Lab',                 m: 'chems',   fx: 'coliseum',   t: 'RAIDER Action: May seize opponent\'s DWELLER and move them to your Overseer\'s Safe as a material' },
   { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
   { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
@@ -1319,8 +1320,25 @@ async function actRAIDER(p) {
     return { id: 'demand:' + m, label: 'Demand ' + m + (inWasteland ? ' (wasteland has one)' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] };
   });
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
+  if (has(p, 'coliseum')) {
+    players.forEach((q, qi) => {
+      if (q === p || !q.dwellers.length) return;
+      if (has(q, 'palisade') || has(q, 'wall')) return;
+      q.dwellers.forEach((d, di) => {
+        opts.push({ id: 'seizedweller:' + qi + ':' + di, label: 'Seize ' + q.name + "'s " + MAT_ROLE[d.m] + ' dweller to safe (' + MAT_VAL[d.m] + ' pts)', score: MAT_VAL[d.m] * 4 });
+      });
+    });
+  }
   const pick = await choose(p, p.name + ': Raider — demand a material', opts);
   if (!pick || pick === 'skip') return;
+  if (pick.startsWith('seizedweller:')) {
+    const qi = Number(pick.split(':')[1]), di = Number(pick.split(':')[2]);
+    const d = players[qi].dwellers.splice(di, 1)[0];
+    if (d) { p.safe.push(d); log(p.name + ' seizes ' + MAT_ROLE[d.m] + ' dweller from ' + players[qi].name + ' to the safe (Conversion Lab).'); }
+    checkPlebian();
+    checkRomanum(p);
+    return;
+  }
   const m = pick.split(':')[1];
   log(p.name + ' demands ' + m + '!');
   const pi = wasteland.findIndex(c => c.m === m);
