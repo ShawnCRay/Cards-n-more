@@ -545,6 +545,7 @@ const BUILDINGS = [
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
@@ -949,6 +950,14 @@ async function choose(p, label, options) {
 function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
 
 async function doResearch(p) {
+  if (has(p, 'vomitorium')) {
+    const discards = p.hand.filter(c => !c.stranger);
+    if (discards.length > 0) {
+      p.hand = p.hand.filter(c => c.stranger);
+      discards.forEach(c => { wasteland.push(c); recPush('discard', { player: p.name, card: recCard(c) }); });
+      log(p.name + ' discards all blueprints to the Wasteland (Decontamination Chamber).');
+    }
+  }
   if (has(p, 'latrine') && p.hand.some(c => !c.stranger)) {
     const lopts = p.hand.map((c, i) => c.stranger ? null : { id: 'discard:' + i, label: cardLabel(c), score: MAT_VAL[c.m] + (p.dwellers.some(d => d.m === c.m) ? 1 : 0) }).filter(Boolean);
     lopts.push({ id: 'skip', label: 'Skip', score: -2 });
