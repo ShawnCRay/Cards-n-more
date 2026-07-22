@@ -570,6 +570,7 @@ const BUILDINGS = [
   { n: 'Supercomputer Terminal',         m: 'tech',    fx: 'school',    t: 'Upon Completion: Execute RESEARCH for each Population' },
   { n: 'Supply Closet',                  m: 'rations', fx: 'market',    t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Technical Library',              m: 'tech',    fx: 'shrine',    t: 'Passive: Max HAND size +2' },
+  { n: 'VATS Training Lab',              m: 'hightech', fx: 'ludus',    t: 'Passive: TRADER dwellers count as any role' },
   { n: 'Vault Mascot Monument',          m: 'hightech', fx: 'statue',   t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech', fx: 'forum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
@@ -1317,11 +1318,21 @@ async function performRole(p, role, isBathEcho) {
 
 function checkForum(p) {
   if (!has(p, 'forum')) return;
-  const roles = new Set(p.dwellers.map(c => MAT_ROLE[c.m]));
+  const dwellerRoles = p.dwellers.map(c => MAT_ROLE[c.m]);
+  const roles = new Set(dwellerRoles);
   if (ROLES.every(r => roles.has(r))) {
     gameOver = true;
     lastWinnerIdx = players.indexOf(p);
     log('★ FORUM! ' + p.name + ' has a dweller of every role and WINS.');
+    return;
+  }
+  if (has(p, 'ludus') && dwellerRoles.some(r => r === 'TRADER')) {
+    const nonTrader = new Set(dwellerRoles.filter(r => r !== 'TRADER'));
+    if (nonTrader.size >= ROLES.length - 1) {
+      gameOver = true;
+      lastWinnerIdx = players.indexOf(p);
+      log('★ FORUM! ' + p.name + ' has every role covered (TRADER counts as any via VATS Training Lab) and WINS.');
+    }
   }
 }
 
@@ -1448,7 +1459,7 @@ async function playTurn(gen) {
     if (gen !== epoch) return;
     for (const c of dwellersBefore) {
       if (gameOver) break;
-      if (MAT_ROLE[c.m] === role || (role === 'SCAVENGER' && has(p, 'storeroom'))) {
+      if (MAT_ROLE[c.m] === role || (role === 'SCAVENGER' && has(p, 'storeroom')) || (MAT_ROLE[c.m] === 'TRADER' && has(p, 'ludus'))) {
         log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
