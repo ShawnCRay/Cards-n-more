@@ -540,6 +540,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
+  { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
@@ -1076,6 +1077,7 @@ async function actRECRUITER(p) {
   p.dwellers.push(c);
   log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' dweller (' + c.n + ').');
   checkForum(p);
+  checkPlebian();
   if (has(p, 'bath')) {
     log('Bath: the new dweller gets right to work.');
     await performRole(p, MAT_ROLE[c.m], true);
@@ -1160,6 +1162,7 @@ async function onCompletion(p, b) {
       }
     }
   }
+  if (fx === 'plebian') checkPlebian();
 }
 
 async function actBUILDER(p, viaOverseer) {
@@ -1309,6 +1312,23 @@ function checkForum(p) {
   }
 }
 
+function checkPlebian() {
+  for (const p of players) {
+    if (!has(p, 'plebian')) continue;
+    const myScav = p.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length;
+    if (myScav === 0) continue;
+    const othersMaxScav = Math.max(...players.filter(q => q !== p).map(q => q.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length));
+    if (myScav <= othersMaxScav) continue;
+    const globalScav = players.reduce((sum, q) => sum + q.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length, 0);
+    const globalRaider = players.reduce((sum, q) => sum + q.dwellers.filter(c => MAT_ROLE[c.m] === 'RAIDER').length, 0);
+    if (globalScav > globalRaider) {
+      gameOver = true;
+      lastWinnerIdx = players.indexOf(p);
+      log('★ AUTOMATED DISTRIBUTION NETWORK! ' + p.name + ' has the most Scavengers and Scavengers outnumber Raiders — WIN.');
+    }
+  }
+}
+
 /* ---------- turn & game flow (host/solo) ---------- */
 
 async function playTurn(gen) {
@@ -1415,6 +1435,7 @@ async function playTurn(gen) {
             p.safe.push(c);
             p.dwellers = p.dwellers.filter(d => d !== c);
             log(p.name + ' cryo-freezes a ' + MAT_ROLE[c.m] + ' dweller to the safe.');
+            checkPlebian();
           }
         }
       }
