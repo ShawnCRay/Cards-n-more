@@ -558,6 +558,7 @@ const BUILDINGS = [
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
+  { n: 'High-Security Archives',         m: 'concrete', fx: 'aerarium',  t: 'Passive: Your POPULATION counts as the highest player\'s. Lose 1 POPULATION: Execute a completed room\'s "Upon Completion" effect.' },
   { n: 'Industrial Workshop',            m: 'tech',    fx: 'foundry',    t: 'Upon Completion: Perform 1 SCAVENGER action per POPULATION' },
   { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
@@ -646,11 +647,12 @@ function has(p, fx) {
   return false;
 }
 function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple') ? 4 : 0); }
-function dwellerLimit(p) { return (p.population + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
-function safeLimit(p) { return p.population + (has(p, 'market') ? 2 : 0); }
+function effectivePopulation(p) { return has(p, 'aerarium') ? Math.max(...players.map(q => q.population)) : p.population; }
+function dwellerLimit(p) { return (effectivePopulation(p) + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
+function safeLimit(p) { return effectivePopulation(p) + (has(p, 'market') ? 2 : 0); }
 function roleOf(card) { return card.stranger ? 'STRANGER' : MAT_ROLE[card.m]; }
 function score(p) {
-  let s = p.population + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
+  let s = effectivePopulation(p) + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
   for (const b of p.buildings) if (b.done && BLD[b.n].fx === 'statue') s += 3;
   if (has(p, 'wall')) s += Math.floor(p.stockpile.length / 2);
   return s;
@@ -769,7 +771,7 @@ function buildView(forIdx) {
     sites: sites,
     players: players.map((p, i) => ({
       name: p.name, ai: p.ai,
-      population: p.population,
+      population: effectivePopulation(p),
       handN: p.hand.length,
       safeN: p.safe.length,
       stockpile: p.stockpile,
@@ -1155,7 +1157,7 @@ async function onCompletion(p, b) {
     await actRECRUITER(p);
   }
   if (fx === 'amphitheatre') {
-    const count = p.population;
+    const count = effectivePopulation(p);
     log(p.name + ' completes Heavy Fabrication Area — performing ' + count + ' ENGINEER actions.');
     for (let i = 0; i < count; i++) {
       await actBUILDER(p, false);
@@ -1169,21 +1171,21 @@ async function onCompletion(p, b) {
     }
   }
   if (fx === 'school') {
-    const count = p.population;
+    const count = effectivePopulation(p);
     log(p.name + ' completes Supercomputer Terminal — executing RESEARCH ' + count + ' time' + (count > 1 ? 's' : '') + '.');
     for (let i = 0; i < count; i++) {
       await doResearch(p);
     }
   }
   if (fx === 'garden') {
-    const count = p.population;
+    const count = effectivePopulation(p);
     log(p.name + ' completes Conditioning Center — performing ' + count + ' RECRUITER actions.');
     for (let i = 0; i < count; i++) {
       await actRECRUITER(p);
     }
   }
   if (fx === 'foundry') {
-    const count = p.population;
+    const count = effectivePopulation(p);
     log(p.name + ' completes Industrial Workshop — performing ' + count + ' SCAVENGER actions.');
     for (let i = 0; i < count; i++) {
       await actSCAVENGER(p);
@@ -1222,7 +1224,7 @@ async function onCompletion(p, b) {
     log(p.name + ' reclaims ' + reclaimed.length + ' material' + (reclaimed.length !== 1 ? 's' : '') + ' from Armory Command Post to stockpile.');
   }
   if (fx === 'bacchanalia') {
-    const count = p.population;
+    const count = effectivePopulation(p);
     const drawn = [];
     for (let i = 0; i < count; i++) { const c = draw1(); if (c) { drawn.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
     if (drawn.length === 0) return;
@@ -1549,12 +1551,28 @@ async function playTurn(gen) {
     if (o.id.startsWith('leadstranger')) s -= 1; // CPU saves Mysterious Strangers when a real card will do
     opts.push({ ...o, score: s });
   }
+  if (has(leader, 'aerarium') && leader.population >= 1 && leader.buildings.some(b => b.done)) {
+    opts.push({ id: 'aerarium', label: 'High-Security Archives (lose 1 pop, trigger a room\'s completion)', score: 5 });
+  }
   const pick = await choose(leader, leader.name + ' — research or lead?', opts);
   if (gen !== epoch) return;
 
   if (pick === 'research') {
     recPush('turn', { leader: leader.name, role: 'research' });
     await doResearch(leader);
+    render();
+    return;
+  }
+  if (pick === 'aerarium') {
+    const rooms = leader.buildings.filter(b => b.done).map((b, i) => ({ id: 'room:' + i, label: b.n, score: MAT_VAL[b.site] * 2 }));
+    const rPick = await choose(leader, leader.name + ': High-Security Archives — pick a room to trigger', rooms);
+    if (rPick) {
+      const bi = Number(rPick.split(':')[1]);
+      const room = leader.buildings.filter(b => b.done)[bi];
+      leader.population--;
+      log(leader.name + ' loses 1 population (' + leader.population + ') to activate ' + room.n + ' (High-Security Archives).');
+      await onCompletion(leader, room);
+    }
     render();
     return;
   }
