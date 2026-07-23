@@ -541,6 +541,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
   { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
+  { n: 'Armory Command Post',            m: 'tech',    fx: 'praetoria', t: 'RAIDER Action: Indicate an incomplete room — demand materials matching that room. Upon Completion: Move this room\'s materials to your STOCKPILE' },
   { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
@@ -1209,6 +1210,12 @@ async function onCompletion(p, b) {
     log(p.name + ' completes Neuro-Stasis Array — the game ends immediately!');
     endFlag = true;
   }
+  if (fx === 'praetoria') {
+    const reclaimed = [...b.mats];
+    b.mats = [];
+    reclaimed.forEach(c => p.stockpile.push(c));
+    log(p.name + ' reclaims ' + reclaimed.length + ' material' + (reclaimed.length !== 1 ? 's' : '') + ' from Armory Command Post to stockpile.');
+  }
 }
 
 async function actBUILDER(p, viaOverseer) {
@@ -1335,6 +1342,15 @@ async function actRAIDER(p) {
       });
     });
   }
+  if (has(p, 'praetoria')) {
+    p.buildings.forEach((b, bi) => {
+      if (b.done) return;
+      const m = b.site;
+      const inWasteland = wasteland.some(c => c.m === m);
+      const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.stranger && c.m === m)).length;
+      opts.push({ id: 'demandroom:' + bi, label: 'Demand ' + m + ' (for ' + b.n + ')' + (inWasteland ? ' — wasteland has one' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] + 1 });
+    });
+  }
   const pick = await choose(p, p.name + ': Raider — demand a material', opts);
   if (!pick || pick === 'skip') return;
   if (pick.startsWith('seizedweller:')) {
@@ -1345,8 +1361,15 @@ async function actRAIDER(p) {
     checkRomanum(p);
     return;
   }
-  const m = pick.split(':')[1];
-  log(p.name + ' demands ' + m + '!');
+  let m;
+  if (pick.startsWith('demandroom:')) {
+    const bi = Number(pick.split(':')[1]);
+    m = p.buildings[bi].site;
+    log(p.name + ' demands ' + m + ' for ' + p.buildings[bi].n + '!');
+  } else {
+    m = pick.split(':')[1];
+    log(p.name + ' demands ' + m + '!');
+  }
   const pi = wasteland.findIndex(c => c.m === m);
   if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
   for (const q of players) {
