@@ -549,6 +549,7 @@ const BUILDINGS = [
   { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Breach Tunnel',                  m: 'concrete', fx: 'bridge',    t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
+  { n: 'Chemical Solvent Vat',           m: 'chems',   fx: 'watch_post', t: 'ENGINEER Action: Dismantle one of your completed rooms — return its blueprint to your HAND and its materials to your STOCKPILE' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
@@ -1303,6 +1304,12 @@ async function actBUILDER(p, viaOverseer) {
   if (!viaOverseer && has(p, 'fountain') && deck.length) {
     opts.push({ id: 'fountain:draw', label: 'Draw from deck as material (Fountain)', score: 7 });
   }
+  if (!viaOverseer && has(p, 'watch_post')) {
+    p.buildings.forEach((b, bi) => {
+      if (!b.done) return;
+      opts.push({ id: 'dismantle:' + bi, label: 'Dismantle ' + b.n + ' (blueprint to hand, mats to stockpile)', score: MAT_VAL[b.site] * 4 + b.mats.length * 3 });
+    });
+  }
   opts.push({ id: 'skip', label: 'Skip', score: -4 });
   const roleName = viaOverseer ? 'Overseer' : 'Engineer';
   const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
@@ -1326,6 +1333,17 @@ async function actBUILDER(p, viaOverseer) {
     b.mats.push(c);
     sharedFx.add(BLD[b.n].fx);
     log(p.name + ' adds ' + c.m + ' to ' + target.name + "'s " + b.n + ' via Signal Repeater — ' + b.n + ' is now shared.');
+  } else if (parts[0] === 'dismantle') {
+    const bi = Number(parts[1]);
+    const b = p.buildings.splice(bi, 1)[0];
+    if (b) {
+      const bld = BLD[b.n];
+      p.hand.push({ n: b.n, m: bld ? bld.m : b.site });
+      const mats = [...b.mats];
+      b.mats = [];
+      mats.forEach(c => p.stockpile.push(c));
+      log(p.name + ' dismantles ' + b.n + ' — blueprint to hand, ' + mats.length + ' material' + (mats.length !== 1 ? 's' : '') + ' to stockpile (Chemical Solvent Vat).');
+    }
   } else if (parts[0] === 'fountain') {
     const c = draw1();
     if (c) {
