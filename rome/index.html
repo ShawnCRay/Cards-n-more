@@ -547,6 +547,7 @@ const BUILDINGS = [
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
+  { n: 'Breach Tunnel',                  m: 'concrete', fx: 'bridge',    t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
@@ -1353,6 +1354,14 @@ async function actRAIDER(p) {
       opts.push({ id: 'demandroom:' + bi, label: 'Demand ' + m + ' (for ' + b.n + ')' + (inWasteland ? ' — wasteland has one' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] + 1 });
     });
   }
+  if (has(p, 'bridge')) {
+    const stockpileMats = [...new Set(players.filter(q => q !== p).flatMap(q => q.stockpile.filter(c => !c.stranger).map(c => c.m)))];
+    stockpileMats.forEach(m => {
+      const victims = players.filter(q => q !== p && q.stockpile.some(c => !c.stranger && c.m === m)).length;
+      const inWasteland = wasteland.some(c => c.m === m);
+      opts.push({ id: 'breach:' + m, label: 'Breach demand ' + m + ' (from stockpiles)' + (inWasteland ? ' — wasteland has one' : ''), score: victims * 3 + (inWasteland ? 2 : 0) + MAT_VAL[m] + 1 });
+    });
+  }
   const pick = await choose(p, p.name + ': Raider — demand a material', opts);
   if (!pick || pick === 'skip') return;
   if (pick.startsWith('seizedweller:')) {
@@ -1368,9 +1377,22 @@ async function actRAIDER(p) {
     const bi = Number(pick.split(':')[1]);
     m = p.buildings[bi].site;
     log(p.name + ' demands ' + m + ' for ' + p.buildings[bi].n + '!');
-  } else {
+  } else if (!pick.startsWith('breach:')) {
     m = pick.split(':')[1];
     log(p.name + ' demands ' + m + '!');
+  } else {
+    m = pick.split(':')[1];
+  }
+  if (pick.startsWith('breach:')) {
+    const pi = wasteland.findIndex(c => c.m === m);
+    if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
+    for (const q of players) {
+      if (q === p) continue;
+      const si = q.stockpile.findIndex(c => !c.stranger && c.m === m);
+      if (si >= 0) { p.stockpile.push(q.stockpile.splice(si, 1)[0]); log(p.name + ' breaches ' + q.name + "'s stockpile for " + m + ' (Breach Tunnel).'); raidedThisTurn.add(players.indexOf(q)); }
+    }
+    checkRomanum(p);
+    return;
   }
   const pi = wasteland.findIndex(c => c.m === m);
   if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
