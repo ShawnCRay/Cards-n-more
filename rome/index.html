@@ -565,6 +565,7 @@ const BUILDINGS = [
   { n: 'Neuro-Stasis Array',             m: 'chems',   fx: 'catacomb',  t: 'Upon Completion: End the game immediately and score as usual' },
   { n: 'Nutrient Infusion Station',      m: 'rations', fx: 'crane',     t: 'Passive: May use any card to follow OVERSEER actions' },
   { n: 'Overseer\'s Command Center',     m: 'hightech', fx: 'temple',   t: 'Passive: Max HAND size +4' },
+  { n: 'Overdrive Distribution Core',   m: 'chems',   fx: 'bacchanalia', t: 'Upon Completion: Draw cards equal to POPULATION. Place 1 in SAFE, 1 as DWELLER, 1 on a SITE, 1 as MATERIAL. Keep the rest in your HAND.' },
   { n: 'Overdrive Stim-Station',         m: 'chems',   fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
   { n: 'Perimeter Fencing',              m: 'rations', fx: 'palisade',  t: 'Passive: Immune to RAIDER actions' },
   { n: 'Prefab Room',                    m: 'chems',   fx: 'villa',     t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
@@ -1219,6 +1220,30 @@ async function onCompletion(p, b) {
     b.mats = [];
     reclaimed.forEach(c => p.stockpile.push(c));
     log(p.name + ' reclaims ' + reclaimed.length + ' material' + (reclaimed.length !== 1 ? 's' : '') + ' from Armory Command Post to stockpile.');
+  }
+  if (fx === 'bacchanalia') {
+    const count = p.population;
+    const drawn = [];
+    for (let i = 0; i < count; i++) { const c = draw1(); if (c) { drawn.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
+    if (drawn.length === 0) return;
+    log(p.name + ' draws ' + drawn.length + ' cards from Overdrive Distribution Core.');
+    const pickOne = async (label) => {
+      if (drawn.length === 0) return null;
+      const cdOpts = drawn.map((c, i) => ({ id: 'cd:' + i, label: cardLabel(c), score: MAT_VAL[c.m] * 3 }));
+      const pick = await choose(p, p.name + ': Overdrive Distribution Core — ' + label, cdOpts);
+      if (!pick) return null;
+      return drawn.splice(Number(pick.split(':')[1]), 1)[0];
+    };
+    let c = await pickOne('pick a card for the SAFE');
+    if (c) { p.safe.push(c); log(p.name + ' places ' + c.n + ' in the Overseer\'s Safe.'); }
+    c = await pickOne('pick a card to become a DWELLER');
+    if (c) { p.dwellers.push(c); log(p.name + ' recruits ' + c.n + ' as a dweller.'); checkForum(p); checkRomanum(p); checkPlebian(); }
+    c = await pickOne('pick a card to add as a SITE');
+    if (c) { sites[c.m]++; log(p.name + ' adds a ' + c.m + ' site.'); }
+    c = await pickOne('pick a card as MATERIAL');
+    if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
+    drawn.forEach(c => { p.hand.push(c); });
+    if (drawn.length > 0) log(p.name + ' keeps ' + drawn.length + ' card' + (drawn.length !== 1 ? 's' : '') + ' in hand.');
   }
 }
 
