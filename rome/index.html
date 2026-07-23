@@ -561,6 +561,7 @@ const BUILDINGS = [
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
   { n: 'High-Security Archives',         m: 'concrete', fx: 'aerarium',  t: 'Passive: Your POPULATION counts as the highest player\'s. Lose 1 POPULATION: Execute a completed room\'s "Upon Completion" effect.' },
+  { n: 'Hydro-Kinetic Power Grid',       m: 'tech',    fx: 'watermill',  t: 'End of turn: If you led or followed SCAVENGER, use each OVERSEER dweller once' },
   { n: 'Industrial Workshop',            m: 'tech',    fx: 'foundry',    t: 'Upon Completion: Perform 1 SCAVENGER action per POPULATION' },
   { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
@@ -1751,6 +1752,18 @@ async function playTurn(gen) {
     if (raidedThisTurn.has(players.indexOf(p)) && has(p, 'castra')) {
       log(p.name + ' lost a card to a Raider — Armored Watchtower grants RESEARCH.');
       await doResearch(p);
+    }
+  }
+  if (role === 'SCAVENGER') {
+    for (const p of participants) {
+      if (!has(p, 'watermill')) continue;
+      const overseerCount = p.dwellers.filter(c => MAT_ROLE[c.m] === 'OVERSEER').length;
+      if (overseerCount === 0) continue;
+      log(p.name + ' uses ' + overseerCount + ' OVERSEER dweller' + (overseerCount !== 1 ? 's' : '') + ' via Hydro-Kinetic Power Grid.');
+      for (let i = 0; i < overseerCount; i++) {
+        if (gameOver) break;
+        await performRole(p, 'OVERSEER', false);
+      }
     }
   }
   render();
