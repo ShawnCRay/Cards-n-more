@@ -190,6 +190,12 @@
   #opts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-height: 180px; overflow-y: auto; }
   #opts button { font-size: 11px; padding: 8px 12px; text-transform: none; letter-spacing: 0.4px; }
   .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  #deck-options { margin-bottom: 10px; }
+  #deck-options .deck-row { margin-bottom: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  #deck-options .deck-label { font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+  #deck-options .deck-opt { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(217,151,63,0.25); background: rgba(0,0,0,0.2); }
+  #deck-options .deck-opt:hover { background: rgba(217,151,63,0.15); }
+  #deck-options .deck-opt input { accent-color: var(--gold); }
   button {
     font: inherit;
     font-weight: 700;
@@ -440,6 +446,15 @@
   <div id="message"></div>
   <div id="opts"></div>
   <div id="round-controls">
+    <div id="deck-options">
+      <div class="deck-row"><span class="deck-label">Deck:</span>
+        <label class="deck-opt"><input type="radio" name="decktype" value="standard" checked> Standard</label>
+        <label class="deck-opt"><input type="radio" name="decktype" value="experimental"> Experimental</label>
+      </div>
+      <div class="deck-row">
+        <label class="deck-opt"><input type="checkbox" id="deck-expansion"> Include BGG Expansion</label>
+      </div>
+    </div>
     <div class="btn-row"><button id="btn-deal" class="primary">Start game</button></div>
   </div>
 </div>
@@ -538,6 +553,33 @@ const MAT_VAL = { scrap: 1, rations: 1, tech: 2, concrete: 2, chems: 3, hightech
 const MAT_ROLE = { scrap: 'SCAVENGER', rations: 'ENGINEER', tech: 'RAIDER', concrete: 'OVERSEER', chems: 'TRADER', hightech: 'RECRUITER' };
 const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUITER'];
 
+/* deck configuration: which cards belong to each set */
+const DECK_SETS = {
+  common: new Set([
+    'Automated Scaffolding Grid', 'Blind Requisition Bureau', 'Decontamination Shower',
+    'Vocational Training Bureau', 'Prototype Bar', 'Supercomputer Terminal', 'Technical Library',
+    'Industrial Workshop', 'Signal Repeater', 'Vault Mascot Monument', "Overseer's Command Center",
+    'Crypto-Scrip Exchange', '3D Printing Matrix', 'VATS Training Lab', 'ZAX Supercomputer',
+    'High-Capacity Utility Main', 'Reinforced Vault Door', 'Heavy Fabrication Area', 'Breach Tunnel',
+    'Wasteland Outpost', 'Decontamination Chamber', 'Logistics Hub', 'Overdrive Stim-Station',
+    'Neuro-Stasis Array', 'Turbo-Fluid Grid', 'Recycling Chute', 'Conditioning Center',
+    'Propaganda Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
+    'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Wasteland Speakeasy',
+  ]),
+  standard: new Set([
+    'Nutrient Infusion Station', 'Vault-Tec Regional Headquarters', 'Asset Liquidation Lab', 'Security Checkpoint',
+  ]),
+  experimental: new Set([
+    'Commissary', 'Conversion Lab', "Private Investigator's Office", 'Vault-Tec Simulation Hub',
+  ]),
+  expansion: new Set([
+    'Reclamation Plant', 'Mess Hall', 'Chemical Solvent Vat', 'Overdrive Distribution Core',
+    'Cryo-Stasis Vault', 'Automated Distribution Network', 'Armory Command Post',
+    'Hydro-Kinetic Power Grid', 'High-Security Archives', 'Armored Watchtower',
+  ]),
+};
+let deckType = 'standard', deckExpansion = false;
+
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
   { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
@@ -618,9 +660,15 @@ let localChooser = null; // {resolve, options}
 
 /* ---------- setup helpers ---------- */
 
-function buildDeck() {
+function buildDeck(type, expansion) {
+  const allowed = new Set(DECK_SETS.common);
+  for (const n of DECK_SETS[type]) allowed.add(n);
+  if (expansion) for (const n of DECK_SETS.expansion) allowed.add(n);
   const d = [];
-  for (const b of BUILDINGS) for (let i = 0; i < (b.q || 3); i++) d.push({ n: b.n, m: b.m });
+  for (const b of BUILDINGS) {
+    if (!allowed.has(b.n)) continue;
+    for (let i = 0; i < (b.q || 3); i++) d.push({ n: b.n, m: b.m });
+  }
   return d;
 }
 function shuffle(arr) {
@@ -1778,7 +1826,7 @@ async function playMatch() {
   lastWinnerIdx = -1;
   $('round-controls').style.display = 'none';
 
-  deck = shuffle(buildDeck());
+  deck = shuffle(buildDeck(deckType, deckExpansion));
   strangers = 6;
   wasteland = [];
   sites = Object.fromEntries(MATS.map(m => [m, 3]));
@@ -2225,6 +2273,10 @@ $('overlay-cancel').addEventListener('click', () => {
   $('overlay').style.display = 'none';
   if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
 });
+document.querySelectorAll('input[name="decktype"]').forEach(el => {
+  el.addEventListener('change', () => { if (el.checked) deckType = el.value; });
+});
+$('deck-expansion').addEventListener('change', function () { deckExpansion = this.checked; });
 $('btn-invite').addEventListener('click', () => showOverlay('host'));
 $('btn-join').addEventListener('click', () => showOverlay('join'));
 
