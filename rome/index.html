@@ -553,6 +553,7 @@ const BUILDINGS = [
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
   { n: 'Conversion Lab',                 m: 'chems',   fx: 'coliseum',   t: 'RAIDER Action: May seize opponent\'s DWELLER and move them to your Overseer\'s Safe as a material' },
   { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
+  { n: 'Crypto-Scrip Exchange',          m: 'hightech', fx: 'basilica',  t: 'TRADER Action: May move 1 card from your HAND to your Overseer\'s SAFE' },
   { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
@@ -1409,12 +1410,21 @@ async function actTRADER(p) {
   if (p.safe.length >= safeLimit(p)) return;
   const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Safe ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
   if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Safe blind off the deck', score: 4 });
+  if (has(p, 'basilica')) {
+    p.hand.forEach((c, i) => {
+      if (c.stranger) return;
+      opts.push({ id: 'hand:' + i, label: 'Safe from hand: ' + cardLabel(c), score: MAT_VAL[c.m] * 3 - 1 });
+    });
+  }
   opts.push({ id: 'skip', label: 'Skip', score: -3 });
   const pick = await choose(p, p.name + ': Trader — bank a material', opts);
   if (!pick || pick === 'skip') return;
   const [src, idx] = pick.split(':');
-  const c = src === 'stock' ? p.stockpile.splice(Number(idx), 1)[0] : draw1();
-  if (c) { p.safe.push(c); log(p.name + ' banks a material in the safe.'); }
+  let c;
+  if (src === 'stock') c = p.stockpile.splice(Number(idx), 1)[0];
+  else if (src === 'hand') c = p.hand.splice(Number(idx), 1)[0];
+  else c = draw1();
+  if (c) { p.safe.push(c); log(p.name + ' banks a material in the safe.' + (src === 'hand' ? ' (Crypto-Scrip Exchange).' : '')); }
 }
 
 async function performRole(p, role, isBathEcho) {
