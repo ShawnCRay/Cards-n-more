@@ -541,17 +541,17 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
   { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
-  { n: 'Armored Watchtower',             m: 'scrap',   fx: 'castra',    t: 'End of Round: RESEARCH if you lost a card to RAIDER action this round' },
+  { n: 'Armored Watchtower',             m: 'scrap',   q: 6,            fx: 'castra',    t: 'End of Round: RESEARCH if you lost a card to RAIDER action this round' },
   { n: 'Armory Command Post',            m: 'tech',    fx: 'praetoria', t: 'RAIDER Action: Indicate an incomplete room — demand materials matching that room. Upon Completion: Move this room\'s materials to your STOCKPILE' },
   { n: 'Asset Liquidation Lab',          m: 'chems',   fx: 'domus_aurea', t: 'RAIDER Action: May demolish an opponent\'s unfinished room — move its blueprint to your STOCKPILE and its SITE to your POPULATION' },
   { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
-  { n: 'Barracks',                       m: 'scrap',   fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
+  { n: 'Barracks',                       m: 'scrap',   q: 6,            fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Breach Tunnel',                  m: 'concrete', fx: 'bridge',    t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
   { n: 'Chemical Solvent Vat',           m: 'chems',   fx: 'watch_post', t: 'ENGINEER Action: Dismantle one of your completed rooms — return its blueprint to your HAND and its materials to your STOCKPILE' },
-  { n: 'Chemical Synthesis Lab',         m: 'scrap',   fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
-  { n: 'Commissary',                     m: 'rations', fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Chemical Synthesis Lab',         m: 'scrap',   q: 6,            fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
+  { n: 'Commissary',                     m: 'rations', q: 6,            fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
   { n: 'Conversion Lab',                 m: 'chems',   fx: 'coliseum',   t: 'RAIDER Action: May seize opponent\'s DWELLER and move them to your Overseer\'s Safe as a material' },
   { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
@@ -563,15 +563,15 @@ const BUILDINGS = [
   { n: 'High-Security Archives',         m: 'concrete', fx: 'aerarium',  t: 'Passive: Your POPULATION counts as the highest player\'s. Lose 1 POPULATION: Execute a completed room\'s "Upon Completion" effect.' },
   { n: 'Hydro-Kinetic Power Grid',       m: 'tech',    fx: 'watermill',  t: 'End of turn: If you led or followed SCAVENGER, use each OVERSEER dweller once' },
   { n: 'Industrial Workshop',            m: 'tech',    fx: 'foundry',    t: 'Upon Completion: Perform 1 SCAVENGER action per POPULATION' },
-  { n: 'Internal Loading Dock',          m: 'rations', fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
+  { n: 'Internal Loading Dock',          m: 'rations', q: 6,            fx: 'dock',      t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
   { n: 'Logistics Hub',                  m: 'concrete', fx: 'storeroom', t: 'All dwellers count as SCAVENGERS' },
-  { n: 'Mess Hall',                      m: 'rations', fx: 'domus',     t: 'Upon Completion: Perform 1 RECRUITER action' },
+  { n: 'Mess Hall',                      m: 'rations', q: 6,            fx: 'domus',     t: 'Upon Completion: Perform 1 RECRUITER action' },
   { n: 'Neuro-Stasis Array',             m: 'chems',   fx: 'catacomb',  t: 'Upon Completion: End the game immediately and score as usual' },
-  { n: 'Nutrient Infusion Station',      m: 'rations', fx: 'crane',     t: 'Passive: May use any card to follow OVERSEER actions' },
+  { n: 'Nutrient Infusion Station',      m: 'rations', q: 6,            fx: 'crane',     t: 'Passive: May use any card to follow OVERSEER actions' },
   { n: 'Overseer\'s Command Center',     m: 'hightech', fx: 'temple',   t: 'Passive: Max HAND size +4' },
   { n: 'Overdrive Distribution Core',   m: 'chems',   fx: 'bacchanalia', t: 'Upon Completion: Draw cards equal to POPULATION. Place 1 in SAFE, 1 as DWELLER, 1 on a SITE, 1 as MATERIAL. Keep the rest in your HAND.' },
   { n: 'Overdrive Stim-Station',         m: 'chems',   fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
-  { n: 'Perimeter Fencing',              m: 'rations', fx: 'palisade',  t: 'Passive: Immune to RAIDER actions' },
+  { n: 'Perimeter Fencing',              m: 'rations', q: 6,            fx: 'palisade',  t: 'Passive: Immune to RAIDER actions' },
   { n: 'Prefab Room',                    m: 'chems',   fx: 'villa',     t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
   { n: 'Private Investigator\'s Office',  m: 'concrete', fx: 'senate',   t: 'End of Turn: Add an opponent\'s played MYSTERIOUS STRANGER to your HAND' },
   { n: 'Propaganda Broadcast Tower',     m: 'chems',   fx: 'prison',    t: 'Upon Completion: Trade this blueprint\'s site for a completed vault room from an opponent' },
@@ -579,11 +579,11 @@ const BUILDINGS = [
   { n: 'Reclamation Plant',              m: 'concrete', fx: 'solarium', t: 'Upon Room Completion: Move 1 material from that room to your STOCKPILE (triggers on this room)' },
   { n: 'Recycling Chute',                m: 'chems',   fx: 'sewer',     t: 'End of turn: Move role cards used to lead or follow into your STOCKPILE instead of the WASTELAND' },
   { n: 'Reinforced Vault Door',          m: 'concrete', fx: 'wall',     t: 'Passive: Immune to RAIDER demands. Endgame: +1 Cap for every two materials in your STOCKPILE' },
-  { n: 'Scrap Compactor',                m: 'scrap',   fx: 'latrine',   t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
+  { n: 'Scrap Compactor',                m: 'scrap',   q: 6,            fx: 'latrine',   t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
   { n: 'Security Checkpoint',            m: 'concrete', fx: 'tribunal', t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
   { n: 'Signal Repeater',                m: 'hightech', fx: 'stairway', t: 'OVERSEER Action: Add a material to an opponent\'s completed vault room to grant its function to all players' },
   { n: 'Supercomputer Terminal',         m: 'tech',    fx: 'school',    t: 'Upon Completion: Execute RESEARCH for each Population' },
-  { n: 'Supply Closet',                  m: 'rations', fx: 'market',    t: 'Passive: Max OVERSEER\'S SAFE size +2' },
+  { n: 'Supply Closet',                  m: 'rations', q: 6,            fx: 'market',    t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Technical Library',              m: 'tech',    fx: 'shrine',    t: 'Passive: Max HAND size +2' },
   { n: 'Turbo-Fluid Grid',               m: 'chems',   fx: 'maximus',    t: 'Passive: Each matching DWELLER performs its action twice' },
   { n: 'VATS Training Lab',              m: 'hightech', fx: 'ludus',    t: 'Passive: TRADER dwellers count as any role' },
@@ -592,7 +592,7 @@ const BUILDINGS = [
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech', fx: 'forum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
   { n: 'Wasteland Outpost',              m: 'concrete', fx: 'tower',    t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
-  { n: 'Wasteland Speakeasy',            m: 'scrap',   fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
+  { n: 'Wasteland Speakeasy',            m: 'scrap',   q: 6,            fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
   { n: 'ZAX Supercomputer',              m: 'hightech', fx: 'palace',    t: 'Passive: May lead/follow with multiple identical cards for additional actions' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
@@ -620,7 +620,7 @@ let localChooser = null; // {resolve, options}
 
 function buildDeck() {
   const d = [];
-  for (const b of BUILDINGS) for (let i = 0; i < 3; i++) d.push({ n: b.n, m: b.m });
+  for (const b of BUILDINGS) for (let i = 0; i < (b.q || 3); i++) d.push({ n: b.n, m: b.m });
   return d;
 }
 function shuffle(arr) {
