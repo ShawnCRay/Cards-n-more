@@ -541,6 +541,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 /* the curated building set: name, material, short power text, effect key, alphabetical order */
 const BUILDINGS = [
   { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
+  { n: 'Armored Watchtower',             m: 'scrap',   fx: 'castra',    t: 'End of Round: RESEARCH if you lost a card to RAIDER action this round' },
   { n: 'Armory Command Post',            m: 'tech',    fx: 'praetoria', t: 'RAIDER Action: Indicate an incomplete room — demand materials matching that room. Upon Completion: Move this room\'s materials to your STOCKPILE' },
   { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
   { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
@@ -600,6 +601,7 @@ let mySeatIdx = 0;
 
 let deck = [], strangers = 6, wasteland = [], sites = {};
 let sharedFx = new Set();
+let raidedThisTurn = new Set();
 let leaderIdx = 0;
 let gameActive = false, gameOver = false, endFlag = false;
 let epoch = 0; // bumped on every new game/match; stale loops bail out
@@ -1376,7 +1378,7 @@ async function actRAIDER(p) {
     if (q === p) continue;
     if (has(q, 'palisade') || has(q, 'wall')) { log(q.name + "'s defenses hold."); continue; }
     const hi = q.hand.findIndex(c => !c.stranger && c.m === m);
-    if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); }
+    if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); raidedThisTurn.add(players.indexOf(q)); }
   }
   checkRomanum(p);
 }
@@ -1475,6 +1477,7 @@ function checkPlebian() {
 /* ---------- turn & game flow (host/solo) ---------- */
 
 async function playTurn(gen) {
+  raidedThisTurn.clear();
   const leader = players[leaderIdx];
   setMessage(leader.name + ' leads…');
   render();
@@ -1626,6 +1629,12 @@ async function playTurn(gen) {
       else wasteland.push(c);
     }
     p.played = null;
+  }
+  for (const p of players) {
+    if (raidedThisTurn.has(players.indexOf(p)) && has(p, 'castra')) {
+      log(p.name + ' lost a card to a Raider — Armored Watchtower grants RESEARCH.');
+      await doResearch(p);
+    }
   }
   render();
 }
