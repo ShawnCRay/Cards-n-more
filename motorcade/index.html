@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#0d1220">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SQUAD RUSH</title>
+<title>MOTORCADE</title>
 <!--
   Inline, as a data URI, so the page makes exactly one request for itself and
   the console stays clean. A missing favicon is a 404 on every single load, and
@@ -104,7 +104,7 @@
     gap: 12px;
   }
 
-  #squad-count {
+  #convoy-count {
     font-size: 54px;
     font-weight: 900;
     line-height: 0.9;
@@ -113,9 +113,9 @@
     transform-origin: left bottom;
     transition: transform 90ms ease-out, color 180ms ease-out;
   }
-  #squad-count.punch { transform: scale(1.28); color: var(--good); }
-  #squad-count.hurt  { transform: scale(0.86); color: var(--bad); }
-  #squad-label {
+  #convoy-count.punch { transform: scale(1.28); color: var(--good); }
+  #convoy-count.hurt  { transform: scale(0.86); color: var(--bad); }
+  #convoy-label {
     font-size: 11px;
     letter-spacing: 3px;
     opacity: 0.62;
@@ -297,7 +297,7 @@
 
   #over .title { font-size: clamp(30px, 10vw, 58px); background: linear-gradient(180deg, #ffffff, var(--bad)); -webkit-background-clip: text; background-clip: text; }
 </style>
-  <script type="module" crossorigin src="./assets/index-Bzsotg-I.js"></script>
+  <script type="module" crossorigin src="./assets/index-gHIpvqV7.js"></script>
 </head>
 <body>
   <div id="app">
@@ -321,8 +321,8 @@
 
       <div id="hud-bottom">
         <div>
-          <div id="squad-label">CONVOY</div>
-          <div id="squad-count">1</div>
+          <div id="convoy-label">CONVOY</div>
+          <div id="convoy-count">1</div>
         </div>
         <div id="gun">
           <span id="gun-name">PISTOL</span>
@@ -341,8 +341,8 @@
     <div id="banner" hidden></div>
 
     <div class="screen" id="start">
-      <div class="title">SQUAD<br>RUSH</div>
-      <div class="tagline">Drag to steer. Your squad fires on its own. Take the good gate, shoot the barrels, break the wall.</div>
+      <div class="title">MOTOR<br>CADE</div>
+      <div class="tagline">Drag to steer. Your convoy fires on its own. Take the right sign, shoot the drums open, and get big enough to cut through whatever is parked across the road.</div>
       <button class="btn" id="play">PLAY</button>
       <div class="best" hidden id="start-best">BEST <span class="v" id="start-best-v">0</span></div>
       <div class="hint">Drag anywhere &nbsp;/&nbsp; arrow keys on desktop</div>
