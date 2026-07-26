@@ -1,0 +1,3 @@
+# Build output. Never line-ending convert it: what is committed should be
+# byte for byte what the bundler produced and what the browser is served.
+* -text

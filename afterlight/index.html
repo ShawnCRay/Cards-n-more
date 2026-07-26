@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AFTERLIGHT</title>
+    <!-- Inline, so there is no favicon request to 404 and no file to ship. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230b0d0f'/><circle cx='8' cy='9' r='3.5' fill='%23d9a441'/></svg>"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #e8e2d6;
+        --dim: #9a9184;
+        --accent: #d9a441;
+        --health: #b8443c;
+        --thirst: #4a90b8;
+        --hunger: #c98a3e;
+        --warmth: #cf6a4a;
+        --fatigue: #8a7fc9;
+        --panel: rgba(8, 10, 12, 0.62);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0d0f;
+        color: var(--ink);
+        font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+      }
+
+      #viewport {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        touch-action: none;
+      }
+
+      /* Click to play gate. Pointer lock can only be requested from a real
+         user gesture, so the game never starts without one. */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(8, 10, 12, 0.82);
+        backdrop-filter: blur(3px);
+        z-index: 30;
+        transition: opacity 140ms ease;
+      }
+
+      #overlay[hidden] {
+        display: none;
+      }
+
+      .card {
+        text-align: center;
+        padding: 32px 40px;
+        border: 1px solid rgba(217, 164, 65, 0.28);
+        background: rgba(16, 19, 22, 0.9);
+        max-width: 420px;
+      }
+
+      .card h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: 0.32em;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .card .sub {
+        margin: 6px 0 22px;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      .card ul {
+        list-style: none;
+        margin: 0 0 24px;
+        padding: 0;
+        font-size: 13px;
+        line-height: 1.9;
+        color: var(--dim);
+        text-align: left;
+        display: inline-block;
+      }
+
+      .card ul b {
+        color: var(--ink);
+        display: inline-block;
+        min-width: 68px;
+      }
+
+      #start {
+        font: inherit;
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 11px 26px;
+        cursor: pointer;
+        color: #10130f;
+        background: var(--accent);
+        border: 0;
+      }
+
+      #start:hover {
+        background: #eab951;
+      }
+
+      /* ---- HUD ---------------------------------------------------------- */
+
+      #hud {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+      }
+
+      #hud[hidden] {
+        display: none;
+      }
+
+      #clock {
+        position: absolute;
+        top: 14px;
+        right: 16px;
+        padding: 8px 14px;
+        background: var(--panel);
+        border-right: 2px solid var(--accent);
+        text-align: right;
+        line-height: 1.4;
+      }
+
+      #clock-day {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: var(--dim);
+      }
+
+      #clock-time {
+        display: block;
+        font-size: 21px;
+        letter-spacing: 0.06em;
+      }
+
+      #clock-phase {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        color: var(--accent);
+      }
+
+      #meters {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        padding: 12px 14px;
+        background: var(--panel);
+        border-left: 2px solid var(--accent);
+        display: grid;
+        gap: 7px;
+      }
+
+      .meter {
+        display: grid;
+        grid-template-columns: 34px 190px 62px;
+        align-items: center;
+        gap: 10px;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+      }
+
+      .meter-label {
+        color: var(--dim);
+      }
+
+      .meter-track {
+        display: block;
+        height: 9px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+
+      /* display:block is load bearing. These are spans inside a plain block,
+         so without it they stay inline, and transform does not apply to a
+         non-replaced inline element at all. */
+      .meter-fill {
+        display: block;
+        height: 100%;
+        width: 100%;
+        transform-origin: left center;
+      }
+
+      .meter-value {
+        text-align: right;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      #fill-health {
+        background: var(--health);
+      }
+      #fill-thirst {
+        background: var(--thirst);
+      }
+      #fill-hunger {
+        background: var(--hunger);
+      }
+      #fill-warmth {
+        background: var(--warmth);
+      }
+      #fill-fatigue {
+        background: var(--fatigue);
+      }
+
+      /* Stamina sits under the reticle rather than with the survival meters.
+         It is a moment to moment resource, not something you plan around, and
+         it needs to be readable without looking away from what is chasing you. */
+      #stamina {
+        position: absolute;
+        left: 50%;
+        top: 54%;
+        transform: translateX(-50%);
+        width: 190px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.09);
+        opacity: 0;
+        transition: opacity 260ms ease;
+      }
+
+      #stamina.visible {
+        opacity: 1;
+      }
+
+      #fill-stamina {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: #8fc9a8;
+        transform-origin: left center;
+      }
+
+      #stamina.spent #fill-stamina {
+        background: var(--health);
+      }
+
+      #weapon {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        padding: 6px 12px;
+        background: var(--panel);
+        border-right: 2px solid var(--accent);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--dim);
+      }
+
+      #desaturate {
+        position: absolute;
+        inset: 0;
+        background: #9aa0a4;
+        mix-blend-mode: saturation;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Anything empty or nearly empty pulses, so a meter bottoming out is not
+         something the player has to be looking directly at to notice. */
+      .meter.is-low .meter-fill {
+        animation: pulse 1.1s ease-in-out infinite;
+      }
+
+      .meter.is-empty .meter-label,
+      .meter.is-empty .meter-value {
+        color: var(--health);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.42;
+        }
+      }
+
+      #effects {
+        position: absolute;
+        left: 16px;
+        bottom: 118px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 4px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+      }
+
+      #effects li {
+        padding: 4px 10px;
+        background: var(--panel);
+        border-left: 2px solid var(--dim);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        min-width: 240px;
+      }
+
+      #effects li.critical {
+        border-left-color: var(--health);
+        color: #f0a49c;
+      }
+
+      #effects li.warning {
+        border-left-color: var(--hunger);
+        color: #e3bb84;
+      }
+
+      #effects li.good {
+        border-left-color: #5f9e6a;
+        color: #a5d1ab;
+      }
+
+      #effects .effect-rate {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ---- interaction -------------------------------------------------- */
+
+      #prompt {
+        position: absolute;
+        left: 50%;
+        top: 58%;
+        transform: translateX(-50%);
+        padding: 7px 16px;
+        background: var(--panel);
+        border: 1px solid rgba(217, 164, 65, 0.35);
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        white-space: nowrap;
+      }
+
+      #prompt[hidden] {
+        display: none;
+      }
+
+      #prompt .key {
+        display: inline-block;
+        min-width: 20px;
+        margin-right: 10px;
+        padding: 1px 6px;
+        text-align: center;
+        color: #10130f;
+        background: var(--accent);
+      }
+
+      /* Loot readout. Placeholder strings until Phase 3 has an inventory to
+         put them in, so for now finding something can only be announced. */
+      #toast {
+        position: absolute;
+        left: 50%;
+        top: 64%;
+        transform: translateX(-50%);
+        padding: 10px 18px;
+        background: rgba(8, 10, 12, 0.78);
+        border-left: 2px solid var(--accent);
+        font-size: 12px;
+        line-height: 1.8;
+        letter-spacing: 0.1em;
+        min-width: 220px;
+      }
+
+      #toast[hidden] {
+        display: none;
+      }
+
+      #toast .toast-title {
+        display: block;
+        color: var(--dim);
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        margin-bottom: 4px;
+      }
+
+      #toast .toast-item {
+        display: block;
+        color: var(--accent);
+      }
+
+      /* ---- developer console -------------------------------------------- */
+
+      #devconsole {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        display: flex;
+        flex-direction: column;
+        max-height: 46vh;
+        background: rgba(6, 8, 10, 0.94);
+        border-bottom: 1px solid rgba(217, 164, 65, 0.4);
+        font-size: 12px;
+      }
+
+      #devconsole[hidden] {
+        display: none;
+      }
+
+      #devconsole-log {
+        overflow-y: auto;
+        padding: 10px 14px 6px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+      }
+
+      #devconsole-log .echo {
+        color: var(--dim);
+      }
+      #devconsole-log .ok {
+        color: #8fc9a8;
+      }
+      #devconsole-log .err {
+        color: #e08a80;
+      }
+
+      #devconsole-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 14px 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--accent);
+      }
+
+      #devconsole-input {
+        flex: 1;
+        font: inherit;
+        color: var(--ink);
+        background: transparent;
+        border: 0;
+        outline: none;
+      }
+
+      /* ---- inventory and crafting panel --------------------------------- */
+
+      #panel {
+        position: fixed;
+        inset: 0;
+        z-index: 25;
+        display: grid;
+        place-items: center;
+        background: rgba(6, 8, 10, 0.72);
+        backdrop-filter: blur(2px);
+      }
+
+      #panel[hidden] {
+        display: none;
+      }
+
+      .panel-frame {
+        width: min(1000px, 92vw);
+        max-height: 86vh;
+        display: flex;
+        flex-direction: column;
+        background: rgba(14, 17, 20, 0.97);
+        border: 1px solid rgba(217, 164, 65, 0.3);
+      }
+
+      .panel-bar {
+        display: flex;
+        align-items: baseline;
+        gap: 18px;
+        padding: 12px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+      }
+
+      .panel-bar .tab {
+        font: inherit;
+        font-size: 12px;
+        letter-spacing: 0.24em;
+        padding: 4px 2px;
+        cursor: pointer;
+        color: var(--dim);
+        background: none;
+        border: 0;
+        border-bottom: 2px solid transparent;
+      }
+
+      .panel-bar .tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      .panel-bar .tab.nudge::after {
+        content: ' *';
+        color: #8fc9a8;
+      }
+
+      #level-bar {
+        margin-bottom: 16px;
+      }
+
+      #level-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+
+      #level-value {
+        font-size: 15px;
+        letter-spacing: 0.2em;
+        color: var(--accent);
+      }
+
+      #level-xp {
+        font-size: 11px;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .xp-track {
+        display: block;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+
+      .xp-fill {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: var(--accent);
+        transform-origin: left center;
+      }
+
+      /* The shelter gate. Visible whenever there is something banked and no
+         roof overhead, because that tension is the point of the whole model. */
+      #spend-gate {
+        margin-top: 8px;
+        padding: 5px 9px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: var(--hunger);
+        background: rgba(201, 138, 62, 0.1);
+        border-left: 2px solid var(--hunger);
+      }
+
+      #spend-gate[hidden] {
+        display: none;
+      }
+
+      #spend-gate.ready {
+        color: #8fc9a8;
+        background: rgba(143, 201, 168, 0.1);
+        border-left-color: #8fc9a8;
+      }
+
+      #panel-stats li,
+      #panel-derived li {
+        display: grid;
+        grid-template-columns: 74px 1fr auto auto;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 8px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      #panel-derived li {
+        grid-template-columns: 1fr auto;
+      }
+
+      .stat-name {
+        color: var(--dim);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+      }
+
+      .stat-note {
+        color: var(--dim);
+        font-size: 10px;
+      }
+
+      .stat-value {
+        font-variant-numeric: tabular-nums;
+        min-width: 22px;
+        text-align: right;
+      }
+
+      #panel-perks li {
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border-left: 2px solid transparent;
+      }
+
+      #panel-perks li.taken {
+        border-left-color: #5f9e6a;
+      }
+      #panel-perks li.available {
+        border-left-color: var(--accent);
+      }
+      #panel-perks li.locked {
+        border-left-color: rgba(255, 255, 255, 0.12);
+        opacity: 0.6;
+      }
+
+      .perk-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .perk-desc {
+        margin-top: 4px;
+        font-size: 11px;
+        color: var(--dim);
+      }
+
+      .perk-req {
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--hunger);
+      }
+
+      #panel-weight {
+        margin-left: auto;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      #panel-weight.over {
+        color: var(--health);
+      }
+
+      #panel-bench {
+        color: var(--dim);
+        font-size: 10px;
+      }
+
+      #panel-bench.active {
+        color: #7fc98a;
+      }
+
+      .panel-body {
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        gap: 0;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      /* Load bearing. An author `display` rule beats the user agent's
+         `[hidden] { display: none }`, so without this both tabs render on top
+         of each other. Same trap as the inline meter fills in Phase 1. */
+      .panel-body[hidden] {
+        display: none;
+      }
+
+      .panel-col {
+        padding: 14px 18px 18px;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      .panel-col + .panel-col {
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .panel-col h3 {
+        margin: 0 0 10px;
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        color: var(--dim);
+        font-weight: 600;
+      }
+
+      .panel-col ul {
+        list-style: none;
+        margin: 0 0 18px;
+        padding: 0;
+        display: grid;
+        gap: 4px;
+      }
+
+      #panel-items li,
+      #panel-equip li {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto auto;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      #panel-equip li {
+        grid-template-columns: 52px 1fr auto;
+      }
+
+      .slot-name {
+        color: var(--dim);
+        font-size: 10px;
+        letter-spacing: 0.18em;
+      }
+
+      .item-count,
+      .item-weight {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+        font-size: 11px;
+      }
+
+      .empty {
+        color: var(--dim);
+        font-style: italic;
+        background: none !important;
+        display: block !important;
+      }
+
+      #panel button {
+        font: inherit;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        cursor: pointer;
+        color: #10130f;
+        background: var(--accent);
+        border: 0;
+      }
+
+      #panel button:hover:not(:disabled) {
+        background: #eab951;
+      }
+
+      #panel button:disabled {
+        cursor: not-allowed;
+        color: #6d6a63;
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      #panel-recipes li {
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border-left: 2px solid transparent;
+      }
+
+      #panel-recipes li.craftable {
+        border-left-color: #5f9e6a;
+      }
+
+      #panel-recipes li.blocked {
+        border-left-color: rgba(255, 255, 255, 0.12);
+        opacity: 0.72;
+      }
+
+      .recipe-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .recipe-name {
+        font-size: 12px;
+      }
+
+      .recipe-cost {
+        margin-top: 5px;
+        font-size: 11px;
+        color: var(--dim);
+      }
+
+      .recipe-why {
+        margin-top: 3px;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--hunger);
+      }
+
+      .panel-foot {
+        padding: 9px 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: var(--dim);
+      }
+
+      /* ---- death -------------------------------------------------------- */
+
+      #death {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(
+          circle at center,
+          rgba(60, 8, 8, 0.55) 0%,
+          rgba(6, 4, 4, 0.94) 70%
+        );
+        animation: fade-in 700ms ease both;
+        pointer-events: none;
+      }
+
+      #death[hidden] {
+        display: none;
+      }
+
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      #death h2 {
+        margin: 0 0 14px;
+        font-size: 40px;
+        letter-spacing: 0.4em;
+        font-weight: 600;
+        color: #c1483f;
+        text-align: center;
+      }
+
+      #death p {
+        margin: 4px 0;
+        text-align: center;
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        color: var(--dim);
+      }
+
+      #death-cause {
+        color: var(--ink) !important;
+        font-size: 15px !important;
+      }
+
+      /* ---- debug readout ------------------------------------------------ */
+
+      #debug {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 6;
+        margin: 0;
+        padding: 8px 12px;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--ink);
+        background: var(--panel);
+        border-left: 2px solid var(--accent);
+        pointer-events: none;
+        white-space: pre;
+      }
+
+      #debug[hidden] {
+        display: none;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DgdbjEmO.js"></script>
+  </head>
+  <body>
+    <canvas id="viewport"></canvas>
+    <pre id="debug" hidden></pre>
+
+    <div id="hud" hidden>
+      <div id="clock">
+        <span id="clock-day">DAY 1</span>
+        <span id="clock-time">08:00</span>
+        <span id="clock-phase">DAY</span>
+      </div>
+
+      <ul id="effects"></ul>
+
+      <div id="prompt" hidden><span class="key">E</span><span id="prompt-label"></span></div>
+      <div id="toast" hidden></div>
+
+      <div id="meters">
+        <div class="meter" id="meter-health">
+          <span class="meter-label">HP</span>
+          <span class="meter-track"><span class="meter-fill" id="fill-health"></span></span>
+          <span class="meter-value" id="value-health">100</span>
+        </div>
+        <div class="meter" id="meter-thirst">
+          <span class="meter-label">WATER</span>
+          <span class="meter-track"><span class="meter-fill" id="fill-thirst"></span></span>
+          <span class="meter-value" id="value-thirst">100</span>
+        </div>
+        <div class="meter" id="meter-hunger">
+          <span class="meter-label">FOOD</span>
+          <span class="meter-track"><span class="meter-fill" id="fill-hunger"></span></span>
+          <span class="meter-value" id="value-hunger">100</span>
+        </div>
+        <div class="meter" id="meter-warmth">
+          <span class="meter-label">WARMTH</span>
+          <span class="meter-track"><span class="meter-fill" id="fill-warmth"></span></span>
+          <span class="meter-value" id="value-warmth">100</span>
+        </div>
+        <div class="meter" id="meter-fatigue">
+          <span class="meter-label">REST</span>
+          <span class="meter-track"><span class="meter-fill" id="fill-fatigue"></span></span>
+          <span class="meter-value" id="value-fatigue">100</span>
+        </div>
+      </div>
+
+      <div id="stamina"><span id="fill-stamina"></span></div>
+      <div id="weapon">Fists</div>
+
+      <!-- Fatigue washes the colour out of the world, as CLAUDE.md describes.
+           Done as an overlay rather than a post pass, because a full screen
+           shader for one effect is not worth the frame cost yet. -->
+      <div id="desaturate"></div>
+    </div>
+
+    <!-- Developer console. Removed from production builds in src/main.ts. -->
+    <div id="devconsole" hidden>
+      <div id="devconsole-log"></div>
+      <div id="devconsole-row">
+        <span>&gt;</span>
+        <input id="devconsole-input" type="text" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+
+    <div id="panel" hidden>
+      <div class="panel-frame">
+        <div class="panel-bar">
+          <button id="tab-pack" class="tab active" type="button">PACK</button>
+          <button id="tab-character" class="tab" type="button">CHARACTER</button>
+          <span id="panel-bench">NO WORKBENCH</span>
+          <span id="panel-weight">0.0 / 27 kg</span>
+        </div>
+
+        <div class="panel-body" id="view-pack">
+          <div class="panel-col">
+            <h3>EQUIPPED</h3>
+            <ul id="panel-equip"></ul>
+            <h3>CARRYING</h3>
+            <ul id="panel-items"></ul>
+          </div>
+          <div class="panel-col">
+            <h3>CRAFTING</h3>
+            <ul id="panel-recipes"></ul>
+          </div>
+        </div>
+
+        <div class="panel-body" id="view-character" hidden>
+          <div class="panel-col">
+            <div id="level-bar">
+              <div id="level-head">
+                <span id="level-value">LEVEL 1</span>
+                <span id="level-xp">0 / 60 XP</span>
+              </div>
+              <span class="xp-track"><span class="xp-fill" id="level-fill"></span></span>
+              <div id="spend-gate">Rest at a shelter to spend</div>
+            </div>
+            <h3>STATS</h3>
+            <ul id="panel-stats"></ul>
+            <h3>DERIVED</h3>
+            <ul id="panel-derived"></ul>
+          </div>
+          <div class="panel-col">
+            <h3>PERKS</h3>
+            <ul id="panel-perks"></ul>
+          </div>
+        </div>
+
+        <div class="panel-foot">TAB pack, C character, ESC to close</div>
+      </div>
+    </div>
+
+    <div id="death" hidden>
+      <div>
+        <h2>YOU DIED</h2>
+        <p id="death-cause"></p>
+        <p id="death-summary"></p>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <h1>AFTERLIGHT</h1>
+        <p class="sub">Phase 5, progression</p>
+        <ul>
+          <li><b>WASD</b> move</li>
+          <li><b>Shift</b> sprint</li>
+          <li><b>Space</b> jump</li>
+          <li><b>Click</b> attack</li>
+          <li><b>Mouse</b> look</li>
+          <li><b>E</b> search, bench, fire</li>
+          <li><b>R</b> hold to rest</li>
+          <li><b>Tab</b> pack and crafting</li>
+          <li><b>C</b> character sheet</li>
+          <li><b>F3</b> debug readout</li>
+          <li><b>Esc</b> release cursor</li>
+        </ul>
+        <button id="start" type="button">Click to play</button>
+      </div>
+    </div>
+
+  </body>
+</html>
