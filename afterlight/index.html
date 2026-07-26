@@ -103,6 +103,21 @@
         min-width: 68px;
       }
 
+      #start-save {
+        margin: -8px 0 18px;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        color: #8fc9a8;
+      }
+
+      #start-save:empty {
+        display: none;
+      }
+
+      #start-save.warn {
+        color: var(--hunger);
+      }
+
       #start {
         font: inherit;
         font-size: 13px;
@@ -808,6 +823,108 @@
         color: var(--dim);
       }
 
+      /* ---- pause menu --------------------------------------------------- */
+
+      #pause {
+        position: fixed;
+        inset: 0;
+        z-index: 28;
+        display: grid;
+        place-items: center;
+        background: rgba(8, 10, 12, 0.78);
+        backdrop-filter: blur(3px);
+      }
+
+      /* Load bearing, for the third time. An author `display` rule beats the
+         user agent's `[hidden] { display: none }`. See DECISIONS 1.11 and 5.8. */
+      #pause[hidden] {
+        display: none;
+      }
+
+      .pause-frame {
+        min-width: 320px;
+        padding: 26px 30px 22px;
+        border: 1px solid rgba(217, 164, 65, 0.28);
+        background: rgba(16, 19, 22, 0.94);
+        text-align: center;
+      }
+
+      .pause-frame h2 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        letter-spacing: 0.34em;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      #pause-where {
+        margin: 0 0 20px;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        color: var(--dim);
+      }
+
+      #pause-actions {
+        display: grid;
+        gap: 8px;
+      }
+
+      #pause button {
+        font: inherit;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 10px 22px;
+        cursor: pointer;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      #pause button:hover:not(:disabled) {
+        background: rgba(217, 164, 65, 0.18);
+        border-color: rgba(217, 164, 65, 0.5);
+      }
+
+      #pause button:disabled {
+        cursor: not-allowed;
+        color: #6d6a63;
+      }
+
+      #pause #pause-resume {
+        color: #10130f;
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      #pause #pause-resume:hover {
+        background: #eab951;
+      }
+
+      /* Discarding a run is the only irreversible thing in the game, so it asks
+         twice and turns red in between. */
+      #pause #pause-new.arming {
+        color: #f0a49c;
+        border-color: var(--health);
+        background: rgba(184, 68, 60, 0.16);
+      }
+
+      #pause-status {
+        margin: 16px 0 0;
+        min-height: 14px;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        color: var(--dim);
+      }
+
+      #pause-status.good {
+        color: #8fc9a8;
+      }
+
+      #pause-status.bad {
+        color: #e08a80;
+      }
+
       /* ---- death -------------------------------------------------------- */
 
       #death {
@@ -882,7 +999,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DgdbjEmO.js"></script>
+    <script type="module" crossorigin src="./assets/index-CfdPDyh4.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -993,6 +1110,23 @@
       </div>
     </div>
 
+    <!-- Pause. Esc opens it, and losing the cursor without a panel open opens
+         it too, because stepping away from the keyboard must not mean coming
+         back dead. -->
+    <div id="pause" hidden>
+      <div class="pause-frame">
+        <h2>PAUSED</h2>
+        <p id="pause-where">Day 1, 08:00</p>
+        <div id="pause-actions">
+          <button id="pause-resume" type="button">Resume</button>
+          <button id="pause-save" type="button">Save now</button>
+          <button id="pause-quit" type="button">Save and quit</button>
+          <button id="pause-new" type="button">Start a new run</button>
+        </div>
+        <p id="pause-status"></p>
+      </div>
+    </div>
+
     <div id="death" hidden>
       <div>
         <h2>YOU DIED</h2>
@@ -1004,7 +1138,7 @@
     <div id="overlay">
       <div class="card">
         <h1>AFTERLIGHT</h1>
-        <p class="sub">Phase 5, progression</p>
+        <p class="sub">Phase 6, persistence</p>
         <ul>
           <li><b>WASD</b> move</li>
           <li><b>Shift</b> sprint</li>
@@ -1016,11 +1150,14 @@
           <li><b>Tab</b> pack and crafting</li>
           <li><b>C</b> character sheet</li>
           <li><b>F3</b> debug readout</li>
-          <li><b>Esc</b> release cursor</li>
+          <li><b>Esc</b> pause</li>
         </ul>
+        <!-- Set from the save at boot: "Click to play" on a fresh world,
+             "Continue" when there is a run to come back to. -->
+        <p id="start-save"></p>
         <button id="start" type="button">Click to play</button>
       </div>
     </div>
-
+
   </body>
 </html>
