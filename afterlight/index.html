@@ -1007,6 +1007,15 @@
         font-size: 15px !important;
       }
 
+      #death-remains {
+        margin-top: 14px !important;
+        color: var(--accent) !important;
+      }
+
+      #death-remains:empty {
+        display: none;
+      }
+
       /* ---- debug readout ------------------------------------------------ */
 
       #debug {
@@ -1029,7 +1038,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BP5VJiHm.js"></script>
+    <script type="module" crossorigin src="./assets/index-dJY_uTs1.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -1167,6 +1176,8 @@
         <h2>YOU DIED</h2>
         <p id="death-cause"></p>
         <p id="death-summary"></p>
+        <!-- Where the pack fell. The only time the player is ever told. -->
+        <p id="death-remains"></p>
       </div>
     </div>
 
