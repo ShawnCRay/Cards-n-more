@@ -556,7 +556,7 @@ const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUIT
 /* deck configuration: which cards belong to each set */
 const DECK_SETS = {
   common: new Set([
-    'Automated Scaffolding Grid', 'Blind Requisition Bureau', 'Decontamination Shower',
+    'Assembly Support Rig', 'Blind Requisition Bureau', 'Decontamination Shower',
     'Vocational Training Bureau', 'Prototype Bar', 'Supercomputer Terminal', 'Technical Library',
     'Industrial Workshop', 'Signal Repeater', 'Vault Mascot Monument', "Overseer's Command Center",
     'Crypto-Scrip Exchange', '3D Printing Matrix', 'VATS Training Lab', 'ZAX Supercomputer',
@@ -585,9 +585,9 @@ const BUILDINGS = [
   { n: '3D Printing Matrix',              m: 'hightech', fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
   { n: 'Armored Watchtower',             m: 'scrap',   q: 6,            fx: 'castra',    t: 'End of Round: RESEARCH if you lost a card to RAIDER action this round' },
   { n: 'Armory Command Post',            m: 'tech',    fx: 'praetoria', t: 'RAIDER Action: Indicate an incomplete room — demand materials matching that room. Upon Completion: Move this room\'s materials to your STOCKPILE' },
+  { n: 'Assembly Support Rig',           m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Asset Liquidation Lab',          m: 'chems',   fx: 'domus_aurea', t: 'RAIDER Action: May demolish an opponent\'s unfinished room — move its blueprint to your STOCKPILE and its SITE to your POPULATION' },
   { n: 'Automated Distribution Network',  m: 'hightech', fx: 'plebian',   t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
-  { n: 'Automated Scaffolding Grid',     m: 'tech',    fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
   { n: 'Barracks',                       m: 'scrap',   q: 6,            fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Breach Tunnel',                  m: 'concrete', fx: 'bridge',    t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
