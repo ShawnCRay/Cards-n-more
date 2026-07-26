@@ -295,9 +295,59 @@
     line-height: 1.6;
   }
 
+  .over-cap {
+    font-size: 13px;
+    letter-spacing: 6px;
+    font-weight: 800;
+    color: var(--bad);
+    opacity: 0.9;
+  }
+  .hero { line-height: 0.86; }
+  .hero-num {
+    font-size: clamp(64px, 22vw, 132px);
+    font-weight: 900;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #ffffff, var(--blue));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 4px 18px rgba(72,177,255,0.35));
+  }
+  .hero-unit {
+    font-size: 11px;
+    letter-spacing: 7px;
+    font-weight: 800;
+    opacity: 0.55;
+    margin-top: 6px;
+  }
+  .best-line {
+    font-size: 12px;
+    letter-spacing: 3px;
+    font-weight: 700;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+  }
+  .new-best {
+    font-size: 13px;
+    letter-spacing: 4px;
+    font-weight: 900;
+    color: #06210f;
+    background: linear-gradient(180deg, #6ef1a8, var(--good));
+    padding: 6px 16px;
+    border-radius: 999px;
+    display: block;
+    animation: pop 500ms ease-out;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+
   #over .title { font-size: clamp(30px, 10vw, 58px); background: linear-gradient(180deg, #ffffff, var(--bad)); -webkit-background-clip: text; background-clip: text; }
 </style>
-  <script type="module" crossorigin src="./assets/index-4uGam2i1.js"></script>
+  <script type="module" crossorigin src="./assets/index-BDSRyUQ9.js"></script>
 </head>
 <body>
   <div id="app">
@@ -349,14 +399,23 @@
     </div>
 
     <div class="screen" id="over" hidden>
-      <div class="title">WIPED OUT</div>
-      <div class="stats">
-        <div><div class="k">SCORE</div><div class="v" id="over-score">0</div></div>
-        <div><div class="k">STAGE</div><div class="v" id="over-stage">1</div></div>
-        <div><div class="k">BIGGEST CONVOY</div><div class="v" id="over-peak">1</div></div>
-        <div><div class="k">KILLS</div><div class="v" id="over-kills">0</div></div>
+      <div class="over-cap" id="over-cap">WIPED OUT</div>
+
+      <!-- The distance is the score, so the distance is the card. -->
+      <div class="hero">
+        <div class="hero-num" id="over-score">0</div>
+        <div class="hero-unit">METRES</div>
       </div>
-      <div class="best">BEST <span class="v" id="over-best">0</span></div>
+      <div class="best-line" id="over-best-line">BEST <span id="over-best">0</span>m</div>
+      <div class="new-best" id="over-new-best" hidden>NEW BEST</div>
+
+      <div class="stats">
+        <div><div class="k">SECTOR</div><div class="v" id="over-stage">1</div></div>
+        <div><div class="k">BIGGEST CONVOY</div><div class="v" id="over-peak">1</div></div>
+        <div><div class="k">CLEARED</div><div class="v" id="over-kills">0</div></div>
+        <div><div class="k">RIGS DOWN</div><div class="v" id="over-bosses">0</div></div>
+      </div>
+
       <button class="btn" id="retry">RUN AGAIN</button>
     </div>
   </div>
