@@ -122,6 +122,32 @@
     font-weight: 700;
   }
 
+  /* What the run is carrying. Purple, matching the signs they came from. */
+  #mods {
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    color: #c79bff;
+    max-width: 46vw;
+    line-height: 1.5;
+    display: block;
+  }
+  #blurb {
+    position: absolute;
+    left: 50%;
+    top: 44%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    letter-spacing: 3px;
+    font-weight: 700;
+    color: #c79bff;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    display: block;
+  }
+  #blurb.show { animation: banner 1400ms ease-out forwards; }
+
   #gun {
     text-align: right;
     font-size: 17px;
@@ -347,7 +373,7 @@
 
   #over .title { font-size: clamp(30px, 10vw, 58px); background: linear-gradient(180deg, #ffffff, var(--bad)); -webkit-background-clip: text; background-clip: text; }
 </style>
-  <script type="module" crossorigin src="./assets/index-DeGwAflW.js"></script>
+  <script type="module" crossorigin src="./assets/index-DDACSFMy.js"></script>
 </head>
 <body>
   <div id="app">
@@ -374,6 +400,7 @@
           <div id="convoy-label">CONVOY</div>
           <div id="convoy-count">1</div>
         </div>
+        <div id="mods" hidden></div>
         <div id="gun">
           <span id="gun-name">PISTOL</span>
           <span class="tier" id="gun-tier">TIER 1</span>
@@ -389,6 +416,7 @@
     </div>
 
     <div id="banner" hidden></div>
+    <div id="blurb"></div>
 
     <div class="screen" id="start">
       <div class="title">MOTOR<br>CADE</div>
