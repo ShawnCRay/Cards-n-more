@@ -561,7 +561,7 @@ const DECK_SETS = {
     'Industrial Workshop', 'Signal Repeater', 'Vault Mascot Monument', "Overseer's Command Center",
     'Crypto-Scrip Exchange', '3D Printing Matrix', 'VATS Training Lab', 'ZAX Supercomputer',
     'High-Capacity Utility Main', 'Reinforced Vault Door', 'Heavy Fabrication Area', 'Breach Tunnel',
-    'Wasteland Outpost', 'Decontamination Chamber', 'Logistics Hub', 'Overdrive Stim-Station',
+    'Wasteland Outpost', 'Waste Disposal Lock', 'Logistics Hub', 'Overdrive Stim-Station',
     'Neuro-Stasis Array', 'Turbo-Fluid Grid', 'Recycling Chute', 'Conditioning Center',
     'Propaganda Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
     'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Wasteland Speakeasy',
@@ -598,7 +598,7 @@ const BUILDINGS = [
   { n: 'Conversion Lab',                 m: 'chems',   fx: 'coliseum',   t: 'RAIDER Action: May seize opponent\'s DWELLER and move them to your Overseer\'s Safe as a material' },
   { n: 'Cryo-Stasis Vault',              m: 'hightech', fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
   { n: 'Crypto-Scrip Exchange',          m: 'hightech', fx: 'basilica',  t: 'TRADER Action: May move 1 card from your HAND to your Overseer\'s SAFE' },
-  { n: 'Decontamination Chamber',        m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
+
   { n: 'Decontamination Shower',         m: 'tech',    fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
   { n: 'Heavy Fabrication Area',         m: 'concrete', fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
   { n: 'High-Capacity Utility Main',     m: 'concrete', fx: 'aqueduct',  t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
@@ -633,6 +633,7 @@ const BUILDINGS = [
   { n: 'Vault-Tec Regional Headquarters', m: 'hightech', fx: 'romanum',  t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role and at least 1 MATERIAL of each type in your STOCKPILE' },
   { n: 'Vault-Tec Simulation Hub',       m: 'hightech', fx: 'forum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
+  { n: 'Waste Disposal Lock',           m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Wasteland Outpost',              m: 'concrete', fx: 'tower',    t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
   { n: 'Wasteland Speakeasy',            m: 'scrap',   q: 6,            fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
   { n: 'ZAX Supercomputer',              m: 'hightech', fx: 'palace',    t: 'Passive: May lead/follow with multiple identical cards for additional actions' },
@@ -1033,7 +1034,7 @@ async function doResearch(p) {
     if (discards.length > 0) {
       p.hand = p.hand.filter(c => c.stranger);
       discards.forEach(c => { wasteland.push(c); recPush('discard', { player: p.name, card: recCard(c) }); });
-      log(p.name + ' discards all blueprints to the Wasteland (Decontamination Chamber).');
+      log(p.name + ' discards all blueprints to the Wasteland (Waste Disposal Lock).');
     }
   }
   if (has(p, 'latrine') && p.hand.some(c => !c.stranger)) {
