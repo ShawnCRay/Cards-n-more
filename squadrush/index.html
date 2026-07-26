@@ -131,6 +131,33 @@
   }
   #gun .tier { display: block; font-size: 10px; letter-spacing: 2px; opacity: 0.6; color: var(--paper); }
 
+  /*
+    The one control on screen. pointer-events auto because the HUD above it is
+    none, and touch-action manipulation so tapping it never counts as the start
+    of a steer.
+  */
+  #mute {
+    position: absolute;
+    top: calc(var(--safe-t) + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    touch-action: manipulation;
+    border: 0;
+    background: rgba(0,0,0,0.28);
+    color: var(--paper);
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1;
+    padding: 9px 11px;
+    border-radius: 999px;
+    opacity: 0.55;
+    cursor: pointer;
+    display: block;
+  }
+  #mute:active { transform: translateX(-50%) scale(0.92); }
+  #mute.off { opacity: 0.3; }
+
   /* Boss health bar, only up while a wall is on screen. */
   #boss-bar {
     position: absolute;
@@ -270,7 +297,7 @@
 
   #over .title { font-size: clamp(30px, 10vw, 58px); background: linear-gradient(180deg, #ffffff, var(--bad)); -webkit-background-clip: text; background-clip: text; }
 </style>
-  <script type="module" crossorigin src="./assets/index-BZaN9Jaj.js"></script>
+  <script type="module" crossorigin src="./assets/index-iyW6DUW1.js"></script>
 </head>
 <body>
   <div id="app">
@@ -303,6 +330,8 @@
         </div>
       </div>
     </div>
+
+    <button id="mute" type="button" aria-label="Mute" hidden>♪</button>
 
     <div id="boss-bar" hidden>
       <div class="track"><span class="fill" id="boss-fill"></span></div>
