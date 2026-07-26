@@ -564,7 +564,7 @@ const DECK_SETS = {
     'Wasteland Outpost', 'Waste Disposal Lock', 'Logistics Hub', 'Overdrive Stim-Station',
     'Neuro-Stasis Array', 'Turbo-Fluid Grid', 'Recycling Chute', 'Conditioning Center',
     'Propaganda Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
-    'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Wasteland Speakeasy',
+    'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Speakeasy',
   ]),
   standard: new Set([
     'Nutrient Infusion Station', 'Vault-Tec Regional Headquarters', 'Asset Liquidation Lab', 'Security Checkpoint',
@@ -635,7 +635,7 @@ const BUILDINGS = [
   { n: 'Vocational Training Bureau',     m: 'tech',    fx: 'academy',   t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
   { n: 'Waste Disposal Lock',           m: 'concrete', fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
   { n: 'Wasteland Outpost',              m: 'concrete', fx: 'tower',    t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
-  { n: 'Wasteland Speakeasy',            m: 'scrap',   q: 6,            fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
+  { n: 'Speakeasy',                      m: 'scrap',   q: 6,            fx: 'bar',       t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
   { n: 'ZAX Supercomputer',              m: 'hightech', fx: 'palace',    t: 'Passive: May lead/follow with multiple identical cards for additional actions' },
 ];
 const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
