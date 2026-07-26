@@ -573,7 +573,7 @@ const DECK_SETS = {
     'Commissary', 'Conversion Lab', "Private Investigator's Office", 'Vault-Tec Simulation Hub',
   ]),
   expansion: new Set([
-    'Reclamation Plant', 'Mess Hall', 'Chemical Solvent Vat', 'Pharma Distribution Node',
+    'Reclamation Plant', 'Mess Hall', 'Molecular Reclamator', 'Pharma Distribution Node',
     'Cryo-Stasis Vault', 'Automated Distribution Network', 'Armory Command Post',
     'Hydro-Kinetic Power Grid', 'High-Security Archives', 'Armored Watchtower',
   ]),
@@ -591,7 +591,7 @@ const BUILDINGS = [
   { n: 'Barracks',                       m: 'scrap',   q: 6,            fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
   { n: 'Blind Requisition Bureau',       m: 'tech',    fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
   { n: 'Breach Tunnel',                  m: 'concrete', fx: 'bridge',    t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
-  { n: 'Chemical Solvent Vat',           m: 'chems',   fx: 'watch_post', t: 'ENGINEER Action: Dismantle one of your completed rooms — return its blueprint to your HAND and its materials to your STOCKPILE' },
+  { n: 'Molecular Reclamator',           m: 'chems',   fx: 'watch_post', t: 'ENGINEER Action: Dismantle one of your completed rooms — return its blueprint to your HAND and its materials to your STOCKPILE' },
   { n: 'Chemical Synthesis Lab',         m: 'scrap',   q: 6,            fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
   { n: 'Commissary',                     m: 'rations', q: 6,            fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
   { n: 'Conditioning Center',            m: 'chems',   fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
@@ -1391,7 +1391,7 @@ async function actBUILDER(p, viaOverseer) {
       const mats = [...b.mats];
       b.mats = [];
       mats.forEach(c => p.stockpile.push(c));
-      log(p.name + ' dismantles ' + b.n + ' — blueprint to hand, ' + mats.length + ' material' + (mats.length !== 1 ? 's' : '') + ' to stockpile (Chemical Solvent Vat).');
+      log(p.name + ' dismantles ' + b.n + ' — blueprint to hand, ' + mats.length + ' material' + (mats.length !== 1 ? 's' : '') + ' to stockpile (Molecular Reclamator).');
     }
   } else if (parts[0] === 'fountain') {
     const c = draw1();
