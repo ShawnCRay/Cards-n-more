@@ -147,6 +147,119 @@
         display: none;
       }
 
+      /* The compass strip, centred at the top. Narrow enough to leave the clock
+         and the effect list where they were. */
+      #compass {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(46vw, 520px);
+        height: 40px;
+        background: var(--panel);
+        border-bottom: 1px solid rgba(217, 164, 65, 0.35);
+        overflow: hidden;
+      }
+
+      /* An author display rule beats the user agent's [hidden] rule, so this has
+         to sit right beside it. Three separate features have paid for forgetting
+         it, per the trap list in CLAUDE.md. */
+      #compass[hidden] {
+        display: none;
+      }
+
+      /* The centre line: where you are actually looking. */
+      #compass::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 1px;
+        height: 14px;
+        background: var(--accent);
+      }
+
+      #compass-band,
+      #compass-marks {
+        position: absolute;
+        inset: 0;
+      }
+
+      .compass-tick {
+        position: absolute;
+        top: 4px;
+        transform: translateX(-50%);
+        color: var(--dim);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+      }
+
+      /* An unlabelled tick is drawn rather than written. */
+      .compass-tick:not(.cardinal):not(.ordinal)::before {
+        content: '';
+        display: block;
+        width: 1px;
+        height: 5px;
+        background: var(--dim);
+        opacity: 0.55;
+      }
+
+      .compass-tick.cardinal {
+        color: var(--ink);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+      }
+
+      /* Nothing hides a marker today, since off screen ones are dimmed rather
+         than removed. The rule is here anyway because an author `display` beside
+         a future `hidden` is the trap this project has already paid for three
+         times, and one line now is cheaper than a fourth. */
+      .compass-mark[hidden] {
+        display: none;
+      }
+
+      .compass-mark {
+        position: absolute;
+        bottom: 3px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .compass-glyph {
+        font-size: 11px;
+      }
+
+      .compass-distance {
+        color: var(--dim);
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+
+      .compass-mark.shelter .compass-glyph {
+        color: var(--accent);
+      }
+
+      .compass-mark.campfire .compass-glyph {
+        color: var(--warmth);
+      }
+
+      .compass-mark.forge .compass-glyph {
+        color: var(--hunger);
+      }
+
+      .compass-mark.crate .compass-glyph {
+        color: var(--thirst);
+      }
+
+      /* The one marker that is disappearing while you look at it. */
+      .compass-mark.remains .compass-glyph {
+        color: var(--health);
+      }
+
       #clock {
         position: absolute;
         top: 14px;
@@ -719,6 +832,8 @@
         gap: 4px;
       }
 
+      #stash-crate li,
+      #stash-pack li,
       #panel-items li,
       #panel-equip li {
         display: grid;
@@ -730,8 +845,11 @@
         background: rgba(255, 255, 255, 0.03);
       }
 
+      /* Four columns since equipped tools started showing their remaining
+         uses: the label, the name, the wear, and Remove. Three left the wear
+         span landing in an implicit column. */
       #panel-equip li {
-        grid-template-columns: 52px 1fr auto;
+        grid-template-columns: 52px 1fr auto auto;
       }
 
       .slot-name {
@@ -745,6 +863,45 @@
         color: var(--dim);
         font-variant-numeric: tabular-nums;
         font-size: 11px;
+      }
+
+      /* Uses left on a tool. In the accent colour rather than the dim one,
+         because it is the only number in the row worth looking at. */
+      .item-wear {
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+      }
+
+      /* The same red the meters use when they are nearly out, so "about to run
+         out" looks the same everywhere in the game. */
+      .item-wear.low {
+        color: var(--health);
+      }
+
+      /* The crate's own weight readout, beside its heading. */
+      #stash-weight {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        margin-left: 8px;
+      }
+
+      #stash-weight.full {
+        color: var(--health);
+      }
+
+      /* A tab that is not applicable right now is not shown at all. */
+      .tab[hidden] {
+        display: none;
+      }
+
+      .item-tier {
+        color: var(--accent);
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        opacity: 0.85;
       }
 
       .empty {
@@ -1038,13 +1195,20 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-dJY_uTs1.js"></script>
+    <script type="module" crossorigin src="./assets/index-DepAup36.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
     <pre id="debug" hidden></pre>
 
     <div id="hud" hidden>
+      <!-- The compass strip. Hidden until the player is carrying one, which is
+           the whole design: you are not given a map, you build an instrument. -->
+      <div id="compass" hidden>
+        <div id="compass-band"></div>
+        <div id="compass-marks"></div>
+      </div>
+
       <div id="clock">
         <span id="clock-day">DAY 1</span>
         <span id="clock-time">08:00</span>
@@ -1107,6 +1271,9 @@
         <div class="panel-bar">
           <button id="tab-pack" class="tab active" type="button">PACK</button>
           <button id="tab-character" class="tab" type="button">CHARACTER</button>
+          <!-- Only shown while a crate is in reach. A tab that is always there
+               and always empty is a promise the game cannot keep. -->
+          <button id="tab-stash" class="tab" type="button" hidden>CRATE</button>
           <span id="panel-bench">NO WORKBENCH</span>
           <span id="panel-weight">0.0 / 27 kg</span>
         </div>
@@ -1121,6 +1288,17 @@
           <div class="panel-col">
             <h3>CRAFTING</h3>
             <ul id="panel-recipes"></ul>
+          </div>
+        </div>
+
+        <div class="panel-body" id="view-stash" hidden>
+          <div class="panel-col">
+            <h3>CRATE <span id="stash-weight"></span></h3>
+            <ul id="stash-crate"></ul>
+          </div>
+          <div class="panel-col">
+            <h3>CARRYING</h3>
+            <ul id="stash-pack"></ul>
           </div>
         </div>
 
