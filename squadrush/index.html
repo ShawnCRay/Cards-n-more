@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--
+  viewport-fit=cover plus the safe-area insets below is what keeps the HUD off
+  the notch and off the home indicator. user-scalable=no because a double tap
+  during a run must never zoom the page.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SQUAD RUSH</title>
+<!--
+  Inline, as a data URI, so the page makes exactly one request for itself and
+  the console stays clean. A missing favicon is a 404 on every single load, and
+  a harness that asserts "no console errors" is worthless once it has one error
+  it has learned to ignore.
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1220'/%3E%3Crect x='8' y='40' width='48' height='6' rx='3' fill='%234b525d'/%3E%3Ccircle cx='20' cy='44' r='7' fill='%23232732'/%3E%3Ccircle cx='44' cy='44' r='7' fill='%23232732'/%3E%3Crect x='24' y='26' width='16' height='12' rx='3' fill='%2363e6ff'/%3E%3Ccircle cx='32' cy='20' r='6' fill='%23232732'/%3E%3Crect x='40' y='34' width='10' height='5' rx='2' fill='%23ff2d4f'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #0d1220;
+    --paper: #f4f7ff;
+    --good: #35d07f;
+    --bad: #ff4d6d;
+    --gold: #ffc53d;
+    --blue: #48b1ff;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /*
+      touch-action none on the body is what makes a drag steer instead of
+      scrolling the page. Without it iOS rubber-bands the whole document and
+      the run is unplayable.
+    */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /*
+    Every rule below that sets `display` on an element which can also carry
+    `hidden` needs this, because an author display rule beats the user agent's
+    [hidden] { display: none }. Learned the expensive way on the last project.
+  */
+  [hidden] { display: none !important; }
+
+  /* ---------------------------------------------------------------- HUD -- */
+
+  #hud {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: calc(var(--safe-t) + 12px) 14px calc(var(--safe-b) + 14px);
+    text-shadow: 0 2px 6px rgba(0,0,0,0.55);
+  }
+
+  #hud-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .readout { line-height: 1.05; }
+  .readout .k {
+    font-size: 11px;
+    letter-spacing: 2px;
+    opacity: 0.62;
+    font-weight: 700;
+  }
+  .readout .v {
+    font-size: 22px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout.right { text-align: right; }
+  .readout.centre { text-align: center; }
+  .readout.centre .v { color: var(--blue); }
+
+  #hud-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  #squad-count {
+    font-size: 54px;
+    font-weight: 900;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+    color: var(--paper);
+    transform-origin: left bottom;
+    transition: transform 90ms ease-out, color 180ms ease-out;
+  }
+  #squad-count.punch { transform: scale(1.28); color: var(--good); }
+  #squad-count.hurt  { transform: scale(0.86); color: var(--bad); }
+  #squad-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    opacity: 0.62;
+    font-weight: 700;
+  }
+
+  #gun {
+    text-align: right;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--gold);
+  }
+  #gun .tier { display: block; font-size: 10px; letter-spacing: 2px; opacity: 0.6; color: var(--paper); }
+
+  /* Boss health bar, only up while a wall is on screen. */
+  #boss-bar {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--safe-t) + 62px);
+    transform: translateX(-50%);
+    width: min(70vw, 340px);
+    display: block;
+  }
+  #boss-bar .track {
+    height: 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.45);
+    border: 2px solid rgba(255,255,255,0.75);
+    overflow: hidden;
+  }
+  #boss-bar .fill {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #ff4d6d, #ff9f1c);
+    transform-origin: left center;
+    transition: transform 60ms linear;
+  }
+  #boss-bar .cap {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 3px;
+    font-weight: 800;
+    opacity: 0.8;
+    margin-top: 4px;
+  }
+
+  /* Centre banner, for gun pickups and stage changes. */
+  #banner {
+    position: absolute;
+    left: 50%;
+    top: 34%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(28px, 9vw, 56px);
+    font-weight: 900;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+    display: block;
+    opacity: 0;
+  }
+  #banner.show { animation: banner 1100ms ease-out forwards; }
+  @keyframes banner {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    18%  { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+    30%  { transform: translate(-50%, -50%) scale(1); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+
+  /* ------------------------------------------------------------ screens -- */
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: calc(var(--safe-t) + 24px) 24px calc(var(--safe-b) + 24px);
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 42%, rgba(13,18,32,0.72), rgba(13,18,32,0.94));
+    backdrop-filter: blur(2px);
+  }
+
+  .title {
+    font-size: clamp(38px, 13vw, 78px);
+    font-weight: 900;
+    letter-spacing: 3px;
+    line-height: 0.92;
+    background: linear-gradient(180deg, #ffffff, var(--blue));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 4px 14px rgba(72,177,255,0.35));
+  }
+  .tagline {
+    font-size: 13px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    max-width: 26ch;
+    line-height: 1.5;
+  }
+
+  .btn {
+    pointer-events: auto;
+    display: inline-block;
+    border: 0;
+    border-radius: 999px;
+    padding: 16px 42px;
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    font-family: inherit;
+    color: #06210f;
+    background: linear-gradient(180deg, #6ef1a8, var(--good));
+    box-shadow: 0 6px 0 #1d8f57, 0 12px 24px rgba(0,0,0,0.45);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 70ms ease-out, box-shadow 70ms ease-out;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1d8f57, 0 6px 14px rgba(0,0,0,0.45); }
+  .btn.secondary {
+    color: var(--paper);
+    background: rgba(255,255,255,0.10);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.35);
+    font-size: 14px;
+    padding: 12px 28px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(96px, 1fr));
+    gap: 10px 22px;
+    margin: 2px 0 4px;
+  }
+  .stats div { line-height: 1.15; }
+  .stats .k { font-size: 10px; letter-spacing: 2px; opacity: 0.6; font-weight: 700; }
+  .stats .v { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+  .best { font-size: 12px; letter-spacing: 2px; opacity: 0.75; font-weight: 700; }
+  .best .v { color: var(--gold); }
+
+  .hint {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    opacity: 0.5;
+    line-height: 1.6;
+  }
+
+  #over .title { font-size: clamp(30px, 10vw, 58px); background: linear-gradient(180deg, #ffffff, var(--bad)); -webkit-background-clip: text; background-clip: text; }
+</style>
+  <script type="module" crossorigin src="./assets/index-B39Njd6T.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- three.js appends its canvas here -->
+
+    <div id="hud" hidden>
+      <div id="hud-top">
+        <div class="readout">
+          <div class="k">SECTOR</div>
+          <div class="v" id="stage">1</div>
+        </div>
+        <div class="readout centre">
+          <div class="k">KM/H</div>
+          <div class="v" id="speed">94</div>
+        </div>
+        <div class="readout right">
+          <div class="k">DISTANCE</div>
+          <div class="v" id="score">0m</div>
+        </div>
+      </div>
+
+      <div id="hud-bottom">
+        <div>
+          <div id="squad-label">CONVOY</div>
+          <div id="squad-count">1</div>
+        </div>
+        <div id="gun">
+          <span id="gun-name">PISTOL</span>
+          <span class="tier" id="gun-tier">TIER 1</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="boss-bar" hidden>
+      <div class="track"><span class="fill" id="boss-fill"></span></div>
+      <div class="cap" id="boss-cap">BARRICADE</div>
+    </div>
+
+    <div id="banner" hidden></div>
+
+    <div class="screen" id="start">
+      <div class="title">SQUAD<br>RUSH</div>
+      <div class="tagline">Drag to steer. Your squad fires on its own. Take the good gate, shoot the barrels, break the wall.</div>
+      <button class="btn" id="play">PLAY</button>
+      <div class="best" hidden id="start-best">BEST <span class="v" id="start-best-v">0</span></div>
+      <div class="hint">Drag anywhere &nbsp;/&nbsp; arrow keys on desktop</div>
+    </div>
+
+    <div class="screen" id="over" hidden>
+      <div class="title">WIPED OUT</div>
+      <div class="stats">
+        <div><div class="k">SCORE</div><div class="v" id="over-score">0</div></div>
+        <div><div class="k">STAGE</div><div class="v" id="over-stage">1</div></div>
+        <div><div class="k">BIGGEST SQUAD</div><div class="v" id="over-peak">1</div></div>
+        <div><div class="k">KILLS</div><div class="v" id="over-kills">0</div></div>
+      </div>
+      <div class="best">BEST <span class="v" id="over-best">0</span></div>
+      <button class="btn" id="retry">RUN AGAIN</button>
+    </div>
+  </div>
+
+</body>
+</html>
