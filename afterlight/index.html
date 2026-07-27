@@ -499,6 +499,14 @@
         background: var(--accent);
       }
 
+      /* The author `display` above beats the user agent's `[hidden]` rule, so a
+         hidden key badge stays visible without this. Third time this has cost
+         time in this project, hence the note beside the rule rather than only
+         in the trap list. */
+      #prompt .key[hidden] {
+        display: none;
+      }
+
       /* Loot readout. Placeholder strings until Phase 3 has an inventory to
          put them in, so for now finding something can only be announced. */
       #toast {
@@ -1195,7 +1203,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DepAup36.js"></script>
+    <script type="module" crossorigin src="./assets/index-BI8Ir5SR.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -1217,7 +1225,7 @@
 
       <ul id="effects"></ul>
 
-      <div id="prompt" hidden><span class="key">E</span><span id="prompt-label"></span></div>
+      <div id="prompt" hidden><span class="key" id="prompt-key">E</span><span id="prompt-label"></span></div>
       <div id="toast" hidden></div>
 
       <div id="meters">
