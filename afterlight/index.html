@@ -712,6 +712,15 @@
         border-left-color: #8fc9a8;
       }
 
+      /* The list is documented as one that grows, so the guard goes in before
+         the first row that needs it rather than after. An author display beats
+         the user agent's [hidden] rule, and this project has paid for that
+         four times. */
+      #panel-stats li[hidden],
+      #panel-derived li[hidden] {
+        display: none;
+      }
+
       #panel-stats li,
       #panel-derived li {
         display: grid;
@@ -725,6 +734,19 @@
 
       #panel-derived li {
         grid-template-columns: 1fr auto;
+      }
+
+      /*
+       * Two columns, because the derived list is the part of the sheet that
+       * grows every time a stat learns to do something. It was nine rows and
+       * fitted the column exactly; the stats cycle took it to fourteen and
+       * pushed the newest rows, the ones a player has just spent a point to
+       * move, below the fold. Paired rows halve the height and leave room for
+       * the insulation and armour rows still to come.
+       */
+      #panel-derived {
+        grid-template-columns: 1fr 1fr;
+        column-gap: 8px;
       }
 
       .stat-name {
@@ -1203,7 +1225,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-D_n0bSjn.js"></script>
+    <script type="module" crossorigin src="./assets/index-CvwoqlNo.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
