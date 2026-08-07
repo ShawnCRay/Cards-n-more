@@ -563,7 +563,7 @@ const DECK_SETS = {
     'Utility Main', 'Reinforced Vault Door', 'Heavy Fabrication Area', 'Breach Tunnel',
     'Wasteland Outpost', 'Waste Disposal Lock', 'Logistics Hub', 'Overdrive Stim-Station',
     'Neuro-Stasis Array', 'Turbo-Fluid Grid', 'Recycling Chute', 'Conditioning Center',
-    'Propaganda Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
+    'Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
     'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Speakeasy',
   ]),
   standard: new Set([
@@ -616,7 +616,7 @@ const BUILDINGS = [
   { n: 'Pharma Distribution Node',         m: 'chems',                    fx: 'bacchanalia', t: 'Upon Completion: Draw cards equal to POPULATION. Place 1 in SAFE, 1 as DWELLER, 1 on a SITE, 1 as MATERIAL. Keep the rest in your HAND.' },
   { n: 'Prefab Room',                      m: 'chems',                    fx: 'villa',      t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
   { n: 'Detective Agency',                   m: 'concrete',                 fx: 'senate',     t: 'End of Turn: Add an opponent\'s played MYSTERIOUS STRANGER to your HAND' },
-  { n: 'Propaganda Broadcast Tower',       m: 'chems',                    fx: 'prison',     t: 'Upon Completion: Trade this blueprint\'s site for a completed vault room from an opponent' },
+  { n: 'Broadcast Tower',                    m: 'chems',                    fx: 'prison',     t: 'Upon Completion: Trade this blueprint\'s site for a completed vault room from an opponent' },
   { n: 'Prototype Bar',                    m: 'tech',                     fx: 'gate',       t: 'Passive: Incomplete HIGH-TECH rooms provide their functions' },
   { n: 'Reclamation Plant',                m: 'concrete',                 fx: 'solarium',   t: 'Upon Room Completion: Move 1 material from that room to your STOCKPILE (triggers on this room)' },
   { n: 'Recycling Chute',                  m: 'chems',                    fx: 'sewer',      t: 'End of turn: Move role cards used to lead or follow into your STOCKPILE instead of the WASTELAND' },
@@ -1252,13 +1252,13 @@ async function onCompletion(p, b) {
         });
       });
       bldgOpts.unshift({ id: 'skip', label: 'Skip', score: 0 });
-      const bPick = await choose(p, p.name + ': Propaganda Broadcast Tower — trade this site for a completed vault room?', bldgOpts);
+      const bPick = await choose(p, p.name + ': Broadcast Tower — trade this site for a completed vault room?', bldgOpts);
       if (bPick && bPick.startsWith('seize:')) {
         sites[b.site]++;
         const qi = Number(bPick.split(':')[1]), bi = Number(bPick.split(':')[2]);
         const stolen = players[qi].buildings.splice(bi, 1)[0];
         p.buildings.push(stolen);
-        log(p.name + ' trades the ' + b.site + ' site and seizes ' + stolen.n + ' from ' + players[qi].name + ' (Propaganda Broadcast Tower).');
+        log(p.name + ' trades the ' + b.site + ' site and seizes ' + stolen.n + ' from ' + players[qi].name + ' (Broadcast Tower).');
       }
     }
   }
