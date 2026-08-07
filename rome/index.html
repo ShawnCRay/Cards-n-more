@@ -570,7 +570,7 @@ const DECK_SETS = {
     'Nutrient Infusion Station', 'Vault-Tec Regional Headquarters', 'Asset Liquidation Lab', 'Security Checkpoint',
   ]),
   experimental: new Set([
-    'Commissary', 'Conversion Lab', 'Dweller Testing Chamber', "Private Investigator's Office",
+    'Commissary', 'Conversion Lab', 'Dweller Testing Chamber', 'Detective Agency',
   ]),
   expansion: new Set([
     'Reclamation Plant', 'Mess Hall', 'Molecular Reclamator', 'Pharma Distribution Node',
@@ -615,7 +615,7 @@ const BUILDINGS = [
   { n: 'Perimeter Fencing',                m: 'rations',  q: 6,           fx: 'palisade',   t: 'Passive: Immune to RAIDER actions' },
   { n: 'Pharma Distribution Node',         m: 'chems',                    fx: 'bacchanalia', t: 'Upon Completion: Draw cards equal to POPULATION. Place 1 in SAFE, 1 as DWELLER, 1 on a SITE, 1 as MATERIAL. Keep the rest in your HAND.' },
   { n: 'Prefab Room',                      m: 'chems',                    fx: 'villa',      t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
-  { n: 'Private Investigator\'s Office',   m: 'concrete',                 fx: 'senate',     t: 'End of Turn: Add an opponent\'s played MYSTERIOUS STRANGER to your HAND' },
+  { n: 'Detective Agency',                   m: 'concrete',                 fx: 'senate',     t: 'End of Turn: Add an opponent\'s played MYSTERIOUS STRANGER to your HAND' },
   { n: 'Propaganda Broadcast Tower',       m: 'chems',                    fx: 'prison',     t: 'Upon Completion: Trade this blueprint\'s site for a completed vault room from an opponent' },
   { n: 'Prototype Bar',                    m: 'tech',                     fx: 'gate',       t: 'Passive: Incomplete HIGH-TECH rooms provide their functions' },
   { n: 'Reclamation Plant',                m: 'concrete',                 fx: 'solarium',   t: 'Upon Room Completion: Move 1 material from that room to your STOCKPILE (triggers on this room)' },
@@ -1785,9 +1785,9 @@ async function playTurn(gen) {
   for (const p of participants) {
     for (const c of (p.played || [])) {
       if (c.stranger) {
-        // Private Investigator's Office: opponent's strangers go to your hand instead of the pool
+        // Detective Agency: opponent's strangers go to your hand instead of the pool
         const sniper = players.find(q => q !== p && has(q, 'senate'));
-        if (sniper) { sniper.hand.push(c); log(sniper.name + ' intercepts a Mysterious Stranger via Private Investigator\'s Office.'); }
+        if (sniper) { sniper.hand.push(c); log(sniper.name + ' intercepts a Mysterious Stranger via Detective Agency.'); }
         else strangers++;
         continue;
       }
