@@ -39,8 +39,27 @@
     );
   }
 
+  .cap-dots {
+    position: absolute;
+    right: -0.1mm;
+    transform: translateX(50%);
+    top: 1mm;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8mm;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .cap-dot {
+    width: 3.2mm;
+    height: 3.2mm;
+    display: block;
+  }
+
   .inner-wrap {
     border: 1px solid rgba(138,90,173,0.2);
+    border-right: 1px solid rgba(138,90,173,0.45);
     margin: 2mm;
     padding: 2mm;
     flex: 1;
@@ -73,18 +92,6 @@
 
   .card-name .purple {
     color: #8a5aad;
-  }
-
-  .card-caps {
-    border: 1.5px solid #8a5aad;
-    padding: 0.5mm 2mm;
-    font-size: 8pt;
-    font-weight: 700;
-    color: #8a5aad;
-    border-radius: 2px;
-    background: rgba(138,90,173,0.08);
-    white-space: nowrap;
-    flex-shrink: 0;
   }
 
   .card-body {
@@ -191,7 +198,24 @@
 
     <div class="card-header">
       <span class="card-name"><span class="purple">3D Printing</span> Matrix</span>
-      <span class="card-caps">3 CAPS</span>
+    </div>
+
+    <div class="cap-dots">
+      <svg class="cap-dot" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10.5" fill="#8a5aad" stroke="#6a3a8d" stroke-width="1"/>
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="#6a3a8d" stroke-width="0.8"/>
+        <path d="M15.2 8.5 A 4.2 4.2 0 1 0 15.2 14.6" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/><line x1="9.5" y1="18" x2="15" y2="6.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <svg class="cap-dot" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10.5" fill="#8a5aad" stroke="#6a3a8d" stroke-width="1"/>
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="#6a3a8d" stroke-width="0.8"/>
+        <path d="M15.2 8.5 A 4.2 4.2 0 1 0 15.2 14.6" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/><line x1="9.5" y1="18" x2="15" y2="6.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <svg class="cap-dot" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10.5" fill="#8a5aad" stroke="#6a3a8d" stroke-width="1"/>
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="#6a3a8d" stroke-width="0.8"/>
+        <path d="M15.2 8.5 A 4.2 4.2 0 1 0 15.2 14.6" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/><line x1="9.5" y1="18" x2="15" y2="6.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
     </div>
 
     <div class="card-body">
