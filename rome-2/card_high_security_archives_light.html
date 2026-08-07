@@ -74,8 +74,8 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1.5px solid rgba(141,146,155,0.3);
-    padding-bottom: 1.8mm;
-    margin-bottom: 1.8mm;
+    padding-bottom: 1.4mm;
+    margin-bottom: 1.4mm;
     flex-shrink: 0;
   }
 
@@ -123,7 +123,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1.8mm;
+    gap: 1.2mm;
     min-width: 0;
   }
 
@@ -147,10 +147,10 @@
   }
 
   .card-text-box {
-    flex: 0.9;
+    flex: 0.8;
     border: 1px solid rgba(36,29,18,0.12);
     border-radius: 2mm;
-    padding: 1.5mm;
+    padding: 0.6mm 1.2mm;
     background: rgba(255,255,255,0.4);
     color: #241d12;
     overflow: hidden;
@@ -163,23 +163,34 @@
   .room-title {
     font-weight: 700;
     text-transform: uppercase;
-    font-size: 6pt;
-    margin-bottom: 0.8mm;
+    font-size: 5.8pt;
+    margin-bottom: 0.4mm;
     color: #6a7280;
     border-bottom: 1px dashed rgba(141,146,155,0.2);
-    padding-bottom: 0.5mm;
+    padding-bottom: 0.2mm;
   }
 
   .room-desc {
-    font-size: 5.8pt;
-    line-height: 1.35;
+    font-size: 5.6pt;
+    line-height: 1.25;
     color: #241d12;
+  }
+
+  .room-section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .room-section + .room-section {
+    margin-top: 0.6mm;
+    padding-top: 0.4mm;
+    border-top: 1px solid rgba(141,146,155,0.2);
   }
 
   .card-footer {
     border-top: 1.5px solid rgba(141,146,155,0.3);
-    padding-top: 1.8mm;
-    margin-top: 1.8mm;
+    padding-top: 1.4mm;
+    margin-top: 1.4mm;
     text-align: center;
     font-size: 7.5pt;
     letter-spacing: 3px;
@@ -297,8 +308,14 @@
         </div>
 
         <div class="card-text-box">
-          <div class="room-title">PASSIVE:</div>
-          <div class="room-desc">Your POPULATION counts as the highest player's. Lose 1 POPULATION: Execute a completed room's "Upon Completion" effect.</div>
+          <div class="room-section">
+            <div class="room-title">PASSIVE:</div>
+            <div class="room-desc">Your POPULATION counts as the highest player's.</div>
+          </div>
+          <div class="room-section">
+            <div class="room-title">LOSE 1 POPULATION:</div>
+            <div class="room-desc">Execute a completed room's "Upon Completion" effect.</div>
+          </div>
         </div>
       </div>
     </div>
