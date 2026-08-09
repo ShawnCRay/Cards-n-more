@@ -15,7 +15,12 @@
   .card-container {
     width: 63.5mm;
     height: 88.9mm;
-    background: #ffffff;
+    background-color: #ffffff;
+    background-image: linear-gradient(
+      180deg,
+      rgba(106,114,128,0.10) 0%,
+      rgba(106,114,128,0.03) 100%
+    );
     border: 2.5px solid #8d879b;
     border-radius: 3.5mm;
     position: relative;
@@ -111,10 +116,6 @@
     <div class="card-body">
       <svg class="back-emblem" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#6a7280" stop-opacity="0.10"/>
-            <stop offset="100%" stop-color="#6a7280" stop-opacity="0.03"/>
-          </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="1.2" result="blur"/>
             <feMerge>
@@ -123,9 +124,6 @@
             </feMerge>
           </filter>
         </defs>
-
-        <rect width="200" height="200" fill="#ffffff"/>
-        <rect width="200" height="200" fill="url(#bgGrad)"/>
 
         <!-- engineering grid -->
         <g stroke="#6a7280" stroke-opacity="0.05" stroke-width="0.5">
