@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 63.5mm;
+    height: 88.9mm;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .card-container {
+    width: 63.5mm;
+    height: 88.9mm;
+    background: #ffffff;
+    border: 2.5px solid #c89a3c;
+    border-radius: 3.5mm;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 2px 12px rgba(0,0,0,0.3),
+      inset 0 0 0 1px rgba(255,255,255,0.15);
+  }
+
+  .inner-wrap {
+    margin: 2mm;
+    padding: 2mm;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+  }
+
+  .site-top {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1mm;
+    align-items: center;
+    border-bottom: 1.5px solid rgba(200,154,60,0.3);
+    padding-bottom: 1.2mm;
+  }
+
+  .pop-row {
+    display: flex;
+    gap: 1.2mm;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pop-circle {
+    width: 4.6mm;
+    height: 4.6mm;
+    border: 0.5mm solid #c89a3c;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pop-circle svg {
+    width: 70%;
+    height: 70%;
+    display: block;
+  }
+
+  .site-name {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #241d12;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-image {
+    flex: 3;
+    min-height: 0;
+    margin-top: 1.2mm;
+    border: 1.5px solid rgba(200,154,60,0.3);
+    border-radius: 2mm;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .site-image svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .foundation {
+    flex: 2;
+    min-height: 0;
+    margin-top: 1.2mm;
+    border: 1.5px solid rgba(200,154,60,0.4);
+    border-radius: 2mm;
+    padding: 1mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 1.6mm,
+        rgba(200,154,60,0.10) 1.6mm, rgba(200,154,60,0.10) 3.2mm),
+      repeating-linear-gradient(-45deg, transparent, transparent 1.6mm,
+        rgba(200,154,60,0.10) 1.6mm, rgba(200,154,60,0.10) 3.2mm);
+  }
+
+  .foundation .f-title {
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #8a6a24;
+    margin-bottom: 0.6mm;
+  }
+
+  .foundation .f-body {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #241d12;
+  }
+</style>
+<title>Scrap Metal Site Front - Light</title>
+</head>
+<body>
+
+<div class="card-container">
+  <div class="inner-wrap">
+
+    <div class="site-top">
+      <div class="pop-row">
+        <div class="pop-circle">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8.5" r="3.5" fill="#c89a3c"/>
+            <path d="M5.5 19 c0 -4.5 13 -4.5 13 0 z" fill="#c89a3c"/>
+          </svg>
+        </div>
+      </div>
+      <div class="site-name">Scrap Metal</div>
+    </div>
+
+    <div class="site-image">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#c89a3c" stop-opacity="0.10"/>
+            <stop offset="100%" stop-color="#c89a3c" stop-opacity="0.03"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="1.5" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <rect width="200" height="200" fill="#ffffff"/>
+        <rect width="200" height="200" fill="url(#bgGrad)"/>
+
+        <!-- engineering grid -->
+        <g stroke="#c89a3c" stroke-opacity="0.05" stroke-width="0.5">
+          <line x1="40" y1="0" x2="40" y2="200"/>
+          <line x1="80" y1="0" x2="80" y2="200"/>
+          <line x1="120" y1="0" x2="120" y2="200"/>
+          <line x1="160" y1="0" x2="160" y2="200"/>
+          <line x1="0" y1="40" x2="200" y2="40"/>
+          <line x1="0" y1="80" x2="200" y2="80"/>
+          <line x1="0" y1="120" x2="200" y2="120"/>
+          <line x1="0" y1="160" x2="200" y2="160"/>
+        </g>
+
+        <!-- wasteland junk pile -->
+        <g filter="url(#glow)">
+          <path d="M44 142 L 156 142 L 148 158 L 52 158 Z" fill="none" stroke="#c89a3c" stroke-width="1.5" stroke-opacity="0.85"/>
+          <path d="M30 132 L 170 132 Z" fill="none" stroke="#c89a3c" stroke-width="0.8" stroke-opacity="0.4"/>
+        </g>
+
+        <!-- scattered scrap: gear, bolt, panel -->
+        <g filter="url(#glow)">
+          <path d="M70 120 m-8 0 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0" fill="none" stroke="#c89a3c" stroke-width="1.2" stroke-opacity="0.8"/>
+          <circle cx="70" cy="120" r="2.5" fill="#c89a3c" opacity="0.7"/>
+          <rect x="98" y="110" width="26" height="14" rx="2" fill="none" stroke="#c89a3c" stroke-width="1.2" stroke-opacity="0.8" transform="rotate(-8 111 117)"/>
+          <rect x="102" y="92" width="16" height="10" rx="1.5" fill="none" stroke="#c89a3c" stroke-width="1.1" stroke-opacity="0.7" transform="rotate(14 110 97)"/>
+          <circle cx="140" cy="116" r="5" fill="none" stroke="#c89a3c" stroke-width="1.1" stroke-opacity="0.7"/>
+          <circle cx="140" cy="116" r="1.8" fill="#c89a3c" opacity="0.7"/>
+          <path d="M128 126 h 8 M126 131 h 12" stroke="#c89a3c" stroke-width="0.9" stroke-opacity="0.5"/>
+        </g>
+
+        <!-- label text -->
+        <g font-family="'Courier New', monospace" fill="#c89a3c" opacity="0.28" font-size="5" letter-spacing="2">
+          <text x="58" y="44">SCRAPYARD</text>
+          <text x="74" y="180">SITE</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="foundation">
+      <div class="f-title">Foundation</div>
+      <div class="f-body">+ 1 material</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

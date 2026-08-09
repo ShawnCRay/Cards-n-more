@@ -1,0 +1,94 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 63.5mm;
+    height: 88.9mm;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .card-container {
+    width: 63.5mm;
+    height: 88.9mm;
+    background: #ffffff;
+    border: 2.5px solid #5a7a35;
+    border-radius: 3.5mm;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    box-shadow:
+      0 2px 12px rgba(0,0,0,0.3),
+      inset 0 0 0 1px rgba(255,255,255,0.15);
+  }
+
+  .crosshatch {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 1.6mm,
+        rgba(90,122,53,0.12) 1.6mm, rgba(90,122,53,0.12) 3.2mm),
+      repeating-linear-gradient(-45deg, transparent, transparent 1.6mm,
+        rgba(90,122,53,0.12) 1.6mm, rgba(90,122,53,0.12) 3.2mm);
+  }
+
+  .crosshatch::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(90,122,53,0.05) 2px, rgba(90,122,53,0.05) 4px
+    );
+  }
+
+  .back-inner {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    margin: 3mm;
+    border: 1px solid rgba(90,122,53,0.45);
+    border-radius: 2.5mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2mm;
+  }
+
+  .back-type {
+    font-size: 12pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #3d5223;
+    text-align: center;
+  }
+
+  .back-rule {
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #241d12;
+    text-align: center;
+  }
+</style>
+<title>Rations Wasteland Site Back - Light</title>
+</head>
+<body>
+
+<div class="card-container">
+  <div class="crosshatch"></div>
+  <div class="back-inner">
+    <div class="back-type">Rations</div>
+    <div class="back-rule">Wasteland Site</div>
+  </div>
+</div>
+
+</body>
+</html>
