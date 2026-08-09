@@ -35,12 +35,44 @@
     height: 100%;
     display: block;
   }
+
+  .card-title {
+    position: absolute;
+    top: 10mm;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    text-align: center;
+    color: #2f5d8a;
+    font-weight: 700;
+    font-size: 9pt;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    line-height: 1.35;
+  }
+
+  .card-tagline {
+    position: absolute;
+    bottom: 13.5mm;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    text-align: center;
+    color: #2f5d8a;
+    font-weight: 700;
+    font-size: 7.5pt;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
 </style>
 <title>Mysterious Stranger - Light</title>
 </head>
 <body>
 
 <div class="card-container">
+  <div class="card-title">Mysterious<br>Stranger</div>
+
   <div class="card-image">
     <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -99,6 +131,8 @@
       </g>
     </svg>
   </div>
+
+  <div class="card-tagline">Lead or follow any role</div>
 </div>
 
 </body>
