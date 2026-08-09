@@ -1,5 +1,7 @@
 # Cards-n-more
 
+[Cards-n-more](https://shawncray.github.io/Cards-n-more/)
+
 Personal collection of ad-free card games. Each game lives in its own folder
 as a single self-contained `index.html` — no build step, no dependencies, no
 ads. Open the file in a browser to play.
