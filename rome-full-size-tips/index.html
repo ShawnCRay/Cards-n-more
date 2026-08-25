@@ -1,0 +1,2253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 · Fallout Glory to Rome</title>
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+    --m-scrap: #c89a3c;
+    --m-rations: #5a7a35;
+    --m-tech: #9c3a26;
+    --m-concrete: #6b7570;
+    --m-chems: #3f6875;
+    --m-hightech: #8a5aad;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) { #lamp { animation: none; } }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message, #net-bar { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 14px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 12px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  #board { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 6px 10px 0; font-size: 12px; }
+
+  /* wasteland & sites */
+  #common {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    border-radius: 12px 8px 11px 7px / 8px 12px 7px 11px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  #common .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 3px; }
+  #wasteland-cards { display: flex; flex-wrap: wrap; gap: 3px; min-height: 22px; max-width: 100%; }
+  #sites-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .sitechip {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.4);
+  }
+
+  .mchip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    line-height: 1.5;
+    padding: 1px 6px;
+    border-radius: 3px 5px 3px 5px;
+    color: #f0e6c8;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    border: 1px solid rgba(0,0,0,0.45);
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.35);
+    white-space: nowrap;
+  }
+  .mat-scrap   { background: var(--m-scrap); }
+  .mat-rations     { background: var(--m-rations); }
+  .mat-tech    { background: var(--m-tech); }
+  .mat-concrete { background: var(--m-concrete); }
+  .mat-chems    { background: var(--m-chems); }
+  .mat-hightech   { background: var(--m-hightech); }
+  .mat-stranger     { background: #241d12; color: var(--gold); border-color: var(--gold); }
+
+  /* player tableaus */
+  #tableaus { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .tab {
+    flex: 1 1 30%;
+    min-width: 240px;
+    background:
+      radial-gradient(circle 60px at 88% 92%, rgba(0,0,0,0.30), transparent),
+      rgba(0,0,0,0.22);
+    border: 1px solid rgba(217,151,63,0.25);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+    padding: 6px 8px 8px;
+  }
+  .tab:nth-child(odd)  { border-radius: 14px 9px 13px 8px / 10px 14px 8px 13px; }
+  .tab:nth-child(even) { border-radius: 8px 13px 9px 14px / 13px 8px 14px 10px; }
+  .tab.you { border-color: rgba(217,151,63,0.55); }
+  .tab.active-turn { border-color: var(--gold); box-shadow: 0 0 12px rgba(217,151,63,0.4), inset 0 0 20px rgba(0,0,0,0.4); }
+  .tab .hdr { display: flex; justify-content: space-between; align-items: baseline; }
+  .tab .hdr .nm { font-weight: 700; font-size: 13px; }
+  .tab .hdr .nm .tag { font-size: 9px; font-weight: 400; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .tab .hdr .inf { color: var(--gold); font-weight: 700; }
+  .tab .row { margin-top: 4px; }
+  .tab .row .lbl { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.5; }
+  .tab .chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; min-height: 14px; }
+  .bldg {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px dashed rgba(230,217,184,0.5);
+    background: rgba(0,0,0,0.3);
+  }
+  .bldg.done { border-style: solid; border-color: var(--gold); color: var(--gold); }
+  .bldg .prog { opacity: 0.8; }
+
+  /* hand */
+  #hand-area { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px; text-align: center; }
+  #hand-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 3px; }
+  #hand { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 22px; }
+
+  /* controls */
+  #controls { max-width: 1000px; width: 100%; margin: 0 auto; padding: 4px 10px 8px; text-align: center; }
+  #net-bar { min-height: 16px; margin-bottom: 3px; font-size: 12px; color: var(--gold); }
+  #net-bar b { letter-spacing: 2px; }
+  #net-bar button { font-size: 10px; font-weight: 400; padding: 3px 9px; margin-left: 8px; }
+  #message { min-height: 18px; margin-bottom: 5px; font-size: 13px; color: var(--gold); font-weight: 600; }
+  #opts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-height: 180px; overflow-y: auto; }
+  #opts button { font-size: 11px; padding: 8px 12px; text-transform: none; letter-spacing: 0.4px; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  #deck-options { margin-bottom: 10px; }
+  #deck-options .deck-row { margin-bottom: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  #deck-options .deck-label { font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+  #deck-options .deck-opt { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(217,151,63,0.25); background: rgba(0,0,0,0.2); }
+  #deck-options .deck-opt:hover { background: rgba(217,151,63,0.15); }
+  #deck-options .deck-opt input { accent-color: var(--gold); }
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+
+  /* footer & overlays */
+  #footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2px 10px 8px;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  #log { flex: 1; min-width: 180px; max-height: 32px; overflow: hidden; }
+  #log div { line-height: 1.55; }
+  #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
+  #overlay, #help {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 16px;
+  }
+  #overlay .panel, #help .panel {
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  #help .panel { max-width: 600px; max-height: 85vh; overflow-y: auto; }
+  #overlay h2, #help h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  #overlay p { font-size: 13px; opacity: 0.85; margin-bottom: 14px; }
+  #overlay input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background: rgba(0,0,0,0.4);
+    color: var(--cream);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  #overlay-status { font-size: 12px; color: #ffcc80; min-height: 16px; margin-top: 10px; }
+  #help .help-body { text-align: left; font-size: 13px; line-height: 1.55; }
+  #help .help-body p { margin-bottom: 9px; }
+  #help .help-body ul { margin: 0 0 9px 18px; }
+  #help .help-body li { margin-bottom: 4px; }
+  #help .help-body b { color: var(--gold); }
+
+  /* pip-boy card inspection popup */
+  #cardtip {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    background: #0b120b;
+    border: 2px solid var(--m-scrap);
+    box-shadow: 0 0 20px rgba(0,255,0,0.12), inset 0 0 24px rgba(0,255,0,0.03), 0 8px 32px rgba(0,0,0,0.7);
+    pointer-events: none;
+    border-radius: 8px;
+  }
+  #cardtip .ct-art {
+    display: block;
+    width: 240px;
+    height: 336px;
+    margin: 4px;
+    border: 0;
+    border-radius: 6px;
+    background: #fff;
+  }
+  #cardtip .ct-fallback {
+    display: block;
+    max-width: 240px;
+    padding: 10px 14px;
+    font-family: 'Courier New', Consolas, "Lucida Console", monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  #cardtip.c-scrap   { border-color: #d4a84b; }
+  #cardtip.c-rations     { border-color: #5a8a3a; }
+  #cardtip.c-tech    { border-color: #b84530; }
+  #cardtip.c-concrete { border-color: #7a8280; }
+  #cardtip.c-chems    { border-color: #3f78a0; }
+  #cardtip.c-hightech   { border-color: #8a6ab0; }
+  #cardtip.c-stranger   { border-color: var(--gold); box-shadow: 0 0 20px rgba(217,151,63,0.15), inset 0 0 24px rgba(217,151,63,0.03), 0 8px 32px rgba(0,0,0,0.7); }
+
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 10px; }
+    #topbar .title { display: none; }
+    #board { padding: 4px 6px 0; }
+    #tableaus { gap: 6px; }
+    .tab { min-width: 100%; }
+    #message { font-size: 12px; }
+    #opts { max-height: 150px; }
+    #opts button { font-size: 10px; padding: 7px 9px; }
+    #footer { font-size: 10px; }
+    #footer .small-btns button { font-size: 9px; padding: 3px 7px; }
+    #log { max-height: 17px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · FALLOUT GLORY TO ROME</span>
+  <span class="stat">Deck <b id="stat-deck">—</b></span>
+  <span class="stat">M. Strangers <b id="stat-strangers">—</b></span>
+  <span class="stat">Leader <b id="stat-leader">—</b></span>
+  <span class="stat">Wins <b id="stat-wins">0</b></span>
+</div>
+
+<div id="board">
+  <div id="common">
+    <div style="flex:1 1 55%">
+      <div class="lbl">Wasteland</div>
+      <div id="wasteland-cards"></div>
+    </div>
+    <div>
+      <div class="lbl">Wasteland Sites</div>
+      <div id="sites-row"></div>
+    </div>
+  </div>
+  <div id="tableaus"></div>
+</div>
+
+<div id="hand-area">
+  <div id="hand-label">YOUR HAND</div>
+  <div id="hand"></div>
+</div>
+
+<div id="controls">
+  <div id="net-bar"></div>
+  <div id="message"></div>
+  <div id="opts"></div>
+  <div id="round-controls">
+    <div id="deck-options">
+      <div class="deck-row"><span class="deck-label">Deck:</span>
+        <label class="deck-opt"><input type="radio" name="decktype" value="standard" checked> Standard</label>
+        <label class="deck-opt"><input type="radio" name="decktype" value="experimental"> Experimental</label>
+      </div>
+      <div class="deck-row">
+        <label class="deck-opt"><input type="checkbox" id="deck-expansion"> Include BGG Expansion</label>
+      </div>
+    </div>
+    <div class="btn-row"><button id="btn-deal" class="primary">Start game</button></div>
+  </div>
+</div>
+
+<div id="footer">
+  <div id="log"></div>
+  <div class="small-btns">
+    <button id="btn-invite" style="display:none">Play with friends</button>
+    <button id="btn-join" style="display:none">Join with code</button>
+    <button id="btn-games">More games</button>
+    <button id="btn-help">How to play</button>
+    <button id="btn-new">New game</button>
+  </div>
+</div>
+
+<div id="overlay" style="display:none">
+  <div class="panel">
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-sub"></p>
+    <input id="overlay-code" maxlength="6" placeholder="Table code" autocomplete="off" style="display:none; text-transform:uppercase; letter-spacing:3px; text-align:center; font-weight:700">
+    <input id="overlay-name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div class="btn-row">
+      <button id="overlay-cancel">Cancel</button>
+      <button id="overlay-go" class="primary"></button>
+    </div>
+    <div id="overlay-status"></div>
+  </div>
+</div>
+
+<div id="cardtip"></div>
+
+<div id="help" style="display:none">
+  <div class="panel">
+    <h2>How to play</h2>
+    <div class="help-body">
+      <p>A fan adaptation of the classic city-building card game, with a curated
+      set of buildings. Every card is three things at once: a <b>role</b> to
+      lead, a <b>material</b> to build with, and a <b>blueprint</b> to construct.</p>
+      <p><b>On your turn</b> either <b>RESEARCH</b> (refill your hand, or draw one,
+      or take a Mysterious Stranger — a wild role card) or <b>LEAD</b> a role by playing a card.
+      Everyone else may <b>follow</b> (play a matching card) or research. Everyone
+      who joined performs the action — once themselves, plus once per matching
+      <b>dweller</b>. Played cards land in the shared <b>wasteland</b>.</p>
+      <p><b>Mysterious Strangers</b> are wild role cards. Matching cards can
+      stand in for one too: with the <b>Standard</b> deck any <b>2</b> cards of
+      the same role; with the <b>Experimental</b> deck <b>3</b> of a kind — or
+      just <b>2</b> once your <b>Commissary</b> vault room is completed.</p>
+      <p><b>The six roles</b> (each tied to a material):</p>
+      <ul>
+        <li><b>SCAVENGER</b> (scrap) — take a wasteland card into your stockpile.</li>
+        <li><b>RECRUITER</b> (hightech) — hire a wasteland card as a dweller. Dwellers act
+        with you every time their role runs.</li>
+        <li><b>ENGINEER</b> (rations) — start a building on a matching site, or add
+        a matching material from your hand.</li>
+        <li><b>OVERSEER</b> (concrete) — like the engineer, but builds with
+        materials from your stockpile.</li>
+        <li><b>RAIDER</b> (tech) — demand a material: take it from the wasteland
+        and from every rival's hand.</li>
+        <li><b>TRADER</b> (chems) — bank a stockpile material in your safe
+        (points at game end).</li>
+      </ul>
+      <p><b>Vault Rooms</b> complete when they hold materials equal to their
+      value (scrap/rations 1, tech/concrete 2, chems/hightech 3). Completing one
+      grants that much <b>population</b> — which raises your dwellers and safe
+      limits — and switches on the rooms's power. The powers are where the
+      game lives: read them on your hand cards.</p>
+      <p><b>Game end:</b> the deck runs dry or the building sites do; highest
+      population + safe wins. Complete the <b>Dweller Testing Chamber</b> 
+      with a dweller of every role and you win on the spot.</p>
+      <p>Simplifications vs the tabletop original: a trimmed building list, no
+       wasteland sites, no petitions, and no trader majority bonus. Cass and
+      Boone play a solid economic game — watch your hand when they lead the
+      raiders. Good luck out there, dweller.</p>
+    </div>
+    <div class="btn-row"><button id="btn-export-log">Export debug log</button><button id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+window.__V21_GAME__ = 'rome';
+
+/* ============================================================
+   Glory to Rome — fan adaptation with a curated building set.
+   Core loop: research or lead; follow; role actions for performers
+   and their dwellers; played cards feed the shared wasteland.
+   Every decision is a labeled option list, which one generic
+   chooser presents to the local player, remote guests, or the
+   CPU scorer alike.
+   ============================================================ */
+
+const STORE_KEY = 'rome-sim-v1';
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 35000;
+const TURN_TIMEOUT_MS = 60000;
+
+const MATS = ['scrap', 'rations', 'tech', 'concrete', 'chems', 'hightech'];
+const MAT_VAL = { scrap: 1, rations: 1, tech: 2, concrete: 2, chems: 3, hightech: 3 };
+const MAT_ROLE = { scrap: 'SCAVENGER', rations: 'ENGINEER', tech: 'RAIDER', concrete: 'OVERSEER', chems: 'TRADER', hightech: 'RECRUITER' };
+const ROLES = ['SCAVENGER', 'ENGINEER', 'RAIDER', 'OVERSEER', 'TRADER', 'RECRUITER'];
+
+/* deck configuration: which cards belong to each set */
+const DECK_SETS = {
+  common: new Set([
+    'Assembly Support Rig', 'Blind Requisition Bureau', 'Decontamination Shower',
+    'Training Bureau', 'Prototype Bar', 'Supercomputer Terminal', 'Technical Library',
+    'Industrial Workshop', 'Signal Repeater', 'Vault Mascot Monument', "Overseer's Command Center",
+    'Crypto-Scrip Exchange', '3D Printing Matrix', 'VATS Training Lab', 'ZAX Supercomputer',
+    'Utility Main', 'Reinforced Vault Door', 'Heavy Fabrication Area', 'Breach Tunnel',
+    'Wasteland Outpost', 'Waste Disposal Lock', 'Logistics Hub', 'Overdrive Stim-Station',
+    'Neuro-Stasis Array', 'Turbo-Fluid Grid', 'Recycling Chute', 'Conditioning Center',
+    'Broadcast Tower', 'Prefab Room', 'Perimeter Fencing', 'Internal Loading Dock',
+    'Supply Closet', 'Barracks', 'Scrap Compactor', 'Chemical Synthesis Lab', 'Speakeasy',
+  ]),
+  standard: new Set([
+    'Nutrient Infusion Station', 'Vault-Tec Regional Headquarters', 'Asset Liquidation Lab', 'Security Checkpoint',
+  ]),
+  experimental: new Set([
+    'Commissary', 'Conversion Lab', 'Dweller Testing Chamber', 'Detective Agency',
+  ]),
+  expansion: new Set([
+    'Reclamation Plant', 'Mess Hall', 'Molecular Reclamator', 'Pharma Distribution Node',
+    'Cryo-Stasis Vault', 'Apex Network', 'Armory Command Post',
+    'Hydro-Kinetic Power Grid', 'High-Security Archives', 'Armored Watchtower',
+  ]),
+};
+let deckType = 'standard', deckExpansion = false;
+
+/* the curated building set: name, material, short power text, effect key, alphabetical order */
+const BUILDINGS = [
+  { n: '3D Printing Matrix',               m: 'hightech',                 fx: 'fountain',   t: 'ENGINEER Action: You may draw from the DECK to pay for ENGINEER actions, Retain unused cards in HAND' },
+  { n: 'Armored Watchtower',               m: 'scrap',    q: 6,           fx: 'castra',     t: 'End of Round: RESEARCH if you lost a card to RAIDER action this round' },
+  { n: 'Armory Command Post',              m: 'tech',                     fx: 'praetoria',  t: 'RAIDER Action: Indicate an incomplete room — demand materials matching that room. Upon Completion: Move this room\'s materials to your STOCKPILE' },
+  { n: 'Assembly Support Rig',             m: 'tech',                     fx: 'archway',    t: 'OVERSEER Action: Move 1 card from the WASTELAND to an under-construction room' },
+  { n: 'Asset Liquidation Lab',            m: 'chems',                    fx: 'domus_aurea', t: 'RAIDER Action: May demolish an opponent\'s unfinished room — move its blueprint to your STOCKPILE and its SITE to your POPULATION' },
+  { n: 'Apex Network',                      m: 'hightech',                 fx: 'plebian',    t: 'Instant Win Condition: If you have the most SCAVENGER dwellers, and Scavengers outnumber Raiders globally, you win the game' },
+  { n: 'Barracks',                         m: 'scrap',    q: 6,           fx: 'insula',     t: 'Passive: Max DWELLER size +2' },
+  { n: 'Blind Requisition Bureau',         m: 'tech',                     fx: 'atrium',     t: 'TRADER Action: Move 1 card from DECK into Overseer\'s SAFE (without looking at it)' },
+  { n: 'Breach Tunnel',                    m: 'concrete',                 fx: 'bridge',     t: 'RAIDER Action: May demand from opponents\' STOCKPILES instead of their HANDS. Enemy Perimeter Fencing has no effect.' },
+  { n: 'Chemical Synthesis Lab',           m: 'scrap',    q: 6,           fx: 'road',       t: 'Passive: You may use any material type when adding resources to a Chem blueprint' },
+  { n: 'Commissary',                       m: 'rations',  q: 6,           fx: 'circus',     t: 'Passive: You may play 2 cards of the same role as a MYSTERIOUS STRANGER' },
+  { n: 'Conditioning Center',              m: 'chems',                    fx: 'garden',     t: 'Upon Completion: May perform RECRUITER action for each POPULATION' },
+  { n: 'Conversion Lab',                   m: 'chems',                    fx: 'coliseum',   t: 'RAIDER Action: May seize opponent\'s DWELLER and move them to your Overseer\'s Safe as a material' },
+  { n: 'Cryo-Stasis Vault',                m: 'hightech',                 fx: 'triclinium', t: 'When leading or following: You may move each performing dweller to your OVERSEER\'S SAFE after it resolves its action' },
+  { n: 'Crypto-Scrip Exchange',            m: 'hightech',                 fx: 'basilica',   t: 'TRADER Action: May move 1 card from your HAND to your Overseer\'s SAFE' },
+  { n: 'Decontamination Shower',           m: 'tech',                     fx: 'bath',       t: 'RECRUITER Action: When you RECRUIT new DWELLERS, they may take their action immediately' },
+  { n: 'Dweller Testing Chamber',          m: 'hightech',                 fx: 'forum',      t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role' },
+  { n: 'Heavy Fabrication Area',           m: 'concrete',                 fx: 'amphitheatre', t: 'Upon Completion: Execute 1 ENGINEER action for each POPULATION' },
+  { n: 'Utility Main',                      m: 'concrete',                 fx: 'aqueduct',   t: 'RECRUITER Action: May move 1 card from your HAND to be a DWELLER. Max DWELLER limit doubled.' },
+  { n: 'High-Security Archives',           m: 'concrete',                 fx: 'aerarium',   t: 'Passive: Your POPULATION counts as the highest player\'s. Lose 1 POPULATION: Execute a completed room\'s "Upon Completion" effect.' },
+  { n: 'Hydro-Kinetic Power Grid',         m: 'tech',                     fx: 'watermill',  t: 'End of turn: If you led or followed SCAVENGER, use each OVERSEER dweller once' },
+  { n: 'Industrial Workshop',              m: 'tech',                     fx: 'foundry',    t: 'Upon Completion: Perform 1 SCAVENGER action per POPULATION' },
+  { n: 'Internal Loading Dock',            m: 'rations',  q: 6,           fx: 'dock',       t: 'SCAVENGER Action: You may move 1 resource from your HAND to your STOCKPILE' },
+  { n: 'Logistics Hub',                    m: 'concrete',                 fx: 'storeroom',  t: 'All dwellers count as SCAVENGERS' },
+  { n: 'Mess Hall',                        m: 'rations',  q: 6,           fx: 'domus',      t: 'Upon Completion: Perform 1 RECRUITER action' },
+  { n: 'Molecular Reclamator',             m: 'chems',                    fx: 'watch_post', t: 'ENGINEER Action: Dismantle one of your completed rooms — return its blueprint to your HAND and its materials to your STOCKPILE' },
+  { n: 'Neuro-Stasis Array',               m: 'chems',                    fx: 'catacomb',   t: 'Upon Completion: End the game immediately and score as usual' },
+  { n: 'Nutrient Infusion Station',        m: 'rations',  q: 6,           fx: 'crane',      t: 'Passive: May use any card to follow OVERSEER actions' },
+  { n: 'Overseer\'s Command Center',       m: 'hightech',                 fx: 'temple',     t: 'Passive: Max HAND size +4' },
+  { n: 'Overdrive Stim-Station',           m: 'chems',                    fx: 'scriptorium', t: 'Passive: Spend 1 High-Tech Component to immediately complete any under-construction blueprint' },
+  { n: 'Perimeter Fencing',                m: 'rations',  q: 6,           fx: 'palisade',   t: 'Passive: Immune to RAIDER actions' },
+  { n: 'Pharma Distribution Node',         m: 'chems',                    fx: 'bacchanalia', t: 'Upon Completion: Draw cards equal to POPULATION. Place 1 in SAFE, 1 as DWELLER, 1 on a SITE, 1 as MATERIAL. Keep the rest in your HAND.' },
+  { n: 'Prefab Room',                      m: 'chems',                    fx: 'villa',      t: 'OVERSEER Action: You may instantly complete this vault room by supplying all remaining materials at once' },
+  { n: 'Detective Agency',                   m: 'concrete',                 fx: 'senate',     t: 'End of Turn: Add an opponent\'s played MYSTERIOUS STRANGER to your HAND' },
+  { n: 'Broadcast Tower',                    m: 'chems',                    fx: 'prison',     t: 'Upon Completion: Trade this blueprint\'s site for a completed vault room from an opponent' },
+  { n: 'Prototype Bar',                    m: 'tech',                     fx: 'gate',       t: 'Passive: Incomplete HIGH-TECH rooms provide their functions' },
+  { n: 'Reclamation Plant',                m: 'concrete',                 fx: 'solarium',   t: 'Upon Room Completion: Move 1 material from that room to your STOCKPILE (triggers on this room)' },
+  { n: 'Recycling Chute',                  m: 'chems',                    fx: 'sewer',      t: 'End of turn: Move role cards used to lead or follow into your STOCKPILE instead of the WASTELAND' },
+  { n: 'Reinforced Vault Door',            m: 'concrete',                 fx: 'wall',       t: 'Passive: Immune to RAIDER demands. Endgame: +1 Cap for every two materials in your STOCKPILE' },
+  { n: 'Scrap Compactor',                  m: 'scrap',    q: 6,           fx: 'latrine',    t: 'Before RESEARCH: May discard 1 card to the WASTELAND' },
+  { n: 'Security Checkpoint',              m: 'concrete',                 fx: 'tribunal',   t: 'After RESEARCH: Draw a MYSTERIOUS STRANGER' },
+  { n: 'Signal Repeater',                  m: 'hightech',                 fx: 'stairway',   t: 'OVERSEER Action: Add a material to an opponent\'s completed vault room to grant its function to all players' },
+  { n: 'Speakeasy',                        m: 'scrap',    q: 6,           fx: 'bar',        t: 'RECRUITER Action: May new DWELLERS directly from the draw deck' },
+  { n: 'Supercomputer Terminal',           m: 'tech',                     fx: 'school',     t: 'Upon Completion: Execute RESEARCH for each Population' },
+  { n: 'Supply Closet',                    m: 'rations',  q: 6,           fx: 'market',     t: 'Passive: Max OVERSEER\'S SAFE size +2' },
+  { n: 'Technical Library',                m: 'tech',                     fx: 'shrine',     t: 'Passive: Max HAND size +2' },
+  { n: 'Turbo-Fluid Grid',                 m: 'chems',                    fx: 'maximus',    t: 'Passive: Each matching DWELLER performs its action twice' },
+  { n: 'VATS Training Lab',                m: 'hightech',                 fx: 'ludus',      t: 'Passive: TRADER dwellers count as any role' },
+  { n: 'Vault Mascot Monument',            m: 'hightech',                 fx: 'statue',     t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
+  { n: 'Vault-Tec Regional Headquarters',  m: 'hightech',                 fx: 'romanum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role and at least 1 MATERIAL of each type in your STOCKPILE' },
+  { n: 'Training Bureau',                  m: 'tech',                     fx: 'academy',    t: 'End of Turn: Execute RESEARCH after you executed the ENGINEER action' },
+  { n: 'Waste Disposal Lock',              m: 'concrete',                 fx: 'vomitorium', t: 'Before RESEARCH: Discard all blueprints from your HAND to the WASTELAND' },
+  { n: 'Wasteland Outpost',                m: 'concrete',                 fx: 'tower',      t: 'Passive: Scrap Metal can substitute any material type on your blueprints' },
+  { n: 'ZAX Supercomputer',                m: 'hightech',                 fx: 'palace',     t: 'Passive: May lead/follow with multiple identical cards for additional actions' },
+];
+const BLD = Object.fromEntries(BUILDINGS.map(b => [b.n, b]));
+
+function openSeatNames() { return ['Cass', 'Boone']; }
+const players = [
+  { name: 'You',  cpuName: null,   ai: false, remote: null },
+  { name: 'Cass', cpuName: 'Cass', ai: true,  remote: null },
+  { name: 'Boone', cpuName: 'Boone', ai: true, remote: null },
+].map(p => ({ ...p, hand: [], stockpile: [], safe: [], dwellers: [], buildings: [], population: 2, palaceActs: 0 }));
+const me = players[0];
+let mySeatIdx = 0;
+
+let deck = [], strangers = 6, wasteland = [], sites = {};
+let sharedFx = new Set();
+let raidedThisTurn = new Set();
+let leaderIdx = 0;
+let gameActive = false, gameOver = false, endFlag = false;
+let epoch = 0; // bumped on every new game/match; stale loops bail out
+let lastWinnerIdx = -1;
+let stats = { wins: 0, games: 0 };
+let localChooser = null; // {resolve, options}
+
+/* ---------- setup helpers ---------- */
+
+function buildDeck(type, expansion) {
+  const allowed = new Set(DECK_SETS.common);
+  for (const n of DECK_SETS[type]) allowed.add(n);
+  if (expansion) for (const n of DECK_SETS.expansion) allowed.add(n);
+  const d = [];
+  for (const b of BUILDINGS) {
+    if (!allowed.has(b.n)) continue;
+    for (let i = 0; i < (b.q || 3); i++) d.push({ n: b.n, m: b.m });
+  }
+  return d;
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function draw1() {
+  if (!deck.length) { endFlag = true; return null; }
+  const c = deck.pop();
+  if (!deck.length) endFlag = true;
+  return c;
+}
+
+/* ---------- state queries ---------- */
+
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const escapeHtml = s => String(s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function has(p, fx) {
+  if (p.buildings.some(b => b.done && BLD[b.n].fx === fx) || sharedFx.has(fx)) return true;
+  if (fx !== 'gate' && p.buildings.some(b => b.done && BLD[b.n].fx === 'gate') && p.buildings.some(b => !b.done && BLD[b.n] && BLD[b.n].m === 'hightech' && BLD[b.n].fx === fx)) return true;
+  return false;
+}
+function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple') ? 4 : 0); }
+function effectivePopulation(p) { return has(p, 'aerarium') ? Math.max(...players.map(q => q.population)) : p.population; }
+function dwellerLimit(p) { return (effectivePopulation(p) + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
+function safeLimit(p) { return effectivePopulation(p) + (has(p, 'market') ? 2 : 0); }
+function strangerNeed(p) {
+  /* matching-role cards required to act as one Mysterious Stranger */
+  if (has(p, 'circus')) return 2;
+  return deckType === 'experimental' ? 3 : 2;
+}
+function roleOf(card) { return card.stranger ? 'STRANGER' : MAT_ROLE[card.m]; }
+function score(p) {
+  let s = effectivePopulation(p) + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
+  for (const b of p.buildings) if (b.done && BLD[b.n].fx === 'statue') s += 3;
+  if (has(p, 'wall')) s += Math.floor(p.stockpile.length / 2);
+  return s;
+}
+function cardLabel(c) {
+  return c.stranger ? 'Mysterious Stranger (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
+}
+
+/* card inspection popups render the standalone art pages from ../rome-2 */
+const CARD_ART_OVERRIDES = {
+  "Overseer's Command Center": 'card_overseers_command_center_light',
+  'Vault-Tec Regional Headquarters': 'card_vault_tec_regional_hq_light',
+};
+function cardArtFile(n) {
+  return (CARD_ART_OVERRIDES[n] ||
+    'card_' + n.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_light') + '.html';
+}
+function artPopup(name) {
+  return '<iframe class="ct-art" src="../rome-2/' + cardArtFile(name) +
+    '" title="' + escapeHtml(name) + '" scrolling="no" tabindex="-1"></iframe>';
+}
+function popupHTML(c) {
+  const name = c.stranger ? 'Mysterious Stranger' : (BLD[c.n] ? c.n : null);
+  if (name) return artPopup(name);
+  return '<div class="ct-fallback">' + escapeHtml(MAT_ROLE[c.m] || '?') + ' · ' + escapeHtml(c.m || '?') + '</div>';
+}
+function bldgPopupHTML(b) {
+  return BLD[b.n] ? artPopup(b.n)
+    : '<div class="ct-fallback">' + escapeHtml(b.n) + '</div>';
+}
+function showTip(ev, html, borderClass) {
+  ev.stopPropagation();
+  const tip = $('cardtip');
+  tip.className = 'c-' + borderClass;
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  let top = r.top - th - 8;
+  if (top < 8) top = r.bottom + 8;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideTip() { const t = $('cardtip'); if (t) t.style.display = 'none'; }
+
+function log(msg) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  $('log').prepend(el);
+  while ($('log').children.length > 12) $('log').lastChild.remove();
+  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+}
+function setMessage(m) { $('message').textContent = m || ''; }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && typeof d.wins === 'number') stats = d;
+  } catch (e) { /* fresh */ }
+}
+
+/* ---------- debug recorder: keeps the last 2 matches for offline analysis ---------- */
+const REC_KEY = STORE_KEY + ':rec';
+const REC_MAX = 2;
+let recEvents = null;
+const recCard = c => c ? (c.stranger ? 'STRANGER' : c.n + ':' + c.m) : null;
+function recStart(meta) { recEvents = []; recPush('start', meta || {}); }
+function recPush(type, data) {
+  if (!recEvents) return;
+  try { recEvents.push(Object.assign({ n: recEvents.length, type }, data || {})); } catch (e) {}
+}
+function recFinish(summary) {
+  if (!recEvents) return;
+  recPush('end', summary || {});
+  try {
+    const all = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+    all.push({ at: new Date().toISOString(), events: recEvents });
+    while (all.length > REC_MAX) all.shift();
+    localStorage.setItem(REC_KEY, JSON.stringify(all));
+  } catch (e) {}
+  recEvents = null;
+}
+function recExport() {
+  let data = '[]';
+  try { data = localStorage.getItem(REC_KEY) || '[]'; } catch (e) {}
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'rome-debuglog-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(data); } catch (e) {}
+}
+
+/* ---------- rendering ---------- */
+
+function chip(c) {
+  const el = document.createElement('span');
+  el.className = 'mchip mat-' + (c.stranger ? 'stranger' : c.m);
+  el.textContent = c.stranger ? 'STRANGER' : c.n;
+  el.title = c.stranger ? 'Mysterious Stranger' : (BLD[c.n].t + ' — ' + c.m + ' / ' + MAT_ROLE[c.m]);
+  el.addEventListener('click', ev => showTip(ev, popupHTML(c), c.stranger ? 'stranger' : c.m));
+  return el;
+}
+
+function buildView(forIdx) {
+  return {
+    phase: gameOver ? 'gameover' : gameActive ? 'game' : 'idle',
+    deck: deck.length, strangers,
+    leader: leaderIdx,
+    winner: lastWinnerIdx,
+    msg: $('message').textContent,
+    wasteland: wasteland,
+    sites: sites,
+    players: players.map((p, i) => ({
+      name: p.name, ai: p.ai,
+      population: effectivePopulation(p),
+      handN: p.hand.length,
+      safeN: p.safe.length,
+      stockpile: p.stockpile,
+      dwellers: p.dwellers,
+      buildings: p.buildings,
+      score: gameOver ? score(p) : null,
+      hand: i === forIdx ? p.hand : null,
+    })),
+  };
+}
+
+function renderView(view) {
+  // common area
+  const pc = $('wasteland-cards');
+  pc.innerHTML = '';
+  view.wasteland.forEach(c => pc.appendChild(chip(c)));
+  const sr = $('sites-row');
+  sr.innerHTML = '';
+  for (const m of MATS) {
+    const el = document.createElement('span');
+    el.className = 'sitechip mat-' + m;
+    el.textContent = m + ' ×' + view.sites[m];
+    sr.appendChild(el);
+  }
+  $('stat-deck').textContent = view.deck;
+  $('stat-strangers').textContent = view.strangers;
+  $('stat-leader').textContent = view.players[view.leader].name;
+  $('stat-wins').textContent = stats.wins;
+
+  // tableaus
+  const tb = $('tableaus');
+  tb.innerHTML = '';
+  view.players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (i === mySeatIdx ? ' you' : '') + (view.phase === 'game' && view.leader === i ? ' active-turn' : '');
+    const tag = p.ai ? 'CPU' : i === mySeatIdx ? 'You' : i === 0 ? 'Host' : 'Guest';
+    const scoreTxt = p.score != null ? ' · ' + p.score + ' pts' : '';
+    el.innerHTML =
+      '<div class="hdr"><span class="nm">' + escapeHtml(p.name) + ' <span class="tag">' + tag + '</span></span>' +
+      '<span class="inf">◆ ' + p.population + scoreTxt + '</span></div>' +
+      '<div class="row"><span class="lbl">hand ' + p.handN + ' · safe ' + p.safeN + '</span></div>';
+    const rowDefs = [
+      { lbl: 'buildings', items: p.buildings },
+      { lbl: 'dwellers', items: p.dwellers },
+      { lbl: 'stockpile', items: p.stockpile },
+    ];
+    for (const rd of rowDefs) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const lb = document.createElement('span');
+      lb.className = 'lbl';
+      lb.textContent = rd.lbl;
+      row.appendChild(lb);
+      const chips = document.createElement('div');
+      chips.className = 'chips';
+      if (rd.lbl === 'buildings') {
+        for (const b of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'bldg' + (b.done ? ' done' : '');
+          sp.textContent = b.n + ' ';
+          const prog = document.createElement('span');
+          prog.className = 'prog';
+          prog.textContent = b.done ? '✓' : b.mats.length + '/' + MAT_VAL[b.site];
+          sp.appendChild(prog);
+          const bld = BLD[b.n];
+          sp.addEventListener('click', ev => showTip(ev, bldgPopupHTML(b), bld ? bld.m : b.site));
+          chips.appendChild(sp);
+        }
+      } else if (rd.lbl === 'dwellers') {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = MAT_ROLE[c.m].slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      } else {
+        for (const c of rd.items) {
+          const sp = document.createElement('span');
+          sp.className = 'mchip mat-' + c.m;
+          sp.textContent = c.m.slice(0, 4);
+          sp.addEventListener('click', ev => showTip(ev, popupHTML(c), c.m));
+          chips.appendChild(sp);
+        }
+      }
+      row.appendChild(chips);
+      el.appendChild(row);
+    }
+    tb.appendChild(el);
+  });
+
+  // hand
+  const hb = $('hand');
+  hb.innerHTML = '';
+  const meV = view.players[mySeatIdx];
+  (meV.hand || []).forEach(c => hb.appendChild(chip(c)));
+
+  if (net.mode === 'guest') {
+    $('round-controls').style.display = 'none';
+    if (!net.guestPrompt) {
+      if (view.phase === 'gameover' && view.winner === mySeatIdx) {
+        setMessage('★ You take the city. The wasteland provides.');
+      } else setMessage(view.msg);
+    }
+    if (view.phase === 'gameover' && !net.gameCounted) {
+      net.gameCounted = true;
+      stats.games++;
+      if (view.winner === mySeatIdx) stats.wins++;
+      save();
+    }
+    if (view.phase !== 'gameover') net.gameCounted = false;
+  }
+}
+
+function rerender() {
+  if (net.mode === 'guest') { if (net.lastView) renderView(net.lastView); }
+  else renderView(buildView(mySeatIdx));
+}
+function render() {
+  rerender();
+  if (net.mode === 'host') {
+    for (const p of players) {
+      if (p.remote && p.remote.open) p.remote.send({ type: 'state', view: buildView(players.indexOf(p)) });
+    }
+  }
+}
+
+/* ---------- the one chooser ---------- */
+/* options: [{id, label, score}] — score is for the CPU only */
+
+function showOptions(options, label) {
+  setMessage(label);
+  const box = $('opts');
+  box.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.addEventListener('click', () => {
+      box.innerHTML = '';
+      if (net.mode === 'guest') {
+        net.guestPrompt = false;
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'pick', id: o.id, seq: net.promptSeq });
+        setMessage('');
+      } else if (localChooser) {
+        const r = localChooser.resolve;
+        localChooser = null;
+        r(o.id);
+      }
+    });
+    box.appendChild(b);
+  }
+}
+
+async function choose(p, label, options) {
+  if (!options.length) return null;
+  const recAct = id => recPush('action', { player: p.name, label, chosen: id, options: options.map(o => o.id) });
+  if (options.length === 1 && options[0].forced) { recAct(options[0].id); return options[0].id; }
+  if (p.ai) {
+    await sleep(650);
+    let best = options[0], bs = -1e9;
+    for (const o of options) {
+      const s = (o.score || 0) + Math.random() * 2;
+      if (s > bs) { bs = s; best = o; }
+    }
+    recPush('cpu', { player: p.name, label, chosen: best.id, options: options.map(o => ({ id: o.id, score: o.score || 0 })) });
+    recAct(best.id);
+    return best.id;
+  }
+  if (p.remote) {
+    render();
+    return new Promise(resolve => {
+      let settled = false;
+      const seq = ++net.chooseSeq;
+      const msg = { type: 'choose', seq, label, options: options.map(o => ({ id: o.id, label: o.label })) };
+      const finish = id => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (net.picker && net.picker.seq === seq) net.picker = null;
+        const chosen = options.some(o => o.id === id) ? id : options[0].id;
+        recAct(chosen);
+        resolve(chosen);
+      };
+      const timer = setTimeout(() => {
+        log(p.name + ' took too long — first option it is.');
+        if (p.remote && p.remote.open) p.remote.send({ type: 'closeprompt', seq });
+        finish(options[0].id);
+      }, TURN_TIMEOUT_MS);
+      net.picker = { conn: p.remote, seq, finish, msg };
+      if (p.remote.open) p.remote.send(msg);
+      else finish(options[0].id);
+    });
+  }
+  render();
+  return new Promise(resolve => {
+    localChooser = { resolve: id => { recAct(id); resolve(id); } };
+    showOptions(options, label);
+  });
+}
+
+/* ---------- game actions ---------- */
+
+function addToHand(p, c) { if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
+
+async function doResearch(p) {
+  if (has(p, 'vomitorium')) {
+    const discards = p.hand.filter(c => !c.stranger);
+    if (discards.length > 0) {
+      p.hand = p.hand.filter(c => c.stranger);
+      discards.forEach(c => { wasteland.push(c); recPush('discard', { player: p.name, card: recCard(c) }); });
+      log(p.name + ' discards all blueprints to the Wasteland (Waste Disposal Lock).');
+    }
+  }
+  if (has(p, 'latrine') && p.hand.some(c => !c.stranger)) {
+    const lopts = p.hand.map((c, i) => c.stranger ? null : { id: 'discard:' + i, label: cardLabel(c), score: MAT_VAL[c.m] + (p.dwellers.some(d => d.m === c.m) ? 1 : 0) }).filter(Boolean);
+    lopts.push({ id: 'skip', label: 'Skip', score: -2 });
+    const pick = await choose(p, p.name + ': Scrap Compactor — may discard 1 card to the WASTELAND', lopts);
+    if (pick && pick !== 'skip') {
+      const ci = Number(pick.split(':')[1]);
+      wasteland.push(p.hand.splice(ci, 1)[0]);
+      log(p.name + ' discards a card to the Wasteland (Scrap Compactor).');
+    }
+  }
+  const opts = [];
+  const limit = handLimit(p);
+  const refillN = Math.max(1, limit - p.hand.length);
+  opts.push({ id: 'refill', label: 'Draw ' + refillN + ' (to hand limit ' + limit + ')', score: refillN * 3 });
+  if (strangers > 0) opts.push({ id: 'stranger', label: 'Take a Mysterious Stranger', score: 4 });
+  const pick = await choose(p, p.name + (p.name === 'You' ? ' research' : ' researches') + '…', opts);
+  if (pick === 'stranger') {
+    strangers--;
+    p.hand.push({ stranger: true });
+    recPush('draw', { player: p.name, card: 'STRANGER' });
+    log(p.name + (p.name === 'You' ? ' research' : ' researches') + ' and takes a Mysterious Stranger.');
+  } else {
+    let n = 0;
+    for (let i = 0; i < refillN; i++) { const c = draw1(); if (c) { p.hand.push(c); n++; recPush('draw', { player: p.name, card: recCard(c) }); } }
+    log(p.name + (p.name === 'You' ? ' research' : ' researches') + ' and draws ' + n + '.');
+  }
+  if (has(p, 'tribunal') && strangers > 0) {
+    strangers--;
+    p.hand.push({ stranger: true });
+    recPush('draw', { player: p.name, card: 'STRANGER' });
+    log('Security Checkpoint: ' + p.name + ' draws a Mysterious Stranger.');
+  }
+}
+
+function leadableOptions(p) {
+  const opts = [];
+  const byRole = {};
+  p.hand.forEach((c, i) => { if (!c.stranger) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+  const hasStranger = p.hand.some(c => c.stranger);
+  for (const role of ROLES) {
+    if (byRole[role]) {
+      for (const idx of byRole[role]) {
+        opts.push({ id: 'lead:' + role + ':' + idx, label: 'Lead ' + role + ' (' + p.hand[idx].n + ')', role });
+      }
+      if (byRole[role].length >= 2 && has(p, 'palace')) {
+        opts.push({ id: 'leadmulti:' + role + ':' + byRole[role].join(','), label: 'Lead ' + role + ' with ' + byRole[role].length + ' cards (ZAX)', role });
+      }
+    }
+    if (hasStranger) {
+      opts.push({ id: 'leadstranger:' + role, label: 'Lead ' + role + ' (Mysterious Stranger)', role });
+    }
+    if (!byRole[role] && !hasStranger) {
+      // a group of same-role cards acts as a stranger for any role
+      const need = strangerNeed(p);
+      const group = Object.values(byRole).find(a => a.length >= need);
+      if (group) opts.push({ id: 'leadpair:' + role + ':' + group.slice(0, need).join(','), label: 'Lead ' + role + ' (' + need + ' matching as Stranger' + (has(p, 'circus') ? ', Commissary' : '') + ')', role, n: need });
+    }
+  }
+  return opts;
+}
+
+function playLead(p, id) {
+  const parts = id.split(':');
+  if (parts[0] === 'lead') {
+    const c = p.hand.splice(Number(parts[2]), 1)[0];
+    p.played = [c];
+    p.palaceActs = 0;
+  } else if (parts[0] === 'leadmulti') {
+    const indices = parts[2].split(',').map(Number);
+    const cards = indices.map(i => p.hand[i]);
+    p.hand = p.hand.filter((c, i) => !indices.includes(i));
+    p.played = cards;
+    p.palaceActs = cards.length - 1;
+  } else if (parts[0] === 'leadstranger') {
+    const ji = p.hand.findIndex(c => c.stranger);
+    p.played = [p.hand.splice(ji, 1)[0]];
+    p.palaceActs = 0;
+  } else {
+    const indices = parts[2].split(',').map(Number);
+    const cards = indices.map(i => p.hand[i]);
+    p.hand = p.hand.filter((c, i) => !indices.includes(i));
+    p.played = cards;
+    p.palaceActs = 0;
+  }
+  return parts[1];
+}
+
+/* ----- role performances ----- */
+
+function wastelandOptions(role, p) {
+  // options to take/hire wasteland cards, scored for the CPU by usefulness
+  return wasteland.map((c, i) => {
+    let s = MAT_VAL[c.m];
+    if (role === 'RECRUITER') s = MAT_VAL[c.m] + (p.dwellers.some(q => q.m === c.m) ? -1 : 2);
+    if (role === 'SCAVENGER') s = MAT_VAL[c.m] + (p.buildings.some(b => !b.done && b.site === c.m) ? 3 : 0);
+    return { id: 'wasteland:' + i, label: c.n + ' [' + (role === 'RECRUITER' ? MAT_ROLE[c.m] : c.m) + ']', score: s };
+  });
+}
+
+async function actSCAVENGER(p) {
+  const opts = wastelandOptions('SCAVENGER', p);
+  if (has(p, 'dock')) p.hand.forEach((c, i) => { if (!c.stranger) opts.push({ id: 'hand:' + i, label: 'From hand: ' + cardLabel(c), score: 1 }); });
+  opts.push({ id: 'skip', label: 'Skip', score: -5 });
+  const pick = await choose(p, p.name + ': Scavenger — take a material', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  const c = (src === 'wasteland' ? wasteland : p.hand).splice(Number(idx), 1)[0];
+  if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); checkRomanum(p); }
+}
+
+async function actRECRUITER(p) {
+  if (p.dwellers.length >= dwellerLimit(p)) return;
+  const opts = wastelandOptions('RECRUITER', p);
+  if (has(p, 'aqueduct')) p.hand.forEach((c, i) => { if (!c.stranger) opts.push({ id: 'hand:' + i, label: 'Hire from hand: ' + cardLabel(c), score: 2 }); });
+  if (has(p, 'bar') && deck.length) opts.push({ id: 'deck:0', label: 'Hire blind off the deck', score: 1.5 });
+  opts.push({ id: 'skip', label: 'Skip', score: -4 });
+  const pick = await choose(p, p.name + ': Recruiter — hire a dweller', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  let c = null;
+  if (src === 'wasteland') c = wasteland.splice(Number(idx), 1)[0];
+  else if (src === 'hand') c = p.hand.splice(Number(idx), 1)[0];
+  else c = draw1();
+  if (!c) return;
+  p.dwellers.push(c);
+  log(p.name + ' hires a ' + MAT_ROLE[c.m] + ' dweller (' + c.n + ').');
+  checkForum(p);
+  checkRomanum(p);
+  checkPlebian();
+  if (has(p, 'bath')) {
+    log('Bath: the new dweller gets right to work.');
+    await performRole(p, MAT_ROLE[c.m], true);
+  }
+}
+
+function buildTargets(p, mat, viaOverseer) {
+  // incomplete buildings this material could go into
+  const t = [];
+  p.buildings.forEach((b, i) => {
+    if (b.done) return;
+    const siteM = b.site;
+    const ok = mat === siteM ||
+      (mat === 'scrap' && has(p, 'tower')) ||
+      (siteM === 'chems' && has(p, 'road')) ||
+      (mat === 'hightech' && has(p, 'scriptorium'));
+    if (ok) t.push(i);
+  });
+  return t;
+}
+
+async function addMaterial(p, bIdx, card, viaOverseer) {
+  const b = p.buildings[bIdx];
+  b.mats.push(card);
+  let complete = b.mats.length >= MAT_VAL[b.site];
+  if (card.m === 'hightech' && has(p, 'scriptorium')) complete = true;
+  if (viaOverseer && BLD[b.n].fx === 'villa') complete = true;
+  log(p.name + ' adds ' + card.m + ' to ' + b.n + (complete ? ' — COMPLETE!' : ' (' + b.mats.length + '/' + MAT_VAL[b.site] + ').'));
+  if (complete) {
+    b.done = true;
+    p.population += MAT_VAL[b.site];
+    log(p.name + ' gains ' + MAT_VAL[b.site] + ' population (' + p.population + ').');
+    checkForum(p);
+    await onCompletion(p, b);
+  }
+}
+
+async function onCompletion(p, b) {
+  const fx = BLD[b.n].fx;
+  if (fx === 'domus') {
+    log(p.name + ' completes Mess Hall — performing a RECRUITER action.');
+    await actRECRUITER(p);
+  }
+  if (fx === 'amphitheatre') {
+    const count = effectivePopulation(p);
+    log(p.name + ' completes Heavy Fabrication Area — performing ' + count + ' ENGINEER actions.');
+    for (let i = 0; i < count; i++) {
+      await actBUILDER(p, false);
+    }
+  }
+  if (fx === 'solarium' || has(p, 'solarium')) {
+    if (b.mats.length > 0) {
+      const c = b.mats.shift();
+      p.stockpile.push(c);
+      log(p.name + ' reclaims ' + c.m + ' from ' + b.n + ' (Reclamation Plant).');
+    }
+  }
+  if (fx === 'school') {
+    const count = effectivePopulation(p);
+    log(p.name + ' completes Supercomputer Terminal — executing RESEARCH ' + count + ' time' + (count > 1 ? 's' : '') + '.');
+    for (let i = 0; i < count; i++) {
+      await doResearch(p);
+    }
+  }
+  if (fx === 'garden') {
+    const count = effectivePopulation(p);
+    log(p.name + ' completes Conditioning Center — performing ' + count + ' RECRUITER actions.');
+    for (let i = 0; i < count; i++) {
+      await actRECRUITER(p);
+    }
+  }
+  if (fx === 'foundry') {
+    const count = effectivePopulation(p);
+    log(p.name + ' completes Industrial Workshop — performing ' + count + ' SCAVENGER actions.');
+    for (let i = 0; i < count; i++) {
+      await actSCAVENGER(p);
+    }
+  }
+  if (fx === 'prison') {
+    const victims = players.filter(q => q !== p && q.buildings.some(b => b.done));
+    if (victims.length > 0) {
+      const bldgOpts = [];
+      victims.forEach((q, qi) => {
+        q.buildings.forEach((b, bi) => {
+          if (b.done) bldgOpts.push({ id: 'seize:' + qi + ':' + bi, label: q.name + "'s " + b.n, score: MAT_VAL[b.site] * 3 });
+        });
+      });
+      bldgOpts.unshift({ id: 'skip', label: 'Skip', score: 0 });
+      const bPick = await choose(p, p.name + ': Broadcast Tower — trade this site for a completed vault room?', bldgOpts);
+      if (bPick && bPick.startsWith('seize:')) {
+        sites[b.site]++;
+        const qi = Number(bPick.split(':')[1]), bi = Number(bPick.split(':')[2]);
+        const stolen = players[qi].buildings.splice(bi, 1)[0];
+        p.buildings.push(stolen);
+        log(p.name + ' trades the ' + b.site + ' site and seizes ' + stolen.n + ' from ' + players[qi].name + ' (Broadcast Tower).');
+      }
+    }
+  }
+  if (fx === 'plebian') checkPlebian();
+  if (fx === 'romanum') checkRomanum(p);
+  if (fx === 'catacomb') {
+    log(p.name + ' completes Neuro-Stasis Array — the game ends immediately!');
+    endFlag = true;
+  }
+  if (fx === 'praetoria') {
+    const reclaimed = [...b.mats];
+    b.mats = [];
+    reclaimed.forEach(c => p.stockpile.push(c));
+    log(p.name + ' reclaims ' + reclaimed.length + ' material' + (reclaimed.length !== 1 ? 's' : '') + ' from Armory Command Post to stockpile.');
+  }
+  if (fx === 'bacchanalia') {
+    const count = effectivePopulation(p);
+    const drawn = [];
+    for (let i = 0; i < count; i++) { const c = draw1(); if (c) { drawn.push(c); recPush('draw', { player: p.name, card: recCard(c) }); } }
+    if (drawn.length === 0) return;
+    log(p.name + ' draws ' + drawn.length + ' cards from Pharma Distribution Node.');
+    const pickOne = async (label) => {
+      if (drawn.length === 0) return null;
+      const cdOpts = drawn.map((c, i) => ({ id: 'cd:' + i, label: cardLabel(c), score: MAT_VAL[c.m] * 3 }));
+      const pick = await choose(p, p.name + ': Pharma Distribution Node — ' + label, cdOpts);
+      if (!pick) return null;
+      return drawn.splice(Number(pick.split(':')[1]), 1)[0];
+    };
+    let c = await pickOne('pick a card for the SAFE');
+    if (c) { p.safe.push(c); log(p.name + ' places ' + c.n + ' in the Overseer\'s Safe.'); }
+    c = await pickOne('pick a card to become a DWELLER');
+    if (c) { p.dwellers.push(c); log(p.name + ' recruits ' + c.n + ' as a dweller.'); checkForum(p); checkRomanum(p); checkPlebian(); }
+    c = await pickOne('pick a card to add as a SITE');
+    if (c) { sites[c.m]++; log(p.name + ' adds a ' + c.m + ' site.'); }
+    c = await pickOne('pick a card as MATERIAL');
+    if (c) { p.stockpile.push(c); log(p.name + ' stockpiles ' + c.m + '.'); }
+    drawn.forEach(c => { p.hand.push(c); });
+    if (drawn.length > 0) log(p.name + ' keeps ' + drawn.length + ' card' + (drawn.length !== 1 ? 's' : '') + ' in hand.');
+  }
+}
+
+async function actBUILDER(p, viaOverseer) {
+  const opts = [];
+  // start a new building
+  p.hand.forEach((c, i) => {
+    if (c.stranger || p.buildings.some(b => b.n === c.n)) return;
+    const anySite = BLD[c.n].fx === 'statue';
+    const siteMats = anySite ? MATS.filter(m => sites[m] > 0) : (sites[c.m] > 0 ? [c.m] : []);
+    for (const sm of siteMats) {
+      opts.push({ id: 'start:' + i + ':' + sm, label: 'Start ' + c.n + ' on ' + sm + ' site — ' + BLD[c.n].t,
+                  score: 4 + MAT_VAL[sm] + (BLD[c.n].fx === 'forum' ? 2 : 0) });
+    }
+  });
+  // add material
+  const srcArr = viaOverseer ? p.stockpile : p.hand;
+  srcArr.forEach((c, i) => {
+    if (c.stranger) return;
+    for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
+      const b = p.buildings[bIdx];
+      const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa') || (c.m === 'hightech' && has(p, 'scriptorium'));
+      opts.push({ id: 'add:' + i + ':' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''),
+                  score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 });
+    }
+  });
+  if (viaOverseer && has(p, 'archway')) {
+    wasteland.forEach((c, wi) => {
+      if (c.stranger) return;
+      for (const bIdx of buildTargets(p, c.m, viaOverseer)) {
+        const b = p.buildings[bIdx];
+        const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (viaOverseer && BLD[b.n].fx === 'villa');
+        opts.push({ id: 'wastelandadd:' + wi + ':' + bIdx, label: 'Add ' + c.m + ' (from wasteland) to ' + b.n + (finishing ? ' (completes!)' : ''),
+                    score: finishing ? 12 + MAT_VAL[b.site] * 2 : 7 });
+      }
+    });
+  }
+  if (viaOverseer && has(p, 'stairway')) {
+    players.forEach((q, qi) => {
+      if (q === p) return;
+      q.buildings.forEach((b, bi) => {
+        if (!b.done || sharedFx.has(BLD[b.n].fx)) return;
+        p.stockpile.forEach((c, si) => {
+          if (c.stranger) return;
+          opts.push({
+            id: 'stairway:' + si + ':' + qi + ':' + bi,
+            label: 'Add ' + c.m + ' to ' + q.name + "'s " + b.n + ' (share)',
+            score: 10 + MAT_VAL[c.m],
+          });
+        });
+      });
+    });
+  }
+  if (!viaOverseer && has(p, 'fountain') && deck.length) {
+    opts.push({ id: 'fountain:draw', label: 'Draw from deck as material (Fountain)', score: 7 });
+  }
+  if (!viaOverseer && has(p, 'watch_post')) {
+    p.buildings.forEach((b, bi) => {
+      if (!b.done) return;
+      opts.push({ id: 'dismantle:' + bi, label: 'Dismantle ' + b.n + ' (blueprint to hand, mats to stockpile)', score: MAT_VAL[b.site] * 4 + b.mats.length * 3 });
+    });
+  }
+  opts.push({ id: 'skip', label: 'Skip', score: -4 });
+  const roleName = viaOverseer ? 'Overseer' : 'Engineer';
+  const pick = await choose(p, p.name + ': ' + roleName + ' — build', opts);
+  if (!pick || pick === 'skip') return;
+  const parts = pick.split(':');
+  if (parts[0] === 'start') {
+    const c = p.hand.splice(Number(parts[1]), 1)[0];
+    const sm = parts[2];
+    sites[sm]--;
+    p.buildings.push({ n: c.n, site: sm, mats: [], done: false });
+    log(p.name + ' starts ' + c.n + ' on a ' + sm + ' site.');
+    if (Object.values(sites).every(n => n <= 0)) endFlag = true;
+  } else if (parts[0] === 'wastelandadd') {
+    const c = wasteland.splice(Number(parts[1]), 1)[0];
+    await addMaterial(p, Number(parts[2]), c, viaOverseer);
+  } else if (parts[0] === 'stairway') {
+    const si = Number(parts[1]), qi = Number(parts[2]), bi = Number(parts[3]);
+    const c = p.stockpile.splice(si, 1)[0];
+    const target = players[qi];
+    const b = target.buildings[bi];
+    b.mats.push(c);
+    sharedFx.add(BLD[b.n].fx);
+    log(p.name + ' adds ' + c.m + ' to ' + target.name + "'s " + b.n + ' via Signal Repeater — ' + b.n + ' is now shared.');
+  } else if (parts[0] === 'dismantle') {
+    const bi = Number(parts[1]);
+    const b = p.buildings.splice(bi, 1)[0];
+    if (b) {
+      const bld = BLD[b.n];
+      p.hand.push({ n: b.n, m: bld ? bld.m : b.site });
+      const mats = [...b.mats];
+      b.mats = [];
+      mats.forEach(c => p.stockpile.push(c));
+      log(p.name + ' dismantles ' + b.n + ' — blueprint to hand, ' + mats.length + ' material' + (mats.length !== 1 ? 's' : '') + ' to stockpile (Molecular Reclamator).');
+    }
+  } else if (parts[0] === 'fountain') {
+    const c = draw1();
+    if (c) {
+      const targets = buildTargets(p, c.m, viaOverseer);
+      if (targets.length > 0) {
+        const tOpts = targets.map(bIdx => {
+          const b = p.buildings[bIdx];
+          const finishing = b.mats.length + 1 >= MAT_VAL[b.site] || (c.m === 'hightech' && has(p, 'scriptorium'));
+          return { id: 'ftarget:' + bIdx, label: 'Add ' + c.m + ' to ' + b.n + (finishing ? ' (completes!)' : ''), score: finishing ? 10 + MAT_VAL[b.site] * 2 : 5 };
+        });
+        tOpts.push({ id: 'ftarget:keep', label: 'Keep ' + c.n + ' in hand', score: 1 });
+        const tPick = await choose(p, p.name + ': Fountain — add ' + c.n + ' to a room?', tOpts);
+        if (tPick && tPick.startsWith('ftarget:')) {
+          const bIdx = Number(tPick.split(':')[1]);
+          await addMaterial(p, bIdx, c, viaOverseer);
+        } else {
+          p.hand.push(c);
+          log(p.name + ' keeps ' + c.n + ' in hand (Fountain).');
+        }
+      } else {
+        p.hand.push(c);
+        log(p.name + ' draws ' + c.n + ' and keeps it (Fountain).');
+      }
+    }
+  } else {
+    const c = srcArr.splice(Number(parts[1]), 1)[0];
+    await addMaterial(p, Number(parts[2]), c, viaOverseer);
+  }
+  if (!viaOverseer && has(p, 'academy')) { const c = draw1(); if (c) { p.hand.push(c); recPush('draw', { player: p.name, card: recCard(c) }); log('Academy: ' + p.name + ' draws a card.'); } }
+}
+
+async function actRAIDER(p) {
+  const mats = [...new Set(p.hand.filter(c => !c.stranger).map(c => c.m))];
+  const opts = mats.map(m => {
+    const inWasteland = wasteland.some(c => c.m === m);
+    const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.stranger && c.m === m)).length;
+    return { id: 'demand:' + m, label: 'Demand ' + m + (inWasteland ? ' (wasteland has one)' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] };
+  });
+  opts.push({ id: 'skip', label: 'Skip', score: -3 });
+  if (has(p, 'coliseum')) {
+    players.forEach((q, qi) => {
+      if (q === p || !q.dwellers.length) return;
+      if (has(q, 'palisade') || has(q, 'wall')) return;
+      q.dwellers.forEach((d, di) => {
+        opts.push({ id: 'seizedweller:' + qi + ':' + di, label: 'Seize ' + q.name + "'s " + MAT_ROLE[d.m] + ' dweller to safe (' + MAT_VAL[d.m] + ' pts)', score: MAT_VAL[d.m] * 4 });
+      });
+    });
+  }
+  if (has(p, 'praetoria')) {
+    p.buildings.forEach((b, bi) => {
+      if (b.done) return;
+      const m = b.site;
+      const inWasteland = wasteland.some(c => c.m === m);
+      const victims = players.filter(q => q !== p && !has(q, 'palisade') && !has(q, 'wall') && q.hand.some(c => !c.stranger && c.m === m)).length;
+      opts.push({ id: 'demandroom:' + bi, label: 'Demand ' + m + ' (for ' + b.n + ')' + (inWasteland ? ' — wasteland has one' : ''), score: (inWasteland ? 2 : 0) + victims * 2 + MAT_VAL[m] + 1 });
+    });
+  }
+  if (has(p, 'bridge')) {
+    const stockpileMats = [...new Set(players.filter(q => q !== p).flatMap(q => q.stockpile.filter(c => !c.stranger).map(c => c.m)))];
+    stockpileMats.forEach(m => {
+      const victims = players.filter(q => q !== p && q.stockpile.some(c => !c.stranger && c.m === m)).length;
+      const inWasteland = wasteland.some(c => c.m === m);
+      opts.push({ id: 'breach:' + m, label: 'Breach demand ' + m + ' (from stockpiles)' + (inWasteland ? ' — wasteland has one' : ''), score: victims * 3 + (inWasteland ? 2 : 0) + MAT_VAL[m] + 1 });
+    });
+  }
+  if (has(p, 'domus_aurea')) {
+    players.forEach((q, qi) => {
+      if (q === p) return;
+      q.buildings.forEach((b, bi) => {
+        if (b.done) return;
+        opts.push({ id: 'demolish:' + qi + ':' + bi, label: 'Demolish ' + q.name + "'s " + b.n + ' (gain ' + MAT_VAL[b.site] + ' pop, blueprint to stockpile)', score: MAT_VAL[b.site] * 5 + 3 });
+      });
+    });
+  }
+  const pick = await choose(p, p.name + ': Raider — demand a material', opts);
+  if (!pick || pick === 'skip') return;
+  if (pick.startsWith('seizedweller:')) {
+    const qi = Number(pick.split(':')[1]), di = Number(pick.split(':')[2]);
+    const d = players[qi].dwellers.splice(di, 1)[0];
+    if (d) { p.safe.push(d); log(p.name + ' seizes ' + MAT_ROLE[d.m] + ' dweller from ' + players[qi].name + ' to the safe (Conversion Lab).'); }
+    checkPlebian();
+    checkRomanum(p);
+    return;
+  }
+  if (pick.startsWith('demolish:')) {
+    const qi = Number(pick.split(':')[1]), bi = Number(pick.split(':')[2]);
+    const target = players[qi];
+    const b = target.buildings.splice(bi, 1)[0];
+    if (b) {
+      b.mats.forEach(c => { wasteland.push(c); recPush('discard', { player: target.name, card: recCard(c) }); });
+      p.stockpile.push({ n: b.n, m: b.site });
+      const popGain = MAT_VAL[b.site];
+      p.population += popGain;
+      log(p.name + ' demolishes ' + target.name + "'s " + b.n + ' — gains ' + popGain + ' population, blueprint to stockpile (Asset Liquidation Lab).');
+      checkRomanum(p);
+    }
+    return;
+  }
+  let m;
+  if (pick.startsWith('demandroom:')) {
+    const bi = Number(pick.split(':')[1]);
+    m = p.buildings[bi].site;
+    log(p.name + ' demands ' + m + ' for ' + p.buildings[bi].n + '!');
+  } else if (!pick.startsWith('breach:')) {
+    m = pick.split(':')[1];
+    log(p.name + ' demands ' + m + '!');
+  } else {
+    m = pick.split(':')[1];
+  }
+  if (pick.startsWith('breach:')) {
+    const pi = wasteland.findIndex(c => c.m === m);
+    if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
+    for (const q of players) {
+      if (q === p) continue;
+      const si = q.stockpile.findIndex(c => !c.stranger && c.m === m);
+      if (si >= 0) { p.stockpile.push(q.stockpile.splice(si, 1)[0]); log(p.name + ' breaches ' + q.name + "'s stockpile for " + m + ' (Breach Tunnel).'); raidedThisTurn.add(players.indexOf(q)); }
+    }
+    checkRomanum(p);
+    return;
+  }
+  const pi = wasteland.findIndex(c => c.m === m);
+  if (pi >= 0) { p.stockpile.push(wasteland.splice(pi, 1)[0]); log(p.name + ' seizes ' + m + ' from the wasteland.'); }
+  for (const q of players) {
+    if (q === p) continue;
+    if (has(q, 'palisade') || has(q, 'wall')) { log(q.name + "'s defenses hold."); continue; }
+    const hi = q.hand.findIndex(c => !c.stranger && c.m === m);
+    if (hi >= 0) { p.stockpile.push(q.hand.splice(hi, 1)[0]); log(q.name + ' hands over ' + m + '.'); raidedThisTurn.add(players.indexOf(q)); }
+  }
+  checkRomanum(p);
+}
+
+async function actTRADER(p) {
+  if (p.safe.length >= safeLimit(p)) return;
+  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Safe ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
+  if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Safe blind off the deck', score: 4 });
+  if (has(p, 'basilica')) {
+    p.hand.forEach((c, i) => {
+      if (c.stranger) return;
+      opts.push({ id: 'hand:' + i, label: 'Safe from hand: ' + cardLabel(c), score: MAT_VAL[c.m] * 3 - 1 });
+    });
+  }
+  opts.push({ id: 'skip', label: 'Skip', score: -3 });
+  const pick = await choose(p, p.name + ': Trader — bank a material', opts);
+  if (!pick || pick === 'skip') return;
+  const [src, idx] = pick.split(':');
+  let c;
+  if (src === 'stock') c = p.stockpile.splice(Number(idx), 1)[0];
+  else if (src === 'hand') c = p.hand.splice(Number(idx), 1)[0];
+  else c = draw1();
+  if (c) { p.safe.push(c); log(p.name + ' banks a material in the safe.' + (src === 'hand' ? ' (Crypto-Scrip Exchange).' : '')); }
+}
+
+async function performRole(p, role, isBathEcho) {
+  if (gameOver) return;
+  const recB = { stock: p.stockpile.length, safe: p.safe.length, dwellers: p.dwellers.length,
+                 buildings: p.buildings.length, done: p.buildings.filter(b => b.done).length,
+                 hand: p.hand.length, population: p.population };
+  if (role === 'SCAVENGER') await actSCAVENGER(p);
+  else if (role === 'RECRUITER') await actRECRUITER(p);
+  else if (role === 'ENGINEER') await actBUILDER(p, false);
+  else if (role === 'OVERSEER') await actBUILDER(p, true);
+  else if (role === 'RAIDER') await actRAIDER(p);
+  else if (role === 'TRADER') await actTRADER(p);
+  recPush('perform', { player: p.name, role, echo: !!isBathEcho, result: {
+    stockpiled: p.stockpile.length - recB.stock,
+    safed: p.safe.length - recB.safe,
+    hired: p.dwellers.length - recB.dwellers,
+    started: p.buildings.length - recB.buildings,
+    completed: p.buildings.filter(b => b.done).length - recB.done,
+    hand: p.hand.length - recB.hand,
+    population: p.population - recB.population,
+  } });
+  render();
+}
+
+function checkForum(p) {
+  if (!has(p, 'forum')) return;
+  const dwellerRoles = p.dwellers.map(c => MAT_ROLE[c.m]);
+  const roles = new Set(dwellerRoles);
+  if (ROLES.every(r => roles.has(r))) {
+    gameOver = true;
+    lastWinnerIdx = players.indexOf(p);
+    log('★ FORUM! ' + p.name + ' has a dweller of every role and WINS.');
+    return;
+  }
+  if (has(p, 'ludus') && dwellerRoles.some(r => r === 'TRADER')) {
+    const nonTrader = new Set(dwellerRoles.filter(r => r !== 'TRADER'));
+    if (nonTrader.size >= ROLES.length - 1) {
+      gameOver = true;
+      lastWinnerIdx = players.indexOf(p);
+      log('★ FORUM! ' + p.name + ' has every role covered (TRADER counts as any via VATS Training Lab) and WINS.');
+    }
+  }
+}
+
+function checkRomanum(p) {
+  if (!has(p, 'romanum')) return;
+  const dwellerRoles = p.dwellers.map(c => MAT_ROLE[c.m]);
+  const roles = new Set(dwellerRoles);
+  const stockpileMats = new Set(p.stockpile.map(c => c.m));
+  let rolesOk = false;
+  if (ROLES.every(r => roles.has(r))) {
+    rolesOk = true;
+  } else if (has(p, 'ludus') && dwellerRoles.some(r => r === 'TRADER')) {
+    const nonTrader = new Set(dwellerRoles.filter(r => r !== 'TRADER'));
+    if (nonTrader.size >= ROLES.length - 1) rolesOk = true;
+  }
+  if (rolesOk && MATS.every(m => stockpileMats.has(m))) {
+    gameOver = true;
+    lastWinnerIdx = players.indexOf(p);
+    log('★ VAULT-TEC REGIONAL HEADQUARTERS! ' + p.name + ' has every dweller role and every material type — WIN.');
+  }
+}
+
+function checkPlebian() {
+  for (const p of players) {
+    if (!has(p, 'plebian')) continue;
+    const myScav = p.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length;
+    if (myScav === 0) continue;
+    const othersMaxScav = Math.max(...players.filter(q => q !== p).map(q => q.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length));
+    if (myScav <= othersMaxScav) continue;
+    const globalScav = players.reduce((sum, q) => sum + q.dwellers.filter(c => MAT_ROLE[c.m] === 'SCAVENGER').length, 0);
+    const globalRaider = players.reduce((sum, q) => sum + q.dwellers.filter(c => MAT_ROLE[c.m] === 'RAIDER').length, 0);
+    if (globalScav > globalRaider) {
+      gameOver = true;
+      lastWinnerIdx = players.indexOf(p);
+      log('★ AUTOMATED DISTRIBUTION NETWORK! ' + p.name + ' has the most Scavengers and Scavengers outnumber Raiders — WIN.');
+    }
+  }
+}
+
+/* ---------- turn & game flow (host/solo) ---------- */
+
+async function playTurn(gen) {
+  raidedThisTurn.clear();
+  const leader = players[leaderIdx];
+  setMessage(leader.name + ' leads…');
+  render();
+
+  const opts = [{ id: 'research', label: 'RESEARCH (draw cards)', score: leader.hand.length <= 2 ? 8 : 2 }];
+  for (const o of leadableOptions(leader)) {
+    let s = 3;
+    if (o.role === 'ENGINEER' || o.role === 'OVERSEER') s = 5;
+    if (o.role === 'RECRUITER' && wasteland.length) s = 4.5;
+    if (o.role === 'TRADER' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
+    if (o.role === 'SCAVENGER' && wasteland.length) s = 3.5;
+    if (o.id.startsWith('leadstranger')) s -= 1; // CPU saves Mysterious Strangers when a real card will do
+    if (o.n) s -= o.n * 0.5; // multi-card stranger leads cost extra cards
+    opts.push({ ...o, score: s });
+  }
+  if (has(leader, 'aerarium') && leader.population >= 1 && leader.buildings.some(b => b.done)) {
+    opts.push({ id: 'aerarium', label: 'High-Security Archives (lose 1 pop, trigger a room\'s completion)', score: 5 });
+  }
+  const pick = await choose(leader, leader.name + ' — research or lead?', opts);
+  if (gen !== epoch) return;
+
+  if (pick === 'research') {
+    recPush('turn', { leader: leader.name, role: 'research' });
+    await doResearch(leader);
+    render();
+    return;
+  }
+  if (pick === 'aerarium') {
+    const rooms = leader.buildings.filter(b => b.done).map((b, i) => ({ id: 'room:' + i, label: b.n, score: MAT_VAL[b.site] * 2 }));
+    const rPick = await choose(leader, leader.name + ': High-Security Archives — pick a room to trigger', rooms);
+    if (rPick) {
+      const bi = Number(rPick.split(':')[1]);
+      const room = leader.buildings.filter(b => b.done)[bi];
+      leader.population--;
+      log(leader.name + ' loses 1 population (' + leader.population + ') to activate ' + room.n + ' (High-Security Archives).');
+      await onCompletion(leader, room);
+    }
+    render();
+    return;
+  }
+
+  const role = playLead(leader, pick);
+  recPush('turn', { leader: leader.name, role });
+  log(leader.name + ' leads ' + role + '.');
+  const participants = [leader];
+  render();
+
+  for (let k = 1; k < players.length; k++) {
+    const q = players[(leaderIdx + k) % players.length];
+    const fopts = [];
+    q.hand.forEach((c, i) => {
+      if (!c.stranger && MAT_ROLE[c.m] === role) {
+        fopts.push({ id: 'follow:' + i, label: 'Follow ' + role + ' (' + c.n + ')', score: 5 });
+      }
+    });
+    q.hand.forEach((c, i) => {
+      if (c.stranger) {
+        fopts.push({ id: 'follow:' + i, label: 'Follow ' + role + ' (Mysterious Stranger)', score: 4 });
+      }
+    });
+    if (role === 'OVERSEER' && has(q, 'crane')) {
+      q.hand.forEach((c, i) => {
+        if (!c.stranger && MAT_ROLE[c.m] !== role) {
+          fopts.push({ id: 'follow:' + i, label: 'Follow OVERSEER (' + c.n + ')', score: 3 + MAT_VAL[c.m] });
+        }
+      });
+    }
+    const matchingIdxs = q.hand.map((c, i) => !c.stranger && MAT_ROLE[c.m] === role ? i : -1).filter(i => i >= 0);
+    if (matchingIdxs.length >= 2 && has(q, 'palace')) {
+      fopts.push({ id: 'followmulti:' + matchingIdxs.join(','), label: 'Follow ' + role + ' with ' + matchingIdxs.length + ' cards (ZAX)', score: 5 + matchingIdxs.length * 2 });
+    }
+    const hasMatch = matchingIdxs.length > 0;
+    const hasStranger = q.hand.some(c => c.stranger);
+    if (!hasMatch && !hasStranger) {
+      // same-role cards act as a stranger when following, too
+      const need = strangerNeed(q);
+      const byRole = {};
+      q.hand.forEach((c, i) => { if (!c.stranger) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
+      const group = Object.values(byRole).find(a => a.length >= need);
+      if (group) fopts.push({ id: 'followpair:' + group.slice(0, need).join(','), label: 'Follow ' + role + ' (' + need + ' matching as Stranger' + (has(q, 'circus') ? ', Commissary' : '') + ')', score: need === 2 ? 3.5 : 2.5 });
+    }
+    fopts.push({ id: 'research', label: 'RESEARCH instead', score: q.hand.length <= 2 ? 6 : 3 });
+    const fp = await choose(q, q.name + ' — follow ' + role + ' or research?', fopts);
+    if (gen !== epoch) return;
+    if (fp && fp.startsWith('followmulti')) {
+      const indices = fp.split(':')[1].split(',').map(Number);
+      const cards = indices.map(i => q.hand[i]);
+      q.hand = q.hand.filter((c, i) => !indices.includes(i));
+      q.played = cards;
+      q.palaceActs = cards.length - 1;
+      participants.push(q);
+      log(q.name + ' follows with ' + cards.length + ' cards (ZAX Supercomputer).');
+    } else if (fp && fp.startsWith('followpair')) {
+      const indices = fp.split(':')[1].split(',').map(Number);
+      const cards = indices.map(i => q.hand[i]);
+      q.hand = q.hand.filter((c, i) => !indices.includes(i));
+      q.played = cards;
+      q.palaceActs = 0;
+      participants.push(q);
+      log(q.name + ' follows with ' + indices.length + ' matching cards as a Mysterious Stranger.');
+    } else if (fp && fp.startsWith('follow')) {
+      const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
+      q.played = [c];
+      q.palaceActs = 0;
+      participants.push(q);
+      log(q.name + ' follows.');
+    } else {
+      await doResearch(q);
+      if (gen !== epoch) return;
+    }
+    render();
+  }
+
+  // perform: each participant acts once + once per matching dweller + palace extra actions
+  for (const p of participants) {
+    if (gameOver) break;
+    const dwellersBefore = [...p.dwellers]; // snapshot before acting: same-turn hires only act via Bath
+    await performRole(p, role, false);
+    if (gen !== epoch) return;
+    for (const c of dwellersBefore) {
+      if (gameOver) break;
+      if (MAT_ROLE[c.m] === role || (role === 'SCAVENGER' && has(p, 'storeroom')) || (MAT_ROLE[c.m] === 'TRADER' && has(p, 'ludus'))) {
+        log(p.name + "'s " + role + ' dweller acts.');
+        await performRole(p, role, false);
+        if (gen !== epoch) return;
+        if (has(p, 'maximus')) {
+          log(p.name + "'s " + role + ' dweller acts again (Turbo-Fluid Grid).');
+          await performRole(p, role, false);
+          if (gen !== epoch) return;
+        }
+        if (has(p, 'triclinium')) {
+          const freezeOpts = [
+            { id: 'freeze', label: 'Freeze ' + MAT_ROLE[c.m] + ' dweller to safe (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 },
+            { id: 'skip', label: 'Keep dweller', score: 0 },
+          ];
+          const pick = await choose(p, p.name + ': Cryo-Stasis Vault — freeze this dweller?', freezeOpts);
+          if (pick === 'freeze') {
+            p.safe.push(c);
+            p.dwellers = p.dwellers.filter(d => d !== c);
+            log(p.name + ' cryo-freezes a ' + MAT_ROLE[c.m] + ' dweller to the safe.');
+            checkPlebian();
+          }
+        }
+      }
+    }
+    const palaceN = p.palaceActs || 0;
+    delete p.palaceActs;
+    for (let i = 0; i < palaceN; i++) {
+      if (gameOver) break;
+      log(p.name + "'s ZAX Supercomputer grants an extra " + role + ' action.');
+      await performRole(p, role, false);
+      if (gen !== epoch) return;
+    }
+  }
+
+  // played cards wash into the wasteland (or stockpile with Recycling Chute)
+  for (const p of participants) {
+    for (const c of (p.played || [])) {
+      if (c.stranger) {
+        // Detective Agency: opponent's strangers go to your hand instead of the pool
+        const sniper = players.find(q => q !== p && has(q, 'senate'));
+        if (sniper) { sniper.hand.push(c); log(sniper.name + ' intercepts a Mysterious Stranger via Detective Agency.'); }
+        else strangers++;
+        continue;
+      }
+      if (has(p, 'sewer')) p.stockpile.push(c);
+      else wasteland.push(c);
+    }
+    p.played = null;
+  }
+  for (const p of players) {
+    if (raidedThisTurn.has(players.indexOf(p)) && has(p, 'castra')) {
+      log(p.name + ' lost a card to a Raider — Armored Watchtower grants RESEARCH.');
+      await doResearch(p);
+    }
+  }
+  if (role === 'SCAVENGER') {
+    for (const p of participants) {
+      if (!has(p, 'watermill')) continue;
+      const overseerCount = p.dwellers.filter(c => MAT_ROLE[c.m] === 'OVERSEER').length;
+      if (overseerCount === 0) continue;
+      log(p.name + ' uses ' + overseerCount + ' OVERSEER dweller' + (overseerCount !== 1 ? 's' : '') + ' via Hydro-Kinetic Power Grid.');
+      for (let i = 0; i < overseerCount; i++) {
+        if (gameOver) break;
+        await performRole(p, 'OVERSEER', false);
+      }
+    }
+  }
+  render();
+}
+
+async function playMatch() {
+  if (gameActive || net.mode === 'guest') return;
+  const gen = ++epoch;
+  gameActive = true;
+  gameOver = false;
+  endFlag = false;
+  lastWinnerIdx = -1;
+  $('round-controls').style.display = 'none';
+
+  deck = shuffle(buildDeck(deckType, deckExpansion));
+  strangers = 6;
+  wasteland = [];
+  sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  sharedFx = new Set();
+  recStart({
+    players: players.map(p => ({ name: p.name, kind: p.remote ? 'remote' : (p.ai ? 'cpu' : 'human') })),
+    firstLeader: players[0].name,
+  });
+  recPush('deck', { cards: deck.map(c => recCard(c)), strangers: strangers, sites: Object.assign({}, sites) });
+  for (const p of players) {
+    p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = [];
+    p.population = 2; p.played = null; p.palaceActs = 0;
+    for (let i = 0; i < 4; i++) addToHand(p, draw1());
+  }
+  for (const p of players) wasteland.push(draw1()); // prime the wasteland
+  leaderIdx = 0;
+  log('— New game: the city rises again. —');
+  render();
+
+  let safety = 400;
+  while (!gameOver && safety-- > 0) {
+    await playTurn(gen);
+    if (gen !== epoch) return;
+    if (gameOver || endFlag) break;
+    leaderIdx = (leaderIdx + 1) % players.length;
+    await sleep(550);
+    if (gen !== epoch) return;
+  }
+
+  let sharedWin = null;
+  if (!gameOver) {
+    // deck, sites, or the safety cap exhausted: score it
+    const safeVal = p => p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
+    const best = Math.max(...players.map(p => score(p)));
+    let winners = players.filter(p => score(p) === best);
+    if (winners.length > 1) {
+      // tiebreak: higher safe value wins
+      const bv = Math.max(...winners.map(safeVal));
+      winners = winners.filter(p => safeVal(p) === bv);
+    }
+    lastWinnerIdx = players.indexOf(winners[0]);
+    if (winners.length > 1) {
+      sharedWin = winners.map(p => p.name).join(' & ');
+      log('Tie at ' + best + ' pts, safes even — ' + sharedWin + ' share the win.');
+    }
+    gameOver = true;
+  }
+
+  gameActive = false;
+  gameOver = true;
+  stats.games++;
+  if (lastWinnerIdx === mySeatIdx) stats.wins++;
+  save();
+  recFinish({
+    winner: sharedWin || (players[lastWinnerIdx] ? players[lastWinnerIdx].name : null),
+    shared: sharedWin || null,
+    players: players.map(p => ({
+      name: p.name, score: score(p),
+      safe: p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0),
+      buildings: p.buildings.map(b => ({ n: b.n, done: !!b.done })),
+    })),
+  });
+  const winP = players[lastWinnerIdx];
+  const scores = players.map(p => p.name + ' ' + score(p)).join(' · ');
+  log('Final: ' + scores);
+  setMessage(sharedWin
+    ? '★ Shared win — ' + sharedWin + ' hold the city. ' + scores
+    : winP === me && net.mode === 'solo'
+    ? '★ Your city stands above the rest (' + score(me) + ' pts). The wasteland provides.'
+    : '★ ' + winP.name + ' takes the city — ' + scores);
+  $('btn-deal').textContent = 'Play again';
+  $('round-controls').style.display = '';
+  render();
+}
+
+function newGame() {
+  if (net.mode === 'guest') return;
+  epoch++; // any running match loop bails at its next await
+  if (localChooser) { const r = localChooser.resolve; localChooser = null; r(null); }
+  if (net.picker) {
+    if (net.picker.conn && net.picker.conn.open) net.picker.conn.send({ type: 'closeprompt', seq: net.picker.seq });
+    net.picker.finish(null);
+  }
+  gameOver = false;
+  gameActive = false;
+  for (const p of players) { p.hand = []; p.stockpile = []; p.safe = []; p.dwellers = []; p.buildings = []; p.population = 2; p.played = null; p.palaceActs = 0; }
+  deck = []; wasteland = []; strangers = 6;
+  sites = Object.fromEntries(MATS.map(m => [m, 3]));
+  sharedFx = new Set();
+  $('btn-deal').textContent = 'Start game';
+  $('round-controls').style.display = '';
+  $('opts').innerHTML = '';
+  setMessage('Lead roles, hire dwellers, build rooms. Start when ready.');
+  render();
+}
+
+/* ============================================================
+   Multiplayer — shared peer layer, private hands, and the
+   generic chooser carried over the wire.
+   ============================================================ */
+
+const net = { mode: 'solo', peer: null, roomCode: null, hostConn: null,
+              hostName: 'Host', picker: null, chooseSeq: 0, promptSeq: 0, lastView: null,
+              lastSeen: 0, hostGone: false, hostAnnounced: false, token: null,
+              joinTimer: null, joinRetries: 0, joinName: '', guestPrompt: false,
+              heartbeatsStarted: false, gameCounted: false, wakeLock: null };
+
+function makePeer(id) {
+  const ps = new URLSearchParams(location.search).get('ps');
+  const opts = ps
+    ? { host: ps.split(':')[0], port: Number(ps.split(':')[1]), path: '/', secure: false }
+    : {};
+  opts.config = {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:global.stun.twilio.com:3478'] },
+      {
+        urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443',
+               'turns:openrelay.metered.ca:443?transport=tcp'],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+    ],
+  };
+  if (id) {
+    net.token = net.token || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    opts.token = net.token;
+  }
+  const peer = id ? new Peer(id, opts) : new Peer(opts);
+  peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+  return peer;
+}
+
+async function keepAwake() {
+  try {
+    if (!navigator.wakeLock) return;
+    net.wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener('visibilitychange', async () => {
+      try {
+        if (document.visibilityState === 'visible' && net.mode !== 'solo')
+          net.wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) { /* best effort */ }
+    });
+  } catch (e) { /* best effort */ }
+}
+
+function randCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function netBroadcast(msg) {
+  for (const p of players) if (p.remote && p.remote.open) p.remote.send(msg);
+}
+
+function inviteUrl() { return new URL('../index.html?join=' + net.roomCode, location.href).href; }
+
+function copyInvite() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl())
+      .then(() => setMessage('Invite link copied — send it to your friends.'))
+      .catch(() => prompt('Copy this invite link:', inviteUrl()));
+  } else {
+    prompt('Copy this invite link:', inviteUrl());
+  }
+}
+
+function updateNetBar() {
+  const bar = $('net-bar');
+  if (net.mode === 'host') {
+    const guests = players.filter(p => p.remote).map(p => escapeHtml(p.name));
+    bar.innerHTML = 'Table <b>' + net.roomCode + '</b> · ' +
+      (guests.length ? 'playing with ' + guests.join(', ') : 'waiting for friends…') +
+      '<button id="btn-copy-link">' + (navigator.share ? 'Share invite link' : 'Copy invite link') + '</button>';
+    $('btn-copy-link').addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({ title: 'Glory to Rome', text: 'Join my table', url: inviteUrl() })
+          .catch(e => { if (e.name !== 'AbortError') copyInvite(); });
+      } else copyInvite();
+    });
+  } else if (net.mode === 'guest') {
+    bar.textContent = 'At ' + net.hostName + '’s table (' + net.roomCode + ')';
+  } else {
+    bar.textContent = '';
+  }
+}
+
+/* ----- host side ----- */
+
+function hostRoom(code) {
+  setMessage('Setting up your table…');
+  net.mode = 'host';
+  net.roomCode = code || randCode();
+  createHostPeer();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ensureJoinable();
+  });
+  setInterval(ensureJoinable, 5000);
+  setInterval(() => netBroadcast({ type: 'ping' }), HEARTBEAT_MS);
+  setInterval(() => {
+    const now = Date.now();
+    for (const p of players) {
+      if (p.remote && p.remote._lastSeen && now - p.remote._lastSeen > STALE_MS) {
+        const conn = p.remote;
+        try { conn.close(); } catch (e) { /* dead */ }
+        dropGuest(conn);
+      }
+    }
+  }, 4000);
+}
+
+function createHostPeer() {
+  net.peer = makePeer('v21-' + net.roomCode);
+  net.peer.on('open', () => {
+    if (!net.hostAnnounced) {
+      net.hostAnnounced = true;
+      $('btn-invite').style.display = 'none';
+      updateNetBar();
+      setMessage('Table ready — send friends the invite link.');
+      log('Table ' + net.roomCode + ' opened. Two friends can take over Cass and Boone.');
+      keepAwake();
+      render();
+    } else {
+      setMessage('');
+      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+    }
+  });
+  net.peer.on('connection', conn => {
+    conn.on('data', d => handleGuestMsg(conn, d));
+    conn.on('close', () => dropGuest(conn));
+    conn.on('error', () => dropGuest(conn));
+  });
+  net.peer.on('error', e => {
+    const brokerTrouble = ['network', 'unavailable-id', 'socket-error', 'socket-closed', 'server-error'];
+    if (brokerTrouble.includes(e.type)) {
+      setMessage('Reconnecting to the lobby…');
+      setTimeout(ensureJoinable, 2000);
+    } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
+      log('Multiplayer error: ' + e.type);
+    }
+  });
+}
+
+function ensureJoinable() {
+  if (net.mode !== 'host' || !net.peer) return;
+  if (net.peer.destroyed) {
+    createHostPeer();
+  } else if (net.peer.disconnected) {
+    try { net.peer.reconnect(); }
+    catch (e) {
+      try { net.peer.destroy(); } catch (e2) { /* gone */ }
+      createHostPeer();
+    }
+  }
+}
+
+function handleGuestMsg(conn, d) {
+  if (!d || typeof d !== 'object') return;
+  conn._lastSeen = Date.now();
+  if (d.type === 'hello') {
+    const prior = players.find(p => p.remote && p.remote !== conn && p.remote.peer === conn.peer);
+    if (prior) {
+      const pendingPick = net.picker && net.picker.conn === prior.remote ? net.picker : null;
+      try { prior.remote.close(); } catch (e) { /* stale */ }
+      prior.remote = conn;
+      conn._seat = prior;
+      conn.send({ type: 'welcome', seat: players.indexOf(prior), hostName: me.name, code: net.roomCode });
+      if (pendingPick) { pendingPick.conn = conn; conn.send(pendingPick.msg); }
+      render();
+      return;
+    }
+    const seat = players.find(p => p.ai && !p.remote);
+    if (!seat) { conn.send({ type: 'full' }); setTimeout(() => conn.close(), 300); return; }
+    seat.ai = false;
+    seat.remote = conn;
+    seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    conn._seat = seat;
+    conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
+    log(seat.name + ' takes over ' + seat.cpuName + "'s seat.");
+    updateNetBar();
+    render();
+  } else if (d.type === 'pick') {
+    if (net.picker && net.picker.conn === conn && d.seq === net.picker.seq) net.picker.finish(d.id);
+  }
+}
+
+function dropGuest(conn) {
+  const seat = conn._seat;
+  if (!seat || seat.remote !== conn) return;
+  seat.remote = null;
+  seat.ai = true;
+  log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
+  seat.name = seat.cpuName;
+  if (net.picker && net.picker.conn === conn) net.picker.finish(null);
+  updateNetBar();
+  render();
+}
+
+/* ----- guest side ----- */
+
+function hostLost() {
+  if (net.hostGone) return;
+  net.hostGone = true;
+  net.guestPrompt = false;
+  $('opts').innerHTML = '';
+  setMessage('Lost the host — refresh the page to play solo.');
+}
+
+function joinRoom(code, name) {
+  net.roomCode = code;
+  net.joinName = name;
+  net.joinRetries = 0;
+  if (net.peer && !net.peer.destroyed) net.peer.destroy();
+  clearTimeout(net.joinTimer);
+  net.joinTimer = setTimeout(() => {
+    if (net.mode !== 'guest')
+      $('overlay-status').textContent = 'Still trying… the same wifi as the host works best.';
+  }, 30000);
+  net.peer = makePeer();
+  net.peer.on('open', () => guestConnect());
+  net.peer.on('error', e => {
+    if (net.mode === 'guest') return;
+    if (e.type === 'peer-unavailable') {
+      if (net.joinRetries < 20) {
+        $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+        setTimeout(guestConnect, 4000);
+      } else {
+        $('overlay-status').textContent = 'Still no table with code ' + code + '. Ask the host to stay on the game, then tap Join again.';
+      }
+    } else {
+      $('overlay-status').textContent = 'Connection failed (' + e.type + '). Check your internet and tap Join again.';
+    }
+  });
+}
+
+function guestConnect() {
+  if (net.mode === 'guest' || !net.peer || net.peer.destroyed) return;
+  net.joinRetries++;
+  if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
+  const conn = net.peer.connect('v21-' + net.roomCode, { reliable: true });
+  net.hostConn = conn;
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('data', d => handleHostMsg(d));
+  conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
+  setTimeout(() => {
+    if (net.mode === 'guest' || net.hostConn !== conn || conn.open) return;
+    try { conn.close(); } catch (e) { /* never opened */ }
+    if (net.joinRetries < 20) {
+      $('overlay-status').textContent = "The table isn't answering — retrying, attempt " + net.joinRetries + '…';
+      guestConnect();
+    } else {
+      $('overlay-status').textContent = 'No luck reaching the table. Ask the host to stay on the game, then tap Join again.';
+    }
+  }, 8000);
+}
+
+function handleHostMsg(d) {
+  if (!d || typeof d !== 'object') return;
+  net.lastSeen = Date.now();
+  if (d.type === 'welcome') {
+    net.mode = 'guest';
+    clearTimeout(net.joinTimer);
+    keepAwake();
+    if (!net.heartbeatsStarted) {
+      net.heartbeatsStarted = true;
+      setInterval(() => {
+        if (net.hostConn && net.hostConn.open) net.hostConn.send({ type: 'ping' });
+      }, HEARTBEAT_MS);
+      setInterval(() => {
+        if (net.mode === 'guest' && !net.hostGone && Date.now() - net.lastSeen > STALE_MS) hostLost();
+      }, 4000);
+    }
+    mySeatIdx = d.seat;
+    net.hostName = d.hostName || 'Host';
+    document.body.classList.add('guest');
+    $('overlay').style.display = 'none';
+    $('btn-invite').style.display = 'none';
+    $('btn-new').style.display = 'none';
+    $('round-controls').style.display = 'none';
+    updateNetBar();
+    setMessage('Seated — waiting for the table…');
+  } else if (d.type === 'state') {
+    net.lastView = d.view;
+    renderView(d.view);
+  } else if (d.type === 'choose') {
+    net.guestPrompt = true;
+    net.promptSeq = d.seq;
+    showOptions(d.options, d.label);
+  } else if (d.type === 'closeprompt') {
+    if (d.seq === net.promptSeq) {
+      net.guestPrompt = false;
+      $('opts').innerHTML = '';
+      setMessage('');
+    }
+  } else if (d.type === 'log') {
+    const el = document.createElement('div');
+    el.textContent = d.msg;
+    $('log').prepend(el);
+    while ($('log').children.length > 12) $('log').lastChild.remove();
+  } else if (d.type === 'full') {
+    $('overlay-status').textContent = 'That table is full (host + 2 friends).';
+  }
+}
+
+/* ----- lobby overlay ----- */
+
+let overlayMode = null, overlayCode = null;
+
+function showOverlay(mode, code) {
+  overlayMode = mode;
+  overlayCode = code || null;
+  $('overlay-title').textContent = mode === 'host' ? 'Play with friends' : 'Join the table';
+  $('overlay-sub').textContent = mode === 'host'
+    ? 'Open a table and send the invite link — two friends can take over Cass and Boone. Your browser runs the game.'
+    : 'Joining table ' + code + '. Pick a name and pull up a chair.';
+  $('overlay-go').textContent = mode === 'host' ? 'Open table' : 'Join';
+  $('overlay-code').style.display = mode === 'host' ? 'none' : '';
+  $('overlay-code').value = code || '';
+  if (mode !== 'host' && !code) $('overlay-sub').textContent = 'Enter the table code your host reads you, then pick a name.';
+  $('overlay-status').textContent = '';
+  $('overlay').style.display = '';
+  if (mode !== 'host' && !code) $('overlay-code').focus(); else $('overlay-name').focus();
+}
+
+$('overlay-go').addEventListener('click', () => {
+  const name = $('overlay-name').value.trim().slice(0, 12);
+  if (overlayMode === 'host') {
+    me.name = name || (me.name === 'You' ? 'Host' : me.name);
+    $('overlay').style.display = 'none';
+    hostRoom(overlayCode);
+    render();
+  } else {
+    const code = ($('overlay-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (code.length !== 6) { $('overlay-status').textContent = 'Enter the 6-character table code.'; return; }
+    overlayCode = code;
+    $('overlay-status').textContent = 'Connecting…';
+    joinRoom(code, name || 'Guest');
+  }
+});
+$('overlay-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('overlay-go').click(); });
+$('overlay-cancel').addEventListener('click', () => {
+  $('overlay').style.display = 'none';
+  if (overlayMode === 'join') history.replaceState(null, '', location.pathname);
+});
+document.querySelectorAll('input[name="decktype"]').forEach(el => {
+  el.addEventListener('change', () => { if (el.checked) deckType = el.value; });
+});
+$('deck-expansion').addEventListener('change', function () { deckExpansion = this.checked; });
+$('btn-invite').addEventListener('click', () => showOverlay('host'));
+$('btn-join').addEventListener('click', () => showOverlay('join'));
+
+/* ---------- wiring ---------- */
+
+$('btn-deal').addEventListener('click', playMatch);
+$('btn-new').addEventListener('click', newGame);
+$('btn-help').addEventListener('click', () => { $('help').style.display = ''; });
+$('help-close').addEventListener('click', () => { $('help').style.display = 'none'; });
+$('btn-export-log').addEventListener('click', recExport);
+$('btn-games').addEventListener('click', () => { location.href = '../index.html'; });
+
+/* ---------- boot ---------- */
+
+document.addEventListener('click', hideTip);
+window.addEventListener('scroll', hideTip, true);
+
+load();
+newGame();
+log('Welcome to the wasteland. Scavenge well, build fast, and mind the raiders.');
+
+if (window.Peer) {
+  const joinCode = (new URLSearchParams(location.search).get('join') || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (joinCode) showOverlay('join', joinCode);
+}
+
+/* expose the game's const state to the shared room layer (room.js) */
+window.net = net;
+window.__V21_seats = players;
+window.__V21_host = me;
+</script>
+<script src="../room.js"></script>
+</body>
+</html>
