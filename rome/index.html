@@ -498,6 +498,10 @@
       Everyone else may <b>follow</b> (play a matching card) or research. Everyone
       who joined performs the action — once themselves, plus once per matching
       <b>dweller</b>. Played cards land in the shared <b>wasteland</b>.</p>
+      <p><b>Mysterious Strangers</b> are wild role cards. Matching cards can
+      stand in for one too: with the <b>Standard</b> deck any <b>2</b> cards of
+      the same role; with the <b>Experimental</b> deck <b>3</b> of a kind — or
+      just <b>2</b> once your <b>Commissary</b> vault room is completed.</p>
       <p><b>The six roles</b> (each tied to a material):</p>
       <ul>
         <li><b>SCAVENGER</b> (scrap) — take a wasteland card into your stockpile.</li>
@@ -701,6 +705,11 @@ function handLimit(p) { return 5 + (has(p, 'shrine') ? 2 : 0) + (has(p, 'temple'
 function effectivePopulation(p) { return has(p, 'aerarium') ? Math.max(...players.map(q => q.population)) : p.population; }
 function dwellerLimit(p) { return (effectivePopulation(p) + (has(p, 'insula') ? 2 : 0)) * (has(p, 'aqueduct') ? 2 : 1); }
 function safeLimit(p) { return effectivePopulation(p) + (has(p, 'market') ? 2 : 0); }
+function strangerNeed(p) {
+  /* matching-role cards required to act as one Mysterious Stranger */
+  if (has(p, 'circus')) return 2;
+  return deckType === 'experimental' ? 3 : 2;
+}
 function roleOf(card) { return card.stranger ? 'STRANGER' : MAT_ROLE[card.m]; }
 function score(p) {
   let s = effectivePopulation(p) + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
@@ -1087,10 +1096,11 @@ function leadableOptions(p) {
     if (hasStranger) {
       opts.push({ id: 'leadstranger:' + role, label: 'Lead ' + role + ' (Mysterious Stranger)', role });
     }
-    if (!byRole[role] && !hasStranger && has(p, 'circus')) {
-      // two same-role cards act as a stranger for any role
-      const pair = Object.values(byRole).find(a => a.length >= 2);
-      if (pair) opts.push({ id: 'leadpair:' + role + ':' + pair[0] + ':' + pair[1], label: 'Lead ' + role + ' (Circus pair)', role });
+    if (!byRole[role] && !hasStranger) {
+      // a group of same-role cards acts as a stranger for any role
+      const need = strangerNeed(p);
+      const group = Object.values(byRole).find(a => a.length >= need);
+      if (group) opts.push({ id: 'leadpair:' + role + ':' + group.slice(0, need).join(','), label: 'Lead ' + role + ' (' + need + ' matching as Stranger' + (has(p, 'circus') ? ', Commissary' : '') + ')', role, n: need });
     }
   }
   return opts;
@@ -1113,13 +1123,13 @@ function playLead(p, id) {
     p.played = [p.hand.splice(ji, 1)[0]];
     p.palaceActs = 0;
   } else {
-    const i1 = Number(parts[2]), i2 = Number(parts[3]);
-    const cards = [p.hand[i1], p.hand[i2]];
-    p.hand = p.hand.filter((c, i) => i !== i1 && i !== i2);
+    const indices = parts[2].split(',').map(Number);
+    const cards = indices.map(i => p.hand[i]);
+    p.hand = p.hand.filter((c, i) => !indices.includes(i));
     p.played = cards;
     p.palaceActs = 0;
   }
-  return parts[parts[0] === 'leadmulti' ? 1 : 1];
+  return parts[1];
 }
 
 /* ----- role performances ----- */
@@ -1640,6 +1650,7 @@ async function playTurn(gen) {
     if (o.role === 'TRADER' && leader.stockpile.length) s = 4 + Math.max(...leader.stockpile.map(c => MAT_VAL[c.m]), 0);
     if (o.role === 'SCAVENGER' && wasteland.length) s = 3.5;
     if (o.id.startsWith('leadstranger')) s -= 1; // CPU saves Mysterious Strangers when a real card will do
+    if (o.n) s -= o.n * 0.5; // multi-card stranger leads cost extra cards
     opts.push({ ...o, score: s });
   }
   if (has(leader, 'aerarium') && leader.population >= 1 && leader.buildings.some(b => b.done)) {
@@ -1700,12 +1711,13 @@ async function playTurn(gen) {
     }
     const hasMatch = matchingIdxs.length > 0;
     const hasStranger = q.hand.some(c => c.stranger);
-    if (!hasMatch && !hasStranger && has(q, 'circus')) {
-      // two same-role cards act as a stranger when following, too
+    if (!hasMatch && !hasStranger) {
+      // same-role cards act as a stranger when following, too
+      const need = strangerNeed(q);
       const byRole = {};
       q.hand.forEach((c, i) => { if (!c.stranger) (byRole[MAT_ROLE[c.m]] = byRole[MAT_ROLE[c.m]] || []).push(i); });
-      const pair = Object.values(byRole).find(a => a.length >= 2);
-      if (pair) fopts.push({ id: 'followpair:' + pair[0] + ':' + pair[1], label: 'Follow ' + role + ' (Circus pair)', score: 3.5 });
+      const group = Object.values(byRole).find(a => a.length >= need);
+      if (group) fopts.push({ id: 'followpair:' + group.slice(0, need).join(','), label: 'Follow ' + role + ' (' + need + ' matching as Stranger' + (has(q, 'circus') ? ', Commissary' : '') + ')', score: need === 2 ? 3.5 : 2.5 });
     }
     fopts.push({ id: 'research', label: 'RESEARCH instead', score: q.hand.length <= 2 ? 6 : 3 });
     const fp = await choose(q, q.name + ' — follow ' + role + ' or research?', fopts);
@@ -1719,13 +1731,13 @@ async function playTurn(gen) {
       participants.push(q);
       log(q.name + ' follows with ' + cards.length + ' cards (ZAX Supercomputer).');
     } else if (fp && fp.startsWith('followpair')) {
-      const i1 = Number(fp.split(':')[1]), i2 = Number(fp.split(':')[2]);
-      const cards = [q.hand[i1], q.hand[i2]];
-      q.hand = q.hand.filter((c, i) => i !== i1 && i !== i2);
+      const indices = fp.split(':')[1].split(',').map(Number);
+      const cards = indices.map(i => q.hand[i]);
+      q.hand = q.hand.filter((c, i) => !indices.includes(i));
       q.played = cards;
       q.palaceActs = 0;
       participants.push(q);
-      log(q.name + ' follows with a Circus pair.');
+      log(q.name + ' follows with ' + indices.length + ' matching cards as a Mysterious Stranger.');
     } else if (fp && fp.startsWith('follow')) {
       const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
       q.played = [c];

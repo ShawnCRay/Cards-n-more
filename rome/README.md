@@ -12,6 +12,9 @@ and a building to construct. On your turn, RESEARCH (refill your hand, or take
 a Mysterious Stranger) or LEAD a role; others follow or research; everyone who joined
 performs the action once plus once per matching dweller. Played cards wash
 into the shared wasteland that Scavengers, Recruiters, and Raiders feed on.
+Two or more matching-role cards can stand in for a Mysterious Stranger —
+two of a kind with the Standard deck, three with Experimental (back down to
+two once your Commissary is completed).
 
 Roles: Scavenger (stockpile from wasteland), Recruiter (hire dwellers), Engineer
 (build from hand), Overseer (build from stockpile), Raider (demand
@@ -20,10 +23,10 @@ into your safe for points).
 
 Buildings complete at materials = site value (1/2/3), grant that much
 population (raising dweller and safe limits), and switch on their power.
-The curated set of 19: Insula, Bar, Road, Dock, Market, Palisade, Circus,
+The curated set of 19: Insula, Bar, Road, Dock, Market, Palisade, Commissary,
 Shrine, Atrium, Bath, Academy, Aqueduct, Wall, Tower, Villa, Scriptorium,
-Statue, Temple, and the Forum — complete it with a dweller of every role and
-you win instantly.
+Statue, Temple, and the Dweller Testing Chamber — complete it with a dweller
+of every role and you win instantly.
 
 Game ends when the deck or the sites run out; population + safe decides it.
 Simplifications vs the tabletop original: trimmed building list, no
