@@ -373,6 +373,26 @@
         opacity: 1;
       }
 
+      /* Fatigue caps the pool rather than draining it, so the bar has to show
+         two numbers, not one: how much is available at all right now (the
+         ceiling), and how full that reduced range currently is (the fill).
+         #stamina-ceiling is scaled to the ceiling fraction and #fill-stamina
+         is scaled to the fill fraction inside it, so the two transforms
+         compound visually into the true value against the true max. Nesting
+         them is what lets the dim band between the fill's edge and the
+         ceiling's edge read as "available but not spent", distinct from the
+         darker #stamina backdrop beyond the ceiling, which reads as
+         "collapsed away by fatigue". A single bar scaled to value/max alone
+         cannot draw that distinction, since it has nothing marking where the
+         ceiling actually sits. */
+      #stamina-ceiling {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.18);
+        transform-origin: left center;
+      }
+
       #fill-stamina {
         display: block;
         height: 100%;
@@ -1225,7 +1245,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BCcSpw--.js"></script>
+    <script type="module" crossorigin src="./assets/index-DZZiDwyz.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -1278,7 +1298,7 @@
         </div>
       </div>
 
-      <div id="stamina"><span id="fill-stamina"></span></div>
+      <div id="stamina"><span id="stamina-ceiling"><span id="fill-stamina"></span></span></div>
       <div id="weapon">Fists</div>
 
       <!-- Fatigue washes the colour out of the world, as CLAUDE.md describes.
