@@ -631,8 +631,56 @@
         display: none;
       }
 
+      /* The survival meters stay readable while the panel is open.
+
+         Player report: with the pack open you could not read your own water
+         and food, which is exactly when you are deciding what to eat or drink.
+         The pack does not pause the world (DECISIONS 6.3), so the meters are
+         still moving underneath it.
+
+         Two halves, both CSS only:
+
+         1. Lift the HUD layer above the backdrop. #meters cannot leave the
+            #hud stacking context on its own, so the whole layer goes to 26,
+            above #panel (25) and still below #pause (28), #overlay (30) and
+            the console (40). Everything in it except the meters is hidden
+            with `visibility` rather than `display`, so no author display rule
+            meets `[hidden]` here (DECISIONS 5.8). #hud keeps
+            `pointer-events: none`, so the lifted layer can never swallow a
+            click meant for the panel.
+         2. Keep the frame out of the meters' corner. The frame stays centred
+            but is never allowed to start left of --meters-clear, and shrinks
+            to fit if it has to. Clearance is horizontal on purpose: the
+            meters are a fixed 336px wide (padding, three fixed grid columns,
+            border) but their height depends on the font, and a horizontal gap
+            also leaves the frame its full 86vh on a 768px tall screen, where
+            the character sheet is already short of height.
+
+         Why not a copy of the meters inside the panel: a second readout needs
+         a second writer or a fan out from hud.ts, every frame, into a panel
+         that must never rebuild per frame (DECISIONS 5.9). Showing the one
+         real readout has nothing to keep in step.
+
+         Keyed off the panel's own `hidden` attribute with :has(), so there is
+         no class for show() and hide() to remember and no state to drift. */
+      :root {
+        /* 16px meter inset + 336px meter box + a 16px gap. */
+        --meters-clear: 368px;
+      }
+
+      body:has(#panel:not([hidden])) #hud {
+        z-index: 26;
+      }
+
+      body:has(#panel:not([hidden])) #hud > :not(#meters) {
+        visibility: hidden;
+      }
+
       .panel-frame {
-        width: min(1000px, 92vw);
+        --frame-w: min(1000px, 92vw, calc(100vw - var(--meters-clear) - 16px));
+        width: var(--frame-w);
+        justify-self: start;
+        margin-left: max(var(--meters-clear), calc((100vw - var(--frame-w)) / 2));
         max-height: 86vh;
         display: flex;
         flex-direction: column;
@@ -983,6 +1031,53 @@
         background: rgba(255, 255, 255, 0.07);
       }
 
+      /* Category tabs above an item list. Quiet outlined chips rather than the
+         accent filled action buttons, because choosing what to look at is not
+         an action on an item. Every selector here carries `.pack-filter` so it
+         outranks `#panel button` and its hover rule above. Empty categories
+         are dimmed, never hidden, so the row does not shift under the cursor
+         when the last of something is used. */
+      .pack-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 0 0 8px;
+      }
+
+      #panel .pack-filter button {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: none;
+        padding: 3px 7px;
+        color: var(--dim);
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      #panel .pack-filter button:hover:not(:disabled) {
+        color: #e9e3d6;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      #panel .pack-filter button.active {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      #panel .pack-filter button.none {
+        opacity: 0.4;
+      }
+
+      .filter-count {
+        margin-left: 5px;
+        font-variant-numeric: tabular-nums;
+        opacity: 0.8;
+      }
+
+      #panel .pack-filter button.sort {
+        margin-left: auto;
+      }
+
       #panel-recipes li {
         padding: 8px 10px;
         background: rgba(255, 255, 255, 0.03);
@@ -1245,7 +1340,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-TZGLVAfr.js"></script>
+    <script type="module" crossorigin src="./assets/index-Cvy6_1v6.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -1333,6 +1428,10 @@
             <h3>EQUIPPED</h3>
             <ul id="panel-equip"></ul>
             <h3>CARRYING</h3>
+            <!-- Category tabs and the sort button, built once by panels.ts and
+                 never rebuilt. Outside the list, so `#panel-items li` still
+                 means item rows and nothing else. -->
+            <div id="pack-filter" class="pack-filter"></div>
             <ul id="panel-items"></ul>
           </div>
           <div class="panel-col">
@@ -1344,10 +1443,12 @@
         <div class="panel-body" id="view-stash" hidden>
           <div class="panel-col">
             <h3>CRATE <span id="stash-weight"></span></h3>
+            <div id="stash-crate-filter" class="pack-filter"></div>
             <ul id="stash-crate"></ul>
           </div>
           <div class="panel-col">
             <h3>CARRYING</h3>
+            <div id="stash-pack-filter" class="pack-filter"></div>
             <ul id="stash-pack"></ul>
           </div>
         </div>
