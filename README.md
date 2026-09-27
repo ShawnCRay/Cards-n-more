@@ -34,3 +34,18 @@ the in-game **Switch game** button — the whole table moves along. Only the hos
 chooses the game and its settings; guests follow. Playing solo is unchanged:
 just open a game folder directly.
 
+A few things the room handles for you:
+
+- **Reloads.** The room code lives in the address bar, so a host or guest who
+  reloads the lobby lands back in the same room, and guests who drop off for a
+  moment dial back in on their own.
+- **Late arrivals.** A friend who opens the invite link mid-game is sent
+  straight to the table. If that game is already full (Caravan is 1v1, Glory
+  to Rome and Eras seat two friends), they wait in the lobby and are pulled in
+  when a seat opens or the host switches games.
+- **Leaving.** A host's **More games** moves everyone back to the room rather
+  than stranding the table; a guest's asks before leaving. Guests can also
+  **Leave room** from the lobby, and closing the room tells everyone.
+- **Names.** Your name is remembered on this device, and two players with the
+  same name are told apart ("Guest", "Guest 2").
+

@@ -35,7 +35,7 @@
     { id: 'rome',       title: 'Glory to Rome',        path: 'rome/',       icon: '◆', cap: 2 },
     { id: 'innovation', title: 'Eras of the Wasteland',path: 'innovation/', icon: '☢', cap: 2 },
     { id: 'liarsdice',  title: "Liar's Dice",          path: 'liarsdice/',  icon: '⚄', cap: 5 },
-    { id: 'holdem',     title: "Texas Hold'em",        path: 'holdem/',     icon: '♣', cap: 5 },
+    { id: 'holdem',     title: "Texas Hold'em",        path: 'holdem/',     icon: '♣', cap: 5, confirmsNew: true },
   ];
 
   var IN_GAME = !!window.__V21_GAME__;
@@ -45,11 +45,25 @@
     for (var i = 0; i < GAMES.length; i++) if (GAMES[i].id === id) return GAMES[i];
     return null;
   }
+  // Folder for a game id. A host running a newer build can name a game this
+  // (cached) copy has never heard of, so fall back to the folder convention
+  // for plain slugs; anything else is refused rather than navigated to.
+  function gamePath(id) {
+    var g = gameById(id);
+    if (g) return g.path;
+    return /^[a-z0-9-]{1,32}$/.test(String(id)) ? id + '/' : null;
+  }
 
   /* ---------- session identity (survives the hop navigation) ---------- */
 
   function saveSession(s) {
+    // the host's broker token rides along, so a reloaded host page reclaims
+    // its v21-<CODE> id at once instead of colliding with its own ghost
+    if (s.role === 'host' && !s.token) s.token = hostToken();
     try { s.ts = Date.now(); sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) { /* private mode */ }
+  }
+  function hostToken() {
+    return (window.net && window.net.token) || V21._token || undefined;
   }
   function loadSession() {
     try {
@@ -62,12 +76,28 @@
   function clearSession() {
     try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { /* private mode */ }
   }
+  function storageWorks() {
+    try { sessionStorage.setItem('v21probe', '1'); sessionStorage.removeItem('v21probe'); return true; }
+    catch (e) { return false; }
+  }
+  // A `role=host` URL is only honored in the tab that actually opened that
+  // room. Anyone else (a friend handed the host's address bar instead of the
+  // invite link, or the host in a second tab) joins as a guest rather than
+  // fighting the real host for the room's id.
+  function isHostOf(code) {
+    if (!storageWorks()) return true; // no way to tell, so trust the link
+    var s = loadSession();
+    return !!(s && s.role === 'host' && s.code === code);
+  }
 
   function myName() {
     var p = window.__V21_host; // host player object (aliased by each game: `player`/`me`)
     if (p && p.name && p.name !== 'You') return p.name;
     var s = loadSession();
-    return (s && s.name) || (p && p.name) || 'Player';
+    if (s && s.name) return s.name;
+    // a guest who came in through a game's own join box typed it here
+    var typed = document.getElementById('overlay-name');
+    return (typed && typed.value.trim().slice(0, 12)) || 'Player';
   }
 
   /* ---------- peer helpers (mirror each game's makePeer) ---------- */
@@ -117,18 +147,45 @@
   /* ---------- navigation (the hop itself) ---------- */
 
   function gameUrl(gameId, role, code) {
-    return BASE + gameById(gameId).path + 'index.html?room=' + code + '&role=' + role + psParam();
+    var path = gamePath(gameId);
+    return path ? BASE + path + 'index.html?room=' + code + '&role=' + role + psParam() : null;
   }
   function lobbyUrl(role, code) {
     return BASE + 'index.html?room=' + code + '&role=' + role + psParam();
   }
   function hopToGame(gameId, role, code, name) {
+    var url = gameUrl(gameId, role, code);
+    if (!url) return false;
     saveSession({ code: code, role: role, name: name || myName(), game: gameId });
-    location.href = gameUrl(gameId, role, code);
+    location.href = url;
+    return true;
   }
   function hopToLobby(role, code, name) {
     saveSession({ code: code, role: role, name: name || myName(), game: 'lobby' });
     location.href = lobbyUrl(role, code);
+  }
+
+  // Let go of the host's broker id the moment the table starts moving, but
+  // keep the data channels up so the {switch} still reaches everyone. A guest
+  // whose next page loads fast then waits in the broker's queue for the next
+  // page's host instead of reaching this dying one, which ignores it and cost
+  // the guest an 8 second retry on every hop.
+  function releaseHostId(peer) {
+    if (!peer || peer.destroyed) return;
+    peer.reconnect = function () {}; // the page's watchdogs must not re-register it
+    try { peer.disconnect(); } catch (e) { /* already off the broker */ }
+  }
+  // host side of a hop: call after broadcasting the switch
+  function hostHop(peer, url, session) {
+    V21.switching = true; // stop seating anyone on this soon-to-die host
+    releaseHostId(peer);
+    saveSession(session);
+    setTimeout(function () {
+      window.addEventListener('pagehide', function () {
+        try { if (peer) peer.destroy(); } catch (e) { /* already gone */ }
+      });
+      location.href = url;
+    }, 400); // let the switch message flush first
   }
 
   /* ---------- game-page glue: wrap the game's own net functions ---------- */
@@ -137,20 +194,65 @@
     return (window.net && window.net.roomCode) || (loadSession() || {}).code || '';
   }
 
+  // Friends who reached this game from the lobby while every seat is taken.
+  // They stay connected here (not seated) so the next seat that opens, or the
+  // next switch, still reaches them, instead of being sent into a full table.
+  var waiting = [];
+  var waitPump = null;
+
+  function pointAt(conn, game) {
+    try { conn.send({ type: 'switch', game: game }); } catch (e) { /* dead conn */ }
+    setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
+  }
+
+  function tableFull() {
+    var g = gameById(window.__V21_GAME__);
+    return !!g && connectedGuestCount() >= g.cap;
+  }
+
+  function addWaiting(conn) {
+    if (waiting.indexOf(conn) < 0) waiting.push(conn);
+    conn.on('close', function () { waiting = waiting.filter(function (c) { return c !== conn; }); });
+    var g = gameById(window.__V21_GAME__);
+    try { conn.send({ type: 'wait', game: window.__V21_GAME__, title: g ? g.title : '' }); } catch (e) {}
+    if (waitPump) return;
+    waitPump = setInterval(function () {
+      waiting = waiting.filter(function (c) { return c.open; });
+      if (!waiting.length || V21.switching) return;
+      waiting.forEach(function (c) { try { c.send({ type: 'ping' }); } catch (e) {} });
+      if (!tableFull()) pointAt(waiting.shift(), window.__V21_GAME__); // a seat opened up
+    }, 3000);
+  }
+
+  // every connection this host is responsible for, seated or waiting
+  function tellEveryone(msg) {
+    window.netBroadcast(msg);
+    waiting.forEach(function (c) { try { if (c.open) c.send(msg); } catch (e) {} });
+  }
+
   function installGameHooks() {
     var gameId = window.__V21_GAME__;
 
     // Host side: a probe from a landing-page joiner (a late arrival hitting the
     // invite link while we're mid-game) is answered with "we're in <game>" and
-    // closed — never seated here. Plain in-game hellos are untouched.
+    // closed, or told to wait if the table is full; never seated from here.
+    // A game page that isn't this game (a stale tab reloading after the table
+    // moved on) is pointed here too, instead of being seated into a game whose
+    // messages it can't read.
     if (typeof window.handleGuestMsg === 'function') {
       var origGuestMsg = window.handleGuestMsg;
       window.handleGuestMsg = function (conn, d) {
         if (V21.switching) return; // mid-hop teardown — don't seat late arrivals onto a dying host
-        if (d && typeof d === 'object' && d.type === 'hello' && d.lobby) {
-          try { conn.send({ type: 'switch', game: gameId }); } catch (e) { /* dead conn */ }
-          setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
-          return;
+        if (waiting.indexOf(conn) >= 0) return; // waiting friends only ping
+        if (d && typeof d === 'object' && d.type === 'hello') {
+          if (d.lobby) {
+            if (tableFull()) addWaiting(conn);
+            else pointAt(conn, gameId);
+            return;
+          }
+          if (d.game && d.game !== gameId) { pointAt(conn, gameId); return; }
+          if (conn._v21hello) return; // one seat per connection
+          conn._v21hello = true;
         }
         return origGuestMsg.apply(this, arguments);
       };
@@ -161,11 +263,22 @@
       var origHostMsg = window.handleHostMsg;
       window.handleHostMsg = function (d) {
         if (d && typeof d === 'object' && d.type === 'switch') {
-          V21.switching = true; // expected navigation — suppress the "lost host" UI
           var code = currentCode();
+          if (d.game !== 'lobby' && !gamePath(d.game)) return; // nothing we can follow
+          V21.switching = true; // expected navigation, so suppress the "lost host" UI
           if (d.game === 'lobby') hopToLobby('guest', code);
           else hopToGame(d.game, 'guest', code);
           return;
+        }
+        if (d && typeof d === 'object' && d.type === 'full') {
+          // no seat for us here: stop redialling, or the retry loop replaces
+          // the "table is full" message with "isn't answering" a few seconds later
+          var n = window.net;
+          if (n) {
+            n.hostConn = null;
+            clearTimeout(n.joinTimer);
+            try { if (n.peer) n.peer.destroy(); } catch (e) { /* already gone */ }
+          }
         }
         return origHostMsg.apply(this, arguments);
       };
@@ -180,8 +293,62 @@
         if (V21.switching) return;
         origHostLost.apply(this, arguments);
         showReturnLink();
+        // in a room a refresh rejoins rather than going solo, so say what works
+        if (inRoom() && typeof window.setMessage === 'function')
+          window.setMessage('Lost the host. Tap "Return to the game room" to find the table again.');
       };
     }
+
+    // "More games" in the middle of a room. For the host it used to be a plain
+    // page change that left every guest staring at "Lost the host", so it now
+    // moves the whole table back to the game room. A guest confirms leaving.
+    window.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest && e.target.closest('#btn-games');
+      var n = window.net;
+      if (!t || !n) return;
+      if (n.mode === 'host' && n.roomCode) {
+        e.preventDefault();
+        e.stopPropagation();
+        doSwitchLobby('host', n.roomCode);
+      } else if (n.mode === 'guest') {
+        if (!confirm('Leave the table? You can get back in with the invite link.')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        V21.switching = true;
+        clearSession();
+      }
+    }, true);
+
+    // "New game" with friends seated restarts the match for everyone, and it
+    // sits in a row of tiny footer buttons; ask first (Hold'em already does).
+    window.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest && e.target.closest('#btn-new');
+      var n = window.net;
+      var g = gameById(gameId);
+      if (!t || !n || n.mode !== 'host' || !connectedGuestCount() || (g && g.confirmsNew)) return;
+      if (!confirm('Start over for the whole table? Everyone\'s progress in this game is lost.')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
+    // Cancel on the join box used to only hide it: the retries kept going and
+    // could yank the page into guest mode halfway through a solo game.
+    var cancel = document.getElementById('overlay-cancel');
+    if (cancel) cancel.addEventListener('click', function () {
+      var n = window.net;
+      if (!n || n.mode === 'guest' || n.mode === 'host' || !n.peer) return;
+      n.hostConn = null;
+      clearTimeout(n.joinTimer);
+      try { n.peer.destroy(); } catch (e) { /* already gone */ }
+      clearSession(); // chose to play solo instead of joining
+    });
+  }
+
+  function inRoom() {
+    return !!new URLSearchParams(location.search).get('room');
   }
 
   function showReturnLink() {
@@ -189,7 +356,7 @@
     var code = currentCode();
     var a = document.createElement('a');
     a.id = 'v21-return';
-    a.href = BASE + 'index.html' + (code ? '?join=' + code : '');
+    a.href = BASE + 'index.html' + (code ? '?join=' + code + psParam() : '');
     a.textContent = 'Return to the game room';
     a.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;' +
       'background:var(--gold,#d9973f);color:#1a140b;font:inherit;font-size:13px;font-weight:700;' +
@@ -217,8 +384,9 @@
     btn.style.display = 'none';
     btn.addEventListener('click', openSwitchMenu);
     // sit it right after "More games"
-    if (bar.firstChild) bar.insertBefore(btn, bar.firstChild.nextSibling);
-    else bar.appendChild(btn);
+    var more = document.getElementById('btn-games');
+    if (more && more.parentNode === bar) bar.insertBefore(btn, more.nextSibling);
+    else bar.insertBefore(btn, bar.firstChild);
     // the host role is only known once hostRoom() has run; poll to reveal it
     setInterval(function () {
       btn.style.display = (window.net && window.net.mode === 'host') ? '' : 'none';
@@ -229,7 +397,7 @@
     if (!(window.net && window.net.mode === 'host')) return;
     closeSwitchMenu();
     var code = window.net.roomCode;
-    var guests = connectedGuestCount();
+    var guests = connectedGuestCount() + waiting.length; // friends waiting for a seat still need one
     var cur = window.__V21_GAME__;
 
     var back = document.createElement('div');
@@ -282,14 +450,25 @@
       'border:1px solid rgba(217,151,63,0.5);background:transparent;color:var(--cream,#e6d9b8);cursor:pointer';
     cancel.addEventListener('click', closeSwitchMenu);
 
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'Switch the table');
     panel.appendChild(list);
     panel.appendChild(cancel);
     back.appendChild(panel);
     back.addEventListener('click', function (e) { if (e.target === back) closeSwitchMenu(); });
     document.body.appendChild(back);
+    document.addEventListener('keydown', onSwitchMenuKey);
+    var first = list.querySelector('button:not([disabled])');
+    if (first) first.focus();
+  }
+
+  function onSwitchMenuKey(e) {
+    if (e.key === 'Escape') closeSwitchMenu();
   }
 
   function closeSwitchMenu() {
+    document.removeEventListener('keydown', onSwitchMenuKey);
     var el = document.getElementById('v21-switch');
     if (el) el.parentNode.removeChild(el);
   }
@@ -298,29 +477,16 @@
     var g = gameById(gameId);
     if (!confirm('Move everyone to ' + g.title + '? The current game ends for the whole table.')) return;
     closeSwitchMenu();
-    performHop(function () {
-      window.netBroadcast({ type: 'switch', game: gameId });
-      saveSession({ code: code, role: role, name: myName(), game: gameId });
-      return gameUrl(gameId, role, code);
-    });
+    tellEveryone({ type: 'switch', game: gameId });
+    hostHop(window.net && window.net.peer, gameUrl(gameId, role, code),
+      { code: code, role: role, name: myName(), game: gameId });
   }
   function doSwitchLobby(role, code) {
     if (!confirm('Move everyone back to the game room? The current game ends for the whole table.')) return;
     closeSwitchMenu();
-    performHop(function () {
-      window.netBroadcast({ type: 'switch', game: 'lobby' });
-      saveSession({ code: code, role: role, name: myName(), game: 'lobby' });
-      return lobbyUrl(role, code);
-    });
-  }
-  // broadcast, let the message flush, tear down the host peer, then navigate
-  function performHop(build) {
-    V21.switching = true; // stop seating new joiners on this soon-to-die host
-    var url = build();
-    setTimeout(function () {
-      try { if (window.net && window.net.peer) window.net.peer.destroy(); } catch (e) { /* already gone */ }
-      location.href = url;
-    }, 400);
+    tellEveryone({ type: 'switch', game: 'lobby' });
+    hostHop(window.net && window.net.peer, lobbyUrl(role, code),
+      { code: code, role: role, name: myName(), game: 'lobby' });
   }
 
   /* ---------- boot glue for a game page opened with room params ---------- */
@@ -334,12 +500,15 @@
     if (!room) return; // solo / legacy ?join: hands stay off, game behaves as before
     room = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     if (room.length !== 6) return;
-    var role = q.get('role') === 'host' ? 'host' : 'guest';
-    var name = (loadSession() || {}).name || '';
+    var role = q.get('role') === 'host' && isHostOf(room) ? 'host' : 'guest';
+    var sess = loadSession() || {};
+    var name = sess.name || '';
 
     if (role === 'host') {
       var p = window.__V21_host;
       if (p && name) p.name = name;
+      // same broker token as the page before, so the id is ours straight away
+      if (window.net && !window.net.token && sess.token && sess.code === room) window.net.token = sess.token;
       // a host refresh re-runs this with the same code, so it just re-hosts
       if (typeof window.hostRoom === 'function') window.hostRoom(room);
     } else {
@@ -365,14 +534,18 @@
     saveSession: saveSession,
     loadSession: loadSession,
     clearSession: clearSession,
+    isHostOf: isHostOf,
     psParam: psParam,
     psValue: psValue,
     myName: myName,
     gameById: gameById,
+    gamePath: gamePath,
     gameUrl: gameUrl,
     lobbyUrl: lobbyUrl,
     hopToGame: hopToGame,
     hopToLobby: hopToLobby,
+    releaseHostId: releaseHostId,
+    hostHop: hostHop,
   };
 
   if (IN_GAME) {

@@ -2189,7 +2189,7 @@ function guestConnect() {
   if (net.hostConn) { try { net.hostConn.close(); } catch (e) { /* stale */ } }
   const conn = net.peer.connect('v21-' + net.roomCode, { reliable: true });
   net.hostConn = conn;
-  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName }));
+  conn.on('open', () => conn.send({ type: 'hello', name: net.joinName, game: window.__V21_GAME__ }));
   conn.on('data', d => handleHostMsg(d));
   conn.on('close', () => { if (net.mode === 'guest' && net.hostConn === conn) hostLost(); });
   setTimeout(() => {

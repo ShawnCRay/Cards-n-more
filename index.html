@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vault 21 Game Room</title>
+<meta name="theme-color" content="#191f14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23d9973f'%3E%E2%98%A2%3C/text%3E%3C/svg%3E">
 <style>
   :root {
     --felt: #333f2a;
@@ -191,12 +193,12 @@
       <div class="room-lead">Open a <b>room</b> and your friends join once — then hop between games together.
         Only the host picks the game and its settings.</div>
       <div class="row">
-        <input id="room-name" maxlength="12" placeholder="Your name" autocomplete="off">
+        <input id="room-name" maxlength="12" placeholder="Your name" autocomplete="off" aria-label="Your name">
         <button id="room-open" class="primary">Open a room</button>
         <button id="room-join-toggle">Join a room</button>
       </div>
       <div class="row" id="room-join-row" style="display:none; margin-top:10px">
-        <input id="room-code" maxlength="6" placeholder="Code" autocomplete="off">
+        <input id="room-code" maxlength="6" placeholder="Code" autocomplete="off" aria-label="Room code">
         <button id="room-join" class="primary">Join</button>
       </div>
     </div>
@@ -208,10 +210,13 @@
         <button id="room-copy"></button>
         <button id="room-close">Close room</button>
       </div>
-      <div class="roster" id="room-roster"></div>
+      <div class="row" id="room-guest-actions" style="display:none">
+        <button id="room-leave">Leave room</button>
+      </div>
+      <div class="roster" id="room-roster" aria-live="polite"></div>
       <div class="hint" id="room-hint"></div>
     </div>
-    <div id="room-status"></div>
+    <div id="room-status" role="status"></div>
   </div>
 
   <div class="games">
@@ -318,10 +323,11 @@
 (function () {
   if (!window.V21 || !window.Peer) return; // PeerJS missing -> plain links only
 
-  var HEARTBEAT_MS = 3000, STALE_MS = 35000, MAX_GUESTS = 5;
+  var HEARTBEAT_MS = 3000, STALE_MS = 35000, MAX_GUESTS = 5, MAX_RETRIES = 20;
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var cleanCode = function (s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); };
 
   var panel = $('room');
   var gamesEl = document.querySelector('.games');
@@ -337,8 +343,34 @@
   });
 
   var state = 'idle';        // 'idle' | 'host' | 'guest'
-  var room = {};             // { code, peer, name, guests:[{name,conn}], hostName }
-  var joinRetries = 0, gone = false;
+  var room = {};             // { code, peer, name, guests:[{name,conn,cid}], hostName }
+  var joinRetries = 0, gone = false, heartbeats = false;
+
+  /* ---------------- small persistence helpers ---------------- */
+
+  // the name you last played under, so returning friends skip retyping it
+  function savedName() { try { return localStorage.getItem('v21name') || ''; } catch (e) { return ''; } }
+  function rememberName(n) { try { if (n) localStorage.setItem('v21name', n); } catch (e) { /* no storage */ } }
+  // one id per tab, so a guest who reloads gets their old roster spot back
+  function clientId() {
+    try {
+      var id = sessionStorage.getItem('v21cid');
+      if (!id) { id = Math.random().toString(36).slice(2, 12); sessionStorage.setItem('v21cid', id); }
+      return id;
+    } catch (e) { return ''; }
+  }
+  function psQuery() { var ps = V21.psValue(); return ps ? 'ps=' + encodeURIComponent(ps) : ''; }
+  // keep the room in the address bar so a reload lands back in it
+  function setUrl(query) {
+    var extra = psQuery();
+    var qs = query + (extra ? (query ? '&' : '') + extra : '');
+    try { history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '')); } catch (e) { /* file:// */ }
+  }
+  function homeUrl() { var extra = psQuery(); return location.pathname + (extra ? '?' + extra : ''); }
+  function inviteUrl() {
+    var extra = psQuery();
+    return new URL('index.html?join=' + room.code + (extra ? '&' + extra : ''), location.href).href;
+  }
 
   /* ---------------- shared roster rendering ---------------- */
 
@@ -367,6 +399,7 @@
       gamesEl.classList.add('guests'); gamesEl.classList.remove('picking');
     } else {
       gamesEl.classList.remove('picking', 'guests');
+      [].forEach.call(gamesEl.querySelectorAll('a.game.locked'), function (a) { a.classList.remove('locked'); });
     }
   }
 
@@ -376,17 +409,15 @@
     var a = e.target.closest('a.game'); if (!a) return;
     if (state === 'idle') return; // solo: let the link navigate normally
     e.preventDefault();
-    if (state !== 'host') return; // guests can't pick
+    if (state !== 'host' || room.hopping) return; // guests can't pick
     var id = a.getAttribute('data-game');
     var g = V21.gameById(id);
-    if (g.cap < guestCount()) return; // locked
-    // opening the first game — no game in progress, so no confirm needed
+    if (!g || g.cap < guestCount()) return; // locked
+    // opening the first game, so no game in progress and no confirm needed
     room.hopping = true; // stop answering new joiners while we tear down
     try { broadcast({ type: 'switch', game: id }); } catch (err) {}
-    setTimeout(function () {
-      try { room.peer && room.peer.destroy(); } catch (err) {}
-      V21.hopToGame(id, 'host', room.code, room.name);
-    }, 400);
+    V21.hostHop(room.peer, V21.gameUrl(id, 'host', room.code),
+      { code: room.code, role: 'host', name: room.name, game: id });
   });
 
   /* ---------------- host side ---------------- */
@@ -395,19 +426,50 @@
     room.guests.forEach(function (gt) { if (gt.conn && gt.conn.open) gt.conn.send(msg); });
   }
   function rosterNames() { return [room.name].concat(room.guests.map(function (g) { return g.name; })); }
-  function pushRoster() { broadcast({ type: 'roster', roster: rosterNames() }); renderRoster(rosterNames(), 0); refreshCards(); }
+  // every guest learns which roster row is theirs, so two friends who both
+  // leave the name blank no longer both see the first "Guest" as "(you)"
+  function pushRoster() {
+    var names = rosterNames();
+    room.guests.forEach(function (gt, i) {
+      if (gt.conn && gt.conn.open) gt.conn.send({ type: 'roster', roster: names, you: i + 1 });
+    });
+    renderRoster(names, 0);
+    refreshCards();
+  }
+  // "Guest", "Guest 2", ... so the table (and every game's log) can tell people apart
+  function uniqueName(nm, self) {
+    var taken = [room.name].concat(room.guests.filter(function (g) { return g !== self; })
+      .map(function (g) { return g.name; })).map(function (n) { return n.toLowerCase(); });
+    var base = nm, n = 2;
+    while (taken.indexOf(nm.toLowerCase()) >= 0) {
+      var tag = ' ' + n++;
+      nm = base.slice(0, 12 - tag.length).trim() + tag;
+    }
+    return nm;
+  }
 
   function openRoom(code) {
     state = 'host';
+    var sess = V21.loadSession() || {};
+    // back in a room we opened: reuse its broker token so the id is ours at once
+    if (sess.code === code && sess.role === 'host' && sess.token) V21._token = sess.token;
     room = { code: code, name: room.name || 'Host', guests: [] };
     $('room-idle').style.display = 'none';
     $('room-active').style.display = '';
     $('room-host-actions').style.display = '';
+    $('room-guest-actions').style.display = 'none';
     $('room-code-badge').textContent = code;
     $('room-copy').textContent = navigator.share ? 'Share invite' : 'Copy invite';
     $('room-headline').innerHTML = 'Room is open. Send the invite link, then pick a game below — everyone moves with you.';
     $('room-hint').textContent = 'Up to ' + MAX_GUESTS + ' friends. They wait here until you choose.';
     createHostPeer();
+    V21.saveSession({ code: code, role: 'host', name: room.name, game: 'lobby' });
+    setUrl('room=' + code + '&role=host');
+    // phones freeze the tab (and drop the broker) while the host is off texting
+    // the invite; re-register the moment we're visible again
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') { ensureJoinable(); keepAwake(); }
+    });
     setInterval(ensureJoinable, 5000);
     setInterval(function () { broadcast({ type: 'ping' }); }, HEARTBEAT_MS);
     setInterval(function () {
@@ -427,8 +489,8 @@
     room.peer = V21.makeRoomPeer(V21.peerId(room.code));
     room.peer.on('open', function () {
       status('');
-      var url = new URL('index.html?join=' + room.code, location.href).href;
-      room.inviteUrl = url;
+      room.inviteUrl = inviteUrl();
+      keepAwake();
     });
     room.peer.on('connection', function (conn) {
       conn.on('data', function (d) { onGuestMsg(conn, d); });
@@ -442,34 +504,55 @@
     });
   }
   function ensureJoinable() {
-    if (state !== 'host' || !room.peer) return;
+    if (state !== 'host' || !room.peer || room.hopping) return;
     if (room.peer.destroyed) createHostPeer();
     else if (room.peer.disconnected) { try { room.peer.reconnect(); } catch (e) { try { room.peer.destroy(); } catch (e2) {} createHostPeer(); } }
+  }
+  function keepAwake() {
+    // a sleeping phone screen drops the broker connection, and the room with it
+    try {
+      if (!navigator.wakeLock || document.visibilityState !== 'visible') return;
+      if (room.wakeLock && !room.wakeLock.released) return;
+      navigator.wakeLock.request('screen').then(function (l) { room.wakeLock = l; }).catch(function () {});
+    } catch (e) { /* best effort */ }
   }
 
   function onGuestMsg(conn, d) {
     if (!d || typeof d !== 'object') return;
     conn._lastSeen = Date.now();
-    if (room.hopping) return; // we're navigating the table into a game — stop seating
-    // only lobby probes (from the root page) get seated here. A plain hello is a
-    // game-page guest that reached this id during a hop — ignore it so it retries
-    // and finds the real game host instead of latching onto us.
-    if (d.type === 'hello' && d.lobby) {
-      var prior = room.guests.filter(function (g) { return g.conn && g.conn !== conn && g.conn.peer === conn.peer; })[0];
-      var nm = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
-      if (prior) { try { prior.conn.close(); } catch (e) {} prior.conn = conn; prior.name = nm; }
-      else {
-        if (room.guests.length >= MAX_GUESTS) { conn.send({ type: 'full' }); setTimeout(function () { try { conn.close(); } catch (e) {} }, 300); return; }
-        room.guests.push({ conn: conn, name: nm });
-      }
-      conn.send({ type: 'welcome', hostName: room.name, roster: rosterNames() });
-      pushRoster();
+    if (room.hopping || d.type !== 'hello') return; // mid-hop: stop seating
+    if (!d.lobby) {
+      // a game page dialled us: a stale game tab, a reload after the table
+      // came back here, or an old per-game invite link. The table is here, so
+      // send them to the room (room.js on their page follows the switch).
+      try { conn.send({ type: 'switch', game: 'lobby' }); } catch (e) {}
+      setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
+      return;
     }
+    var cid = typeof d.cid === 'string' ? d.cid.slice(0, 24) : '';
+    var nm = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
+    // a returning guest (same peer, or same tab after a reload) keeps their spot
+    var gt = room.guests.filter(function (g) {
+      return g.conn !== conn && ((g.conn && g.conn.peer === conn.peer) || (cid && g.cid === cid));
+    })[0];
+    if (gt) {
+      var old = gt.conn;
+      gt.conn = conn;
+      try { old.close(); } catch (e) {}
+    } else {
+      if (room.guests.length >= MAX_GUESTS) { conn.send({ type: 'full' }); setTimeout(function () { try { conn.close(); } catch (e) {} }, 300); return; }
+      gt = { conn: conn };
+      room.guests.push(gt);
+    }
+    gt.cid = cid;
+    gt.name = uniqueName(nm, gt);
+    conn.send({ type: 'welcome', hostName: room.name, roster: rosterNames(), you: room.guests.indexOf(gt) + 1, name: gt.name });
+    pushRoster();
   }
   function dropGuest(conn) {
     var before = room.guests.length;
     room.guests = room.guests.filter(function (g) { return g.conn !== conn; });
-    if (room.guests.length !== before) pushRoster();
+    if (room.guests.length !== before && !room.hopping) pushRoster();
   }
 
   /* ---------------- guest side ---------------- */
@@ -478,90 +561,182 @@
     state = 'guest';
     room = { code: code, name: name, roster: [] };
     gone = false; joinRetries = 0;
+    V21.saveSession({ code: code, role: 'guest', name: name, game: 'lobby' });
+    setUrl('room=' + code + '&role=guest');
     $('room-idle').style.display = 'none';
     $('room-active').style.display = '';
     $('room-host-actions').style.display = 'none';
+    $('room-guest-actions').style.display = '';
     $('room-headline').innerHTML = 'You’re in room <b>' + esc(code) + '</b>. The host picks the game — sit tight, you’ll be pulled in automatically.';
     $('room-hint').textContent = '';
+    $('room-roster').innerHTML = '';
     status('Connecting to the room…');
+    refreshCards();
     connectGuest();
   }
   function connectGuest() {
-    if (state !== 'guest') return;
+    if (state !== 'guest' || gone) return;
     if (room.peer && !room.peer.destroyed) room.peer.destroy();
-    room.peer = V21.makeRoomPeer();
-    room.peer.on('open', function () { guestDial(); });
-    room.peer.on('error', function (e) {
-      if (room.seated) return;
-      if (e.type === 'peer-unavailable') {
-        if (joinRetries < 20) { status('Room isn’t answering yet — retrying, attempt ' + joinRetries + '…'); setTimeout(guestDial, 4000); }
-        else status('No room with code ' + room.code + '. Ask the host to open it and try again.');
-      } else status('Connection failed (' + e.type + ').');
+    var peer = room.peer = V21.makeRoomPeer();
+    peer.on('open', function () { guestDial(); });
+    // the free matchmaking server can be slow or unreachable (some school and
+    // office networks block it); say so rather than "Connecting…" forever
+    setTimeout(function () {
+      if (peer === room.peer && !peer.open && !peer.destroyed && !gone)
+        status('Still reaching the matchmaking server… if this never connects, this network may be blocking it.');
+    }, 15000);
+    peer.on('error', function (e) {
+      if (peer !== room.peer || room.seated || gone) return;
+      if (e.type === 'peer-unavailable') retryDial(4000);
+      else if (peer.destroyed) {
+        // a fatal broker error took our peer down; build a fresh one
+        status('Connection trouble (' + e.type + '), retrying…');
+        joinRetries++;
+        if (joinRetries < MAX_RETRIES) setTimeout(connectGuest, 4000);
+        else leaveRoom('Couldn’t reach the room (' + e.type + '). Check your connection and join again.');
+      }
     });
   }
+  function retryDial(ms) {
+    clearTimeout(room.dialTimer);
+    if (joinRetries >= MAX_RETRIES) {
+      leaveRoom('No luck reaching room ' + room.code + '. Ask the host to open it (and keep it open), then join again.');
+      return;
+    }
+    status('Room isn’t answering yet, retrying (attempt ' + joinRetries + ')…');
+    room.dialTimer = setTimeout(guestDial, ms);
+  }
   function guestDial() {
-    if (state !== 'guest' || !room.peer || room.peer.destroyed) return;
+    clearTimeout(room.dialTimer);
+    if (state !== 'guest' || gone || room.seated || !room.peer || room.peer.destroyed) return;
+    if (room.peer.disconnected) { // lost the broker ourselves; its watchdog is reconnecting
+      try { room.peer.reconnect(); } catch (e) {}
+      room.dialTimer = setTimeout(guestDial, 2000);
+      return;
+    }
     joinRetries++;
-    if (room.hostConn) { try { room.hostConn.close(); } catch (e) {} }
+    var prev = room.hostConn;
+    room.hostConn = null;
+    if (prev) { try { prev.close(); } catch (e) {} }
     var conn = room.peer.connect(V21.peerId(room.code), { reliable: true });
+    if (!conn) { retryDial(2000); return; }
     room.hostConn = conn;
-    conn.on('open', function () { conn.send({ type: 'hello', name: room.name, lobby: 1 }); });
-    conn.on('data', function (d) { onHostMsg(d); });
-    conn.on('close', function () { if (state === 'guest' && room.hostConn === conn) hostGone(); });
+    conn.on('open', function () { conn.send({ type: 'hello', name: room.name, lobby: 1, cid: clientId() }); });
+    conn.on('data', function (d) { if (room.hostConn === conn) onHostMsg(d); });
+    conn.on('close', function () { if (room.hostConn === conn) hostDropped(); });
+    // a host whose tab froze leaves a ghost registration: our offer goes into
+    // a dead socket and no error ever comes back, so treat silence as failure
     setTimeout(function () {
-      if (state !== 'guest' || room.hostConn !== conn || conn.open) return;
+      if (room.hostConn !== conn || conn.open || room.seated || gone) return;
       try { conn.close(); } catch (e) {}
-      if (joinRetries < 20) { status('Room isn’t answering yet — retrying, attempt ' + joinRetries + '…'); guestDial(); }
-      else status('No luck reaching the room. Ask the host to keep it open, then rejoin.');
+      retryDial(0);
     }, 8000);
   }
   function onHostMsg(d) {
-    if (!d || typeof d !== 'object') return;
+    if (!d || typeof d !== 'object' || gone) return;
     room.lastSeen = Date.now();
     if (d.type === 'switch') {
+      if (d.game === 'lobby' || !V21.gamePath(d.game)) return; // already here / nothing we can follow
       V21.switching = true;
-      if (d.game === 'lobby') return; // already here
       V21.hopToGame(d.game, 'guest', room.code, room.name);
     } else if (d.type === 'welcome') {
       room.seated = true;
+      clearTimeout(room.dialTimer);
+      joinRetries = 0;
       room.hostName = d.hostName;
-      status('');
-      if (!room.hb) {
-        room.hb = true;
-        setInterval(function () { if (room.hostConn && room.hostConn.open) room.hostConn.send({ type: 'ping' }); }, HEARTBEAT_MS);
-        setInterval(function () { if (state === 'guest' && !gone && Date.now() - room.lastSeen > STALE_MS) hostGone(); }, 4000);
+      if (typeof d.name === 'string' && d.name && d.name !== room.name) {
+        room.name = d.name; // the host made our name unique ("Guest 2")
+        V21.saveSession({ code: room.code, role: 'guest', name: room.name, game: 'lobby' });
       }
-      showRoster(d.roster);
+      status('');
+      startHeartbeats();
+      showRoster(d.roster, d.you);
     } else if (d.type === 'roster') {
-      showRoster(d.roster);
+      showRoster(d.roster, d.you);
+    } else if (d.type === 'wait') {
+      // the table is mid-game and every seat is taken: stay connected to the
+      // game host, which pulls us in when a seat opens or the table moves
+      room.seated = true;
+      clearTimeout(room.dialTimer);
+      joinRetries = 0;
+      status('');
+      $('room-headline').innerHTML = 'You’re in room <b>' + esc(room.code) + '</b>. The table is playing ' +
+        esc(d.title || 'a game') + ' and every seat is taken. You’ll be pulled in as soon as a seat opens or the host switches games.';
+      $('room-roster').innerHTML = '';
+      startHeartbeats();
     } else if (d.type === 'full') {
-      status('That room is full (host + ' + MAX_GUESTS + ' friends).');
+      leaveRoom('That room is full (host + ' + MAX_GUESTS + ' friends).');
+    } else if (d.type === 'closed') {
+      leaveRoom('The host closed the room.');
     }
   }
-  function showRoster(names) {
+  function startHeartbeats() {
+    if (heartbeats) return;
+    heartbeats = true;
+    setInterval(function () {
+      if (state === 'guest' && room.seated && room.hostConn && room.hostConn.open) room.hostConn.send({ type: 'ping' });
+    }, HEARTBEAT_MS);
+    setInterval(function () {
+      if (state !== 'guest' || gone || !room.seated || Date.now() - room.lastSeen <= STALE_MS) return;
+      var c = room.hostConn;
+      hostDropped();
+      try { if (c) c.close(); } catch (e) {}
+    }, 4000);
+  }
+  function showRoster(names, you) {
     room.roster = names || [];
-    var youIdx = room.roster.indexOf(room.name);
+    var youIdx = typeof you === 'number' ? you : room.roster.indexOf(room.name);
     renderRoster(room.roster, youIdx);
     refreshCards();
   }
-  function hostGone() {
-    if (gone) return; gone = true;
-    status('Lost the host. The room closed — reopen or join another.');
-    $('room-headline').innerHTML = 'The host left and the room closed.';
+  // the link to the host closed or went quiet. Usually that's the host
+  // reloading or their phone napping, so dial back in before giving up.
+  function hostDropped() {
+    if (state !== 'guest' || gone || V21.switching || !room.seated) return;
+    room.seated = false;
+    joinRetries = 0;
+    status('Lost the host for a moment, reconnecting…');
+    clearTimeout(room.dialTimer);
+    room.dialTimer = setTimeout(guestDial, 1000);
+  }
+  // done with this room: back to the start panel, with the code kept handy
+  function leaveRoom(msg) {
+    if (gone) return;
+    gone = true;
+    var code = room.code, name = room.name;
+    clearTimeout(room.dialTimer);
+    try { if (room.hostConn) room.hostConn.close(); } catch (e) {}
+    try { if (room.peer) room.peer.destroy(); } catch (e) {}
+    state = 'idle';
+    room = {};
+    V21.clearSession();
+    setUrl('');
+    $('room-active').style.display = 'none';
+    $('room-guest-actions').style.display = 'none';
     $('room-roster').innerHTML = '';
-    var b = document.createElement('button'); b.className = 'primary'; b.textContent = 'Back to start';
-    b.style.marginTop = '8px';
-    b.addEventListener('click', function () { location.href = 'index.html'; });
-    $('room-active').appendChild(b);
-    gamesEl.classList.remove('guests');
+    $('room-idle').style.display = '';
+    $('room-join-row').style.display = '';
+    $('room-code').value = code || '';
+    if (name && !$('room-name').value) $('room-name').value = name;
+    status(msg || '');
+    refreshCards();
   }
 
   /* ---------------- shared UI plumbing ---------------- */
 
   function status(msg) { $('room-status').textContent = msg || ''; }
 
+  function copyInvite(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { status('Invite link copied.'); })
+        .catch(function () { prompt('Copy this invite link:', url); });
+    } else prompt('Copy this invite link:', url);
+  }
+
   $('room-open').addEventListener('click', function () {
-    room.name = ($('room-name').value || '').trim().slice(0, 12) || 'Host';
+    var typed = ($('room-name').value || '').trim().slice(0, 12);
+    rememberName(typed);
+    room.name = typed || 'Host';
     openRoom(V21.randCode());
   });
   $('room-join-toggle').addEventListener('click', function () {
@@ -569,49 +744,67 @@
     if (r.style.display !== 'none') $('room-code').focus();
   });
   $('room-join').addEventListener('click', function () {
-    var code = ($('room-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    var code = cleanCode($('room-code').value);
     if (code.length !== 6) { status('Enter the 6-character room code.'); return; }
-    var name = ($('room-name').value || '').trim().slice(0, 12) || 'Guest';
-    joinLobby(code, name);
+    var typed = ($('room-name').value || '').trim().slice(0, 12);
+    rememberName(typed);
+    joinLobby(code, typed || 'Guest');
   });
-  $('room-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('room-open').click(); });
+  $('room-name').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    // with a code waiting, Enter means "join it", not "open my own room"
+    if ($('room-join-row').style.display !== 'none' && cleanCode($('room-code').value).length === 6) $('room-join').click();
+    else $('room-open').click();
+  });
   $('room-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('room-join').click(); });
   $('room-copy').addEventListener('click', function () {
-    var url = room.inviteUrl || new URL('index.html?join=' + room.code, location.href).href;
-    if (navigator.share) navigator.share({ title: 'Vault 21 Game Room', text: 'Join my game room', url: url }).catch(function () {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { status('Invite link copied.'); }).catch(function () { prompt('Copy this invite link:', url); });
-    else prompt('Copy this invite link:', url);
+    var url = room.inviteUrl || inviteUrl();
+    if (navigator.share) {
+      navigator.share({ title: 'Vault 21 Game Room', text: 'Join my game room', url: url })
+        .catch(function (e) { if (!e || e.name !== 'AbortError') copyInvite(url); });
+    } else copyInvite(url);
   });
   $('room-close').addEventListener('click', function () {
-    if (!confirm('Close the room? Friends waiting here will be dropped.')) return;
-    try { broadcast({ type: 'switch', game: 'lobby' }); room.peer && room.peer.destroy(); } catch (e) {}
-    location.href = 'index.html';
+    if (room.guests.length && !confirm('Close the room? Friends waiting here will be dropped.')) return;
+    room.hopping = true; // no new seats while we wind down
+    try { broadcast({ type: 'closed' }); } catch (e) {}
+    V21.clearSession();
+    setTimeout(function () {
+      try { if (room.peer) room.peer.destroy(); } catch (e) {}
+      location.href = homeUrl();
+    }, 300); // let the goodbye reach everyone first
+  });
+  $('room-leave').addEventListener('click', function () {
+    leaveRoom('You left the room.');
   });
 
   /* ---------------- boot: honor URL params / stored session ---------------- */
 
   var q = new URLSearchParams(location.search);
   var sess = V21.loadSession() || {};
-  var pRoom = (q.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  var known = sess.name || savedName();
+  if (known && !$('room-name').value) $('room-name').value = known;
+  var pRoom = cleanCode(q.get('room'));
   var pRole = q.get('role');
-  var pJoin = (q.get('join') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  var pJoin = cleanCode(q.get('join'));
 
-  if (pRoom.length === 6 && pRole === 'host') {
-    // arrived here from a "back to the game room" hop — reopen the same room
+  if (pRoom.length === 6 && pRole === 'host' && V21.isHostOf(pRoom)) {
+    // back from a game (or a reload) in a room this tab opened: reopen it
     room.name = sess.name || 'Host';
     $('room-name').value = room.name;
     openRoom(pRoom);
-  } else if (pRoom.length === 6 && pRole === 'guest') {
-    // group came back to the lobby — rejoin automatically
-    joinLobby(pRoom, sess.name || 'Guest');
+  } else if (pRoom.length === 6) {
+    // group came back to the lobby, or this tab reloaded: rejoin automatically.
+    // (a host link opened anywhere but the host's own tab lands here too)
+    joinLobby(pRoom, known || 'Guest');
   } else if (pJoin.length === 6) {
     // invite link. If we already have a name, join straight away; else ask for one.
     $('room-code').value = pJoin;
     $('room-join-row').style.display = '';
-    if (sess.name) { $('room-name').value = sess.name; joinLobby(pJoin, sess.name); }
+    if (known) joinLobby(pJoin, known);
     else { status('Enter a name, then tap Join.'); $('room-name').focus(); }
   } else if (sess.code && sess.role === 'host') {
-    // a room we opened this session is still remembered — offer to resume
+    // a room we opened this session is still remembered, so offer to resume
     var resume = document.createElement('button');
     resume.textContent = 'Resume room ' + sess.code;
     resume.style.marginLeft = '8px';
