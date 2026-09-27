@@ -931,7 +931,8 @@ async function concludeHand() {
     const contenders = pot.eligible.filter(s => !players[s].folded);
     if (!contenders.length) continue;
     let best = null;
-    for (const s of contenders) if (!best || cmpRank(ranks[s], ranks[best]) > 0) best = s;
+    // seat 0 is a real seat (you / the host), so test for null, not falsiness
+    for (const s of contenders) if (best === null || cmpRank(ranks[s], ranks[best]) > 0) best = s;
     const winners = contenders.filter(s => cmpRank(ranks[s], ranks[best]) === 0);
     const share = Math.floor(pot.amount / winners.length);
     let rem = pot.amount - share * winners.length;

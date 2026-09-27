@@ -1127,7 +1127,12 @@ function buildSeats() {
 function buildView() {
   return {
     phase: roundActive ? 'round' : 'betting',
-    dealer: { cards: dealer.cards, holeHidden: dealer.holeHidden },
+    // the hole card never leaves the host until it's turned over (guests got
+    // the real card and only the CSS hid it); face-down cards don't read it
+    dealer: {
+      cards: dealer.holeHidden ? dealer.cards.map((c, i) => (i === 1 ? null : c)) : dealer.cards,
+      holeHidden: dealer.holeHidden,
+    },
     shoe: shoe.length,
     shoeSize: numDecks * 52,
     cut: cutCount(),
@@ -2377,22 +2382,32 @@ $('btn-buyin').addEventListener('click', () => {
   enterBettingPhase();
 });
 
-$('btn-hit').addEventListener('click', () => playerResolver && playerResolver('H'));
-$('btn-stand').addEventListener('click', () => playerResolver && playerResolver('S'));
-$('btn-double').addEventListener('click', () => playerResolver && !$('btn-double').disabled && playerResolver('D'));
-$('btn-split').addEventListener('click', () => playerResolver && !$('btn-split').disabled && playerResolver('P'));
-$('btn-surrender').addEventListener('click', () => playerResolver && !$('btn-surrender').disabled && playerResolver('R'));
+// one decision per tap: the next prompt arms instantly after a hit, so a
+// double-tap (or a held key) used to hit twice
+let lastActAt = 0;
+function act(a) {
+  if (!playerResolver || Date.now() - lastActAt < 300) return;
+  lastActAt = Date.now();
+  playerResolver(a);
+}
+$('btn-hit').addEventListener('click', () => act('H'));
+$('btn-stand').addEventListener('click', () => act('S'));
+$('btn-double').addEventListener('click', () => !$('btn-double').disabled && act('D'));
+$('btn-split').addEventListener('click', () => !$('btn-split').disabled && act('P'));
+$('btn-surrender').addEventListener('click', () => !$('btn-surrender').disabled && act('R'));
 $('btn-ins-yes').addEventListener('click', () => playerResolver && playerResolver(true));
 $('btn-ins-no').addEventListener('click', () => playerResolver && playerResolver(false));
 
 document.addEventListener('keydown', e => {
   if (!playerResolver || $('action-controls').style.display === 'none') return;
+  // leave browser shortcuts alone: Cmd+R used to surrender on its way to reloading
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (k === 'h') playerResolver('H');
-  else if (k === 's') playerResolver('S');
-  else if (k === 'd' && !$('btn-double').disabled) playerResolver('D');
-  else if (k === 'p' && !$('btn-split').disabled) playerResolver('P');
-  else if (k === 'r' && !$('btn-surrender').disabled) playerResolver('R');
+  if (k === 'h') act('H');
+  else if (k === 's') act('S');
+  else if (k === 'd' && !$('btn-double').disabled) act('D');
+  else if (k === 'p' && !$('btn-split').disabled) act('P');
+  else if (k === 'r' && !$('btn-surrender').disabled) act('R');
 });
 
 $('btn-reset-stats').addEventListener('click', () => {

@@ -887,7 +887,19 @@ function answerPlay(idx) {
   }
 }
 
+/* Only one colour picker may be live. Backing out of one (tapping another
+   card, a timeout, a new prompt) used to leave its handler on the buttons, and
+   the next colour pick then played the old card's position as well. */
+let colorPick = null;
+function cancelColorPick() {
+  if (!colorPick) return;
+  colorPick.btns.forEach(b => b.removeEventListener('click', colorPick.handler));
+  colorPick = null;
+  $('color-controls').style.display = 'none';
+}
+
 function askColor() {
+  cancelColorPick();
   return new Promise(resolve => {
     $('turn-controls').style.display = 'none';
     $('drawn-controls').style.display = 'none';
@@ -895,15 +907,17 @@ function askColor() {
     setMessage('Pick the new color.');
     const btns = document.querySelectorAll('.colorbtn');
     const handler = e => {
-      btns.forEach(b => b.removeEventListener('click', handler));
-      $('color-controls').style.display = 'none';
-      resolve(e.currentTarget.dataset.c);
+      const c = e.currentTarget.dataset.c;
+      cancelColorPick();
+      resolve(c);
     };
     btns.forEach(b => b.addEventListener('click', handler));
+    colorPick = { btns, handler };
   });
 }
 
 function finishAnswer(action) {
+  cancelColorPick();
   $('turn-controls').style.display = 'none';
   $('drawn-controls').style.display = 'none';
   $('color-controls').style.display = 'none';
@@ -923,6 +937,7 @@ function finishAnswer(action) {
 
 /* local human prompt (host or solo) */
 function getLocalMove(playable, drawn) {
+  cancelColorPick(); // a picker left over from an earlier prompt must not answer this one
   return new Promise(resolve => {
     localPrompt = { playable, drawn: drawn == null ? null : drawn, resolve };
     tableMsg = 'Waiting for ' + me.name + '…'; // guests never see the private prompt below
@@ -1196,6 +1211,7 @@ async function playRound() {
 function newGame() {
   if (net.mode === 'guest') return;
   epoch++; // any round loop still awaiting will bail out
+  cancelColorPick();
   if (localPrompt) { // resolve the host's pending prompt so its awaiter can stand down
     const r = localPrompt.resolve;
     localPrompt = null;
@@ -1584,6 +1600,7 @@ function handleHostMsg(d) {
     net.lastView = d.view;
     renderView(d.view);
   } else if (d.type === 'turn') {
+    cancelColorPick(); // a picker left over from an earlier prompt must not answer this one
     net.guestPrompt = { playable: d.playable, drawn: d.drawn == null ? null : d.drawn, nonce: d.nonce };
     if (d.drawn == null) {
       $('turn-controls').style.display = '';
@@ -1598,6 +1615,7 @@ function handleHostMsg(d) {
   } else if (d.type === 'turn-cancel') {
     if (net.guestPrompt && net.guestPrompt.nonce === d.nonce) {
       net.guestPrompt = null;
+      cancelColorPick();
       $('turn-controls').style.display = 'none';
       $('drawn-controls').style.display = 'none';
       $('color-controls').style.display = 'none';

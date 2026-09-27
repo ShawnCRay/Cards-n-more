@@ -1256,7 +1256,11 @@ async function onCompletion(p, b) {
     const victims = players.filter(q => q !== p && q.buildings.some(b => b.done));
     if (victims.length > 0) {
       const bldgOpts = [];
-      victims.forEach((q, qi) => {
+      victims.forEach(q => {
+        // seat index, not the index into `victims`: the pick is looked up in
+        // players[], so the old id seized from the wrong seat (even the tower's
+        // own owner) or from nothing at all, which crashed the match loop
+        const qi = players.indexOf(q);
         q.buildings.forEach((b, bi) => {
           if (b.done) bldgOpts.push({ id: 'seize:' + qi + ':' + bi, label: q.name + "'s " + b.n, score: MAT_VAL[b.site] * 3 });
         });
@@ -1264,11 +1268,15 @@ async function onCompletion(p, b) {
       bldgOpts.unshift({ id: 'skip', label: 'Skip', score: 0 });
       const bPick = await choose(p, p.name + ': Broadcast Tower — trade this site for a completed vault room?', bldgOpts);
       if (bPick && bPick.startsWith('seize:')) {
-        sites[b.site]++;
         const qi = Number(bPick.split(':')[1]), bi = Number(bPick.split(':')[2]);
-        const stolen = players[qi].buildings.splice(bi, 1)[0];
-        p.buildings.push(stolen);
-        log(p.name + ' trades the ' + b.site + ' site and seizes ' + stolen.n + ' from ' + players[qi].name + ' (Broadcast Tower).');
+        const victim = players[qi];
+        const target = victim && victim !== p ? victim.buildings[bi] : null;
+        if (target && target.done) {
+          sites[b.site]++;
+          const stolen = victim.buildings.splice(bi, 1)[0];
+          p.buildings.push(stolen);
+          log(p.name + ' trades the ' + b.site + ' site and seizes ' + stolen.n + ' from ' + victim.name + ' (Broadcast Tower).');
+        }
       }
     }
   }

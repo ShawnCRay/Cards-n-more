@@ -1033,7 +1033,9 @@ async function flipCard(p, ep) {
       log(p.name + ' flips JUST ONE MORE → ' + target.name + ' takes one card, then stays.');
       render();
       await sleep(500);
-      await flipCard(target);
+      if (ep !== epoch) return;
+      await flipCard(target, ep); // without ep a duplicate here never busted
+      if (ep !== epoch) return;
       if (target.status === 'active') {
         target.status = 'stayed';
         log(target.name + ' is forced to stay on ' + roundPointsOf(target) + '.');
@@ -1088,7 +1090,9 @@ async function flipCard(p, ep) {
       for (let i = 0; i < 4; i++) {
         if (target.status !== 'active' || roundEnded()) break;
         await sleep(500);
-        await flipCard(target);
+        if (ep !== epoch) return;
+        await flipCard(target, ep); // without ep a duplicate here never busted
+        if (ep !== epoch) return;
         render();
       }
     }
