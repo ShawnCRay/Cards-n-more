@@ -943,6 +943,17 @@
         background: rgba(255, 255, 255, 0.03);
       }
 
+      /* The pack gains a sixth column for Drop, which always sits last so it
+         lines up down the list whatever else a row offers. */
+      #panel-items li {
+        grid-template-columns: 1fr auto auto auto auto auto;
+      }
+
+      #panel-items button.drop {
+        grid-column: -2 / -1;
+        opacity: 0.7;
+      }
+
       /* Four columns since equipped tools started showing their remaining
          uses: the label, the name, the wear, and Remove. Three left the wear
          span landing in an implicit column. */
@@ -1340,7 +1351,7 @@
         display: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Cvy6_1v6.js"></script>
+    <script type="module" crossorigin src="./assets/index-CCt61bQ8.js"></script>
   </head>
   <body>
     <canvas id="viewport"></canvas>
