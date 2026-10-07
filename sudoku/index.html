@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault 21 Sudoku</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23191f14'/%3E%3Crect x='9' y='9' width='46' height='46' rx='3' fill='%23ece3c8'/%3E%3Cpath d='M24.3 9v46M39.7 9v46M9 24.3h46M9 39.7h46' stroke='%233a2816' stroke-width='3'/%3E%3Crect x='25.8' y='25.8' width='12.4' height='12.4' fill='%23d9973f'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --felt: #333f2a;
+    --felt-dark: #191f14;
+    --rail: #4a3320;
+    --gold: #d9973f;
+    --cream: #e6d9b8;
+    --red: #b8452f;
+    --ink: #241d12;
+    --paper: #ece3c8;
+    --paper-shade: #e1d3aa;
+    --grid-thin: #b3a179;
+    --grid-thick: #3a2816;
+    --print: #1c150c;
+    --pen: #2b4d86;
+    --pencil: #5a4e3b;
+    --hint: #2f7a3c;
+    --hint-glow: #84e394;
+    /* board edge: the largest square that leaves room for the controls.
+       --status-h is the room kept for the message line (and the hint card)
+       so the board never jumps when it changes. */
+    --bs: max(240px, min(calc(100vw - 16px), calc(100vh - 230px), 600px));
+    --status-h: clamp(36px, calc(100vh - var(--bs) - 205px), 110px);
+  }
+  @supports (height: 100svh) {
+    :root {
+      --bs: max(240px, min(calc(100vw - 16px), calc(100svh - 230px), 600px));
+      --status-h: clamp(36px, calc(100svh - var(--bs) - 205px), 110px);
+    }
+  }
+  @media (min-width: 760px) and (min-aspect-ratio: 5/4) {
+    :root { --bs: max(240px, min(calc(100vh - 96px), calc(100vw - 400px), 660px)); }
+    @supports (height: 100svh) {
+      :root { --bs: max(240px, min(calc(100svh - 96px), calc(100vw - 400px), 660px)); }
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    background:
+      radial-gradient(ellipse 70% 45% at 50% 28%, rgba(255,196,110,0.13), transparent 70%),
+      radial-gradient(circle 200px at 18% 72%, rgba(0,0,0,0.30), transparent),
+      radial-gradient(circle 260px at 82% 20%, rgba(0,0,0,0.24), transparent),
+      linear-gradient(78deg, transparent 49.55%, rgba(0,0,0,0.22) 49.9%, rgba(226,203,150,0.10) 50.15%, transparent 50.5%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-dark) 85%),
+      var(--felt-dark);
+    color: var(--cream);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,0,0,0.6) 100%);
+  }
+  #lamp {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 997;
+    background: radial-gradient(ellipse 70% 45% at 50% 26%, rgba(255,196,110,0.11), transparent 70%);
+    animation: lampFlicker 9s infinite;
+  }
+  @keyframes lampFlicker {
+    0%, 88%, 91.5%, 100% { opacity: 1; }
+    89% { opacity: 0.45; }
+    89.8% { opacity: 0.85; }
+    90.5% { opacity: 0.4; }
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+    mix-blend-mode: soft-light;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0"/></filter><rect width="180" height="180" filter="url(%23n)"/></svg>');
+  }
+  #topbar .title, #message { text-shadow: 0 1px 3px rgba(0,0,0,0.7); }
+
+  button {
+    font: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 9px 16px;
+    border-radius: 5px 3px 6px 4px / 4px 6px 3px 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    background:
+      repeating-linear-gradient(88deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, rgba(84,66,40,0.45), rgba(14,12,8,0.6)),
+      rgba(0,0,0,0.4);
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover:not(:disabled) { background: rgba(217,151,63,0.2); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button.primary {
+    background:
+      repeating-linear-gradient(88deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 5px),
+      linear-gradient(180deg, #e2a851, #b97c28);
+    color: var(--ink);
+    border-color: #8a5a1e;
+    text-shadow: none;
+  }
+  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #edb75f, #c98a30); }
+  button.danger { border-color: var(--red); color: #f0c9be; }
+  button.danger:hover:not(:disabled) { background: rgba(184,69,47,0.28); }
+  button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .btn-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 14px;
+    background:
+      linear-gradient(180deg, rgba(122,74,32,0.34), rgba(0,0,0,0.12) 60%),
+      repeating-linear-gradient(93deg, rgba(0,0,0,0.20) 0 2px, transparent 2px 9px),
+      rgba(0,0,0,0.35);
+    border-bottom: 2px solid var(--rail);
+    font-size: 12px;
+  }
+  #topbar .title { font-weight: 700; letter-spacing: 2px; color: var(--gold); }
+  #topbar .stat { opacity: 0.9; white-space: nowrap; }
+  #topbar .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+  #btn-pause {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    font-size: inherit;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.25);
+    border-color: rgba(217,151,63,0.35);
+  }
+  #btn-pause .ico { width: 13px; height: 13px; stroke-width: 2.6; color: var(--gold); }
+  #btn-pause .play { display: none; }
+  #btn-pause.paused .play { display: block; }
+  #btn-pause.paused .pause { display: none; }
+
+  /* ---------- table: the board and its controls ---------- */
+  #table {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 8px 6px;
+  }
+  #board-area { position: relative; width: var(--bs); height: var(--bs); flex: none; }
+  #board {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 3px;
+    padding: 3px;
+    background: var(--grid-thick);
+    border-radius: 6px;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.6), 0 2px 5px rgba(0,0,0,0.5);
+    outline: none;
+  }
+  #board:focus-visible { box-shadow: 0 0 0 2px var(--gold), 0 12px 34px rgba(0,0,0,0.6); }
+  /* a sheet of pre-war newsprint: tea stains and a darkened edge */
+  #board::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: 3px;
+    mix-blend-mode: multiply;
+    background:
+      radial-gradient(circle at 16% 20%, rgba(150,108,48,0.14), transparent 32%),
+      radial-gradient(circle at 84% 78%, rgba(128,88,40,0.16), transparent 38%),
+      radial-gradient(circle at 70% 12%, rgba(150,108,48,0.08), transparent 22%),
+      radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(112,80,38,0.22) 100%);
+  }
+  .box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--grid-thin);
+  }
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    background: var(--paper);
+    cursor: pointer;
+    font-size: calc(var(--bs) * 0.064);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 0.12s;
+  }
+  .cell .v { position: relative; z-index: 1; }
+  .cell.given .v { color: var(--print); font-weight: 800; }
+  .cell.user .v { color: var(--pen); font-weight: 600; }
+  .notes {
+    position: absolute;
+    inset: 1px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    font-size: calc(var(--bs) * 0.027);
+    font-weight: 600;
+    color: var(--pencil);
+  }
+  .notes span { display: flex; align-items: center; justify-content: center; }
+  .notes span.hl { color: #8f4f00; font-weight: 800; }
+  .notes span.ghost { color: var(--hint); font-weight: 800; }
+  .notes span.struck { color: var(--red); font-weight: 800; text-decoration: line-through; text-decoration-thickness: 2px; }
+  .cell.peer { background: var(--paper-shade); }
+  .cell.same { background: #ebc883; }
+  .cell.sel { background: #f1b75a; }
+  .cell.clash { background-image: linear-gradient(rgba(184,69,47,0.26), rgba(184,69,47,0.26)); }
+  .cell.clash.user .v, .cell.wrong .v { color: #b02a17; }
+  .cell.h-unit { box-shadow: inset 0 0 0 100px rgba(47,122,60,0.16); }
+  .cell.h-same { box-shadow: inset 0 0 0 100px rgba(47,122,60,0.34); }
+  .cell.h-cell { outline: 2px solid var(--hint); outline-offset: -2px; }
+  .cell.h-target { outline: 3px solid var(--hint); outline-offset: -3px; animation: ringGreen 1.1s ease-in-out infinite; }
+  .cell.h-wrong { outline: 3px solid var(--red); outline-offset: -3px; animation: ringRed 1.1s ease-in-out infinite; }
+  .cell.answer .v { color: var(--hint); opacity: 0.8; }
+  @keyframes ringGreen { 50% { outline-color: rgba(47,122,60,0.25); } }
+  @keyframes ringRed { 50% { outline-color: rgba(184,69,47,0.25); } }
+  #board.won .cell { animation: wave 0.9s ease-out both; animation-delay: var(--d, 0ms); }
+  @keyframes wave {
+    0% { background-color: var(--paper); }
+    35% { background-color: #f3c46a; }
+    100% { background-color: var(--paper); }
+  }
+  #veil {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    border: 3px solid var(--grid-thick);
+    border-radius: 6px;
+    color: var(--print);
+    background:
+      radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(112,80,38,0.22) 100%),
+      repeating-linear-gradient(0deg, rgba(90,70,40,0.05) 0 1px, transparent 1px 4px),
+      var(--paper);
+  }
+  #veil .veil-title { font-size: 22px; font-weight: 800; letter-spacing: 6px; }
+  #veil p { font-size: 12px; opacity: 0.75; }
+
+  #side { width: var(--bs); display: flex; flex-direction: column; gap: 8px; }
+  #status { display: flex; flex-direction: column; justify-content: center; min-height: var(--status-h); }
+  /* on a phone the hint card borrows the tool row's space while it's open */
+  #side.hinting #status { min-height: calc(var(--status-h) + 54px); }
+  #side.hinting #tools { display: none; }
+  #message { text-align: center; font-size: 12.5px; line-height: 1.45; color: var(--gold); }
+  #hint {
+    background: linear-gradient(180deg, rgba(14,32,18,0.94), rgba(8,20,11,0.94));
+    border: 1px solid rgba(132,227,148,0.45);
+    border-radius: 10px 7px 10px 7px;
+    padding: 9px 11px 10px;
+    color: #cfeccf;
+    box-shadow: 0 0 18px rgba(80,200,110,0.12), inset 0 0 18px rgba(0,0,0,0.5);
+  }
+  .hint-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  #hint-title {
+    color: var(--hint-glow);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px rgba(132,227,148,0.45);
+  }
+  #hint-count { font-size: 10.5px; opacity: 0.7; white-space: nowrap; }
+  #hint-close {
+    margin-left: auto;
+    padding: 0 9px;
+    font-size: 16px;
+    line-height: 1.5;
+    background: transparent;
+    border-color: rgba(132,227,148,0.35);
+    color: #cfeccf;
+  }
+  #hint-text { font-size: 12.5px; line-height: 1.5; margin-bottom: 8px; user-select: text; -webkit-user-select: text; }
+  #hint .btn-row { justify-content: flex-start; }
+  #hint .btn-row button { font-size: 11px; padding: 6px 12px; border-color: rgba(132,227,148,0.45); }
+  #hint .btn-row button:hover:not(:disabled) { background: rgba(132,227,148,0.16); }
+  #hint .btn-row button.primary,
+  #hint .btn-row button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #92e39d, #4fa95e); color: #0c1d0f; border-color: #3c8a4a; }
+  @media (hover: hover) {
+    #hint .btn-row button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #a6ecaf, #5cb96b); }
+  }
+
+  #tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  #tools button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    height: 46px;
+    padding: 0 2px;
+    font-size: 9px;
+    letter-spacing: 0.4px;
+  }
+  #tools button span { white-space: nowrap; }
+  #tools button.on { border-color: var(--gold); background: rgba(217,151,63,0.3); color: #ffe2b0; box-shadow: 0 0 10px rgba(217,151,63,0.3); }
+  #btn-hint { border-color: rgba(132,227,148,0.55) !important; color: #cfeccf; }
+  #btn-hint .ico { color: var(--hint-glow); }
+
+  #pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; }
+  #pad button {
+    position: relative;
+    min-width: 0;
+    height: clamp(44px, calc(var(--bs) * 0.135), 56px);
+    padding: 0;
+    font-size: clamp(19px, calc(var(--bs) * 0.06), 26px);
+    font-weight: 800;
+    letter-spacing: 0;
+    color: var(--print);
+    text-shadow: none;
+    border: 1px solid #b3a37c;
+    border-radius: 7px 5px 7px 5px;
+    background: linear-gradient(158deg, #efe6cb 0%, #ddcda3 72%, #cabb8e 100%);
+    box-shadow: inset 0 0 5px rgba(96,70,36,0.45), 0 2px 3px rgba(0,0,0,0.45);
+  }
+  #pad button:hover:not(:disabled) { background: linear-gradient(158deg, #f7efd8 0%, #e6d8af 72%, #d3c497 100%); }
+  #pad button:active:not(:disabled) { transform: translateY(1px); }
+  #pad button .left { position: absolute; right: 4px; bottom: 2px; font-size: 9px; font-weight: 600; color: var(--pencil); opacity: 0.85; }
+  #pad button.done { opacity: 0.32; }
+  #pad.notes-mode button { color: var(--pencil); font-style: italic; font-weight: 600; font-size: clamp(15px, calc(var(--bs) * 0.045), 20px); }
+
+  #footer { display: flex; justify-content: center; padding: 2px 10px 10px; }
+  #footer .small-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
+
+  /* ---------- modals ---------- */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0,0,0,0.75);
+  }
+  .panel {
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px 22px;
+    text-align: center;
+    background: var(--felt-dark);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+  .panel h2 { color: var(--gold); font-size: 18px; letter-spacing: 1px; margin-bottom: 8px; }
+  .panel .btn-row button { font-size: 13px; }
+  .panel .lead { font-size: 12.5px; line-height: 1.5; opacity: 0.85; margin-bottom: 12px; }
+  .panel .fine { font-size: 11px; line-height: 1.5; opacity: 0.6; margin-bottom: 12px; }
+  .levels { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .level {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3px 10px;
+    padding: 10px 12px;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .level .lv-name { color: var(--gold); font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .level .lv-pips { color: var(--gold); font-size: 11px; letter-spacing: 2px; align-self: center; }
+  .level .lv-desc { grid-column: 1 / -1; font-size: 11.5px; font-weight: 400; line-height: 1.45; opacity: 0.85; }
+  .level .lv-best { grid-column: 1 / -1; font-size: 10.5px; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; }
+  .win-time { font-size: 40px; font-weight: 800; letter-spacing: 2px; color: var(--gold); font-variant-numeric: tabular-nums; margin: 2px 0 8px; text-shadow: 0 0 14px rgba(217,151,63,0.35); }
+  table.stats { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 4px 0 10px; }
+  table.stats th { font-size: 9.5px; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; padding: 4px 3px; }
+  table.stats td { padding: 7px 3px; border-top: 1px solid rgba(217,151,63,0.18); font-variant-numeric: tabular-nums; }
+  table.stats td:first-child { text-align: left; color: var(--gold); }
+  .toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 2px;
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.45;
+    border-top: 1px solid rgba(217,151,63,0.15);
+    cursor: pointer;
+  }
+  .toggle b { display: block; margin-bottom: 2px; font-size: 12.5px; color: var(--gold); }
+  .toggle span { opacity: 0.9; }
+  .toggle input {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: none;
+    position: relative;
+    width: 38px;
+    height: 22px;
+    margin-top: 1px;
+    border-radius: 11px;
+    border: 1px solid rgba(217,151,63,0.55);
+    background: rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toggle input::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--cream);
+    transition: transform 0.15s;
+  }
+  .toggle input:checked { background: var(--gold); }
+  .toggle input:checked::after { transform: translateX(16px); background: var(--ink); }
+  .toggle input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  #help .panel { max-width: 620px; }
+  .help-body { text-align: left; font-size: 13px; line-height: 1.55; margin-bottom: 14px; }
+  .help-body h3 { color: var(--gold); font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin: 14px 0 6px; }
+  .help-body p { margin-bottom: 9px; }
+  .help-body ul { margin: 0 0 9px 18px; }
+  .help-body li { margin-bottom: 4px; }
+  .help-body b { color: var(--gold); }
+  .help-body kbd {
+    font: inherit;
+    font-size: 11px;
+    padding: 0 5px;
+    border: 1px solid rgba(217,151,63,0.5);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.35);
+  }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* side-by-side on desktops and landscape tablets: the message and hint card
+     sit under the number pad, so they can grow without moving anything */
+  @media (min-width: 760px) and (min-aspect-ratio: 5/4) {
+    #table { flex-direction: row; align-items: flex-start; padding-top: 18px; gap: 28px; }
+    #side { width: 330px; }
+    #status { order: 3; min-height: 0; justify-content: flex-start; }
+    #side.hinting #status { min-height: 0; }
+    #side.hinting #tools { display: grid; }
+    #message { text-align: left; }
+    #pad { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    #pad button { height: clamp(48px, calc(var(--bs) * 0.12), 72px); font-size: clamp(22px, calc(var(--bs) * 0.05), 30px); }
+    #pad.notes-mode button { font-size: clamp(17px, calc(var(--bs) * 0.038), 22px); }
+    #pad button .left { font-size: 10px; right: 6px; bottom: 4px; }
+  }
+  /* landscape phones: no height to spare, so the pad goes back to one row */
+  @media (min-width: 760px) and (min-aspect-ratio: 5/4) and (max-height: 560px) {
+    #table { padding-top: 10px; }
+    #pad { grid-template-columns: repeat(9, 1fr); gap: 4px; }
+    #pad button, #pad.notes-mode button { height: 44px; font-size: 20px; }
+    #pad button .left { font-size: 8.5px; right: 3px; bottom: 2px; }
+    #hint-text { font-size: 12px; line-height: 1.42; }
+  }
+  @media (max-height: 600px) and (max-width: 759px) {
+    #hint { padding: 7px 9px 8px; }
+    .hint-head { margin-bottom: 3px; }
+    #hint-text { font-size: 11.5px; line-height: 1.38; margin-bottom: 6px; }
+  }
+  @media (max-width: 720px) {
+    #topbar { padding: 5px 8px; font-size: 11px; justify-content: center; gap: 2px 12px; }
+    #topbar .title { display: none; }
+    #footer .small-btns { gap: 4px; }
+    #footer .small-btns button { font-size: 9.5px; padding: 3px 6px; letter-spacing: 0.5px; }
+    #hint { padding: 8px 10px 9px; }
+    #hint-text { font-size: 12px; line-height: 1.42; margin-bottom: 7px; }
+    #hint .btn-row button { padding: 5px 11px; }
+  }
+  @media (max-width: 400px) {
+    #topbar .stat.solved { display: none; }
+    #tools button { font-size: 8.5px; letter-spacing: 0.3px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #lamp, .cell.h-target, .cell.h-wrong, #board.won .cell { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lamp"></div>
+
+<div id="topbar">
+  <span class="title">☢ VAULT 21 · SUDOKU</span>
+  <span class="stat">Level <b id="stat-level">-</b></span>
+  <button type="button" class="stat" id="btn-pause" title="Pause (P)" aria-label="Pause">
+    <span>Time <b id="stat-time">0:00</b></span>
+    <svg class="ico pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+    <svg class="ico play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5l12 7.5-12 7.5z"/></svg>
+  </button>
+  <span class="stat">Hints <b id="stat-hints">0</b></span>
+  <span class="stat solved">Solved <b id="stat-solved">0</b></span>
+</div>
+
+<main id="table">
+  <div id="board-area">
+    <div id="board" tabindex="0" aria-label="Sudoku board. Arrow keys move, 1 to 9 fill in a number."></div>
+    <div id="veil" hidden>
+      <div class="veil-title">PAUSED</div>
+      <p>The clock is stopped.</p>
+      <button type="button" id="btn-resume" class="primary">Resume</button>
+    </div>
+  </div>
+  <div id="side">
+    <div id="status">
+      <div id="message"></div>
+      <div id="hint" hidden>
+        <div class="hint-head">
+          <span id="hint-title"></span>
+          <span id="hint-count"></span>
+          <button type="button" id="hint-close" aria-label="Close hint">×</button>
+        </div>
+        <p id="hint-text"></p>
+        <div class="btn-row">
+          <button type="button" id="hint-more"></button>
+          <button type="button" id="hint-fill" class="primary"></button>
+        </div>
+      </div>
+    </div>
+    <div id="tools">
+      <button type="button" id="btn-undo" title="Undo (U)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        <span>Undo</span>
+      </button>
+      <button type="button" id="btn-erase" title="Erase (Backspace)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20H9l-5-5a2 2 0 0 1 0-2.8L13.2 3a2 2 0 0 1 2.8 0l4.2 4.2a2 2 0 0 1 0 2.8L11 19"/><path d="M8.5 10.5l5 5"/></svg>
+        <span>Erase</span>
+      </button>
+      <button type="button" id="btn-notes" title="Notes (N)" aria-pressed="false">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+        <span>Notes <i id="notes-state">off</i></span>
+      </button>
+      <button type="button" id="btn-fill" title="Pencil in every possibility">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+        <span>Fill notes</span>
+      </button>
+      <button type="button" id="btn-hint" title="Hint (H)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>
+        <span>Hint</span>
+      </button>
+    </div>
+    <div id="pad"></div>
+  </div>
+</main>
+
+<div id="footer">
+  <div class="small-btns">
+    <button type="button" id="btn-games">More games</button>
+    <button type="button" id="btn-help">How to play</button>
+    <button type="button" id="btn-stats">Stats</button>
+    <button type="button" id="btn-settings">Settings</button>
+    <button type="button" id="btn-new">New game</button>
+  </div>
+</div>
+<div id="sr" class="sr-only" aria-live="polite"></div>
+
+<div class="modal" id="picker" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <h2 id="picker-title">New puzzle</h2>
+    <p class="lead" id="picker-note"></p>
+    <div class="levels" id="levels"></div>
+    <div class="btn-row">
+      <button type="button" id="picker-restart">Restart this puzzle</button>
+      <button type="button" id="picker-cancel">Back to my puzzle</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="win" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <h2 id="win-title">Solved</h2>
+    <div class="win-time" id="win-time">0:00</div>
+    <p class="lead" id="win-detail"></p>
+    <div class="btn-row">
+      <button type="button" id="win-view">View grid</button>
+      <button type="button" id="win-pick">Change level</button>
+      <button type="button" id="win-again" class="primary">Another</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="help" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <h2 id="help-title">Sudoku</h2>
+    <div class="help-body">
+      <p>Fill the grid so that <b>every row, every column and every 3×3 box</b> holds the
+      numbers <b>1 to 9</b> exactly once. The dark printed numbers are clues and can't be changed.</p>
+      <p>Every puzzle here has exactly one solution and can be cracked by logic alone, so you never
+      need to guess. Your grid is checked against the rules, not against an answer key: the moment
+      every row, column and box is complete and clash-free, it's solved.</p>
+
+      <h3>Playing</h3>
+      <ul>
+        <li>Tap a square, then tap a number. Numbers that clash with another in the same row,
+        column or box turn red.</li>
+        <li><b>Notes</b> switches the number pad to pencil marks, for keeping track of what a
+        square could still be. <b>Fill notes</b> pencils in every possibility at once.</li>
+        <li><b>Erase</b> clears a square, <b>Undo</b> steps back one move (as many as you like).</li>
+        <li>Tap the clock to pause. It also stops whenever you leave the page, and your puzzle is
+        saved as you go, so you can close the tab and pick up later.</li>
+      </ul>
+
+      <h3>Hints</h3>
+      <p>A hint finds the next move a person would make and explains it instead of just giving
+      it away. First it tells you <b>where to look</b>. Tap <b>Show me</b> to see the reasoning
+      laid out on the board: <span style="color:var(--hint-glow)">green numbers</span> are the
+      possibilities that matter, <span style="color:#e0896f">red crossed-out ones</span> are being
+      ruled out. <b>Fill it in</b> places the number for you. If you've put down a number that
+      can't be part of any finished grid, the hint points that out first.</p>
+      <p>Hints are unlimited. Your best time only counts puzzles solved without one. Hints name
+      squares by row and column: <b>R3C5</b> is row 3 from the top, column 5 from the left.</p>
+
+      <h3>Difficulty</h3>
+      <p>Levels are graded by the techniques a puzzle actually needs, not just by how many
+      clues it has.</p>
+      <ul>
+        <li><b>Easy</b>: every number can be found by scanning for the one spot it fits.</li>
+        <li><b>Medium</b>: fewer clues, and some squares only give way once you count what they
+        can still hold.</li>
+        <li><b>Hard</b>: you'll need notes. Pointing pairs, box-line reductions, naked and hidden
+        pairs and triples.</li>
+        <li><b>Expert</b>: X-Wings, Swordfish and XY-Wings, on top of everything above.</li>
+      </ul>
+
+      <h3>Keyboard</h3>
+      <p><kbd>1</kbd>-<kbd>9</kbd> fill in, <kbd>Shift</kbd>+number pencils a note, arrows move,
+      <kbd>Backspace</kbd> erases, <kbd>N</kbd> notes, <kbd>H</kbd> hint, <kbd>U</kbd> or
+      <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>P</kbd> pause.</p>
+    </div>
+    <div class="btn-row"><button type="button" id="help-close" class="primary">Got it</button></div>
+  </div>
+</div>
+
+<div class="modal" id="stats" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+    <h2 id="stats-title">Your record</h2>
+    <table class="stats">
+      <thead><tr><th></th><th>Solved</th><th>No hints</th><th>Best</th><th>Average</th></tr></thead>
+      <tbody id="stats-body"></tbody>
+    </table>
+    <p class="fine">Best time counts hint-free solves only. Stats live on this device and nowhere else.</p>
+    <div class="btn-row">
+      <button type="button" id="stats-reset" class="danger">Reset</button>
+      <button type="button" id="stats-close" class="primary">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settings" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <h2 id="settings-title">Settings</h2>
+    <label class="toggle"><input type="checkbox" data-setting="mistakes">
+      <span><b>Flag wrong numbers</b>A number turns red as soon as it can't be part of any finished grid.</span></label>
+    <label class="toggle"><input type="checkbox" data-setting="matching">
+      <span><b>Highlight matching numbers</b>Selecting a 5 lights up every other 5, notes included.</span></label>
+    <label class="toggle"><input type="checkbox" data-setting="peers">
+      <span><b>Shade row, column and box</b>Shade the selected square's row, column and box.</span></label>
+    <label class="toggle"><input type="checkbox" data-setting="autoClear">
+      <span><b>Auto-clear notes</b>Placing a number erases it from the notes in its row, column and box.</span></label>
+    <div class="btn-row" style="margin-top:8px"><button type="button" id="settings-close" class="primary">Done</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   Vault 21 Sudoku. Solo, no ads, no accounts, works offline.
+   The engine (between the CORE markers) builds and grades puzzles and
+   finds explainable hints; it has no DOM access, so it's tested on its own.
+   ============================================================ */
+
+/* CORE:BEGIN */
+function makeSudokuCore() {
+  'use strict';
+
+  /* ---------- board geometry ---------- */
+  // 81 cells, row-major. 27 units: 0-8 rows, 9-17 columns, 18-26 boxes.
+  const ROW = [], COL = [], BOX = [], UNITS = [], PEERS = [];
+  for (let i = 0; i < 81; i++) {
+    ROW[i] = (i / 9) | 0;
+    COL[i] = i % 9;
+    BOX[i] = ((ROW[i] / 3) | 0) * 3 + ((COL[i] / 3) | 0);
+  }
+  for (let r = 0; r < 9; r++) UNITS.push([0, 1, 2, 3, 4, 5, 6, 7, 8].map(c => r * 9 + c));
+  for (let c = 0; c < 9; c++) UNITS.push([0, 1, 2, 3, 4, 5, 6, 7, 8].map(r => r * 9 + c));
+  for (let b = 0; b < 9; b++) {
+    const r0 = ((b / 3) | 0) * 3, c0 = (b % 3) * 3;
+    UNITS.push([0, 1, 2, 3, 4, 5, 6, 7, 8].map(k => (r0 + ((k / 3) | 0)) * 9 + c0 + (k % 3)));
+  }
+  const sees = (a, b) => a !== b && (ROW[a] === ROW[b] || COL[a] === COL[b] || BOX[a] === BOX[b]);
+  for (let i = 0; i < 81; i++) {
+    PEERS.push([]);
+    for (let j = 0; j < 81; j++) if (sees(i, j)) PEERS[i].push(j);
+  }
+  // scan boxes first: a lone spot inside a box is the easiest thing to see
+  const UNIT_ORDER = [18, 19, 20, 21, 22, 23, 24, 25, 26, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+
+  /* ---------- candidate bitmasks: digit d is bit (d - 1) ---------- */
+  const ALL = 0x1ff;
+  const BIT = d => 1 << (d - 1);
+  const POP = new Uint8Array(512);
+  for (let m = 1; m < 512; m++) POP[m] = POP[m >> 1] + (m & 1);
+  const lowDigit = m => 32 - Math.clz32(m & -m);
+  const digitsOf = m => { const a = []; for (let d = 1; d <= 9; d++) if (m & BIT(d)) a.push(d); return a; };
+
+  function shuffle(a, rng) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  /* ---------- brute-force solver: uniqueness checks and grid filling ---------- */
+  // Counts solutions up to `limit`. Copies the first one into `out` if given.
+  // With an rng, candidates are tried in random order (used to fill a blank grid).
+  function search(grid, limit, out, rng) {
+    const g = Array.from(grid, Number);
+    const rows = new Int32Array(9), cols = new Int32Array(9), boxes = new Int32Array(9);
+    const empties = [];
+    for (let i = 0; i < 81; i++) {
+      const v = g[i];
+      if (!v) { empties.push(i); continue; }
+      const b = BIT(v);
+      if ((rows[ROW[i]] | cols[COL[i]] | boxes[BOX[i]]) & b) return 0;
+      rows[ROW[i]] |= b; cols[COL[i]] |= b; boxes[BOX[i]] |= b;
+    }
+    let count = 0;
+    function rec(n) {
+      if (n === 0) {
+        count++;
+        if (out && count === 1) for (let i = 0; i < 81; i++) out[i] = g[i];
+        return count >= limit;
+      }
+      let best = 0, bestMask = 0, bestN = 10;
+      for (let k = 0; k < n; k++) {
+        const i = empties[k];
+        const m = ALL & ~(rows[ROW[i]] | cols[COL[i]] | boxes[BOX[i]]);
+        const c = POP[m];
+        if (c < bestN) { best = k; bestMask = m; bestN = c; if (c < 2) break; }
+      }
+      if (bestN === 0) return false;
+      const i = empties[best];
+      empties[best] = empties[n - 1]; empties[n - 1] = i;
+      let order = null;
+      if (rng) order = shuffle(digitsOf(bestMask), rng);
+      let m = bestMask, stop = false;
+      for (let k = 0; m; k++) {
+        const b = order ? BIT(order[k]) : (m & -m);
+        m &= ~b;
+        g[i] = lowDigit(b);
+        rows[ROW[i]] |= b; cols[COL[i]] |= b; boxes[BOX[i]] |= b;
+        stop = rec(n - 1);
+        rows[ROW[i]] ^= b; cols[COL[i]] ^= b; boxes[BOX[i]] ^= b;
+        g[i] = 0;
+        if (stop) break;
+      }
+      empties[n - 1] = empties[best]; empties[best] = i;
+      return stop;
+    }
+    rec(empties.length);
+    return count;
+  }
+  const countSolutions = (grid, limit) => search(grid, limit || 2, null, null);
+  function solve(grid) {
+    const out = new Array(81);
+    return search(grid, 1, out, null) ? out : null;
+  }
+  function randomSolution(rng) {
+    const out = new Array(81);
+    search(new Array(81).fill(0), 1, out, rng);
+    return out;
+  }
+
+  // A finished grid is judged on the rules alone: every row, column and box
+  // holds 1-9 exactly once and the printed clues are untouched. It is never
+  // compared against a stored answer, so any valid grid counts as solved.
+  function isSolved(values, givens) {
+    const v = Array.from(values, Number), g = Array.from(givens, Number);
+    for (let i = 0; i < 81; i++) {
+      if (!(v[i] >= 1 && v[i] <= 9)) return false;
+      if (g[i] && v[i] !== g[i]) return false;
+    }
+    for (const u of UNITS) {
+      let m = 0;
+      for (const i of u) m |= BIT(v[i]);
+      if (m !== ALL) return false;
+    }
+    return true;
+  }
+
+  // Can digit d at cell i still be part of some valid finished grid, given the
+  // printed clues? This is what "wrong" means everywhere in the game.
+  function fits(givens, i, d) {
+    const g = Array.from(givens, Number);
+    if (g[i]) return g[i] === d;
+    g[i] = d;
+    return search(g, 1, null, null) > 0;
+  }
+
+  // Entries (non-clue cells) that no valid grid can contain. One solver call
+  // when the board is consistent, which is nearly always.
+  function wrongEntries(values, givens) {
+    const v = Array.from(values, Number), g = Array.from(givens, Number);
+    const board = v.map((x, i) => g[i] || x);
+    if (search(board, 1, null, null) > 0) return [];
+    const wrong = [];
+    for (let i = 0; i < 81; i++) if (v[i] && !g[i] && !fits(g, i, v[i])) wrong.push(i);
+    return wrong;
+  }
+
+  /* ---------- logical solver: the techniques a person would use ---------- */
+  // level: 0 easy (singles you can scan for), 1 medium (naked singles),
+  // 2 hard (locked candidates and subsets), 3 expert (fish and wings)
+  const TECHS = {
+    'full-house':    { level: 0, name: 'Last empty cell' },
+    'hidden-single': { level: 0, name: 'Hidden single' },
+    'naked-single':  { level: 1, name: 'Naked single' },
+    'pointing':      { level: 2, name: 'Pointing pair' },
+    'claiming':      { level: 2, name: 'Box-line reduction' },
+    'naked-pair':    { level: 2, name: 'Naked pair' },
+    'hidden-pair':   { level: 2, name: 'Hidden pair' },
+    'naked-triple':  { level: 2, name: 'Naked triple' },
+    'hidden-triple': { level: 2, name: 'Hidden triple' },
+    'x-wing':        { level: 3, name: 'X-Wing' },
+    'xy-wing':       { level: 3, name: 'XY-Wing' },
+    'xyz-wing':      { level: 3, name: 'XYZ-Wing' },
+    'swordfish':     { level: 3, name: 'Swordfish' },
+    'naked-quad':    { level: 3, name: 'Naked quad' },
+    'hidden-quad':   { level: 3, name: 'Hidden quad' },
+  };
+
+  function newState(grid) {
+    const g = Array.from(grid, Number);
+    const c = new Array(81).fill(0);
+    for (let i = 0; i < 81; i++) {
+      if (g[i]) continue;
+      let m = ALL;
+      for (const p of PEERS[i]) if (g[p]) m &= ~BIT(g[p]);
+      c[i] = m;
+    }
+    return { g, c };
+  }
+  const cloneState = s => ({ g: s.g.slice(), c: s.c.slice() });
+  function place(s, i, d) {
+    s.g[i] = d;
+    s.c[i] = 0;
+    for (const p of PEERS[i]) s.c[p] &= ~BIT(d);
+  }
+  function eliminate(s, elims) { for (const e of elims) s.c[e.cell] &= ~BIT(e.digit); }
+  function applyStep(s, step) {
+    if (step.type === 'place') place(s, step.cell, step.digit);
+    else eliminate(s, step.elims);
+  }
+
+  // calls fn(combo) for every k-combination of arr; stops early when fn returns true
+  function combos(arr, k, fn) {
+    const pick = [];
+    function rec(start) {
+      if (pick.length === k) return fn(pick.slice());
+      for (let j = start; j <= arr.length - (k - pick.length); j++) {
+        pick.push(arr[j]);
+        if (rec(j + 1)) return true;
+        pick.pop();
+      }
+      return false;
+    }
+    return rec(0);
+  }
+
+  // Every finder pushes steps into `out`; with all=false it stops at the first.
+  function fullHouse(s, out, all) {
+    for (const u of UNIT_ORDER) {
+      let n = 0, at = -1, seen = 0;
+      for (const i of UNITS[u]) {
+        if (s.g[i]) seen |= BIT(s.g[i]);
+        else { n++; at = i; }
+      }
+      const m = ALL & ~seen;
+      if (n === 1 && POP[m] === 1 && (s.c[at] & m)) {
+        out.push({ type: 'place', tech: 'full-house', cell: at, digit: lowDigit(m), unit: u });
+        if (!all) return;
+      }
+    }
+  }
+
+  function hiddenSingles(s, out, all) {
+    for (const u of UNIT_ORDER) {
+      for (let d = 1; d <= 9; d++) {
+        const b = BIT(d);
+        let n = 0, at = -1, placed = false;
+        for (const i of UNITS[u]) {
+          if (s.g[i] === d) { placed = true; break; }
+          if (s.c[i] & b) { n++; at = i; }
+        }
+        if (!placed && n === 1) {
+          out.push({ type: 'place', tech: 'hidden-single', cell: at, digit: d, unit: u });
+          if (!all) return;
+        }
+      }
+    }
+  }
+
+  function nakedSingles(s, out, all) {
+    for (let i = 0; i < 81; i++) {
+      if (!s.g[i] && POP[s.c[i]] === 1) {
+        out.push({ type: 'place', tech: 'naked-single', cell: i, digit: lowDigit(s.c[i]) });
+        if (!all) return;
+      }
+    }
+  }
+
+  function lockedCandidates(s, out, all) {
+    // pointing: inside a box, every spot for d shares one row or column
+    for (let b = 0; b < 9; b++) {
+      const box = 18 + b;
+      for (let d = 1; d <= 9; d++) {
+        const bit = BIT(d);
+        const cells = UNITS[box].filter(i => s.c[i] & bit);
+        if (cells.length < 2) continue;
+        for (const line of [ROW[cells[0]], 9 + COL[cells[0]]]) {
+          if (!cells.every(i => UNITS[line].includes(i))) continue;
+          const elims = UNITS[line].filter(i => BOX[i] !== b && (s.c[i] & bit)).map(i => ({ cell: i, digit: d }));
+          if (!elims.length) continue;
+          out.push({ type: 'elim', tech: 'pointing', digit: d, cells, box, line, units: [box, line], elims });
+          if (!all) return;
+        }
+      }
+    }
+    // claiming: inside a row or column, every spot for d sits in one box
+    for (let line = 0; line < 18; line++) {
+      for (let d = 1; d <= 9; d++) {
+        const bit = BIT(d);
+        const cells = UNITS[line].filter(i => s.c[i] & bit);
+        if (cells.length < 2) continue;
+        const b = BOX[cells[0]];
+        if (!cells.every(i => BOX[i] === b)) continue;
+        const elims = UNITS[18 + b].filter(i => !UNITS[line].includes(i) && (s.c[i] & bit)).map(i => ({ cell: i, digit: d }));
+        if (!elims.length) continue;
+        out.push({ type: 'elim', tech: 'claiming', digit: d, cells, box: 18 + b, line, units: [line, 18 + b], elims });
+        if (!all) return;
+      }
+    }
+  }
+
+  const SUBSET_NAME = ['', '', 'pair', 'triple', 'quad'];
+
+  function nakedSubsets(n) {
+    const tech = 'naked-' + SUBSET_NAME[n];
+    return function (s, out, all) {
+      for (const u of UNIT_ORDER) {
+        const open = UNITS[u].filter(i => !s.g[i]);
+        if (open.length <= n) continue;
+        const pool = open.filter(i => POP[s.c[i]] >= 2 && POP[s.c[i]] <= n);
+        const stop = combos(pool, n, cells => {
+          let m = 0;
+          for (const i of cells) m |= s.c[i];
+          if (POP[m] !== n) return false;
+          const elims = [];
+          for (const i of open) {
+            if (cells.includes(i)) continue;
+            for (const d of digitsOf(s.c[i] & m)) elims.push({ cell: i, digit: d });
+          }
+          if (!elims.length) return false;
+          out.push({ type: 'elim', tech, cells, digits: digitsOf(m), unit: u, units: [u], elims });
+          return !all;
+        });
+        if (stop) return;
+      }
+    };
+  }
+
+  function hiddenSubsets(n) {
+    const tech = 'hidden-' + SUBSET_NAME[n];
+    return function (s, out, all) {
+      for (const u of UNIT_ORDER) {
+        const cells = UNITS[u];
+        const pos = [], digits = [];
+        let open = 0;
+        for (const i of cells) if (!s.g[i]) open++;
+        if (open <= n) continue;
+        for (let d = 1; d <= 9; d++) {
+          let m = 0;
+          for (let k = 0; k < 9; k++) if (s.c[cells[k]] & BIT(d)) m |= 1 << k;
+          if (POP[m] >= 2 && POP[m] <= n) { pos[d] = m; digits.push(d); }
+        }
+        const stop = combos(digits, n, ds => {
+          let m = 0, dm = 0;
+          for (const d of ds) { m |= pos[d]; dm |= BIT(d); }
+          if (POP[m] !== n) return false;
+          const sub = [], elims = [];
+          for (let k = 0; k < 9; k++) {
+            if (!(m & (1 << k))) continue;
+            sub.push(cells[k]);
+            for (const d of digitsOf(s.c[cells[k]] & ~dm)) elims.push({ cell: cells[k], digit: d });
+          }
+          if (!elims.length) return false;
+          out.push({ type: 'elim', tech, cells: sub, digits: ds, unit: u, units: [u], elims });
+          return !all;
+        });
+        if (stop) return;
+      }
+    };
+  }
+
+  function fish(n) {
+    const tech = n === 2 ? 'x-wing' : 'swordfish';
+    return function (s, out, all) {
+      for (let d = 1; d <= 9; d++) {
+        const bit = BIT(d);
+        for (const byRow of [true, false]) {
+          const at = (line, k) => byRow ? line * 9 + k : k * 9 + line;
+          const lines = [], pos = [];
+          for (let l = 0; l < 9; l++) {
+            let m = 0;
+            for (let k = 0; k < 9; k++) if (s.c[at(l, k)] & bit) m |= 1 << k;
+            if (POP[m] >= 2 && POP[m] <= n) { lines.push(l); pos[l] = m; }
+          }
+          const stop = combos(lines, n, base => {
+            let m = 0;
+            for (const l of base) m |= pos[l];
+            if (POP[m] !== n) return false;
+            const cover = [], elims = [], cells = [];
+            for (let k = 0; k < 9; k++) {
+              if (!(m & (1 << k))) continue;
+              cover.push(k);
+              for (let l = 0; l < 9; l++) {
+                if (!base.includes(l) && (s.c[at(l, k)] & bit)) elims.push({ cell: at(l, k), digit: d });
+              }
+            }
+            if (!elims.length) return false;
+            for (const l of base) for (let k = 0; k < 9; k++) if (s.c[at(l, k)] & bit) cells.push(at(l, k));
+            const baseUnits = base.map(l => byRow ? l : 9 + l);
+            const coverUnits = cover.map(k => byRow ? 9 + k : k);
+            out.push({ type: 'elim', tech, digit: d, cells, base: baseUnits, cover: coverUnits,
+                       units: baseUnits.concat(coverUnits), elims });
+            return !all;
+          });
+          if (stop) return;
+        }
+      }
+    };
+  }
+
+  function xyWing(s, out, all) {
+    for (let p = 0; p < 81; p++) {
+      const pm = s.c[p];
+      if (POP[pm] !== 2) continue;
+      const wings = PEERS[p].filter(i => POP[s.c[i]] === 2 && POP[s.c[i] & pm] === 1);
+      for (let a = 0; a < wings.length; a++) {
+        for (let b = a + 1; b < wings.length; b++) {
+          const A = wings[a], B = wings[b];
+          if ((s.c[A] & pm) === (s.c[B] & pm)) continue;
+          const z = s.c[A] & ~pm;
+          if (z !== (s.c[B] & ~pm)) continue;
+          const d = lowDigit(z);
+          const elims = PEERS[A].filter(i => i !== B && (s.c[i] & z) && sees(i, B)).map(i => ({ cell: i, digit: d }));
+          if (!elims.length) continue;
+          out.push({ type: 'elim', tech: 'xy-wing', pivot: p, wings: [A, B], digit: d, cells: [p, A, B], units: [], elims });
+          if (!all) return;
+        }
+      }
+    }
+  }
+
+  function xyzWing(s, out, all) {
+    for (let p = 0; p < 81; p++) {
+      const pm = s.c[p];
+      if (POP[pm] !== 3) continue;
+      const wings = PEERS[p].filter(i => POP[s.c[i]] === 2 && (s.c[i] & ~pm) === 0);
+      for (let a = 0; a < wings.length; a++) {
+        for (let b = a + 1; b < wings.length; b++) {
+          const A = wings[a], B = wings[b];
+          if (s.c[A] === s.c[B] || (s.c[A] | s.c[B]) !== pm) continue;
+          const z = s.c[A] & s.c[B];
+          const d = lowDigit(z);
+          const elims = PEERS[p].filter(i => i !== A && i !== B && (s.c[i] & z) && sees(i, A) && sees(i, B))
+            .map(i => ({ cell: i, digit: d }));
+          if (!elims.length) continue;
+          out.push({ type: 'elim', tech: 'xyz-wing', pivot: p, wings: [A, B], digit: d, cells: [p, A, B], units: [], elims });
+          if (!all) return;
+        }
+      }
+    }
+  }
+
+  const nakedPair = nakedSubsets(2), nakedTriple = nakedSubsets(3), nakedQuad = nakedSubsets(4);
+  const hiddenPair = hiddenSubsets(2), hiddenTriple = hiddenSubsets(3), hiddenQuad = hiddenSubsets(4);
+  const xWing = fish(2), swordfish = fish(3);
+  // easiest first: the solver always takes the simplest step on offer
+  const PLACERS = [fullHouse, hiddenSingles, nakedSingles];
+  const ELIMINATORS = [lockedCandidates, nakedPair, hiddenPair, nakedTriple, hiddenTriple,
+                       xWing, xyWing, xyzWing, swordfish, nakedQuad, hiddenQuad];
+  const FINDERS = PLACERS.concat(ELIMINATORS);
+  const FINDER_FOR = {
+    'pointing': lockedCandidates, 'claiming': lockedCandidates,
+    'naked-pair': nakedPair, 'naked-triple': nakedTriple, 'naked-quad': nakedQuad,
+    'hidden-pair': hiddenPair, 'hidden-triple': hiddenTriple, 'hidden-quad': hiddenQuad,
+    'x-wing': xWing, 'swordfish': swordfish, 'xy-wing': xyWing, 'xyz-wing': xyzWing,
+  };
+
+  function nextStep(s) {
+    for (const f of FINDERS) {
+      const out = [];
+      f(s, out, false);
+      if (out.length) return out[0];
+    }
+    return null;
+  }
+
+  // Solve the way a person would, easiest technique first, and report the
+  // hardest level the puzzle forced on us. level 4 = beyond these techniques.
+  function grade(grid) {
+    const s = newState(grid);
+    const used = {};
+    let level = 0, steps = 0;
+    for (;;) {
+      if (!s.g.includes(0)) return { solved: true, level, used, steps };
+      const step = nextStep(s);
+      if (!step) return { solved: false, level: 4, used, steps };
+      used[step.tech] = (used[step.tech] || 0) + 1;
+      level = Math.max(level, TECHS[step.tech].level);
+      applyStep(s, step);
+      steps++;
+    }
+  }
+
+  /* ---------- generator ---------- */
+  // givens: clue count to stop removing at (hard/expert dig until no clue
+  // can go). accept: which graded levels count as this difficulty.
+  const LEVELS = {
+    easy:   { givens: [36, 40], accept: [0] },
+    medium: { givens: [30, 33], accept: [1] },
+    hard:   { givens: [0, 0],   accept: [2] },
+    expert: { givens: [0, 0],   accept: [3] },
+  };
+
+  // Clues come out in mirrored pairs (180-degree symmetry), like a printed
+  // puzzle, and only while the solution stays unique.
+  function dig(solution, rng, floor) {
+    const g = solution.slice();
+    let givens = 81;
+    const order = shuffle(Array.from({ length: 41 }, (_, i) => i), rng);
+    for (const i of order) {
+      const j = 80 - i, n = i === j ? 1 : 2;
+      if (givens - n < floor) continue;
+      const a = g[i], b = g[j];
+      g[i] = 0; g[j] = 0;
+      if (countSolutions(g, 2) === 1) givens -= n;
+      else { g[i] = a; g[j] = b; }
+    }
+    return g;
+  }
+
+  function generate(levelKey, rng, maxTries) {
+    rng = rng || Math.random;
+    const spec = LEVELS[levelKey] || LEVELS.easy;
+    let fallback = null;
+    for (let t = 0; t < (maxTries || 400); t++) {
+      const solution = randomSolution(rng);
+      const lo = spec.givens[0], hi = spec.givens[1];
+      const floor = lo + Math.floor(rng() * (hi - lo + 1));
+      const puzzle = dig(solution, rng, floor);
+      const g = grade(puzzle);
+      const result = { level: levelKey, puzzle: puzzle.join(''), solution: solution.join(''),
+                       grade: g.level, used: g.used, tries: t + 1 };
+      if (spec.accept.includes(g.level)) return result;
+      // closest miss we can still solve, in case we run out of tries
+      if (g.solved && (!fallback || Math.abs(g.level - spec.accept[0]) < Math.abs(fallback.grade - spec.accept[0]))) fallback = result;
+    }
+    return fallback;
+  }
+
+  /* ---------- hints ---------- */
+  const BOX_NAMES = ['top-left', 'top-middle', 'top-right', 'middle-left', 'center', 'middle-right',
+                     'bottom-left', 'bottom-middle', 'bottom-right'];
+  const WORD = ['zero', 'one', 'two', 'three', 'four'];
+  const unitName = u => u < 9 ? 'row ' + (u + 1) : u < 18 ? 'column ' + (u - 8) : 'the ' + BOX_NAMES[u - 18] + ' box';
+  const Unit = u => { const t = unitName(u); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const cellName = i => 'R' + (ROW[i] + 1) + 'C' + (COL[i] + 1);
+  const a = d => (d === 8 ? 'an ' : 'a ') + d;
+  const joinList = (a, conj) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (conj || 'and') + ' ' + a[a.length - 1];
+  const cellList = cells => joinList(cells.map(cellName));
+  const digitList = (ds, conj) => joinList(ds.map(String), conj);
+  function lineList(units) {
+    const rows = units[0] < 9;
+    return (rows ? 'rows ' : 'columns ') + joinList(units.map(u => String(rows ? u + 1 : u - 8)));
+  }
+  // "Cross 3 and 5 off R5C8 and R5C9." Digits that leave the same cells are merged.
+  function crossOff(elims, perCell) {
+    const groups = new Map();
+    const key = e => perCell ? e.cell : e.digit;
+    for (const e of elims) {
+      if (!groups.has(key(e))) groups.set(key(e), []);
+      groups.get(key(e)).push(perCell ? e.digit : e.cell);
+    }
+    const merged = new Map();
+    for (const [k, list] of groups) {
+      const sig = list.join(',');
+      if (!merged.has(sig)) merged.set(sig, { keys: [], list });
+      merged.get(sig).keys.push(k);
+    }
+    const parts = [...merged.values()].map(g => perCell
+      ? digitList(g.list) + ' off ' + cellList(g.keys)
+      : digitList(g.keys) + ' off ' + cellList(g.list));
+    return 'Cross ' + parts.join('; ') + '.';
+  }
+
+  // Plain-English name, where-to-look nudge, and full reasoning for one step.
+  // `after` means earlier eliminations set this placement up.
+  function describe(step, after) {
+    const t = step.tech, d = step.digit;
+    const n = step.cells ? step.cells.length : 0;
+    let name = TECHS[t].name, nudge = '', text = '';
+    if (t === 'full-house') {
+      nudge = `${Unit(step.unit)} has just one empty cell left.`;
+      text = `${Unit(step.unit)} has one empty cell left, and the only digit it is missing is ${d}.`;
+    } else if (t === 'hidden-single') {
+      const blockers = step.unit < 9 ? 'column or box' : step.unit < 18 ? 'row or box' : 'row or column';
+      nudge = `Look at ${unitName(step.unit)}: one digit has only one place it can go.`;
+      text = after
+        ? `Now ${d} has only one spot left in ${unitName(step.unit)}: ${cellName(step.cell)}.`
+        : `${Unit(step.unit)} needs ${a(d)}, and every other open cell there already sees ${a(d)} in its ${blockers}. So ${cellName(step.cell)} must be ${d}.`;
+    } else if (t === 'naked-single') {
+      nudge = `Look at ${cellName(step.cell)}: count the digits its row, column and box already use.`;
+      text = after
+        ? `Now ${cellName(step.cell)} has only one candidate left: ${d}.`
+        : `${cellName(step.cell)} sees every digit except ${d} in its row, column and box, so it must be ${d}.`;
+    } else if (t === 'pointing') {
+      const line = unitName(step.line);
+      name = n === 3 ? 'Pointing triple' : 'Pointing pair';
+      nudge = `Look at where ${d} can go in ${unitName(step.box)}.`;
+      text = `In ${unitName(step.box)}, every spot left for ${d} is in ${line}. Whichever cell gets it, ${line}'s ${d} sits inside that box, so the rest of ${line} can't be ${d}. ` + crossOff(step.elims);
+    } else if (t === 'claiming') {
+      nudge = `Look at where ${d} can go in ${unitName(step.line)}.`;
+      text = `In ${unitName(step.line)}, every spot left for ${d} is inside ${unitName(step.box)}. That box's ${d} has to be one of them, so the rest of the box can't be ${d}. ` + crossOff(step.elims);
+    } else if (t === 'naked-pair' || t === 'naked-triple' || t === 'naked-quad') {
+      nudge = `Look at ${unitName(step.unit)}: ${WORD[n]} cells there share the same ${WORD[n]} candidates.`;
+      text = `${cellList(step.cells)} can only hold ${digitList(step.digits, 'or')}. Between them they use up ${digitList(step.digits)}, so no other cell in ${unitName(step.unit)} can be ${digitList(step.digits, 'or')}. ` + crossOff(step.elims);
+    } else if (t === 'hidden-pair' || t === 'hidden-triple' || t === 'hidden-quad') {
+      nudge = `Look at ${unitName(step.unit)}: ${WORD[n]} digits there fit in only ${WORD[n]} cells.`;
+      text = `In ${unitName(step.unit)}, ${digitList(step.digits)} can only go in ${cellList(step.cells)}. Those cells must hold ${digitList(step.digits)}, so nothing else can go in them. ` + crossOff(step.elims, true);
+    } else if (t === 'x-wing' || t === 'swordfish') {
+      const lines = step.base[0] < 9 ? 'rows' : 'columns', crossLines = step.base[0] < 9 ? 'columns' : 'rows';
+      nudge = `Look at where ${d} can go in ${lineList(step.base)}.`;
+      text = `In ${lineList(step.base)}, ${d} can only go in ${lineList(step.cover)}. Each of those ${lines} needs ${a(d)}, so between them they put one ${d} in each of ${lineList(step.cover)}. No other cell in those ${crossLines} can be ${d}. ` + crossOff(step.elims);
+    } else if (t === 'xy-wing' || t === 'xyz-wing') {
+      let [p, A, B] = step.cells;
+      let { p: pm, a: am, b: bm } = step.cache;
+      if (t === 'xy-wing' && lowDigit(pm & am) > lowDigit(pm & bm)) { [A, B] = [B, A]; [am, bm] = [bm, am]; }
+      const opts = m => digitList(digitsOf(m), 'or');
+      nudge = `Look at ${cellName(p)} and the two-candidate cells it can see.`;
+      text = t === 'xy-wing'
+        ? `${cellName(p)} can only be ${opts(pm)}. If it is ${lowDigit(pm & am)}, ${cellName(A)} must be ${d}; if it is ${lowDigit(pm & bm)}, ${cellName(B)} must be ${d}. Either way one of them is ${d}, so a cell that sees both can't be ${d}. ` + crossOff(step.elims)
+        : `${cellName(p)} can only be ${opts(pm)}, ${cellName(A)} ${opts(am)}, and ${cellName(B)} ${opts(bm)}. However it plays out, one of the three holds ${d}, so a cell that sees all three can't be ${d}. ` + crossOff(step.elims);
+    }
+    return { name, nudge, text };
+  }
+
+  // Snapshot what an elimination step leaned on (wing candidates, the
+  // candidates to draw in its pattern cells) before the board moves on.
+  function remember(step, s) {
+    const t = step.tech;
+    if (t === 'xy-wing' || t === 'xyz-wing') {
+      step.cache = { p: s.c[step.cells[0]], a: s.c[step.cells[1]], b: s.c[step.cells[2]] };
+      step.ghosts = step.cells.map(c => ({ cell: c, digits: digitsOf(s.c[c]) }));
+    } else if (step.digits && t.startsWith('naked-')) {
+      step.ghosts = step.cells.map(c => ({ cell: c, digits: digitsOf(s.c[c]) }));
+    } else if (step.digits) {
+      step.ghosts = step.cells.map(c => ({ cell: c, digits: step.digits.filter(d => s.c[c] & BIT(d)) }));
+    } else {
+      step.ghosts = step.cells.map(c => ({ cell: c, digits: [step.digit] }));
+    }
+    return step;
+  }
+
+  function placements(s) {
+    const out = [];
+    for (const f of PLACERS) {
+      const found = [];
+      f(s, found, true);
+      for (const st of found) if (!out.some(o => o.cell === st.cell)) out.push(st);
+    }
+    return out;
+  }
+
+  // Re-derive a chain of eliminations from s0, skipping any that became
+  // redundant. Null if the chain no longer holds up or no longer ends with
+  // `target` being placeable.
+  function replay(s0, chain, target) {
+    const s = cloneState(s0), used = [];
+    for (const st of chain) {
+      const need = st.elims.filter(e => s.c[e.cell] & BIT(e.digit));
+      if (!need.length) continue;
+      const found = [];
+      FINDER_FOR[st.tech](s, found, true);
+      const match = found.find(f => f.tech === st.tech &&
+        need.every(e => f.elims.some(x => x.cell === e.cell && x.digit === e.digit)));
+      if (!match) return null;
+      used.push(remember(match, s));
+      applyStep(s, match);
+    }
+    return placements(s).some(p => p.cell === target.cell && p.digit === target.digit) ? used : null;
+  }
+
+  // Drop every step the target placement doesn't actually need.
+  function prune(s0, chain, target) {
+    let cur = chain.slice();
+    for (let j = cur.length - 1; j >= 0; j--) {
+      const trial = cur.slice(0, j).concat(cur.slice(j + 1));
+      if (replay(s0, trial, target)) cur = trial;
+    }
+    return replay(s0, cur, target) || replay(s0, chain, target) || [];
+  }
+
+  // The next helpful move for the board as it stands. Wrong entries come
+  // first; otherwise the easiest placement, plus any eliminations that unlock
+  // it. `prefer` (the selected cell) wins ties so hints follow the player.
+  function hint(values, givens, prefer) {
+    const v = Array.from(values, Number);
+    const wrong = wrongEntries(v, givens);
+    if (wrong.length) return { kind: 'mistake', cells: wrong };
+    if (!v.includes(0)) return null;
+
+    const s = newState(v);
+    const direct = placements(s);
+    if (direct.length) return finishHint(direct.find(p => p.cell === prefer) || direct[0], []);
+
+    // the easiest single elimination that opens up a placement
+    for (const f of ELIMINATORS) {
+      const found = [];
+      f(s, found, true);
+      let first = null;
+      for (const step of found) {
+        const t = cloneState(s);
+        applyStep(t, step);
+        const opened = placements(t);
+        if (!opened.length) continue;
+        const mine = opened.find(p => p.cell === prefer);
+        if (mine) return finishHint(mine, [remember(step, s)]);
+        if (!first) first = { step, target: opened[0] };
+      }
+      if (first) return finishHint(first.target, [remember(first.step, s)]);
+    }
+
+    // otherwise walk the easiest path until placements open up, then keep
+    // whichever one needs the shortest chain of reasoning
+    const walk = cloneState(s), chain = [];
+    for (let guard = 0; guard < 80; guard++) {
+      const opened = placements(walk);
+      if (opened.length) {
+        let best = null;
+        for (const target of opened) {
+          const pre = prune(s, chain, target);
+          if (!pre.length) continue;
+          if (!best || pre.length < best.pre.length || (pre.length === best.pre.length && target.cell === prefer)) best = { target, pre };
+        }
+        if (best) return finishHint(best.target, best.pre);
+        break;
+      }
+      const step = nextStep(walk);
+      if (!step) break;
+      chain.push(step);
+      applyStep(walk, step);
+    }
+
+    // beyond these techniques: solve the board as it stands and reveal the
+    // most constrained open cell
+    const full = solve(v);
+    if (!full) return null;
+    let best = -1;
+    for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || POP[s.c[i]] < POP[s.c[best]])) best = i;
+    return { kind: 'reveal', cell: best, digit: full[best] };
+  }
+
+  // Packages a hint for the UI: a nudge (where to look), then pages of
+  // reasoning, one deduction per page, the last page ending on the answer.
+  function finishHint(step, pre) {
+    const fin = describe(step, pre.length > 0);
+    const unit = step.unit != null ? [step.unit] : [];
+    const pages = pre.map(p => {
+      const d = describe(p, false);
+      return { name: d.name, text: d.text, cells: p.cells, units: p.units, elims: p.elims, ghosts: p.ghosts, target: false };
+    });
+    if (pages.length) {
+      const last = pages[pages.length - 1];
+      last.text += ' ' + fin.text;
+      last.units = last.units.concat(unit);
+      last.target = true;
+    } else {
+      pages.push({ name: fin.name, text: fin.text, cells: [], units: unit, elims: [], ghosts: [], target: true });
+    }
+    const first = pre.length ? describe(pre[0], false) : fin;
+    return {
+      kind: 'place', cell: step.cell, digit: step.digit, tech: step.tech,
+      title: first.name,
+      nudge: pre.length ? 'No easy placements left. ' + first.nudge : fin.nudge,
+      focus: pre.length ? { units: pre[0].units, cells: pre[0].cells }
+                        : { units: unit, cells: step.tech === 'naked-single' ? [step.cell] : [] },
+      pages,
+    };
+  }
+
+  // pure candidates for every open cell (what "fill notes" writes in)
+  function candidates(values) {
+    return newState(values).c.map(m => digitsOf(m));
+  }
+
+  return {
+    ROW, COL, BOX, UNITS, PEERS, TECHS, LEVELS,
+    countSolutions, solve, randomSolution, grade, generate, hint, candidates, cellName,
+    isSolved, fits, wrongEntries,
+    _internal: { newState, nextStep, applyStep, placements, describe, unitName },
+  };
+}
+/* CORE:END */
+
+const Core = makeSudokuCore();
+const { ROW, COL, BOX, UNITS, PEERS } = Core;
+const $ = id => document.getElementById(id);
+const BIT = d => 1 << (d - 1);
+const sees = (a, b) => a !== b && (ROW[a] === ROW[b] || COL[a] === COL[b] || BOX[a] === BOX[b]);
+
+const LEVELS = ['easy', 'medium', 'hard', 'expert'];
+const LEVEL_INFO = {
+  easy:   { name: 'Easy',   pips: 1, blurb: 'Plenty of clues. Every number has one spot you can find by scanning.' },
+  medium: { name: 'Medium', pips: 2, blurb: 'Fewer clues. Some squares only crack once you count what they can still hold.' },
+  hard:   { name: 'Hard',   pips: 3, blurb: 'Keep notes. Pointing pairs, box-line reductions, naked and hidden pairs.' },
+  expert: { name: 'Expert', pips: 4, blurb: 'X-Wings, Swordfish and XY-Wings. Bring a sharp pencil.' },
+};
+const STORE_KEY = 'sudoku-v1';        // settings + stats
+const GAME_KEY = 'sudoku-v1:game';    // the puzzle in progress
+
+let settings = { mistakes: false, matching: true, peers: true, autoClear: true };
+const blankStats = () => ({ started: 0, solved: 0, clean: 0, best: 0, total: 0 });
+let stats = { easy: blankStats(), medium: blankStats(), hard: blankStats(), expert: blankStats() };
+
+// game: { level, puzzle (81-char clue string), values[81], notes[81] (bitmasks),
+//         elapsed (ms), hints, done }. No answer key is kept: a grid is solved
+// when it obeys the rules, and "wrong" means no valid grid can contain it.
+let game = null;
+let sel = -1;
+let notesMode = false;
+let paused = false;
+let undoStack = [];
+let hintState = null;          // { h, stage (-1 = nudge, else page), sig }
+let fitCache = new Map();      // cell*10+digit -> can it be part of a finished grid?
+
+/* ---------- storage ---------- */
+
+function loadPrefs() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (d && d.settings) for (const k in settings) if (typeof d.settings[k] === 'boolean') settings[k] = d.settings[k];
+    if (d && d.stats) for (const k of LEVELS) if (d.stats[k]) stats[k] = Object.assign(blankStats(), d.stats[k]);
+  } catch (e) { /* fresh start */ }
+}
+function savePrefs() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ settings, stats })); } catch (e) { /* no storage */ }
+}
+function saveGame() {
+  if (!game) return;
+  try {
+    localStorage.setItem(GAME_KEY, JSON.stringify({
+      level: game.level, puzzle: game.puzzle, values: game.values.join(''), notes: game.notes,
+      elapsed: Math.round(game.elapsed), hints: game.hints, done: game.done,
+    }));
+  } catch (e) { /* no storage */ }
+}
+function loadGame() {
+  try {
+    const d = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
+    const digits81 = s => typeof s === 'string' && /^[0-9]{81}$/.test(s);
+    if (!d || !LEVEL_INFO[d.level] || !digits81(d.puzzle) || !digits81(d.values)) return null;
+    if (!Array.isArray(d.notes) || d.notes.length !== 81) return null;
+    const values = [...d.values].map(Number);
+    for (let i = 0; i < 81; i++) if (d.puzzle[i] !== '0') values[i] = +d.puzzle[i];
+    return {
+      level: d.level, puzzle: d.puzzle, values,
+      notes: d.notes.map((n, i) => values[i] ? 0 : (n | 0) & 0x1ff),
+      elapsed: Math.max(0, +d.elapsed || 0), hints: Math.max(0, d.hints | 0), done: !!d.done,
+    };
+  } catch (e) { return null; }
+}
+
+/* ---------- helpers ---------- */
+
+function fmtTime(ms) {
+  const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+const isGiven = i => !!game && game.puzzle[i] !== '0';
+const canPlay = () => !!game && !game.done && !paused;
+function setMessage(m) { $('message').textContent = m || ''; }
+
+function isWrong(i) {
+  const d = game.values[i];
+  if (!d || isGiven(i)) return false;
+  const k = i * 10 + d;
+  if (!fitCache.has(k)) fitCache.set(k, !Core.fits(game.puzzle, i, d));
+  return fitCache.get(k);
+}
+function clashes(vals) {
+  const out = new Set();
+  for (const u of UNITS) {
+    const seen = new Map();
+    for (const i of u) {
+      const d = vals[i];
+      if (!d) continue;
+      if (seen.has(d)) { out.add(i); out.add(seen.get(d)); } else seen.set(d, i);
+    }
+  }
+  return out;
+}
+
+/* ---------- board ---------- */
+
+const cellEls = [], valEls = [], noteEls = [], padEls = [];
+
+function buildBoard() {
+  const board = $('board');
+  for (let b = 0; b < 9; b++) {
+    const box = document.createElement('div');
+    box.className = 'box';
+    for (const i of UNITS[18 + b]) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.i = i;
+      const v = document.createElement('span');
+      v.className = 'v';
+      const notes = document.createElement('div');
+      notes.className = 'notes';
+      const spans = [];
+      for (let d = 1; d <= 9; d++) { const s = document.createElement('span'); notes.appendChild(s); spans.push(s); }
+      cell.append(v, notes);
+      box.appendChild(cell);
+      cellEls[i] = cell; valEls[i] = v; noteEls[i] = spans;
+    }
+    board.appendChild(box);
+  }
+  board.addEventListener('pointerdown', e => {
+    const c = e.target.closest('.cell');
+    if (!c || !game || paused) return;
+    sel = +c.dataset.i;
+    render();
+    announce();
+  });
+}
+
+function buildPad() {
+  const pad = $('pad');
+  for (let d = 1; d <= 9; d++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = d + '<span class="left"></span>';
+    b.addEventListener('click', () => enter(d));
+    pad.appendChild(b);
+    padEls[d] = b;
+  }
+}
+
+// what the active hint wants drawn on the board right now
+function hintMarks() {
+  const m = { units: new Set(), cells: new Set(), ghosts: new Map(), struck: new Map(), target: -1, answer: 0, wrong: new Set(), same: 0 };
+  if (!hintState) return m;
+  const { h, stage } = hintState;
+  const addUnits = us => { for (const u of us) for (const i of UNITS[u]) m.units.add(i); };
+  if (h.kind === 'mistake') {
+    for (const i of h.cells) m.wrong.add(i);
+  } else if (h.kind === 'reveal') {
+    m.target = h.cell; m.answer = h.digit;
+  } else if (stage < 0) {
+    addUnits(h.focus.units);
+    for (const i of h.focus.cells) m.cells.add(i);
+  } else {
+    const p = h.pages[stage];
+    addUnits(p.units);
+    for (const i of p.cells) m.cells.add(i);
+    for (const g of p.ghosts) m.ghosts.set(g.cell, g.digits);
+    for (const e of p.elims) {
+      if (!m.struck.has(e.cell)) m.struck.set(e.cell, []);
+      m.struck.get(e.cell).push(e.digit);
+    }
+    if (p.target) {
+      m.target = h.cell;
+      m.answer = h.digit;
+      // a plain single: show what blocks it, the way you'd scan for it yourself
+      if (h.pages.length === 1 && !p.elims.length) {
+        if (h.tech === 'hidden-single') m.same = h.digit;
+        if (h.tech === 'naked-single') addUnits([ROW[h.cell], 9 + COL[h.cell], 18 + BOX[h.cell]]);
+      }
+    }
+  }
+  return m;
+}
+
+function render() {
+  const vals = game ? game.values : new Array(81).fill(0);
+  const notes = game ? game.notes : new Array(81).fill(0);
+  const clash = clashes(vals);
+  const marks = hintMarks();
+  // while a hint is drawn, its marks are the only highlighting on the board
+  const quiet = !!hintState;
+  const selVal = sel >= 0 && !quiet ? vals[sel] : 0;
+
+  for (let i = 0; i < 81; i++) {
+    const v = vals[i];
+    const cls = ['cell'];
+    if (isGiven(i)) cls.push('given');
+    else if (v) cls.push('user');
+    if (i === sel) cls.push('sel');
+    else if (settings.peers && sel >= 0 && !quiet && sees(i, sel)) cls.push('peer');
+    if (settings.matching && selVal && v === selVal && i !== sel) cls.push('same');
+    if (clash.has(i)) cls.push('clash');
+    if (settings.mistakes && game && !game.done && isWrong(i)) cls.push('wrong');
+    if (marks.units.has(i)) cls.push('h-unit');
+    if (marks.same && v === marks.same) cls.push('h-same');
+    if (marks.cells.has(i)) cls.push('h-cell');
+    if (marks.target === i) cls.push('h-target');
+    if (marks.wrong.has(i)) cls.push('h-wrong');
+    const showAnswer = marks.target === i && marks.answer && !v;
+    if (showAnswer) cls.push('answer');
+    cellEls[i].className = cls.join(' ');
+
+    valEls[i].textContent = v || (showAnswer ? marks.answer : '');
+    const ghosts = marks.ghosts.get(i), struck = marks.struck.get(i);
+    for (let d = 1; d <= 9; d++) {
+      const s = noteEls[i][d - 1];
+      let txt = '', c = '';
+      if (!v && !showAnswer) {
+        if (struck && struck.includes(d)) { txt = d; c = 'struck'; }
+        else if (ghosts && ghosts.includes(d)) { txt = d; c = 'ghost'; }
+        else if (notes[i] & BIT(d)) { txt = d; c = settings.matching && selVal === d ? 'hl' : ''; }
+      }
+      if (s.textContent !== String(txt)) s.textContent = txt;
+      if (s.className !== c) s.className = c;
+    }
+  }
+
+  // number pad: how many of each digit are still to place
+  const counts = new Array(10).fill(0);
+  for (const v of vals) counts[v]++;
+  for (let d = 1; d <= 9; d++) {
+    const left = 9 - counts[d];
+    padEls[d].querySelector('.left').textContent = game && left > 0 ? left : '';
+    padEls[d].classList.toggle('done', !!game && left <= 0);
+    padEls[d].disabled = !canPlay();
+    padEls[d].setAttribute('aria-label', (notesMode ? 'Note ' : 'Fill in ') + d + (left > 0 ? ', ' + left + ' left' : ', all placed'));
+  }
+  $('pad').classList.toggle('notes-mode', notesMode);
+
+  const play = canPlay();
+  $('btn-undo').disabled = !play || !undoStack.length;
+  $('btn-erase').disabled = !play;
+  $('btn-notes').disabled = !play;
+  $('btn-fill').disabled = !play;
+  $('btn-hint').disabled = !play;
+  $('btn-notes').classList.toggle('on', notesMode);
+  $('btn-notes').setAttribute('aria-pressed', String(notesMode));
+  $('notes-state').textContent = notesMode ? 'on' : 'off';
+
+  $('stat-level').textContent = game ? LEVEL_INFO[game.level].name : '-';
+  $('stat-hints').textContent = game ? game.hints : 0;
+  $('stat-solved').textContent = LEVELS.reduce((a, k) => a + stats[k].solved, 0);
+  $('veil').hidden = !paused;
+  $('btn-pause').classList.toggle('paused', paused);
+  $('btn-pause').setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+  $('btn-pause').disabled = !game || game.done;
+  renderClock();
+  renderHint();
+}
+
+function renderClock() { $('stat-time').textContent = fmtTime(game ? game.elapsed : 0); }
+
+function announce() {
+  if (sel < 0 || !game) return;
+  const v = game.values[sel];
+  const notes = [];
+  for (let d = 1; d <= 9; d++) if (game.notes[sel] & BIT(d)) notes.push(d);
+  $('sr').textContent = 'Row ' + (ROW[sel] + 1) + ', column ' + (COL[sel] + 1) + ': ' +
+    (v ? v + (isGiven(sel) ? ', printed clue' : '') : notes.length ? 'notes ' + notes.join(' ') : 'empty');
+}
+
+/* ---------- moves ---------- */
+
+const snap = i => ({ i, v: game.values[i], n: game.notes[i] });
+function pushUndo(rec) {
+  if (!rec.length) return;
+  undoStack.push(rec);
+  if (undoStack.length > 500) undoStack.shift();
+}
+
+function select(i) { sel = i; render(); announce(); }
+function move(dr, dc) {
+  if (!game || paused) return;
+  select(sel < 0 ? 40 : ((ROW[sel] + dr + 9) % 9) * 9 + (COL[sel] + dc + 9) % 9);
+}
+
+function guard() {
+  if (!canPlay()) return false;
+  if (sel < 0) { setMessage('Pick a square first, then a number.'); return false; }
+  if (isGiven(sel)) { setMessage('That number is printed on the page.'); return false; }
+  return true;
+}
+
+function enter(d) {
+  if (!guard()) return;
+  if (notesMode) { toggleNote(sel, d); return; }
+  if (game.values[sel] === d) return;
+  placeValue(sel, d);
+}
+function enterNote(d) {
+  if (guard()) toggleNote(sel, d);
+}
+
+function placeValue(i, d) {
+  const rec = [snap(i)];
+  game.values[i] = d;
+  game.notes[i] = 0;
+  if (settings.autoClear) {
+    for (const p of PEERS[i]) {
+      if (game.notes[p] & BIT(d)) { rec.push(snap(p)); game.notes[p] &= ~BIT(d); }
+    }
+  }
+  pushUndo(rec);
+  afterChange(true);
+}
+
+function toggleNote(i, d) {
+  if (game.values[i]) { setMessage('Erase the number first to pencil in notes.'); return; }
+  pushUndo([snap(i)]);
+  game.notes[i] ^= BIT(d);
+  afterChange(false);
+}
+
+function erase() {
+  if (!guard()) return;
+  if (!game.values[sel] && !game.notes[sel]) return;
+  const hadValue = !!game.values[sel];
+  pushUndo([snap(sel)]);
+  if (hadValue) game.values[sel] = 0;
+  else game.notes[sel] = 0;
+  afterChange(hadValue);
+}
+
+function undo() {
+  if (!canPlay()) return;
+  const rec = undoStack.pop();
+  if (!rec) { setMessage('Nothing to undo.'); return; }
+  let valuesChanged = false;
+  for (let k = rec.length - 1; k >= 0; k--) {
+    const c = rec[k];
+    if (game.values[c.i] !== c.v) valuesChanged = true;
+    game.values[c.i] = c.v;
+    game.notes[c.i] = c.n;
+  }
+  sel = rec[0].i;
+  afterChange(valuesChanged);
+}
+
+function toggleNotesMode() {
+  if (!canPlay()) return;
+  notesMode = !notesMode;
+  setMessage(notesMode ? 'Notes on: numbers go in as pencil marks.' : 'Notes off: numbers go in as answers.');
+  render();
+}
+
+function fillNotes() {
+  if (!canPlay()) return;
+  const cands = Core.candidates(game.values);
+  const rec = [];
+  for (let i = 0; i < 81; i++) {
+    if (game.values[i]) continue;
+    let m = 0;
+    for (const d of cands[i]) m |= BIT(d);
+    if (m !== game.notes[i]) { rec.push(snap(i)); game.notes[i] = m; }
+  }
+  if (!rec.length) { setMessage('Your notes already list every possibility.'); return; }
+  pushUndo(rec);
+  setMessage('Pencilled in every possibility. Undo takes them back out.');
+  afterChange(false);
+}
+
+function afterChange(valuesChanged) {
+  if (valuesChanged) {
+    if (hintState && hintState.sig !== game.values.join('')) hintState = null;
+    setMessage('');
+    if (!game.values.includes(0)) {
+      // judged by the rules alone: any grid that obeys them is a solve
+      if (Core.isSolved(game.values, game.puzzle)) { win(); return; }
+      setMessage('Every square is filled, but some numbers clash. Look for the red.');
+    }
+  }
+  saveGame();
+  render();
+}
+
+/* ---------- hints ---------- */
+
+function askHint() {
+  if (!canPlay()) return;
+  if (hintState && hintState.sig === game.values.join('')) { advanceHint(); return; }
+  const h = Core.hint(game.values, game.puzzle, sel);
+  if (!h) return;
+  game.hints++;
+  hintState = { h, stage: h.kind === 'place' ? -1 : 0, sig: game.values.join('') };
+  saveGame();
+  render();
+}
+
+function advanceHint() {
+  const { h } = hintState;
+  if (h.kind === 'place' && hintState.stage < h.pages.length - 1) {
+    hintState.stage++;
+    if (h.pages[hintState.stage].target) sel = h.cell;
+    render();
+  } else {
+    applyHint();
+  }
+}
+
+function applyHint() {
+  const { h } = hintState;
+  hintState = null;
+  if (h.kind === 'mistake') {
+    pushUndo(h.cells.map(snap));
+    for (const i of h.cells) game.values[i] = 0;
+    sel = h.cells[0];
+    afterChange(true);
+    setMessage(h.cells.length === 1 ? 'Cleared. That square is open again.' : 'Cleared. Those squares are open again.');
+  } else {
+    sel = h.cell;
+    placeValue(h.cell, h.digit);
+  }
+}
+
+function closeHint() { hintState = null; render(); }
+
+function renderHint() {
+  const card = $('hint');
+  $('side').classList.toggle('hinting', !!hintState);
+  if (!hintState) { card.hidden = true; $('message').hidden = false; return; }
+  card.hidden = false;
+  $('message').hidden = true;
+  const { h, stage } = hintState;
+  let title, count = '', text, more = '', fill = 'Fill it in';
+  if (h.kind === 'mistake') {
+    const one = h.cells.length === 1;
+    title = one ? 'Wrong number' : 'Wrong numbers';
+    text = one
+      ? 'The ' + game.values[h.cells[0]] + ' in ' + Core.cellName(h.cells[0]) + " can't be part of any finished grid. It's circled in red."
+      : h.cells.length + " of your numbers can't be part of any finished grid. They're circled in red.";
+    fill = one ? 'Clear it' : 'Clear them';
+  } else if (h.kind === 'reveal') {
+    title = 'Tough spot';
+    text = 'This position needs heavier logic than the hints cover. To keep you moving: ' + Core.cellName(h.cell) + ' is ' + h.digit + '.';
+  } else if (stage < 0) {
+    title = h.title;
+    text = h.nudge;
+    more = 'Show me';
+  } else {
+    const p = h.pages[stage];
+    title = p.name;
+    if (h.pages.length > 1) count = 'Step ' + (stage + 1) + ' of ' + h.pages.length;
+    text = p.text;
+    if (stage < h.pages.length - 1) more = 'Next step';
+  }
+  $('hint-title').textContent = title;
+  $('hint-count').textContent = count;
+  $('hint-text').textContent = text;
+  $('hint-more').textContent = more;
+  $('hint-more').hidden = !more;
+  $('hint-fill').textContent = fill;
+}
+
+/* ---------- new game, restart, win ---------- */
+
+function resetPlayState() {
+  undoStack = [];
+  hintState = null;
+  sel = -1;
+  notesMode = false;
+  paused = false;
+  fitCache = new Map();
+  $('board').classList.remove('won');
+  lastTick = performance.now();
+}
+
+function startNew(level) {
+  closeModal();
+  setMessage('Printing a fresh ' + LEVEL_INFO[level].name.toLowerCase() + ' puzzle…');
+  // let the message paint first; generating takes a few milliseconds
+  setTimeout(() => {
+    let p = null;
+    for (let t = 0; t < 3 && !p; t++) p = Core.generate(level);
+    if (!p) { setMessage('The press jammed. Try again.'); return; }
+    game = {
+      level, puzzle: p.puzzle, values: [...p.puzzle].map(Number), notes: new Array(81).fill(0),
+      elapsed: 0, hints: 0, done: false,
+    };
+    stats[level].started++;
+    savePrefs();
+    resetPlayState();
+    saveGame();
+    const clues = game.values.filter(Boolean).length;
+    setMessage('New ' + LEVEL_INFO[level].name.toLowerCase() + ' puzzle, ' + clues + ' clues printed. Fill every row, column and box with 1 to 9.');
+    render();
+  }, 40);
+}
+
+function restartPuzzle() {
+  if (!game) return;
+  closeModal();
+  game.values = [...game.puzzle].map(Number);
+  game.notes = new Array(81).fill(0);
+  game.elapsed = 0;
+  game.hints = 0;
+  game.done = false;
+  resetPlayState();
+  saveGame();
+  setMessage('Back to a clean page. Same puzzle, clock reset.');
+  render();
+}
+
+function win() {
+  game.done = true;
+  hintState = null;
+  sel = -1;
+  notesMode = false;
+  game.elapsed = Math.round(game.elapsed);
+  const st = stats[game.level];
+  st.solved++;
+  st.total += game.elapsed;
+  let best = false;
+  if (!game.hints) {
+    st.clean++;
+    if (!st.best || game.elapsed < st.best) { st.best = game.elapsed; best = true; }
+  }
+  savePrefs();
+  saveGame();
+  setMessage('Solved! Every row, column and box checks out.');
+  render();
+  const board = $('board');
+  for (let i = 0; i < 81; i++) cellEls[i].style.setProperty('--d', (Math.abs(ROW[i] - 4) + Math.abs(COL[i] - 4)) * 60 + 'ms');
+  board.classList.remove('won');
+  void board.offsetWidth;   // restart the wave animation
+  board.classList.add('won');
+  setTimeout(() => showWin(best), 1300);
+}
+
+function showWin(best) {
+  if (!game || !game.done || openModalId()) return;
+  const info = LEVEL_INFO[game.level], st = stats[game.level];
+  $('win-title').textContent = best && st.clean > 1 ? 'New best time' : 'Solved';
+  $('win-time').textContent = fmtTime(game.elapsed);
+  let detail;
+  if (game.hints) {
+    detail = info.name + ' puzzle, ' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
+      ' used. Solve one without hints to set a best time.';
+  } else if (best) {
+    detail = info.name + ' puzzle, no hints. ' + (st.clean > 1 ? 'Your fastest yet.' : 'That sets the time to beat.');
+  } else {
+    detail = info.name + ' puzzle, no hints. Your best is ' + fmtTime(st.best) + '.';
+  }
+  $('win-detail').textContent = detail;
+  $('win-again').textContent = 'Another ' + info.name.toLowerCase();
+  openModal('win');
+}
+
+/* ---------- modals ---------- */
+
+const MODALS = ['picker', 'win', 'help', 'stats', 'settings'];
+function openModal(id) {
+  for (const m of MODALS) $(m).hidden = m !== id;
+  const panel = $(id);
+  const first = panel.querySelector('.level') || panel.querySelector('button.primary') || panel.querySelector('button');
+  if (first) first.focus({ preventScroll: true });
+}
+function closeModal() { for (const m of MODALS) $(m).hidden = true; }
+function openModalId() { return MODALS.find(m => !$(m).hidden) || null; }
+
+function openPicker() {
+  const box = $('levels');
+  box.innerHTML = '';
+  for (const k of LEVELS) {
+    const info = LEVEL_INFO[k], st = stats[k];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'level';
+    b.innerHTML = '<span class="lv-name"></span><span class="lv-pips"></span><span class="lv-desc"></span><span class="lv-best"></span>';
+    b.querySelector('.lv-name').textContent = info.name;
+    b.querySelector('.lv-pips').textContent = '●'.repeat(info.pips) + '○'.repeat(4 - info.pips);
+    b.querySelector('.lv-desc').textContent = info.blurb;
+    b.querySelector('.lv-best').textContent = st.best ? 'Best ' + fmtTime(st.best) + ' · ' + st.solved + ' solved'
+      : st.solved ? st.solved + ' solved' : 'Not solved yet';
+    b.addEventListener('click', () => startNew(k));
+    box.appendChild(b);
+  }
+  const live = !!game && !game.done;
+  $('picker-note').textContent = live
+    ? 'Starting a new puzzle ends the one in progress.'
+    : 'Pick a level. Every puzzle has exactly one solution, and logic alone will get you there.';
+  $('picker-restart').hidden = !live;
+  $('picker-cancel').hidden = !game;
+  $('picker-cancel').textContent = live ? 'Back to my puzzle' : 'Close';
+  openModal('picker');
+}
+
+function openStats() {
+  const body = $('stats-body');
+  body.innerHTML = '';
+  for (const k of LEVELS) {
+    const st = stats[k];
+    const tr = document.createElement('tr');
+    for (const txt of [LEVEL_INFO[k].name, st.solved, st.clean, st.best ? fmtTime(st.best) : '-',
+                       st.solved ? fmtTime(st.total / st.solved) : '-']) {
+      const td = document.createElement('td');
+      td.textContent = txt;
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  openModal('stats');
+}
+
+function openSettings() {
+  for (const el of document.querySelectorAll('[data-setting]')) el.checked = !!settings[el.dataset.setting];
+  openModal('settings');
+}
+
+/* ---------- clock ---------- */
+
+let lastTick = performance.now(), lastSave = 0;
+const clockRunning = () => !!game && !game.done && !paused && !document.hidden && !openModalId();
+function tick() {
+  const now = performance.now();
+  // a stalled timer (sleeping phone, throttled tab) shouldn't bill the gap
+  if (clockRunning()) game.elapsed += Math.min(now - lastTick, 1500);
+  lastTick = now;
+  renderClock();
+  if (game && !game.done && now - lastSave > 5000) { lastSave = now; saveGame(); }
+}
+function setPaused(p) {
+  if (!game || game.done) p = false;
+  paused = p;
+  if (p) saveGame();
+  render();
+}
+
+/* ---------- wiring & boot ---------- */
+
+$('btn-undo').addEventListener('click', undo);
+$('btn-erase').addEventListener('click', erase);
+$('btn-notes').addEventListener('click', toggleNotesMode);
+$('btn-fill').addEventListener('click', fillNotes);
+$('btn-hint').addEventListener('click', askHint);
+$('hint-more').addEventListener('click', advanceHint);
+$('hint-fill').addEventListener('click', applyHint);
+$('hint-close').addEventListener('click', closeHint);
+$('btn-pause').addEventListener('click', () => setPaused(!paused));
+$('btn-resume').addEventListener('click', () => setPaused(false));
+$('btn-games').addEventListener('click', () => { saveGame(); location.href = '../index.html'; });
+$('btn-help').addEventListener('click', () => openModal('help'));
+$('help-close').addEventListener('click', closeModal);
+$('btn-stats').addEventListener('click', openStats);
+$('stats-close').addEventListener('click', closeModal);
+$('stats-reset').addEventListener('click', () => {
+  if (!confirm('Reset your solve counts and best times for every level?')) return;
+  for (const k of LEVELS) stats[k] = blankStats();
+  savePrefs();
+  openStats();
+  render();
+});
+$('btn-settings').addEventListener('click', openSettings);
+$('settings-close').addEventListener('click', closeModal);
+for (const el of document.querySelectorAll('[data-setting]')) {
+  el.addEventListener('change', () => { settings[el.dataset.setting] = el.checked; savePrefs(); render(); });
+}
+$('btn-new').addEventListener('click', openPicker);
+$('picker-restart').addEventListener('click', restartPuzzle);
+$('picker-cancel').addEventListener('click', closeModal);
+$('win-view').addEventListener('click', closeModal);
+$('win-pick').addEventListener('click', openPicker);
+$('win-again').addEventListener('click', () => startNew(game.level));
+for (const m of MODALS) {
+  $(m).addEventListener('click', e => {
+    if (e.target !== $(m) || (m === 'picker' && !game)) return;
+    closeModal();
+  });
+}
+
+document.addEventListener('keydown', e => {
+  const open = openModalId();
+  if (open) {
+    if (e.key === 'Escape' && !(open === 'picker' && !game)) closeModal();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey) {
+    if (!e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); }
+    return;
+  }
+  let d = -1;
+  if (/^[0-9]$/.test(e.key)) d = +e.key;
+  else {
+    const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code || '');
+    if (m) d = +m[1];
+  }
+  if (d >= 0) {
+    e.preventDefault();
+    if (d === 0) erase();
+    else if (e.shiftKey || e.altKey) enterNote(d);
+    else enter(d);
+    return;
+  }
+  switch (e.key) {
+    case 'ArrowUp': move(-1, 0); break;
+    case 'ArrowDown': move(1, 0); break;
+    case 'ArrowLeft': move(0, -1); break;
+    case 'ArrowRight': move(0, 1); break;
+    case 'Backspace': case 'Delete': erase(); break;
+    case 'n': case 'N': toggleNotesMode(); break;
+    case 'h': case 'H': askHint(); break;
+    case 'u': case 'U': undo(); break;
+    case 'p': case 'P': setPaused(!paused); break;
+    case 'Escape':
+      if (hintState) closeHint();
+      else { sel = -1; render(); }
+      break;
+    default: return;
+  }
+  e.preventDefault();
+});
+
+document.addEventListener('visibilitychange', () => {
+  lastTick = performance.now();
+  if (document.hidden) saveGame();
+});
+window.addEventListener('pagehide', saveGame);
+
+loadPrefs();
+buildBoard();
+buildPad();
+game = loadGame();
+if (game && !game.done) {
+  setMessage('Welcome back. Your ' + LEVEL_INFO[game.level].name.toLowerCase() + ' puzzle is right where you left it.');
+} else if (game) {
+  setMessage('Solved. Start a new puzzle whenever you like.');
+}
+render();
+if (!game || game.done) openPicker();
+setInterval(tick, 250);
+</script>
+</body>
+</html>
