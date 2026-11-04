@@ -497,7 +497,9 @@
       or take a Mysterious Stranger — a wild role card) or <b>LEAD</b> a role by playing a card.
       Everyone else may <b>follow</b> (play a matching card) or research. Everyone
       who joined performs the action — once themselves, plus once per matching
-      <b>dweller</b>. Played cards land in the shared <b>wasteland</b>.</p>
+      <b>dweller</b>. Even players who <b>researched</b> instead of following still
+      run their dwellers for the led role (they just get no action of their own).
+      Played cards land in the shared <b>wasteland</b>.</p>
       <p><b>Mysterious Strangers</b> are wild role cards. Matching cards can
       stand in for one too: with the <b>Standard</b> deck any <b>2</b> cards of
       the same role; with the <b>Experimental</b> deck <b>3</b> of a kind — or
@@ -632,7 +634,7 @@ const BUILDINGS = [
   { n: 'Supercomputer Terminal',           m: 'tech',                     fx: 'school',     t: 'Upon Completion: Execute RESEARCH for each Population' },
   { n: 'Supply Closet',                    m: 'rations',  q: 6,           fx: 'market',     t: 'Passive: Max OVERSEER\'S SAFE size +2' },
   { n: 'Technical Library',                m: 'tech',                     fx: 'shrine',     t: 'Passive: Max HAND size +2' },
-  { n: 'Turbo-Fluid Grid',                 m: 'chems',                    fx: 'maximus',    t: 'Passive: Each matching DWELLER performs its action twice' },
+  { n: 'Turbo-Fluid Grid',                 m: 'chems',                    fx: 'maximus',    t: 'When leading or following: each matching DWELLER performs its action twice' },
   { n: 'VATS Training Lab',                m: 'hightech',                 fx: 'ludus',      t: 'Passive: TRADER dwellers count as any role' },
   { n: 'Vault Mascot Monument',            m: 'hightech',                 fx: 'statue',     t: 'Endgame: +3 Caps. Passive: May build this blueprint on any SITE' },
   { n: 'Vault-Tec Regional Headquarters',  m: 'hightech',                 fx: 'romanum',    t: 'Instant Win Condition: Win if you have at least 1 DWELLER of each role and at least 1 MATERIAL of each type in your STOCKPILE' },
@@ -1683,6 +1685,7 @@ async function playTurn(gen) {
   recPush('turn', { leader: leader.name, role });
   log(leader.name + ' leads ' + role + '.');
   const participants = [leader];
+  const actors = [leader]; // every seat runs its Clients of the led role, even the ones that researched
   render();
 
   for (let k = 1; k < players.length; k++) {
@@ -1748,27 +1751,33 @@ async function playTurn(gen) {
       await doResearch(q);
       if (gen !== epoch) return;
     }
+    actors.push(q);
     render();
   }
 
-  // perform: each participant acts once + once per matching dweller + palace extra actions
-  for (const p of participants) {
+  // perform: every seat in turn order runs its Clients of the led role.
+  // Leaders/followers also get the base action (plus ZAX extras); players who
+  // researched get no base action and no Maximus/Triclinium — only their dwellers act.
+  for (const p of actors) {
     if (gameOver) break;
+    const followed = participants.includes(p);
     const dwellersBefore = [...p.dwellers]; // snapshot before acting: same-turn hires only act via Bath
-    await performRole(p, role, false);
-    if (gen !== epoch) return;
+    if (followed) {
+      await performRole(p, role, false);
+      if (gen !== epoch) return;
+    }
     for (const c of dwellersBefore) {
       if (gameOver) break;
       if (MAT_ROLE[c.m] === role || (role === 'SCAVENGER' && has(p, 'storeroom')) || (MAT_ROLE[c.m] === 'TRADER' && has(p, 'ludus'))) {
         log(p.name + "'s " + role + ' dweller acts.');
         await performRole(p, role, false);
         if (gen !== epoch) return;
-        if (has(p, 'maximus')) {
+        if (followed && has(p, 'maximus')) {
           log(p.name + "'s " + role + ' dweller acts again (Turbo-Fluid Grid).');
           await performRole(p, role, false);
           if (gen !== epoch) return;
         }
-        if (has(p, 'triclinium')) {
+        if (followed && has(p, 'triclinium')) {
           const freezeOpts = [
             { id: 'freeze', label: 'Freeze ' + MAT_ROLE[c.m] + ' dweller to safe (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 },
             { id: 'skip', label: 'Keep dweller', score: 0 },
@@ -1783,6 +1792,7 @@ async function playTurn(gen) {
         }
       }
     }
+    if (!followed) continue;
     const palaceN = p.palaceActs || 0;
     delete p.palaceActs;
     for (let i = 0; i < palaceN; i++) {
