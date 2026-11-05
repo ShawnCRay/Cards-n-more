@@ -29,8 +29,12 @@ Statue, Temple, and the Dweller Testing Chamber — complete it with a dweller
 of every role and you win instantly.
 
 Game ends when the deck or the sites run out; population + safe decides it.
+The **Overseer's Audit** then pays out merchant bonuses: for each of the six
+materials, whoever holds the most of it in their Overseer's Safe scores +3
+Caps. Ties and second place pay nothing.
+
 Simplifications vs the tabletop original: trimmed building list, no
-out-of-town sites, no petitions, no trader majority bonus.
+out-of-town sites, no petitions.
 
 ## Multiplayer
 

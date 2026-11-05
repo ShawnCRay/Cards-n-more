@@ -526,8 +526,12 @@
       <p><b>Game end:</b> the deck runs dry or the building sites do; highest
       population + safe wins. Complete the <b>Dweller Testing Chamber</b> 
       with a dweller of every role and you win on the spot.</p>
+      <p><b>Overseer's Audit:</b> at game end, compare the materials sitting in
+      every player's <b>Overseer's Safe</b>. Whoever holds the most of a given
+      material — out and out, no ties, no second place — scores <b>+3 Caps</b>
+      for it. Up to <b>+18</b> across all six materials.</p>
       <p>Simplifications vs the tabletop original: a trimmed building list, no
-       wasteland sites, no petitions, and no trader majority bonus. Cass and
+       wasteland sites, and no petitions. Cass and
       Boone play a solid economic game — watch your hand when they lead the
       raiders. Good luck out there, dweller.</p>
     </div>
@@ -713,11 +717,42 @@ function strangerNeed(p) {
   return deckType === 'experimental' ? 3 : 2;
 }
 function roleOf(card) { return card.stranger ? 'STRANGER' : MAT_ROLE[card.m]; }
+function safeCount(p, m) { return p.safe.reduce((a, c) => a + (c.m === m ? 1 : 0), 0); }
+/* Overseer's Audit — endgame majority on the Overseer's Safe:
+   3 Caps per material only this player holds the most of. Ties pay nothing. */
+function auditBonus(p) {
+  let pts = 0;
+  const mats = [];
+  for (const m of MATS) {
+    const mine = safeCount(p, m);
+    if (!mine) continue;
+    let top = 0, tied = false;
+    for (const q of players) {
+      const n = safeCount(q, m);
+      if (n > top) { top = n; tied = false; }
+      else if (n === top) tied = true;
+    }
+    if (mine === top && !tied) { pts += 3; mats.push(m); }
+  }
+  return { pts, mats };
+}
+/* how much a CPU should want material m in its safe for the Overseer's Audit */
+function auditSeekScore(p, m) {
+  let top = 0;
+  for (const q of players) if (q !== p) top = Math.max(top, safeCount(q, m));
+  const mine = safeCount(p, m);
+  if (mine > top) return 2;          // already ahead; no bonus for piling on
+  return 3 + (top - mine);           // catching up / taking the lead pays
+}
 function score(p) {
   let s = effectivePopulation(p) + p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0);
   for (const b of p.buildings) if (b.done && BLD[b.n].fx === 'statue') s += 3;
   if (has(p, 'wall')) s += Math.floor(p.stockpile.length / 2);
-  return s;
+  return s + auditBonus(p).pts;
+}
+function scoreLabel(p) {
+  const a = auditBonus(p);
+  return p.name + ' ' + score(p) + (a.pts ? ' (audit +' + a.pts + ')' : '');
 }
 function cardLabel(c) {
   return c.stranger ? 'Mysterious Stranger (any role)' : c.n + ' [' + c.m + '/' + MAT_ROLE[c.m] + ']';
@@ -1538,7 +1573,7 @@ async function actRAIDER(p) {
 
 async function actTRADER(p) {
   if (p.safe.length >= safeLimit(p)) return;
-  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Safe ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 }));
+  const opts = p.stockpile.map((c, i) => ({ id: 'stock:' + i, label: 'Safe ' + c.m + ' (' + MAT_VAL[c.m] + ' pts)', score: MAT_VAL[c.m] * 3 + auditSeekScore(p, c.m) }));
   if (has(p, 'atrium') && deck.length) opts.push({ id: 'deck:0', label: 'Safe blind off the deck', score: 4 });
   if (has(p, 'basilica')) {
     p.hand.forEach((c, i) => {
@@ -1906,14 +1941,17 @@ async function playMatch() {
     winner: sharedWin || (players[lastWinnerIdx] ? players[lastWinnerIdx].name : null),
     shared: sharedWin || null,
     players: players.map(p => ({
-      name: p.name, score: score(p),
+      name: p.name, score: score(p), audit: auditBonus(p).pts,
       safe: p.safe.reduce((a, c) => a + MAT_VAL[c.m], 0),
       buildings: p.buildings.map(b => ({ n: b.n, done: !!b.done })),
     })),
   });
   const winP = players[lastWinnerIdx];
-  const scores = players.map(p => p.name + ' ' + score(p)).join(' · ');
+  const scores = players.map(scoreLabel).join(' · ');
+  const audits = players.filter(p => auditBonus(p).pts > 0)
+    .map(p => p.name + ' takes ' + auditBonus(p).mats.join(', '));
   log('Final: ' + scores);
+  if (audits.length) log('Overseer\'s Audit: ' + audits.join(' · '));
   setMessage(sharedWin
     ? '★ Shared win — ' + sharedWin + ' hold the city. ' + scores
     : winP === me && net.mode === 'solo'
