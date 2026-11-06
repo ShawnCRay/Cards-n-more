@@ -467,8 +467,11 @@
     T(fit(run.gold || 0, 32), 214, 3, '#f8b800');
     var time = run.floorTime || 0, par = fd.par, over = par && time > par;
     var ts = DCW.U && DCW.U.fmtTime ? DCW.U.fmtTime(time) : String(Math.floor(time));
-    T(ts, 318, 2, over ? '#f83800' : par ? '#58d854' : '#fcfcfc', { align: 'right' });
-    if (par) { T('PAR', 316 - tw(ts) - 4, 2, '#7c7c7c', { align: 'right', shadow: null }); DCW.bar(318 - tw(ts), 11, tw(ts), 1, clamp(time / par, 0, 1), over ? '#f83800' : '#58d854', '#202020'); }
+    var ps = par ? '/' + (DCW.U && DCW.U.fmtTime ? DCW.U.fmtTime(par) : par) : '';
+    if (ps) T(ps, 318, 3, '#7c7c7c', { align: 'right' });
+    var tx = 318 - (ps ? tw(ps) + 1 : 0);
+    T(ts, tx, 2, over ? '#f83800' : par ? '#58d854' : '#fcfcfc', { align: 'right' });
+    if (par) DCW.bar(tx - tw(ts), 11, tw(ts), 1, clamp(time / par, 0, 1), over ? '#f83800' : '#58d854', '#202020');
   }
   function drawBottom(ctx) {
     if (DCW.ui && DCW.ui.blocking && DCW.ui.blocking()) return;

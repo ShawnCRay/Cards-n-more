@@ -1678,7 +1678,7 @@
         var k = clamp((t - 0.35) / 0.3, 0, 1);
         T('FLOOR', 160 - Math.round((1 - k) * 200), 18, C.white, { align: 'center', scale: 2 });
         var popS = t < 0.9 ? 5 : 4;
-        if (t > 0.6) T(String(this.n), 160, popS === 5 ? 32 : 36, C.gold, { align: 'center', scale: popS, shadow: '#a81000' });
+        if (t > 0.6) T(String(this.n), 160, popS === 5 ? 32 : 36, C.gold, { align: 'center', scale: popS });
       }
       if (t > 1.0) {
         var nm = String(fd.name || '').toUpperCase(), big = tw(nm, 2) <= 300;
