@@ -63,9 +63,11 @@ const path = require('path');
     A.music('boss'); await wait(100); out.switched = A.debugState();
     for (let i = 0; i < 40; i++) A.sfx(A.sfxNames[i % A.sfxNames.length]);
     out.voicesAfterSpam = A.debugState().voices;
-    for (let i = 0; i < 10; i++) A.sfx('coin'); out.coinRateLimited = A.debugState().voices;
+    await wait(1500); out.voicesDrained = A.debugState().voices;
+    for (let i = 0; i < 10; i++) A.sfx('coin'); out.coinBurstVoices = A.debugState().voices; // rate limit -> 1
     DCW.save.settings.music = 0.2; A.setVolumes();
     A.music('results'); await wait(4500); out.oneShot = A.debugState();
+    A.music('results'); out.oneShotReplay = A.debugState();
     A.suspend(); await wait(100); out.suspended = A.debugState().state;
     A.resume(); await wait(100); out.resumed = A.debugState().state;
     A.music(null); await wait(500); out.stopped = A.debugState();

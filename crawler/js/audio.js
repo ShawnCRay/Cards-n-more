@@ -410,7 +410,7 @@
     function bn(n) { return R(n + '2 . ' + n + '3 . ' + n + '2 ' + n + '2 ' + n + '3 .', 2); }
     var g = 'k . h . s . h k . k h . s . h .';
     SONGS.floor1 = {
-      bpm: 132, inst: { p1: I('pluck', { echo: { steps: 3, v: 0.3 } }), p2: 'stab', tr: 'bassS' },
+      bpm: 132, inst: { p1: I('pluck', { v: 0.17, echo: { steps: 3, v: 0.3 } }), p2: 'stab', tr: 'bassS' },
       parts: {
         A: {
           p1: 'A4 . C5 . E5 . D5 C5 B4 . C5 . A4:4 | .:2 A4 . B4 . C5 . D5 . E5:2 C5:4 | F5 . E5 . D5 . C5 . A4:2 C5:2 F5:4 | G5 . F5 . E5 . D5 . B4:4 G4:4 | ' +
@@ -497,7 +497,7 @@
     var chB = [Gm, Dm, Gm, Dm, Am, Am, Am, Am], bsB = ['G1', 'D2', 'G1', 'D2', 'A1', 'A1', 'A1', 'A1'];
     var trA = B.apply(null, bsA.map(bw)), trB = B.apply(null, bsB.map(bw));
     SONGS.floor3 = {
-      bpm: 168, spb: 2, bar: 6, inst: { p1: I('thin', { vib: 28, vibD: 0.08, vibR: 7 }), p2: 'stab', tr: 'bassS' },
+      bpm: 168, spb: 2, bar: 6, inst: { p1: I('thin', { w: 'p25', v: 0.17, vib: 28, vibD: 0.08, vibR: 7 }), p2: I('stab', { v: 0.11 }), tr: 'bassS' },
       parts: {
         A: { p1: mel, p2: B.apply(null, chA.map(wz)), tr: trA, nz: 'k:2 h:2 h:2' },
         A2: { p1: mel, p2: '@pluck ' + T(mel, -12), tr: trA, nz: 'k:2 h:2 h:2 | k:2 h:2 s?:2' },
@@ -975,7 +975,7 @@
 
   /* ================================================================== SFX */
   var SFX = {
-    jump: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 300 * p, f2: 760 * p, ft: 0.1, dur: 0.15, v: 0.2, sus: 0.3 }); },
+    jump: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 300 * p, f2: 760 * p, ft: 0.1, dur: 0.15, v: 0.3, sus: 0.3 }); },
     land: function (e, o, t, p) { noise(e, o, t, { hz: 3500 * p, dur: 0.05, v: 0.14 }); return tone(e, o, t, { w: 'tri', f: 140 * p, f2: 60, dur: 0.06, v: 0.3 }); },
     punch: function (e, o, t, p) {
       noise(e, o, t, { hz: 9000 * p, hz2: 1800, dur: 0.08, v: 0.34 });
@@ -988,8 +988,8 @@
       return tone(e, o, t, { w: 'tri', f: 170 * p, f2: 40, dur: 0.15, v: 0.55 });
     },
     hit: function (e, o, t, p) {
-      noise(e, o, t, { hz: 30000 * p, hz2: 7000, dur: 0.07, v: 0.28 });
-      return tone(e, o, t, { w: 'p12', f: 950 * p, f2: 240, dur: 0.08, v: 0.17 });
+      noise(e, o, t, { hz: 30000 * p, hz2: 7000, dur: 0.07, v: 0.4 });
+      return tone(e, o, t, { w: 'p12', f: 950 * p, f2: 240, dur: 0.08, v: 0.22 });
     },
     crit: function (e, o, t, p) {
       noise(e, o, t, { hz: 44000, hz2: 15000, dur: 0.1, v: 0.3 });
@@ -1007,13 +1007,13 @@
       return tone(e, o, t, { w: 'p50', f: 560 * p, f2: 150 * p, dur: 0.3, v: 0.22, vib: 140, vibR: 28, sus: 0.3 });
     },
     coin: function (e, o, t, p) {
-      tone(e, o, t, { w: 'p25', f: 988 * p, dur: 0.07, v: 0.16, sus: 0.95 });
-      return tone(e, o, t + 0.07, { w: 'p25', f: 1319 * p, dur: 0.38, v: 0.16, sus: 0.25 });
+      tone(e, o, t, { w: 'p25', f: 988 * p, dur: 0.07, v: 0.26, sus: 0.95 });
+      return tone(e, o, t + 0.07, { w: 'p25', f: 1319 * p, dur: 0.38, v: 0.26, sus: 0.25 });
     },
-    pickup: function (e, o, t, p) { return run(e, o, t, 'p25', [1047 * p, 1319 * p, 1568 * p, 2093 * p], 0.04, 0.15, { tail: 0.08 }); },
+    pickup: function (e, o, t, p) { return run(e, o, t, 'p25', [1047 * p, 1319 * p, 1568 * p, 2093 * p], 0.04, 0.24, { tail: 0.08 }); },
     bomb_throw: function (e, o, t, p) {
       noise(e, o, t, { hz: 3000, hz2: 14000, dur: 0.17, v: 0.1, a: 0.04 });
-      return tone(e, o, t, { w: 'p12', f: 280 * p, f2: 950 * p, dur: 0.17, v: 0.12 });
+      return tone(e, o, t, { w: 'p12', f: 280 * p, f2: 950 * p, dur: 0.17, v: 0.18 });
     },
     explosion: function (e, o, t, p) {
       noise(e, o, t, { hz: 30000, hz2: 9000, dur: 0.12, v: 0.3 });
@@ -1023,8 +1023,8 @@
       return t + 1.1;
     },
     missile: function (e, o, t, p) {
-      tone(e, o, t, { w: 'p12', f: 2600 * p, f2: 520 * p, dur: 0.15, v: 0.13 });
-      run(e, o, t + 0.01, 'p25', [3200 * p, 2300 * p, 3600 * p, 2600 * p, 4100 * p, 3000 * p], 0.022, 0.06, { tail: 0.04 });
+      tone(e, o, t, { w: 'p12', f: 2600 * p, f2: 520 * p, dur: 0.15, v: 0.2 });
+      run(e, o, t + 0.01, 'p25', [3200 * p, 2300 * p, 3600 * p, 2600 * p, 4100 * p, 3000 * p], 0.022, 0.09, { tail: 0.04 });
       return noise(e, o, t, { hz: 26000, dur: 0.07, v: 0.08, short: true });
     },
     bite: function (e, o, t, p) {
@@ -1035,16 +1035,16 @@
     shield: function (e, o, t, p) {
       noise(e, o, t, { hz: 18000, dur: 0.08, v: 0.08, short: true });
       tone(e, o, t, { w: 'p12', f: 990 * p, dur: 0.36, v: 0.09, vib: 60, vibR: 18, sus: 0.4 });
-      return tone(e, o, t, { w: 'p25', f: 660 * p, dur: 0.36, v: 0.15, vib: 50, vibR: 18, sus: 0.4 });
+      return tone(e, o, t, { w: 'p25', f: 660 * p, dur: 0.36, v: 0.2, vib: 50, vibR: 18, sus: 0.4 });
     },
-    menu_move: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 1200 * p, dur: 0.035, v: 0.1, sus: 0.6 }); },
+    menu_move: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 1200 * p, dur: 0.035, v: 0.15, sus: 0.6 }); },
     menu_select: function (e, o, t, p) {
-      tone(e, o, t, { w: 'p25', f: 880 * p, dur: 0.05, v: 0.13, sus: 0.85 });
-      return tone(e, o, t + 0.05, { w: 'p25', f: 1320 * p, dur: 0.12, v: 0.13, sus: 0.4 });
+      tone(e, o, t, { w: 'p25', f: 880 * p, dur: 0.05, v: 0.19, sus: 0.85 });
+      return tone(e, o, t + 0.05, { w: 'p25', f: 1320 * p, dur: 0.12, v: 0.19, sus: 0.4 });
     },
     menu_back: function (e, o, t, p) {
-      tone(e, o, t, { w: 'p25', f: 880 * p, dur: 0.05, v: 0.12, sus: 0.85 });
-      return tone(e, o, t + 0.05, { w: 'p25', f: 587 * p, dur: 0.11, v: 0.12, sus: 0.4 });
+      tone(e, o, t, { w: 'p25', f: 880 * p, dur: 0.05, v: 0.18, sus: 0.85 });
+      return tone(e, o, t + 0.05, { w: 'p25', f: 587 * p, dur: 0.11, v: 0.18, sus: 0.4 });
     },
     lootbox_shake: function (e, o, t, p) {
       var end = t;
@@ -1103,7 +1103,7 @@
     },
     achievement: function (e, o, t, p) {
       function ding(tt, f) {
-        tone(e, o, tt, { w: 'p12', f: f, dur: 0.6, v: 0.15, a: 0.001 });
+        tone(e, o, tt, { w: 'p12', f: f, dur: 0.6, v: 0.22, a: 0.001 });
         tone(e, o, tt, { w: 'p25', f: f * 2, dur: 0.25, v: 0.06, a: 0.001 });
         tone(e, o, tt, { w: 'tri', f: f / 2, dur: 0.2, v: 0.2 });
       }
@@ -1127,19 +1127,19 @@
     },
     heal: function (e, o, t, p) {
       var sc = ['C5', 'E5', 'G5', 'C6', 'E6', 'G6'].map(function (n) { return nf(n) * p; });
-      run(e, o, t, 'p12', sc, 0.05, 0.13, { tail: 0.12, vib: 25, vibR: 10 });
-      return run(e, o, t + 0.08, 'p12', sc, 0.05, 0.055, { tail: 0.15 });
+      run(e, o, t, 'p12', sc, 0.05, 0.2, { tail: 0.12, vib: 25, vibR: 10 });
+      return run(e, o, t + 0.08, 'p12', sc, 0.05, 0.08, { tail: 0.15 });
     },
     block: function (e, o, t, p) {
-      noise(e, o, t, { hz: 26000, dur: 0.12, v: 0.2, short: true });
-      tone(e, o, t, { w: 'p12', f: 2200 * p, dur: 0.16, v: 0.11 });
+      noise(e, o, t, { hz: 26000, dur: 0.12, v: 0.3, short: true });
+      tone(e, o, t, { w: 'p12', f: 2200 * p, dur: 0.16, v: 0.16 });
       return tone(e, o, t, { w: 'p25', f: 1650 * p, dur: 0.11, v: 0.1 });
     },
     buy: function (e, o, t, p) {
-      tone(e, o, t, { w: 'p25', f: 1319 * p, dur: 0.05, v: 0.13, sus: 0.9 });
-      tone(e, o, t + 0.05, { w: 'p25', f: 1760 * p, dur: 0.05, v: 0.13, sus: 0.9 });
+      tone(e, o, t, { w: 'p25', f: 1319 * p, dur: 0.05, v: 0.2, sus: 0.9 });
+      tone(e, o, t + 0.05, { w: 'p25', f: 1760 * p, dur: 0.05, v: 0.2, sus: 0.9 });
       noise(e, o, t + 0.1, { hz: 22000, dur: 0.06, v: 0.14, short: true });
-      return tone(e, o, t + 0.1, { w: 'p25', f: 2637 * p, dur: 0.3, v: 0.13, sus: 0.2 });
+      return tone(e, o, t + 0.1, { w: 'p25', f: 2637 * p, dur: 0.3, v: 0.2, sus: 0.2 });
     },
     error: function (e, o, t, p) {
       tone(e, o, t, { w: 'p50', f: 155 * p, dur: 0.1, v: 0.17, sus: 0.9 });
@@ -1147,11 +1147,11 @@
       tone(e, o, t + 0.13, { w: 'p50', f: 155 * p, dur: 0.15, v: 0.17, sus: 0.9 });
       return tone(e, o, t + 0.13, { w: 'p25', f: 147 * p, dur: 0.15, v: 0.1, sus: 0.9 });
     },
-    text_blip: function (e, o, t, p) { return tone(e, o, t, { w: 'p12', f: (640 + Math.random() * 70) * p, dur: 0.022, v: 0.045, sus: 0.5 }); },
-    pause: function (e, o, t, p) { return run(e, o, t, 'p25', [1319 * p, 1047 * p, 1319 * p, 1047 * p], 0.055, 0.12, { tail: 0.08 }); },
+    text_blip: function (e, o, t, p) { return tone(e, o, t, { w: 'p12', f: (640 + Math.random() * 70) * p, dur: 0.022, v: 0.06, sus: 0.5 }); },
+    pause: function (e, o, t, p) { return run(e, o, t, 'p25', [1319 * p, 1047 * p, 1319 * p, 1047 * p], 0.055, 0.18, { tail: 0.08 }); },
     checkpoint: function (e, o, t, p) {
       tone(e, o, t, { w: 'tri', f: nf('G4') * p, dur: 0.25, v: 0.3, sus: 0.5 });
-      return run(e, o, t, 'p25', [nf('G5') * p, nf('D6') * p, nf('G6') * p], 0.06, 0.14, { tail: 0.22 });
+      return run(e, o, t, 'p25', [nf('G5') * p, nf('D6') * p, nf('G6') * p], 0.06, 0.2, { tail: 0.22 });
     },
     crate_break: function (e, o, t, p) {
       noise(e, o, t, { hz: 11000 * p, hz2: 2500, dur: 0.2, v: 0.34 });
@@ -1160,14 +1160,14 @@
     },
     spawn: function (e, o, t, p) {
       tone(e, o, t + 0.05, { w: 'p25', f: 300 * p, f2: 1200 * p, dur: 0.25, v: 0.06 });
-      return tone(e, o, t, { w: 'p12', f: 200 * p, f2: 900 * p, dur: 0.32, v: 0.12, vib: 90, vibR: 20, sus: 0.4 });
+      return tone(e, o, t, { w: 'p12', f: 200 * p, f2: 900 * p, dur: 0.32, v: 0.18, vib: 90, vibR: 20, sus: 0.4 });
     },
     laser: function (e, o, t, p) {
-      for (var i = 0; i < 3; i++) tone(e, o, t + i * 0.09, { w: 'p12', f: 2800 * p, f2: 700 * p, dur: 0.09, v: 0.13, sus: 0.5 });
+      for (var i = 0; i < 3; i++) tone(e, o, t + i * 0.09, { w: 'p12', f: 2800 * p, f2: 700 * p, dur: 0.09, v: 0.19, sus: 0.5 });
       return tone(e, o, t, { w: 'p25', f: 1400 * p, f2: 350 * p, dur: 0.3, v: 0.06, sus: 0.6 });
     },
     warn: function (e, o, t, p) {
-      for (var i = 0; i < 4; i++) tone(e, o, t + i * 0.1, { w: 'p50', f: (i % 2 ? 660 : 880) * p, dur: 0.095, v: 0.15, sus: 0.9 });
+      for (var i = 0; i < 4; i++) tone(e, o, t + i * 0.1, { w: 'p50', f: (i % 2 ? 660 : 880) * p, dur: 0.095, v: 0.2, sus: 0.9 });
       return t + 0.4;
     },
     stomp: function (e, o, t, p) {
@@ -1276,7 +1276,10 @@
     try {
       if (name === undefined || name === '') name = null;
       if (name !== null && !SONGS[name]) { warnOnce('m:' + name, 'unknown music track: ' + name); return; }
-      if (name === A.current) { if (name && unlocked && E && !cur) startTrack(name); return; }
+      if (name === A.current) { // same track: never restart a loop; a finished one-shot may replay
+        if (name && unlocked && E && (!cur || (cur.done && !cur.song.loop && ctx.currentTime > cur.t0 + cur.song.totalSec + 0.3))) { stopCur(0.05); startTrack(name); }
+        return;
+      }
       A.current = name;
       if (!E || !unlocked) return; // remembered; starts on unlock
       stopCur(0.3);
@@ -1290,7 +1293,7 @@
     try {
       var fn = SFX[name];
       if (!fn) { warnOnce('s:' + name, 'unknown sfx: ' + name); return; }
-      if (ctx.state !== 'running') return;
+      if (ctx.state === 'closed' || document.hidden) return; // a just-unlocked ctx may still be resuming: let it queue
       var now = ctx.currentTime, lim = name === 'text_blip' ? 0.035 : 0.03;
       if (lastPlay[name] != null && now - lastPlay[name] < lim && now >= lastPlay[name]) return;
       lastPlay[name] = now;
