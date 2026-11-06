@@ -23,6 +23,7 @@ ads. Open the file in a browser to play.
 |---|---|---|
 | Holotape Library | [`audiobook/`](audiobook/) | Text-to-speech audiobook reader — load any book as plain text, dialogue is traced to its characters and each gets its own voice, pitch and pace. Chapter navigation, sleep timer, adjustable speed, remembers your spot. Optional premium narration through an OpenAI API key: natural voices with per-character acting directions, generated once and cached on-device, with lock-screen controls and screen-off playback. Solo only; not part of the game room. |
 | Sudoku | [`sudoku/`](sudoku/) | Classic 9×9 in four levels (Easy to Expert), graded by the solving techniques each puzzle actually needs. Hints explain the next logical move on the board, one step at a time, instead of just filling a square. Notes, undo, pause, best times, and your puzzle saves as you go. Any grid that follows the rules counts as solved. Solo only. |
+| Dungeon Crawler World | [`crawler/`](crawler/) | Fan-made 8-bit side-scrolling brawler on Dungeon Crawler World, Earth edition. Nine floors following the in-universe floors, TMNT-style overworld maps from Floor 3, bosses, loot boxes that unlock skins and companions, achievements with a rude System AI. Keyboard, gamepad or touch. Solo only. |
 
 ## The game room
 
