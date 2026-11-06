@@ -83,6 +83,7 @@
     var r = G.run;
     if (!r) { G.newRun(); return; }
     if (r.won) { go(S().ending || fallbackScene('YOU WON'), {}); return; }
+    if (r.hp <= 0) { go(S().death || fallbackScene('YOU HAVE DIED', function () { G.revive() || G.endRun(); }), { result: r.lastDeath || {} }); return; }
     if (r.inSafe) { G.enterSafeRoom(); return; }
     G.resumeFloor();
   };
