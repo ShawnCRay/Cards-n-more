@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>stage.js test harness</title>
+<style>
+  html, body { margin: 0; background: #000; }
+  #wrap { width: 960px; height: 540px; }
+  #screen { width: 100%; height: 100%; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<script src="../js/engine.js"></script>
+<script src="stage_fixtures.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script src="../js/stage.js"></script>
+<script>
+  // ?manual: disable the real-time loop so tests drive frames with DCW.stepFrames
+  if (/manual/.test(location.search)) window.requestAnimationFrame = function () {};
+  DCW.boot();
+</script>
+</body>
+</html>

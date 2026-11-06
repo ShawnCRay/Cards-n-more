@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCW art gallery</title>
+<style>
+  body { background: #111; color: #ccc; font: 12px monospace; margin: 8px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; margin: 0 0 8px 0; }
+  .sec { margin-bottom: 16px; }
+  h2 { font-size: 13px; margin: 6px 0; color: #fc8; }
+  #wrap { position: absolute; left: -2000px; top: 0; width: 320px; height: 180px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="out"></div>
+<script src="../js/engine.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script>
+/* Art gallery: every tile set, background, overworld theme, fx/pickup/icon and
+   every actor def. Params: ?scale=3 &t=1.5 (time) &cam=200 (camX) &only=themes|tiles|ow|sprites|actors|icons */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var SCALE = +(qs.get('scale') || 3), ONLY = qs.get('only'), CAM = +(qs.get('cam') || 140);
+  DCW.boot();
+  if (qs.has('t')) DCW.t = +qs.get('t');
+  var A = DCW.art, out = document.getElementById('out');
+  var report = window.ART_REPORT = { errors: [] };
+
+  function section(id, title, w, h, scale) {
+    var d = document.createElement('div'); d.className = 'sec'; d.id = 'sec_' + id;
+    var hh = document.createElement('h2'); hh.textContent = title; d.appendChild(hh);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = (w * (scale || SCALE)) + 'px'; c.style.height = (h * (scale || SCALE)) + 'px';
+    d.appendChild(c); out.appendChild(d);
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    return g;
+  }
+  function label(g, s, x, y, col, o) { var old = DCW.ctx; DCW.ctx = g; try { DCW.text(s, x, y, col || '#fff', o || {}); } finally { DCW.ctx = old; } }
+  function want(k) { return !ONLY || ONLY === k; }
+
+  var LEVEL = [
+    '.......................',
+    '.......................',
+    '.......................',
+    '..............====.....',
+    '..XXX..................',
+    '..XXX........H.........',
+    '.............H......b..',
+    '.....===.....H...######',
+    '.............H...######',
+    '####.......#####...####',
+    '####~~~~####^^^#########',
+    '####~~~~################'
+  ];
+  var SOLID = { '#': 1, 'X': 1, 'b': 0 };
+  function cell(m, x, y) { return (m[y] && m[y].charAt(x)) || ''; }
+  function drawLevel(g, theme, camX) {
+    var t = DCW.t;
+    for (var y = 0; y < LEVEL.length; y++) for (var x = 0; x < LEVEL[y].length; x++) {
+      var ch = cell(LEVEL, x, y);
+      if (ch === '.' || ch === '') continue;
+      var info;
+      if (ch === '#' || ch === 'X') info = { up: !!SOLID[cell(LEVEL, x, y - 1)], down: !!SOLID[cell(LEVEL, x, y + 1)] || y === LEVEL.length - 1, left: !!SOLID[cell(LEVEL, x - 1, y)] || x === 0, right: !!SOLID[cell(LEVEL, x + 1, y)], tx: x, ty: y, t: t };
+      else info = { up: cell(LEVEL, x, y - 1) === ch, down: cell(LEVEL, x, y + 1) === ch, left: cell(LEVEL, x - 1, y) === ch, right: cell(LEVEL, x + 1, y) === ch, tx: x, ty: y, t: t };
+      A.tile(g, theme, ch, x * 16 - camX, y * 16, info);
+    }
+  }
+  function spr(g, name, x, y, o) { A.sprite(g, name, x, y, o); }
+
+  // ---------- 1. themes: background + mini level + a few sprites ----------
+  if (want('themes')) {
+    (A.themes || []).forEach(function (theme) {
+      var g = section('theme_' + theme, 'THEME ' + theme, 320, 180);
+      try {
+        A.background(g, theme, CAM, 0);
+        drawLevel(g, theme, 8);
+        var f = Math.floor(DCW.t * 8);
+        spr(g, 'carl_idle', 40, 144, { frame: f });
+        spr(g, 'donut_idle', 22, 144, { frame: f });
+        spr(g, 'coin', 120, 120, { frame: f }); spr(g, 'coin', 132, 120, { frame: f + 1 }); spr(g, 'coin', 144, 120, { frame: f + 2 });
+        spr(g, 'box_gold', 60, 64, { frame: f });
+        spr(g, 'checkpoint', 168, 144, { frame: f >> 1 });
+        spr(g, 'door', 300, 112);
+        spr(g, 'rat_walk', 230, 112, { frame: f >> 1, flip: true });
+        spr(g, 'snack', 92, 112);
+        spr(g, 'potion', 104, 112);
+        spr(g, 'missile', 70, 132, { frame: f });
+        label(g, theme.toUpperCase(), 4, 4, '#fff');
+      } catch (e) { report.errors.push(theme + ': ' + e.message); console.error(e); }
+    });
+  }
+
+  // ---------- 2. tile sheets: every char x every neighbour mask ----------
+  if (want('tiles')) {
+    var th = A.themes || [];
+    var g = section('tiles', 'TILE SHEETS (# all 16 masks | X 16 | = 4 | ^ ~ ~sub H b)', 20 * 18 + 70, th.length * 40 + 4, 2);
+    g.fillStyle = '#203040'; g.fillRect(0, 0, 9999, 9999);
+    th.forEach(function (theme, i) {
+      var y = 2 + i * 40;
+      label(g, theme.toUpperCase(), 2, y + 12, '#fc8');
+      var x = 62;
+      for (var m = 0; m < 16; m++) { A.tile(g, theme, '#', x + (m % 8) * 17, y + (m >> 3) * 17, { up: m & 1, down: m & 2, left: m & 4, right: m & 8, tx: m, ty: i }); }
+      x += 8 * 17 + 4;
+      for (m = 0; m < 16; m++) { A.tile(g, theme, 'X', x + (m % 8) * 17, y + (m >> 3) * 17, { up: m & 1, down: m & 2, left: m & 4, right: m & 8 }); }
+      x += 8 * 17 + 4;
+      A.tile(g, theme, '=', x, y, { right: true }); A.tile(g, theme, '=', x + 16, y, { left: true, right: true }); A.tile(g, theme, '=', x + 32, y, { left: true });
+      A.tile(g, theme, '=', x + 52, y, {});
+      A.tile(g, theme, '^', x, y + 17, {}); A.tile(g, theme, '~', x + 17, y + 17, { t: DCW.t }); A.tile(g, theme, '~', x + 33, y + 17, { t: DCW.t + 0.2 });
+      A.tile(g, theme, '~', x + 17, y + 33 - 16 + 16, { up: true });
+      A.tile(g, theme, 'H', x + 52, y + 17, {}); A.tile(g, theme, 'b', x + 70, y, {});
+    });
+  }
+
+  // ---------- 3. overworld themes ----------
+  var OWMAP = [
+    '####################',
+    '#....,,..===....TT.#',
+    '#.##.,,..=.~~~..T..#',
+    '#.##.....=.~~~.....#',
+    '#........=====.###.#',
+    '#.T.,,.......=.###.#',
+    '#.T.,,.###...=.###.#',
+    '#.......##...=.....#',
+    '#~~~....##...====..#',
+    '#~~~......T.....,,.#',
+    '####################'
+  ];
+  if (want('ow')) {
+    (A.owThemes || []).forEach(function (theme) {
+      var g = section('ow_' + theme, 'OVERWORLD ' + theme, 320, 176);
+      try {
+        for (var y = 0; y < OWMAP.length; y++) for (var x = 0; x < 20; x++) {
+          var ch = cell(OWMAP, x, y);
+          A.owTile(g, theme, ch, x * 16, y * 16, { up: cell(OWMAP, x, y - 1) === ch, down: cell(OWMAP, x, y + 1) === ch, left: cell(OWMAP, x - 1, y) === ch, right: cell(OWMAP, x + 1, y) === ch, tx: x, ty: y, t: DCW.t });
+        }
+        var mk = ['ow_door', 'ow_manhole', 'ow_tent', 'ow_cave', 'ow_safe', 'ow_boss', 'ow_boss_locked', 'ow_stairs', 'ow_stairs_locked', 'ow_flag'];
+        for (var i = 0; i < mk.length; i++) { A.owTile(g, theme, '.', 16 + i * 16 + 64, 160 - 16 * 3, {}); }
+        for (i = 0; i < mk.length; i++) spr(g, mk[i], 16 + i * 16 + 72, 160 - 16 * 2);
+        spr(g, 'carl_ow_down', 8 * 16 + 8, 7 * 16 + 16, { frame: Math.floor(DCW.t * 4) });
+        spr(g, 'clown_walk', 6 * 16 + 8, 3 * 16 + 16, { frame: Math.floor(DCW.t * 4) });
+        label(g, theme.toUpperCase(), 4, 166, '#fff');
+      } catch (e) { report.errors.push(theme + ': ' + e.message); console.error(e); }
+    });
+  }
+
+  // ---------- 4. sprite sheets ----------
+  function sheet(id, title, names, scale, bg) {
+    var W = 600, x = 4, y = 4, rowH = 0, cells = [];
+    names.forEach(function (n) {
+      var inf = A.info(n), fw = inf.w, fr = inf.frames;
+      var cw = Math.max(fr * (fw + 3), DCW.textWidth(n.toUpperCase())) + 6, ch = inf.h + 14;
+      if (x + cw > W) { x = 4; y += rowH + 4; rowH = 0; }
+      cells.push({ n: n, x: x, y: y, inf: inf, cw: cw });
+      x += cw; rowH = Math.max(rowH, ch);
+    });
+    var H = y + rowH + 6;
+    var g = section(id, title + ' (' + names.length + ')', W, H, scale);
+    g.fillStyle = bg || '#38405c'; g.fillRect(0, 0, W, H);
+    cells.forEach(function (c) {
+      label(g, c.n.toUpperCase(), c.x, c.y, '#fc8', { shadow: '#000' });
+      for (var f = 0; f < c.inf.frames; f++) {
+        try { A.sprite(g, c.n, c.x + f * (c.inf.w + 3) + (c.inf.w >> 1), c.y + 11 + c.inf.h, { frame: f }); }
+        catch (e) { report.errors.push(c.n + ': ' + e.message); }
+      }
+    });
+  }
+  var own = (A.ownNames || []).filter(function (n) { return n.indexOf('icon_') !== 0; });
+  if (want('sprites')) sheet('own', 'ART.JS SPRITES (fx / projectiles / pickups / objects / markers)', own, 2);
+  if (want('actors')) {
+    var all = A.names().filter(function (n) { return (A.ownNames || []).indexOf(n) < 0; }).sort();
+    var portraits = all.filter(function (n) { return /^p_/.test(n); }), rest = all.filter(function (n) { return !/^p_/.test(n); });
+    sheet('actors', 'ACTOR DEFS FROM ART_ACTORS.JS', rest, 2);
+    sheet('portraits', 'PORTRAITS', portraits, 2);
+    var skins = Object.keys(DCW.artSkins || {});
+    if (skins.length) {
+      var carl = all.filter(function (n) { return /^carl_/.test(n); });
+      var g = section('skins', 'SKINS x CARL SPRITES', 40 + carl.length * 26, 20 + (skins.length + 1) * 32, 2);
+      g.fillStyle = '#38405c'; g.fillRect(0, 0, 9999, 9999);
+      [null].concat(skins).forEach(function (s, i) {
+        label(g, (s || 'none').replace('carl_', '').toUpperCase().slice(0, 6), 2, 14 + i * 32, '#fc8');
+        carl.forEach(function (n, j) { A.sprite(g, n, 52 + j * 26, 34 + i * 32, { skin: s, frame: 0 }); });
+      });
+    }
+  }
+  if (want('icons')) {
+    var g = section('icons', 'ICONS + FLIP/FLASH/ALPHA/SCALE + PLACEHOLDERS + PORTRAIT FALLBACK', 320, 80, 3);
+    g.fillStyle = '#000'; g.fillRect(0, 0, 320, 80);
+    var ic = ['heart', 'heart_half', 'heart_empty', 'coin', 'bomb', 'potion', 'star', 'skull', 'box', 'key', 'sword', 'shield', 'boot', 'brain', 'eye'];
+    ic.forEach(function (n, i) { A.icon(g, n, 4 + i * 12, 4); });
+    ['bronze', 'silver', 'gold', 'platinum', 'legendary', 'fan', 'boss'].forEach(function (t, i) { g.fillStyle = A.boxColor(t); g.fillRect(4 + i * 12, 16, 10, 4); });
+    var demo = A.has('carl_idle') ? 'carl_idle' : 'box_gold';
+    A.sprite(g, demo, 20, 60); A.sprite(g, demo, 44, 60, { flip: true }); A.sprite(g, demo, 68, 60, { flash: true }); A.sprite(g, demo, 92, 60, { alpha: 0.5 }); A.sprite(g, demo, 124, 76, { scale: 2 });
+    try { A.sprite(g, 'definitely_not_a_sprite', 160, 60); A.sprite(g, 'nope', 180, 60, { flip: true, flash: true, frame: 7, skin: 'carl_kilt' }); report.placeholderOk = true; } catch (e) { report.placeholderOk = false; report.errors.push('placeholder threw ' + e.message); }
+    A.portrait(g, 'p_nobody', 200, 28); A.portrait(g, 'p_carl', 240, 28); A.portrait(g, 'p_ai', 280, 28);
+    report.info = { unknown: A.info('zzz'), coin: A.info('coin'), has: A.has('coin'), hasNot: A.has('zzz') };
+  }
+
+  // ---------- perf ----------
+  window.artPerf = function (iters) {
+    iters = iters || 120;
+    var c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    var g = c.getContext('2d', { alpha: false }); g.imageSmoothingEnabled = false;
+    var names = own.slice(0, 40);
+    if (A.has('carl_run')) names.push('carl_run', 'rat_walk', 'goblin_walk', 'donut_run');
+    var th = A.themes, res = {};
+    th.forEach(function (theme) {
+      // warm
+      A.background(g, theme, 0, 0); drawLevel(g, theme, 0);
+      var t0 = performance.now();
+      for (var it = 0; it < iters; it++) {
+        DCW.t += 1 / 60;
+        A.background(g, theme, it * 3, 4);
+        for (var y = 0; y < 12; y++) for (var x = 0; x < 20; x++) A.tile(g, theme, (x + y) % 5 ? '#' : (y & 1 ? 'X' : '~'), x * 16, y * 16, { up: y % 3 === 0, left: x & 1, right: true, tx: x, ty: y });
+        for (var i = 0; i < 400; i++) A.sprite(g, names[i % names.length], (i * 37) % 320, (i * 53) % 180, { frame: it + i, flip: i & 1, flash: (i % 17) === 0 });
+      }
+      res[theme] = +((performance.now() - t0) / iters).toFixed(3);
+    });
+    return res;
+  };
+})();
+</script>
+</body>
+</html>

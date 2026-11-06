@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DCW UI test</title>
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+  #wrap { position: relative; }
+  #screen { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  #touch { display: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="touch"></div>
+<script src="../js/engine.js"></script>
+<script src="ui_fixtures.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script src="../js/audio.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/overworld.js"></script>
+<script>DCW.boot();</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCW audio test</title>
+<style>
+  body { background: #111; color: #ddd; font: 13px monospace; margin: 16px; }
+  h2 { color: #fc0; font-size: 14px; margin: 16px 0 6px; }
+  button { background: #222; color: #eee; border: 1px solid #555; padding: 4px 8px; margin: 2px; font: inherit; cursor: pointer; }
+  button:hover { background: #333; }
+  button.on { background: #264; border-color: #6c8; }
+  #state { color: #8cf; margin-top: 8px; white-space: pre; }
+  label { margin-right: 16px; }
+</style>
+</head>
+<body>
+<div>DCW AUDIO TEST - click anything to unlock audio.</div>
+<div style="margin-top:8px">
+  <label>music <input id="mv" type="range" min="0" max="1" step="0.05" value="0.55"></label>
+  <label>sfx <input id="sv" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+  <label>pitch <input id="pv" type="range" min="0.5" max="2" step="0.05" value="1"></label>
+  <button id="stop">STOP MUSIC</button>
+  <button id="blips">TYPEWRITER x40</button>
+  <button id="spam">SPAM 30 SFX</button>
+</div>
+<h2>MUSIC</h2><div id="music"></div>
+<h2>SFX</h2><div id="sfx"></div>
+<div id="state"></div>
+<script src="../js/engine.js"></script>
+<script src="../js/audio.js"></script>
+<script>
+(function () {
+  if (!DCW.save && DCW.loadSave) DCW.loadSave();
+  DCW.save = DCW.save || { settings: { music: 0.55, sfx: 0.8 } };
+  DCW.audio.init();
+  var A = DCW.audio, mBox = document.getElementById('music'), sBox = document.getElementById('sfx');
+  function go() { A.unlock(); }
+  A.tracks.forEach(function (n) {
+    var b = document.createElement('button'); b.textContent = n; b.dataset.track = n;
+    b.onclick = function () { go(); A.music(n); refresh(); }; mBox.appendChild(b);
+  });
+  A.sfxNames.forEach(function (n) {
+    var b = document.createElement('button'); b.textContent = n;
+    b.onclick = function () { go(); A.sfx(n, { pitch: +document.getElementById('pv').value }); }; sBox.appendChild(b);
+  });
+  document.getElementById('stop').onclick = function () { go(); A.stopMusic(); refresh(); };
+  document.getElementById('blips').onclick = function () { go(); var i = 0, iv = setInterval(function () { A.sfx('text_blip'); if (++i >= 40) clearInterval(iv); }, 33); };
+  document.getElementById('spam').onclick = function () { go(); for (var i = 0; i < 30; i++) A.sfx(A.sfxNames[i % A.sfxNames.length]); };
+  ['mv', 'sv'].forEach(function (id) {
+    document.getElementById(id).oninput = function () {
+      DCW.save.settings.music = +document.getElementById('mv').value;
+      DCW.save.settings.sfx = +document.getElementById('sv').value;
+      A.setVolumes();
+    };
+  });
+  function refresh() {
+    [].forEach.call(document.querySelectorAll('[data-track]'), function (b) { b.classList.toggle('on', b.dataset.track === A.current); });
+    var st = A.debugState(), info = A.current && A.songInfo(A.current);
+    document.getElementById('state').textContent = JSON.stringify(st) + (info ? '\n' + JSON.stringify(info) : '');
+  }
+  setInterval(refresh, 250);
+})();
+</script>
+</body>
+</html>
