@@ -96,13 +96,26 @@
   function bn(b) {
     var dev = (DCW.input && DCW.input.lastDevice) || 'keyboard';
     var map = dev === 'keyboard'
-      ? { confirm: 'Z', back: 'X', start: 'ENTER', select: 'TAB', down: '↓', up: '↑' }
+      ? { confirm: kbName('jump', 'Z'), back: kbName('attack', 'X'), start: 'ENTER', select: kbName('select', 'TAB'), down: '↓', up: '↑' }
       : dev === 'touch'
         ? { confirm: 'A', back: 'B', start: 'START', select: 'MAP', down: '↓', up: '↑' }
         : { confirm: 'A', back: 'B', start: 'START', select: 'SELECT', down: '↓', up: '↑' };
     return map[b] || b.toUpperCase();
   }
   ui.buttonName = bn;
+  function kbName(action, dflt) {
+    var inp = DCW.input;
+    if (!inp || !inp.bindings || !inp.keyName) return dflt;
+    var b = inp.bindings()[action] || [];
+    var code = b[0] || b[1];
+    return code ? inp.keyName(code) : dflt;
+  }
+  function kbBoth(action) {
+    var inp = DCW.input;
+    if (!inp || !inp.bindings) return '';
+    var b = inp.bindings()[action] || [];
+    return b.filter(Boolean).map(inp.keyName).join(' / ') || '---';
+  }
 
   /* ---------------- text helpers ---------------- */
   function T(s, x, y, col, o) { return DCW.text(s === null || s === undefined ? '' : String(s), x, y, col || C.white, o); }
@@ -1122,6 +1135,7 @@
         { label: 'CRT FILTER', type: 'bool', key: 'crt', val: s.crt !== false },
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
         { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
+        { label: 'KEYBOARD CONTROLS', type: 'controls' },
         { label: 'RESET SAVE', type: 'reset' },
         { label: 'BACK', type: 'back' }
       ];
@@ -1143,6 +1157,7 @@
       else if (rep(m, 'right', dt)) change(r, 1);
       else if (P('confirm')) {
         if (r.type === 'back') { sfx('menu_back'); close(m); }
+        else if (r.type === 'controls') { sfx('menu_select'); ui.openControls(); }
         else if (r.type === 'reset') {
           sfx('menu_select');
           ui.confirm('ERASE ALL PROGRESS, UNLOCKS AND ACHIEVEMENTS?', function () {
@@ -1161,7 +1176,7 @@
       var rs = rows(), s = settings();
       frame(ctx, 'SETTINGS', { footer: '◀▶:CHANGE  ' + bn('confirm') + ':TOGGLE  ' + bn('back') + ':BACK' });
       rs.forEach(function (r, i) {
-        var yy = 28 + i * 16 + (i >= 6 ? 6 : 0), act = i === m.sel;
+        var yy = 26 + i * 15 + (i >= 7 ? 5 : 0), act = i === m.sel;
         if (act) { R(14, yy - 3, 292, 13, '#1c2c5c'); cursor(18, yy); }
         T(r.label, 30, yy, r.type === 'reset' ? (act ? C.red : C.dred) : act ? C.white : C.gray);
         if (r.type === 'vol') {
@@ -1174,8 +1189,91 @@
           T('◀ ' + (r.val ? 'ON' : 'OFF') + ' ▶', 205, yy, r.val ? C.green : C.dgray, { align: 'center' });
         } else if (r.type === 'touch') {
           T('◀ ' + r.val + ' ▶', 205, yy, C.blue, { align: 'center' });
+        } else if (r.type === 'controls') {
+          T('REBIND ▶', 205, yy, act ? C.gold : C.dgray, { align: 'center' });
         }
       });
+    };
+    return push(m);
+  };
+
+  /* ================================================================
+     KEYBOARD CONTROLS (rebinding)
+     ================================================================ */
+  var CTRL_LABELS = { left: 'MOVE LEFT', right: 'MOVE RIGHT', up: 'UP / CLIMB', down: 'DOWN / CROUCH', jump: 'JUMP / OK',
+    attack: 'ATTACK / BACK', bomb: 'BOMB', special: 'SPECIAL', potion: 'POTION', start: 'PAUSE', select: 'MAP' };
+  var PRESET_ORDER = [['classic', 'CLASSIC Z X C'], ['wasd', 'WASD + SPACE J'], ['arrows', 'ARROWS + SPACE F']];
+  ui.openControls = function () {
+    var inp = DCW.input;
+    if (!inp || !inp.bindings) { ui.toast('KEY BINDING UNAVAILABLE', {}); return null; }
+    var acts = inp.actions || ['left', 'right', 'up', 'down', 'jump', 'attack', 'bomb', 'special', 'potion', 'start', 'select'];
+    var m = { kind: 'controls', sel: 0, col: 0, cap: null, msg: '', msgT: 0, preset: 0 };
+    var cur = (DCW.save && DCW.save.settings && DCW.save.settings.keyPreset) || 'classic';
+    PRESET_ORDER.forEach(function (p, i) { if (p[0] === cur) m.preset = i; });
+    var N = acts.length + 2; // actions, preset, back
+    function say2(t, col) { m.msg = t; m.msgCol = col || C.gold; m.msgT = 2.2; }
+    function startCapture(action, slot) {
+      m.cap = { action: action, slot: slot };
+      sfx('menu_select');
+      inp.captureNext(function (code, kind) {
+        var a = m.cap ? m.cap.action : action, sl = m.cap ? m.cap.slot : slot;
+        m.cap = null;
+        if (kind === 'cancel') { sfx('menu_back'); return; }
+        if (kind === 'clear') { inp.setBinding(a, sl, null); sfx('menu_back'); say2(CTRL_LABELS[a] + ': CLEARED', C.gray); return; }
+        var b = inp.bindings(), moved = null;
+        acts.forEach(function (o) { for (var i = 0; i < 2; i++) if (b[o][i] === code && !(o === a && i === sl)) moved = o; });
+        inp.setBinding(a, sl, code);
+        sfx('menu_select');
+        say2(CTRL_LABELS[a] + ' = ' + inp.keyName(code) + (moved && moved !== a ? '  (REMOVED FROM ' + CTRL_LABELS[moved] + ')' : ''), moved && moved !== a ? C.orange || C.gold : C.green);
+      });
+    }
+    m.onClose = function () { if (inp.cancelCapture) inp.cancelCapture(); };
+    m.update = function (dt) {
+      m.t += dt; if (m.msgT > 0) m.msgT -= dt;
+      if (m.cap) { if (inp.capturing && !inp.capturing()) m.cap = null; else if (P('back') || P('start')) { inp.cancelCapture(); m.cap = null; consume(); } return; }
+      listNav(m, N, dt);
+      if (m.sel < acts.length) {
+        if (P('left') || P('right')) { m.col = 1 - m.col; sfx('menu_move'); }
+        else if (P('confirm')) startCapture(acts[m.sel], m.col);
+        else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
+      } else if (m.sel === acts.length) {
+        if (P('left')) { m.preset = (m.preset + PRESET_ORDER.length - 1) % PRESET_ORDER.length; sfx('menu_move'); }
+        else if (P('right')) { m.preset = (m.preset + 1) % PRESET_ORDER.length; sfx('menu_move'); }
+        else if (P('confirm')) { inp.applyPreset(PRESET_ORDER[m.preset][0]); sfx('menu_select'); say2('LAYOUT SET: ' + PRESET_ORDER[m.preset][1], C.green); }
+        else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
+      } else if (P('confirm') || backPressed() || P('start')) { sfx('menu_back'); close(m); }
+    };
+    m.draw = function (ctx) {
+      var b = inp.bindings();
+      frame(ctx, 'KEYBOARD CONTROLS', { footer: (m.cap || m.msgT > 0) ? '' : '▲▼:PICK  ◀▶:SLOT  ENTER:REBIND  ESC:BACK' });
+      T('ACTION', 18, 21, C.dgray, { shadow: null }); T('KEY 1', 192, 21, C.dgray, { align: 'center', shadow: null }); T('KEY 2', 264, 21, C.dgray, { align: 'center', shadow: null });
+      acts.forEach(function (a, i) {
+        var yy = 32 + i * 10, act = m.sel === i;
+        if (act) { R(10, yy - 2, 300, 10, '#1c2c5c'); cursor(10, yy); }
+        T(CTRL_LABELS[a] || a.toUpperCase(), 22, yy, act ? C.white : C.gray, { shadow: null });
+        for (var sl = 0; sl < 2; sl++) {
+          var cx2 = sl ? 264 : 192, on = act && m.col === sl;
+          if (on) R(cx2 - 31, yy - 2, 62, 10, m.cap ? C.gold : '#3050a0');
+          var code = b[a][sl];
+          var label = (m.cap && on) ? (blink(5) ? '...' : '') : inp.keyName(code);
+          var col = (m.cap && on) ? '#000' : !code ? (sl === 0 && (a === 'jump' || a === 'attack' || a === 'left' || a === 'right') ? C.red : C.ddgray) : on ? C.white : C.lgray || C.white;
+          T(label, cx2, yy, col, { align: 'center', shadow: null });
+        }
+      });
+      var py = 32 + acts.length * 10 + 4, pAct = m.sel === acts.length;
+      if (pAct) { R(10, py - 2, 300, 10, '#1c2c5c'); cursor(10, py); }
+      T('PRESET', 22, py, pAct ? C.white : C.gray, { shadow: null });
+      T('◀ ' + PRESET_ORDER[m.preset][1] + ' ▶', 228, py, pAct ? C.gold : C.dgray, { align: 'center', shadow: null });
+      var by = py + 11, bAct = m.sel === acts.length + 1;
+      if (bAct) { R(10, by - 2, 300, 10, '#1c2c5c'); cursor(10, by); }
+      T('BACK', 22, by, bAct ? C.white : C.gray, { shadow: null });
+      if (m.msgT > 0 && !m.cap) T(fitText(m.msg, 296), 160, 166, m.msgCol, { align: 'center', shadow: null });
+      if (m.cap) {
+        DCW.box(60, 64, 200, 46, { fill: '#101828', border: C.gold });
+        T('PRESS A KEY FOR', 160, 71, C.gray, { align: 'center', shadow: null });
+        T(CTRL_LABELS[m.cap.action] + '  (KEY ' + (m.cap.slot + 1) + ')', 160, 83, C.gold, { align: 'center' });
+        T('ESC: CANCEL   DEL: CLEAR', 160, 97, C.dgray, { align: 'center', shadow: null });
+      }
     };
     return push(m);
   };
@@ -1321,7 +1419,12 @@
      HOW TO PLAY
      ================================================================ */
   var HOWTO = [
-    { title: 'KEYBOARD', rows: [['MOVE', 'ARROWS / WASD'], ['JUMP / OK', 'Z / SPACE / K'], ['ATTACK / BACK', 'X / J'], ['BOMB', 'C / L'], ['SPECIAL', 'V / I / SHIFT'], ['POTION', 'Q / U'], ['PAUSE', 'ENTER / P / ESC'], ['MAP', 'TAB / M']] },
+    { title: 'KEYBOARD', rows: function () {
+      var mv = ['left', 'right', 'up', 'down'].map(function (a) { return kbName(a, '?'); }).join(' ');
+      return [['MOVE', mv], ['JUMP / OK', kbBoth('jump')], ['ATTACK / BACK', kbBoth('attack')], ['BOMB', kbBoth('bomb')],
+        ['SPECIAL', kbBoth('special')], ['POTION', kbBoth('potion')], ['PAUSE', 'ENTER / ESC' + (kbName('start', '') ? ' / ' + kbName('start', '') : '')],
+        ['MAP', kbBoth('select')]];
+    } },
     { title: 'GAMEPAD', rows: [['MOVE', 'D-PAD / STICK'], ['JUMP / OK', 'A (BOTTOM)'], ['ATTACK', 'X (LEFT)'], ['BOMB / BACK', 'B (RIGHT)'], ['SPECIAL', 'Y (TOP)'], ['POTION', 'BUMPERS / TRIGGERS'], ['PAUSE', 'START'], ['MAP', 'SELECT']] },
     { title: 'TOUCH', rows: [['MOVE', 'LEFT PAD'], ['JUMP / OK', 'A BUTTON'], ['ATTACK / BACK', 'B BUTTON'], ['BOMB', 'BOMB BUTTON'], ['SPECIAL', 'SPC BUTTON'], ['POTION', 'POT BUTTON'], ['PAUSE', 'START (TOP RIGHT)'], ['MAP', 'MAP (TOP RIGHT)']] },
     { title: 'MOVES', rows: [['PUNCH COMBO', 'TAP ATTACK'], ['KICK', 'DOWN + ATTACK'], ['STOMP KICK', 'DOWN + ATTACK IN AIR'], ['HEAD BOUNCE', 'LAND ON ENEMIES'], ['DROP DOWN', 'DOWN + JUMP'], ['LADDERS', 'UP / DOWN'], ['PET SPECIAL', 'WHEN METER IS FULL'], ['ENTER DOOR', 'A ON OVERWORLD']] }
@@ -1341,8 +1444,9 @@
       frame(ctx, 'HOW TO PLAY', { footer: '◀▶:PAGE  ' + bn('back') + ':BACK' });
       T('◀ ' + pg.title + ' ▶', 160, 22, C.white, { align: 'center' });
       for (var d = 0; d < HOWTO.length; d++) R(160 - HOWTO.length * 4 + d * 8, 33, 5, 2, d === m.page ? C.gold : C.ddgray);
-      pg.rows.forEach(function (r, i) { var yy = 41 + i * 12; T(r[0], 24, yy, C.gold); T(r[1], 296, yy, C.white, { align: 'right' }); R(24 + tw(r[0]) + 4, yy + 6, 296 - tw(r[1]) - 4 - (24 + tw(r[0]) + 4) - 4, 1, '#2c3c7c'); });
-      T('BEAT FLOORS. OPEN BOXES. GET VIEWS. DON\'T DIE.', 160, 140, C.pink, { align: 'center' });
+      var rowsList = typeof pg.rows === 'function' ? pg.rows() : pg.rows;
+      rowsList.forEach(function (r, i) { var yy = 41 + i * 12; T(r[0], 24, yy, C.gold); T(r[1], 296, yy, C.white, { align: 'right' }); R(24 + tw(r[0]) + 4, yy + 6, 296 - tw(r[1]) - 4 - (24 + tw(r[0]) + 4) - 4, 1, '#2c3c7c'); });
+      T(m.page === 0 ? 'REBIND KEYS IN SETTINGS > KEYBOARD CONTROLS' : 'BEAT FLOORS. OPEN BOXES. GET VIEWS. DON\'T DIE.', 160, 140, C.pink, { align: 'center' });
     };
     return push(m);
   };

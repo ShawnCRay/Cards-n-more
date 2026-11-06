@@ -245,18 +245,58 @@
 
   /* ---------------- input ---------------- */
   var BUTTONS = ['left', 'right', 'up', 'down', 'jump', 'attack', 'bomb', 'special', 'potion', 'start', 'select', 'confirm', 'back'];
-  var KEYMAP = {
-    ArrowLeft: ['left'], KeyA: ['left'], ArrowRight: ['right'], KeyD: ['right'],
-    ArrowUp: ['up'], KeyW: ['up'], ArrowDown: ['down'], KeyS: ['down'],
-    KeyZ: ['jump', 'confirm'], Space: ['jump', 'confirm'], KeyK: ['jump', 'confirm'],
-    KeyX: ['attack', 'back'], KeyJ: ['attack', 'back'],
-    KeyC: ['bomb'], KeyL: ['bomb'],
-    KeyV: ['special'], KeyI: ['special'], ShiftLeft: ['special'], ShiftRight: ['special'],
-    KeyQ: ['potion'], KeyU: ['potion'],
-    Enter: ['start', 'confirm'], KeyP: ['start'],
-    Escape: ['back', 'start'], Backspace: ['back'],
-    Tab: ['select'], KeyM: ['select']
+  // Rebindable keyboard. Each gameplay action holds two key slots; menus derive from them:
+  // confirm = jump keys (+ Enter), back = attack keys (+ Esc / Backspace). Enter, Esc and
+  // Backspace are reserved so menus can never become unreachable.
+  var ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'attack', 'bomb', 'special', 'potion', 'start', 'select'];
+  var PRESETS = {
+    classic: { left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
+      jump: ['KeyZ', 'Space'], attack: ['KeyX', 'KeyJ'], bomb: ['KeyC', 'KeyL'], special: ['KeyV', 'ShiftLeft'],
+      potion: ['KeyQ', 'KeyU'], start: ['KeyP', null], select: ['Tab', 'KeyM'] },
+    wasd: { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'],
+      jump: ['Space', 'KeyK'], attack: ['KeyJ', null], bomb: ['KeyL', null], special: ['KeyI', 'ShiftLeft'],
+      potion: ['KeyQ', 'KeyU'], start: ['KeyP', null], select: ['Tab', 'KeyM'] },
+    arrows: { left: ['ArrowLeft', null], right: ['ArrowRight', null], up: ['ArrowUp', null], down: ['ArrowDown', null],
+      jump: ['Space', 'KeyA'], attack: ['KeyF', 'KeyS'], bomb: ['KeyD', null], special: ['KeyE', 'ShiftLeft'],
+      potion: ['KeyQ', null], start: ['KeyP', null], select: ['Tab', 'KeyM'] }
   };
+  var RESERVED = { Enter: ['start', 'confirm'], Escape: ['back', 'start'], Backspace: ['back'] };
+  var KEYMAP = {};
+  function copyBinds(src) { var o = {}; ACTIONS.forEach(function (a) { var v = (src && src[a]) || [null, null]; o[a] = [v[0] || null, v[1] || null]; }); return o; }
+  function currentBinds() {
+    var st = DCW.save && DCW.save.settings;
+    return copyBinds((st && st.keys) || PRESETS.classic);
+  }
+  function rebuildKeymap() {
+    var b = currentBinds();
+    KEYMAP = {};
+    Object.keys(RESERVED).forEach(function (c) { KEYMAP[c] = RESERVED[c].slice(); });
+    ACTIONS.forEach(function (a) {
+      b[a].forEach(function (code) {
+        if (!code || RESERVED[code]) return;
+        var list = KEYMAP[code] = KEYMAP[code] || [];
+        if (list.indexOf(a) < 0) list.push(a);
+        if (a === 'jump' && list.indexOf('confirm') < 0) list.push('confirm');
+        if (a === 'attack' && list.indexOf('back') < 0) list.push('back');
+      });
+    });
+    // drop anything held under the old map so no button sticks down
+    heldKeys = {}; BUTTONS.forEach(function (bt) { kb[bt] = 0; });
+  }
+  var KEY_NAMES = { Space: 'SPACE', ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT', ControlLeft: 'L-CTRL', ControlRight: 'R-CTRL',
+    AltLeft: 'L-ALT', AltRight: 'R-ALT', Tab: 'TAB', CapsLock: 'CAPS', Enter: 'ENTER', Escape: 'ESC', Backspace: 'BKSP',
+    ArrowLeft: '\u2190', ArrowRight: '\u2192', ArrowUp: '\u2191', ArrowDown: '\u2193', Semicolon: ';', Quote: "'", Comma: ',',
+    Period: '.', Slash: '/', Backslash: '\\', BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=', Backquote: '~',
+    Insert: 'INS', Delete: 'DEL', Home: 'HOME', End: 'END', PageUp: 'PGUP', PageDown: 'PGDN', ContextMenu: 'MENU' };
+  function keyName(code) {
+    if (!code) return '---';
+    if (KEY_NAMES[code]) return KEY_NAMES[code];
+    var m = /^Key([A-Z])$/.exec(code); if (m) return m[1];
+    m = /^Digit(\d)$/.exec(code); if (m) return m[1];
+    m = /^Numpad(.+)$/.exec(code); if (m) return 'NUM' + (m[1].length > 3 ? m[1].slice(0, 3).toUpperCase() : m[1].toUpperCase());
+    return code.toUpperCase().slice(0, 7);
+  }
+  var captureCb = null;
   var kb = {}, kbHit = {}, touch = {}, pad = {}, cur = {}, prev = {};
   BUTTONS.forEach(function (b) { kb[b] = 0; kbHit[b] = false; touch[b] = false; pad[b] = false; cur[b] = false; prev[b] = false; });
   var input = DCW.input = {
@@ -269,12 +309,43 @@
     axisY: function () { return (input.down('down') ? 1 : 0) - (input.down('up') ? 1 : 0); },
     consume: function () { BUTTONS.forEach(function (b) { prev[b] = cur[b]; }); }, // swallow presses this frame
     usingTouch: false,
-    lastDevice: 'keyboard'
+    lastDevice: 'keyboard',
+    actions: ACTIONS,
+    presets: PRESETS,
+    keyName: keyName,
+    bindings: function () { return currentBinds(); },
+    rebuild: function () { rebuildKeymap(); },
+    // bind code to action slot; the code is removed from wherever else it was bound
+    setBinding: function (action, slot, code) {
+      var b = currentBinds();
+      if (code) ACTIONS.forEach(function (a) { for (var i = 0; i < 2; i++) if (b[a][i] === code) b[a][i] = null; });
+      b[action][slot] = code || null;
+      if (DCW.save) { DCW.save.settings.keys = b; DCW.persist(); }
+      rebuildKeymap();
+    },
+    applyPreset: function (name) {
+      if (!PRESETS[name]) return;
+      if (DCW.save) { DCW.save.settings.keys = copyBinds(PRESETS[name]); DCW.save.settings.keyPreset = name; DCW.persist(); }
+      rebuildKeymap();
+    },
+    captureNext: function (cb) { captureCb = cb; },
+    cancelCapture: function () { captureCb = null; },
+    capturing: function () { return !!captureCb; }
   };
   var heldKeys = {};
   window.addEventListener('keydown', function (e) {
-    var m = KEYMAP[e.code];
     unlockAudio();
+    if (captureCb) {
+      e.preventDefault();
+      if (e.repeat) return;
+      var cb = captureCb; captureCb = null;
+      if (e.code === 'Escape') cb(null, 'cancel');
+      else if (e.code === 'Backspace' || e.code === 'Delete') cb(null, 'clear');
+      else if (e.code === 'Enter' || e.code.indexOf('Meta') === 0 || e.code.indexOf('OS') === 0) { captureCb = cb; }
+      else cb(e.code, 'set');
+      return;
+    }
+    var m = KEYMAP[e.code];
     if (!m) return;
     e.preventDefault();
     input.lastDevice = 'keyboard';
@@ -422,7 +493,7 @@
     return s;
   };
   DCW.persist = function () { try { localStorage.setItem(SAVE_KEY, JSON.stringify(DCW.save)); } catch (e) { /* ignore */ } };
-  DCW.resetSave = function () { DCW.save = defaultSave(); DCW.persist(); };
+  DCW.resetSave = function () { DCW.save = defaultSave(); DCW.persist(); if (DCW.input && DCW.input.rebuild) DCW.input.rebuild(); };
 
   /* ---------------- scenes, fade, shake, hitstop ---------------- */
   DCW.scene = null;
@@ -505,6 +576,7 @@
     setupCanvas();
     buildFont();
     DCW.loadSave();
+    rebuildKeymap();
     setupTouch();
     applyCrt();
     if (DCW.art && DCW.art.init) DCW.art.init();
