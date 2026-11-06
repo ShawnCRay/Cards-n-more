@@ -43,7 +43,8 @@ const INDEX = 'file://' + path.resolve(__dirname, '../index.html');
         let dir = 1;
         if (B && s.locked && !B.dead) dir = (B.x + B.w / 2) > (p.x + p.w / 2) ? 1 : -1;
         key('ArrowRight', dir > 0); key('ArrowLeft', dir < 0);
-        key('KeyX', f % 10 < 3);
+        const foe = s.enemies.some(e => !e.dead && Math.abs(e.x + e.w / 2 - (p.x + p.w / 2)) < 44 && Math.abs(e.y - p.y) < 40) || (B && s.locked && !B.dead && Math.abs(B.x + B.w / 2 - (p.x + p.w / 2)) < B.w / 2 + 30);
+        key('KeyX', foe && f % 10 < 3);
         // jump at ledges/walls (look ahead for ground), when stalled, and now and then
         const T = (x, y) => { const tx = Math.floor(x / 16), ty = Math.floor(y / 16); if (tx < 0 || tx >= s.L.w || ty < 0 || ty >= s.L.h) return 0; return s.L.t[ty * s.L.w + tx]; };
         const fy = p.y + p.h + 2, ahead = p.x + p.w / 2 + dir * 14;

@@ -96,7 +96,7 @@
           { below: 0.33, speed: 70, pattern: ['swoop', 'hover:1', 'charge', 'laser', 'spread:laser_orb:7'] }
         ],
         intro: ['I AM THE TEST BOSS.', 'PREPARE TO BE ASSERTED.'], defeat: 'TEST BOSS DOWN. ALL GREEN.' },
-      tflyer: { name: 'TEST SKY HAG', hp: 60, dmg: 2, w: 40, h: 32, sprite: 'tidemother', xp: 80, gold: [40, 60], flying: true,
+      tflyer: { name: 'TEST SKY HAG', hp: 160, dmg: 2, w: 40, h: 32, sprite: 'tidemother', xp: 80, gold: [40, 60], flying: true,
         phases: [
           { below: 1.0, speed: 50, pattern: ['hover:1', 'swoop', 'shoot:bolt:3', 'jump_slam', 'charge', 'teleport', 'laser', 'spawn:bat:2', 'summon_spikes', 'shockwave', 'rain:rock:4', 'walk:1', 'idle:0.5', 'spread:fireball:3'] }
         ],

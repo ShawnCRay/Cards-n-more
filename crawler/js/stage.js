@@ -459,6 +459,12 @@
     var st = stats();
     S.special = Math.min(1, S.special + (dmg || 1) / Math.max(1, st.dmg * 22));
   }
+  function compViewMul() {
+    var C = S.comp; if (!C) return 1;
+    var b = C.def.bonus && C.def.bonus.views;
+    if (typeof b === 'number') return b < 1 ? 1 + b : b;
+    return C.ability === 'magnet' ? 1.25 : 1;
+  }
   function comboMul() { return 1 + Math.min(S.combo, 60) * 0.05; }
   function quip(pool, chance) {
     if (S.quipT > 0 || Math.random() > (chance || 1)) return;
@@ -505,7 +511,7 @@
       if (Math.random() < (e.elite ? 0.25 : 0.04)) addPickup('bomb', cx(e), cy(e), U.rand(-40, 40), -220, true);
     }
     var base = num(d.views, 6 + num(d.xp, 1) * 3) * (e.elite ? 3 : 1);
-    var v = Math.max(1, Math.round(base * comboMul() * (S.doubleViewsT > 0 ? 2 : 1) * (S.comp && S.comp.ability === 'magnet' ? 1.25 : 1)));
+    var v = Math.max(1, Math.round(base * comboMul() * (S.doubleViewsT > 0 ? 2 : 1) * compViewMul()));
     var got = addViews(v);
     numText(cx(e), e.y - 12, '+' + got + ' VIEWS', '#f878f8');
     S.special = Math.min(1, S.special + 0.04);
@@ -735,7 +741,13 @@
       else if (near.kind === 'door') { enterDoor(near); return; }
     }
     // walking into the middle of the exit door also takes it
-    if (near && near.kind === 'door' && P.state === 'normal' && P.onGround && Math.abs(cx(P) - cx(near)) < 3 && !(S.isBoss && S.boss && !S.boss.dead)) { enterDoor(near); return; }
+    var bossUp = S.isBoss && S.boss && !S.boss.dead;
+    if (near && near.kind === 'door' && P.state === 'normal' && P.onGround && Math.abs(cx(P) - cx(near)) < 8 && !bossUp) { enterDoor(near); return; }
+    if (!bossUp && P.state === 'normal' && P.x + P.w >= S.L.pxW - 1) { // walked past the exit: take the last door anyway
+      var lastDoor = null;
+      for (var di = 0; di < S.objects.length; di++) if (S.objects[di].kind === 'door') lastDoor = S.objects[di];
+      if (lastDoor) { enterDoor(lastDoor); return; }
+    }
 
     // ---------- ladder ----------
     if (P.state === 'climb') { updClimb(P, dt, ax); afterMove(P, dt); return; }
@@ -755,6 +767,7 @@
     }
 
     // ---------- state machine ----------
+    if (P.state === 'punch' && P.buffer > 0 && P.st > 0.12 && (P.onGround || P.coyote > 0)) { P.state = 'normal'; P.chainT = 0; }
     var control = P.state === 'normal';
     if (P.state === 'hurt') {
       P.st += dt;
@@ -1052,10 +1065,12 @@
     if (C.state === 'rampage') {
       C.rt -= dt;
       C.x += C.face * 330 * dt; C.y = P.y + P.h - C.h;
+      // stampede back and forth across the screen; each pass can bite everything again
+      if ((C.face > 0 && C.x > S.cam.x + W - 8) || (C.face < 0 && C.x < S.cam.x - 4)) { C.face = -C.face; C.hitList = []; }
       C.actT = 0.1;
       if (Math.random() < 0.5) dust(cx(C), C.y + C.h, 1);
       hitBox({ x: C.x - 6, y: C.y - 24, w: C.w + 12, h: C.h + 30 }, Math.round(power * 4 + st.kickDmg), { kind: 'comp', kb: 160, dir: C.face, hitList: C.hitList, breaks: true, noCombo: false });
-      if (C.rt <= 0 || C.x > S.cam.x + W + 20 || C.x < S.cam.x - 40) { teleportComp(C, P); }
+      if (C.rt <= 0) { teleportComp(C, P); }
       return;
     }
     if (C.state === 'dash') {
@@ -1136,7 +1151,7 @@
             if (d < bd) { bd = d; best = q; }
           }
           if (best) { C.state = 'fetch'; C.target = best; C.dt = 2; used = true; }
-          if (Math.random() < 0.06 * C.pw) {
+          if (Math.random() < num(def.bombChance, 0.06) * C.pw) {
             var bp = addPickup('bomb', cx(C), C.y, C.face * 30, -160, true);
             bp.magnet = false; C.actT = 0.4; used = true;
             numText(cx(C), C.y - 8, 'FOUND A BOMB!', '#fcfcfc');
@@ -1177,26 +1192,33 @@
         break;
       }
       case 'bite':
-        C.state = 'rampage'; C.rt = 1.8; C.hitList = [];
+        C.state = 'rampage'; C.rt = num(def.special && def.special.time, 0) || 1.8; C.hitList = []; C.hitReset = 0;
         C.x = S.cam.x - 16; C.face = 1;
         smoke(cx(C), cy(C), 3);
         sfx('bite');
         break;
       case 'shield':
-        P.invuln = 6; P.shield = Math.max(P.shield, 1);
+        P.invuln = num(def.special && def.special.time, 0) || 6; P.shield = Math.max(P.shield, 1);
         sfx('shield');
         break;
       case 'magnet':
-        for (i = 0; i < S.enemies.length; i++) { e = S.enemies[i]; if (!e.dead && onScreen(e, 16)) { e.stun = 4; e.vx = 0; numText(cx(e), e.y - 6, 'STUNNED', '#3cbcfc'); } }
-        if (S.boss && S.boss.active && !S.boss.dying) S.boss.stun = 2;
+        var stunT = num(def.special && def.special.time, 0) || 4;
+        for (i = 0; i < S.enemies.length; i++) { e = S.enemies[i]; if (!e.dead && onScreen(e, 16)) { e.stun = stunT; e.vx = 0; numText(cx(e), e.y - 6, 'STUNNED', '#3cbcfc'); } }
+        if (S.boss && S.boss.active && !S.boss.dying) S.boss.stun = Math.min(2, stunT);
         for (i = 0; i < S.pickups.length; i++) if (onScreen(S.pickups[i])) { S.pickups[i].magnet = true; S.pickups[i].delay = 0; }
-        S.doubleViewsT = 12;
+        S.doubleViewsT = Math.max(8, stunT * 3);
         numText(cx(P), P.y - 16, 'DOUBLE VIEWS!', '#f878f8', 1);
         sfx('views');
         break;
       case 'fetch':
         for (i = 0; i < 12; i++) {
           S.allies.push({ x: S.cam.x - 20 - i * 14, y: P.y + P.h - 10 - (i % 3) * 2, w: 12, h: 8, vx: 210 + Math.random() * 60, vy: 0, life: 3.2, dmg: Math.max(1, Math.round(power * 2 + st.dmg)), hitList: [], onGround: false, t: Math.random() });
+        }
+        // ...and the favor he called in: goodies rain from above
+        for (i = 0; i < 7; i++) {
+          var kind = i === 0 ? 'snack' : i === 1 ? 'bomb' : 'coin';
+          var pk = addPickup(kind, S.cam.x + 40 + Math.random() * (W - 80), S.cam.y + 4, U.rand(-20, 20), 40, true, kind === 'coin' ? Math.max(1, Math.round(2 * floorScale())) : 0);
+          pk.delay = 0.1;
         }
         sfx('spawn');
         break;
@@ -1232,7 +1254,7 @@
     if (S && S.edefs && S.edefs[id]) return S.edefs[id];
     var data = D(), d = null;
     if (typeof data.enemyFor === 'function') { // floor-scaled copy when an enemy is reused on a later floor
-      try { d = data.enemyFor(id, (S && S.def && S.def.floor) || getRun().floor || 1); } catch (e) { d = null; }
+      try { d = data.enemyFor(id, getRun().floor || (S && S.def && S.def.floor) || 1); } catch (e) { d = null; }
     }
     if (!d) d = (data.enemies || {})[id];
     if (!d) d = { name: String(id).toUpperCase(), hp: 4, dmg: 1, speed: 30, w: 12, h: 12, ai: 'walker', xp: 2, gold: [0, 2], sprite: id };
