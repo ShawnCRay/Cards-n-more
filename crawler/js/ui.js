@@ -1121,6 +1121,7 @@
         { label: 'SCREEN SHAKE', type: 'bool', key: 'shake', val: s.shake !== false },
         { label: 'CRT FILTER', type: 'bool', key: 'crt', val: s.crt !== false },
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
+        { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
         { label: 'RESET SAVE', type: 'reset' },
         { label: 'BACK', type: 'back' }
       ];
@@ -1160,7 +1161,7 @@
       var rs = rows(), s = settings();
       frame(ctx, 'SETTINGS', { footer: '◀▶:CHANGE  ' + bn('confirm') + ':TOGGLE  ' + bn('back') + ':BACK' });
       rs.forEach(function (r, i) {
-        var yy = 30 + i * 17 + (i >= 5 ? 6 : 0), act = i === m.sel;
+        var yy = 28 + i * 16 + (i >= 6 ? 6 : 0), act = i === m.sel;
         if (act) { R(14, yy - 3, 292, 13, '#1c2c5c'); cursor(18, yy); }
         T(r.label, 30, yy, r.type === 'reset' ? (act ? C.red : C.dred) : act ? C.white : C.gray);
         if (r.type === 'vol') {

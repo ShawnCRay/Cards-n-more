@@ -620,6 +620,7 @@
       return false;
     }
     var n = opts.raw ? dmg : Math.max(1, Math.round(dmg - num(stats().def, 0)));
+    if (DCW.save && DCW.save.settings && DCW.save.settings.easy === true) n = Math.max(1, Math.ceil(n / 2));
     applyDamage(n);
     S.damageTaken += n;
     P.inv = K.iframes;
@@ -2499,7 +2500,7 @@
   function debugWarpBoss() {
     if (!S || !S.arena) return;
     var P = S.player;
-    P.x = S.arena.x0 + 4 * TS; P.y = groundBelow(P.x + 4, 0) - P.h - 1; P.vx = 0; P.vy = 0; P.state = 'normal';
+    P.x = S.arena.x0 + 4 * TS; P.y = groundBelow(P.x + 4, 6 * TS) - P.h - 1; P.vx = 0; P.vy = 0; P.state = 'normal';
     updCamera(0, true);
   }
   var scene = { enter: enter, exit: exit, update: update, idle: idle, draw: draw };

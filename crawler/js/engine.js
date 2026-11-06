@@ -404,7 +404,7 @@
       equipped: { skin: 'carl_boxers', companion: 'donut' },
       run: null,
       meta: { achievements: {}, counters: {}, bestFloor: 0, runs: 0, wins: 0, deaths: 0, boxesOpened: 0, seenIntro: false },
-      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto' }
+      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto', easy: false }
     };
   }
   function merge(base, over) {

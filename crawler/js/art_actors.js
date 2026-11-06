@@ -2540,3 +2540,18 @@
    * ================================================================== */
   DCW.artActorsKit.def = def;
 })();
+
+/* carl_crouch: derived from carl_idle (torso + shins squashed), same palette chars so skins apply. */
+(function () {
+  'use strict';
+  var A = window.DCW && window.DCW.artDefs, src = A && A.carl_idle;
+  if (!src || A.carl_crouch) return;
+  var drop = { 16: 1, 17: 1, 19: 1, 24: 1, 25: 1 };
+  var blank = new Array(src.w + 1).join('.');
+  var frames = src.frames.map(function (rows) {
+    var kept = rows.filter(function (r, i) { return !drop[i]; });
+    while (kept.length < src.h) kept.unshift(blank);
+    return kept;
+  });
+  A.carl_crouch = { w: src.w, h: src.h, pal: src.pal, frames: [frames[0]], ox: src.ox || 0, oy: src.oy || 0 };
+})();

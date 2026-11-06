@@ -198,7 +198,7 @@
     if (!r) return;
     if (f && f.overworld) {
       G.resumeFloor();
-      setTimeout(function () { toast('THE STAIRWELL IS OPEN', { icon: 'key', color: '#f8b800' }); }, 900);
+      setTimeout(function () { if (DCW.overworld && DCW.scene === DCW.overworld.scene) toast('THE STAIRWELL IS OPEN', { icon: 'key', color: '#f8b800' }); }, 900);
     } else {
       G.takeStairs();
     }
