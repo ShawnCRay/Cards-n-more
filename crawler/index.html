@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Dungeon Crawler World: Earth</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Crect x='3' y='2' width='10' height='3' fill='%23fcd8a8'/%3E%3Crect x='3' y='5' width='10' height='5' fill='%23fcd8a8'/%3E%3Crect x='5' y='6' width='2' height='2' fill='%23000'/%3E%3Crect x='9' y='6' width='2' height='2' fill='%23000'/%3E%3Crect x='2' y='10' width='12' height='6' fill='%235c3c18'/%3E%3Crect x='6' y='10' width='4' height='6' fill='%23fcfcfc'/%3E%3Crect x='3' y='1' width='10' height='2' fill='%23a85010'/%3E%3C/svg%3E">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body { display: flex; align-items: center; justify-content: center; }
+  #wrap { position: relative; }
+  #screen { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; background: #000; }
+  body.crt #wrap::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at 50% 50%, transparent 62%, rgba(0,0,0,0.45) 100%);
+    mix-blend-mode: multiply;
+  }
+  /* ---- touch overlay ---- */
+  #touch { position: fixed; inset: 0; display: none; z-index: 10; pointer-events: none; }
+  #touch .ctl { position: absolute; pointer-events: auto; touch-action: none; }
+  #touch .pad {
+    left: calc(14px + env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom));
+    width: 136px; height: 136px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.10) 0 30%, rgba(255,255,255,0.05) 31% 100%);
+    border: 2px solid rgba(255,255,255,0.22);
+  }
+  #touch .pad::before, #touch .pad::after { content: ''; position: absolute; background: rgba(255,255,255,0.20); border-radius: 4px; }
+  #touch .pad::before { left: 50%; top: 14%; width: 30%; height: 72%; transform: translateX(-50%); }
+  #touch .pad::after { top: 50%; left: 14%; height: 30%; width: 72%; transform: translateY(-50%); }
+  #touch .btn {
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); color: rgba(255,255,255,0.8);
+    font: bold 13px/54px monospace; text-align: center; letter-spacing: 1px;
+    background: rgba(0,0,0,0.25);
+  }
+  #touch .btn.a { right: calc(16px + env(safe-area-inset-right)); bottom: calc(52px + env(safe-area-inset-bottom)); background: rgba(216,40,0,0.45); }
+  #touch .btn.b { right: calc(82px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); background: rgba(0,88,248,0.45); }
+  #touch .btn.bomb { right: calc(90px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); width: 46px; height: 46px; line-height: 42px; font-size: 10px; }
+  #touch .btn.spc { right: calc(26px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); width: 46px; height: 46px; line-height: 42px; font-size: 10px; background: rgba(184,0,184,0.4); }
+  #touch .btn.pot { right: calc(150px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 40px; height: 40px; line-height: 36px; font-size: 9px; background: rgba(0,168,0,0.35); }
+  #touch .small { top: calc(8px + env(safe-area-inset-top)); width: 64px; height: 26px; border-radius: 13px; border: 2px solid rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.75); font: bold 10px/22px monospace; text-align: center; background: rgba(0,0,0,0.3); }
+  #touch .small.start { right: calc(12px + env(safe-area-inset-right)); }
+  #touch .small.sel { right: calc(84px + env(safe-area-inset-right)); }
+  #rotate { display: none; position: fixed; inset: 0; z-index: 20; background: #000; color: #fcfcfc; font: bold 14px monospace; align-items: center; justify-content: center; text-align: center; padding: 24px; line-height: 1.6; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate.show { display: flex; } }
+</style>
+</head>
+<body class="crt">
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="touch">
+  <div class="ctl pad" data-pad="1"></div>
+  <div class="ctl btn a" data-btn="jump,confirm">A</div>
+  <div class="ctl btn b" data-btn="attack,back">B</div>
+  <div class="ctl btn bomb" data-btn="bomb">BOMB</div>
+  <div class="ctl btn spc" data-btn="special">SPC</div>
+  <div class="ctl btn pot" data-btn="potion">POT</div>
+  <div class="ctl small start" data-btn="start">START</div>
+  <div class="ctl small sel" data-btn="select">MAP</div>
+</div>
+<div id="rotate" class="show">TURN YOUR PHONE SIDEWAYS, CRAWLER.<br>THE DUNGEON IS WIDESCREEN.</div>
+
+<script src="js/engine.js"></script>
+<script src="js/data.js"></script>
+<script src="js/art_actors.js"></script>
+<script src="js/art.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/overworld.js"></script>
+<script src="js/game.js"></script>
+<script>DCW.boot();</script>
+</body>
+</html>
