@@ -1730,8 +1730,13 @@
     sfx('boss_roar'); DCW.shake(3, 0.5);
     B.wake = 0.9;
     var intro = d.intro;
-    if (intro && intro.length) say(intro);
-    announce(d.name || 'BOSS', { color: '#f83800', time: 1.8, sub: d.title || '' });
+    if (has(UI(), 'versus')) {
+      UI().versus({ bossId: S.def.boss, name: d.name, title: d.title, portrait: 'p_' + S.def.boss,
+        onDone: function () { if (intro && intro.length) say(intro); } });
+    } else {
+      if (intro && intro.length) say(intro);
+      announce(d.name || 'BOSS', { color: '#f83800', time: 1.8, sub: d.title || '' });
+    }
   }
   function unlockArena() {
     var L = S.L;

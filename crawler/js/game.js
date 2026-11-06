@@ -388,7 +388,7 @@
     }
     if (leveled) {
       sfx('level_up');
-      toast('LEVEL ' + r.level + '! +STAT POINT', { title: 'LEVEL UP', icon: 'star', color: '#f8b800' });
+      toast('LEVEL ' + r.level + '! SPEND POINTS IN A SAFE ROOM', { title: 'LEVEL UP', icon: 'star', color: '#f8b800' });
       var q = pickLine('levelUp');
       if (q) toast(q, { icon: 'eye', time: 3.5 });
     }
@@ -429,8 +429,14 @@
     return true;
   };
 
+  // Loot boxes and stat points are safe-room business only.
+  G.inSafeRoom = function () {
+    var r = G.run;
+    return !!(r && r.inSafe && DCW.ui && DCW.ui.scenes && DCW.scene === DCW.ui.scenes.safeRoom);
+  };
   G.spendStat = function (stat) {
     var r = G.run;
+    if (!G.inSafeRoom()) { sfx('error'); return false; }
     if (!r || r.statPoints <= 0 || !(stat in r.stats)) { sfx('error'); return false; }
     r.stats[stat]++; r.statPoints--;
     if (stat === 'con') r.hp += 2;
@@ -502,7 +508,7 @@
     }
   }
   G.openLootBox = function (index) {
-    var r = G.run; if (!r || !r.boxes.length) return [];
+    var r = G.run; if (!r || !r.boxes.length || !G.inSafeRoom()) return [];
     index = U.clamp(index || 0, 0, r.boxes.length - 1);
     var box = r.boxes.splice(index, 1)[0];
     var tables = D().lootTables || {};
@@ -644,7 +650,7 @@
     r.hp = G.playerStats().maxHp; r.gold = 100 * n; r.bombs = 5; r.potions = 3;
     if (p.has('god')) r.god = true;
     var scene = p.get('scene');
-    if (scene === 'safe') { DCW.setScene(S().safeRoom, {}); return; }
+    if (scene === 'safe') { r.inSafe = true; DCW.setScene(S().safeRoom, {}); return; }
     if (scene === 'ending') { DCW.setScene(S().ending, {}); return; }
     if (scene === 'death') { DCW.setScene(S().death, { result: { cause: 'TESTING' } }); return; }
     if (scene === 'title') { DCW.setScene(S().title, {}); return; }

@@ -344,6 +344,10 @@
   function compDef(id) { var s = D('companions'); return (s && s[id]) || null; }
   function skinName(id) { var d = skinDef(id); return (d && d.name) || String(id || '').replace('carl_', '').toUpperCase(); }
   function compName(id) { var d = compDef(id); return (d && d.name) || String(id || '').toUpperCase(); }
+  function inSafe() {
+    if (hasG('inSafeRoom')) return !!G('inSafeRoom');
+    return !!(ui.scenes && DCW.scene === ui.scenes.safeRoom);
+  }
   function compSprite(id) { var d = compDef(id); return (d && d.sprite) || id || 'donut'; }
   function perkText(p) {
     if (!p) return '';
@@ -777,6 +781,7 @@
       listNav(m, 4, dt);
       if (P('confirm')) {
         if (!run) { sfx('error'); m.msg = 'NO CRAWL IN PROGRESS.'; m.msgT = 1.6; }
+        else if (!inSafe()) { sfx('error'); m.msg = 'STAT POINTS CAN ONLY BE SPENT IN A SAFE ROOM.'; m.msgT = 1.8; }
         else if (!(run.statPoints > 0)) { sfx('error'); m.msg = 'NO STAT POINTS. LEVEL UP FIRST.'; m.msgT = 1.6; }
         else {
           var stat = STATS[m.sel], ok;
@@ -788,7 +793,8 @@
     };
     m.draw = function (ctx) {
       var run = getRun() || { level: 1, xp: 0, statPoints: 0, stats: { str: 3, con: 3, dex: 3, int: 3 }, views: 0 };
-      frame(ctx, 'CRAWLER PROFILE', { footer: '↑↓:STAT  ' + bn('confirm') + ':SPEND POINT  ' + bn('back') + ':BACK' });
+      var safeNow = inSafe();
+      frame(ctx, 'CRAWLER PROFILE', { footer: safeNow ? '↑↓:STAT  ' + bn('confirm') + ':SPEND POINT  ' + bn('back') + ':BACK' : 'SPEND POINTS IN A SAFE ROOM  ' + bn('back') + ':BACK' });
       // left: portrait column
       DCW.box(10, 22, 110, 70, { fill: '#1c0c34' });
       R(12, 80, 106, 10, '#2c1c4c');
@@ -811,7 +817,7 @@
         T(inf.short, px + 20, yy, i === m.sel ? C.white : C.gray);
         var v = (run.stats && run.stats[s]) || 0;
         T(v, px + 66, yy, m.pop > 0 && m.popI === i ? C.gold : C.white, { align: 'right' });
-        if (pts > 0) T('[+]', px + 72, yy, i === m.sel ? C.gold : C.dgray);
+        if (pts > 0 && safeNow) T('[+]', px + 72, yy, i === m.sel ? C.gold : C.dgray);
       });
       // derived stats
       var st = pStats();
@@ -872,7 +878,12 @@
       if (m.mode === 'list') {
         var n = boxes().length;
         listNav(m, n, dt); scrollTo(m, 6, n);
-        if (P('confirm')) { if (n) { sfx('menu_select'); startOpen(); } else sfx('error'); }
+        if (m.lockT > 0) m.lockT -= dt;
+        if (P('confirm')) {
+          if (!n) sfx('error');
+          else if (!inSafe()) { sfx('error'); m.lockT = 1.8; }
+          else { sfx('menu_select'); startOpen(); }
+        }
         else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
       } else if (m.mode === 'shake') {
         m.shk -= dt;
@@ -913,7 +924,8 @@
     m.draw = function (ctx) {
       var list = boxes();
       if (m.mode === 'list') {
-        frame(ctx, 'LOOT BOXES', { footer: list.length ? bn('confirm') + ':OPEN  ' + bn('back') + ':BACK' : bn('back') + ':BACK' });
+        var canOpen = inSafe();
+        frame(ctx, 'LOOT BOXES', { footer: !list.length ? bn('back') + ':BACK' : canOpen ? bn('confirm') + ':OPEN  ' + bn('back') + ':BACK' : 'OPEN BOXES IN A SAFE ROOM  ' + bn('back') + ':BACK' });
         if (!list.length) {
           bigSprite(ctx, 'box_bronze', 160, 82, { scale: 3, silhouette: '#1c2448' });
           T('NO UNOPENED BOXES.', 160, 92, C.white, { align: 'center' });
@@ -986,6 +998,15 @@
         R(9, 138, 34, 34, C.white); R(10, 139, 32, 32, '#000'); portrait(ctx, 'p_ai', 10, 139);
         wrap(m.quip, 262).slice(0, 3).forEach(function (l, i) { T(l, 48, 140 + i * 10, C.white); });
         if (blink(2.5)) T('▼', 304, 166, C.gold);
+      }
+    };
+    var drawBoxes = m.draw;
+    m.draw = function (ctx) {
+      drawBoxes(ctx);
+      if (m.mode === 'list' && m.lockT > 0 && boxes().length) {
+        DCW.box(50, 70, 220, 34, { fill: '#2c0808', border: C.red });
+        T('BOXES ONLY OPEN IN A SAFE ROOM', 160, 77, C.red, { align: 'center' });
+        T('THE SPONSORS WANT IT ON CAMERA.', 160, 89, C.gray, { align: 'center', shadow: null });
       }
     };
     return push(m);
@@ -1193,6 +1214,97 @@
           T('REBIND ▶', 205, yy, act ? C.gold : C.dgray, { align: 'center' });
         }
       });
+    };
+    return push(m);
+  };
+
+  /* ================================================================
+     BOSS VERSUS CARD - fighters slide in, VS slams down
+     ================================================================ */
+  // o = { bossId, name, title, portrait, onDone }
+  ui.versus = function (o) {
+    o = o || {};
+    var compId = equipped('companion');
+    var m = { kind: 'versus', slam: false, done: false, out: 0 };
+    var DUR = 3.2;
+    var bossName = String(o.name || 'THE BOSS').toUpperCase();
+    var bossTitle = String(o.title || '').toUpperCase();
+    var bossPortrait = o.portrait || ('p_' + (o.bossId || ''));
+    var streaks = [];
+    for (var i = 0; i < 26; i++) streaks.push({ y: Math.random() * H, x: Math.random() * W, w: 20 + Math.random() * 60, sp: 260 + Math.random() * 320, left: i % 2 === 0 });
+    function ease(t) { t = clamp(t, 0, 1); return 1 - Math.pow(1 - t, 3); }
+    function finish() {
+      if (m.done) return;
+      m.done = true; close(m);
+      if (o.onDone) { try { o.onDone(); } catch (e) { console.error(e); } }
+    }
+    sfx('warn');
+    m.update = function (dt) {
+      m.t += dt;
+      streaks.forEach(function (st) { st.x += (st.left ? 1 : -1) * st.sp * dt; if (st.x > W + 80) st.x = -80; if (st.x < -80) st.x = W + 80; });
+      if (!m.slam && m.t >= 0.62) { m.slam = true; sfx('explosion'); sfx('boss_roar'); if (DCW.shake) DCW.shake(4, 0.35); }
+      if (m.t > 0.9 && (P('confirm') || P('start') || P('attack'))) m.t = Math.max(m.t, DUR - 0.25);
+      if (m.t >= DUR) finish();
+    };
+    m.draw = function (ctx) {
+      var t = m.t, outT = clamp((t - (DUR - 0.25)) / 0.25, 0, 1);
+      // backdrop: two halves wipe in on a diagonal
+      var wipe = ease(t / 0.3) * (1 - outT);
+      ctx.save();
+      ctx.globalAlpha = 0.92 * (1 - outT * 0.6);
+      ctx.fillStyle = '#081440';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W * 0.56 * wipe, 0); ctx.lineTo(W * 0.44 * wipe, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3c0808';
+      ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(W - W * 0.44 * wipe, 0); ctx.lineTo(W - W * 0.56 * wipe, H); ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.35 * wipe;
+      streaks.forEach(function (st) { R(st.x, st.y, st.w, 1, st.left ? '#3cbcfc' : '#f83800'); });
+      ctx.restore();
+      // the diagonal seam
+      if (wipe > 0.9) { ctx.save(); ctx.globalAlpha = 1 - outT; ctx.strokeStyle = '#fcfcfc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * 0.56, 0); ctx.lineTo(W * 0.44, H); ctx.stroke(); ctx.restore(); }
+      // fighter panels
+      var inL = ease((t - 0.12) / 0.4), inR = ease((t - 0.22) / 0.4);
+      var lx = Math.round(-120 + (26 + 120) * inL - outT * 160);
+      var rx = Math.round(W + 20 - (W + 20 - 194) * inR + outT * 160);
+      var py = 22;
+      function panel(x, pname, border, fill) {
+        DCW.box(x, py, 100, 100, { fill: fill, border: border });
+        ctx.save(); ctx.translate(x + 2, py + 2); ctx.scale(3, 3);
+        portrait(ctx, pname, 0, 0);
+        ctx.restore();
+      }
+      panel(lx, 'p_carl', C.blue, '#081440');
+      panel(rx, bossPortrait, C.red, '#3c0808');
+      // companion badge on Carl's panel
+      if (inL > 0.95 && outT === 0) {
+        DCW.box(lx + 70, py + 72, 34, 34, { fill: '#081440', border: C.gold });
+        portrait(ctx, 'p_' + compId, lx + 71, py + 73);
+      }
+      // names
+      var nameA = Math.max(0, Math.min(1, (t - 0.7) / 0.2)) * (1 - outT);
+      if (nameA > 0) {
+        ctx.save(); ctx.globalAlpha = nameA;
+        T('CARL', lx + 50, py + 108, C.gold, { align: 'center', scale: 2 });
+        T('& ' + compName(compId), lx + 50, py + 128, C.blue, { align: 'center', shadow: null });
+        if (DCW.textWidth(bossName, 2) <= 148) T(bossName, rx + 50, py + 108, C.red, { align: 'center', scale: 2 });
+        else if (/^THE /.test(bossName) && DCW.textWidth(bossName.slice(4), 2) <= 148) {
+          T('THE', rx + 50, py + 102, C.red, { align: 'center', shadow: null });
+          T(bossName.slice(4), rx + 50, py + 110, C.red, { align: 'center', scale: 2 });
+        } else T(bossName, rx + 50, py + 112, C.red, { align: 'center' });
+        wrap(bossTitle, 150).slice(0, 2).forEach(function (l, i) { T(l, rx + 50, py + 128 + i * 9, C.gray, { align: 'center', shadow: null }); });
+        ctx.restore();
+      }
+      // VS slam
+      if (t >= 0.55 && outT < 1) {
+        var k = clamp((t - 0.55) / 0.12, 0, 1);
+        var sc = Math.max(3, Math.round(7 - 4 * k));
+        var vy = 58 - (sc - 3) * 4;
+        ctx.save(); ctx.globalAlpha = 1 - outT;
+        if (t < 0.75) { ctx.globalAlpha = 0.5 * (1 - outT); R(0, 0, W, H, '#fcfcfc'); ctx.globalAlpha = 1 - outT; }
+        T('VS', 160 + 1, vy + 1, C.red, { align: 'center', scale: sc, shadow: null });
+        T('VS', 160, vy, blink(6) ? C.gold : C.yellow, { align: 'center', scale: sc, shadow: '#000' });
+        ctx.restore();
+      }
+      if (t > 1.2 && outT === 0) T('BOSS BATTLE', 160, 6, blink(2.5) ? C.red : C.dred, { align: 'center' });
     };
     return push(m);
   };
@@ -1466,11 +1578,13 @@
     }
   };
   ui.draw = function (ctx) {
+    // banners belong to the playfield: draw them under any open menu, toasts stay on top
+    if (stack.length) drawBanner(ctx);
     for (var i = 0; i < stack.length; i++) {
       var m = stack[i];
       if (m.draw) { try { ctx.save(); m.draw(ctx); } catch (e) { console.error('[ui] modal draw', e); } finally { ctx.restore(); ctx.globalAlpha = 1; } }
     }
-    drawBanner(ctx);
+    if (!stack.length) drawBanner(ctx);
     drawToasts(ctx);
   };
 
@@ -1977,6 +2091,7 @@
         var tip = function () { ui.say([{ who: 'MORDECAI', portrait: 'p_mordecai', text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
         ui.menu([
           { label: 'ASK FOR A TIP', action: tip },
+          { label: (run.statPoints > 0 ? 'TRAIN (' + run.statPoints + ' STAT POINT' + (run.statPoints > 1 ? 'S' : '') + ')' : 'TRAIN'), disabled: !(run.statPoints > 0), why: 'NO STAT POINTS. GO LEVEL UP.', action: function () { ui.openCharacter(); } },
           { label: 'REST (FULL HEAL)', disabled: !!run.restedHere, why: 'YOU ALREADY RESTED THIS VISIT.', action: function () {
             var r = getRun(); if (r) r.restedHere = true;
             if (hasG('heal')) G('heal', 9999); else if (r) r.hp = pStats().maxHp || r.hp;
