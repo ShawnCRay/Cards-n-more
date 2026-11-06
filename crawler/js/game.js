@@ -513,7 +513,8 @@
       var entry = U.weighted(table.entries || [[{ kind: 'gold', min: 10, max: 30 }, 1]]);
       out.push(resolveReward(entry));
     }
-    if (table.guarantee) out.push(resolveReward(table.guarantee));
+    var gu = table.guaranteed || table.guarantee;
+    if (gu) (Array.isArray(gu) ? gu : [gu]).forEach(function (g) { out.push(resolveReward(g)); });
     DCW.save.meta.boxesOpened = (DCW.save.meta.boxesOpened || 0) + 1;
     r.hp = Math.min(r.hp, G.playerStats().maxHp);
     G.track('box_open');
@@ -591,6 +592,10 @@
     sfx('achievement');
     toast(a.name, { title: 'NEW ACHIEVEMENT!', icon: 'star', color: '#f8d878', time: 3.5 });
     if (G.run) G.giveLootBox(a.box || 'bronze', 'ACHIEVEMENT: ' + a.name, true);
+    var un = a.unlock;
+    if (typeof un === 'string') un = (D().skins || {})[un] ? { skin: un } : { companion: un };
+    if (un && un.skin) G.unlockSkin(un.skin);
+    if (un && un.companion) G.unlockCompanion(un.companion);
     persist();
     return true;
   };

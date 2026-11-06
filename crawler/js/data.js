@@ -25,8 +25,16 @@
    - bosses[id].final: true on the last boss (beating it wins the game).
    - achievements[id].unlock: {skin:id} | {companion:id} granted with the box.
    - companions[id].bonus {views} (zev) / bombChance (squeaks): ability tuning hints.
+   - boxTiers[tier].rank (1-5) for sorting; projectiles.missile (friendly:true)
+     for Donut; D.version, D.themes, D.owThemes are informational.
    Chunk notes: moving platforms '<' '>' 'v' are ONE char each, placed on the
-   platform's starting (center) tile, with >= 3 free tiles of travel each way.
+   platform's starting (center) tile, with >= 3 free tiles of travel each way
+   ('<' starts moving left, '>' right, 'v' down). Arena chunks (with 'K') are
+   open on the left (rows 5-9) and walled on the right.
+   Balance targets (see data_render.js --balance, assumes ~all kills, side
+   areas done, ~2 ambushes per floor): enter F2 at ~L3, F4 ~L8, F9 ~L19, finish
+   ~L21. Regular enemies take 2-4 punches at that level; bosses ~40-55 punches.
+   Spawned adds (boss spawn:, cultist) are extra xp on top.
    ========================================================================== */
 (function () {
   'use strict';
@@ -44,13 +52,13 @@
   D.floorScale = [
     { hp: 1.0, dmg: 1.0, xp: 1.0, gold: 1.0 },
     { hp: 1.8, dmg: 1.4, xp: 1.8, gold: 1.4 },
-    { hp: 2.5, dmg: 1.8, xp: 2.6, gold: 1.8 },
-    { hp: 3.4, dmg: 2.2, xp: 3.6, gold: 2.2 },
-    { hp: 4.5, dmg: 2.7, xp: 4.8, gold: 2.6 },
-    { hp: 5.4, dmg: 3.1, xp: 6.0, gold: 3.0 },
-    { hp: 6.3, dmg: 3.5, xp: 7.4, gold: 3.4 },
-    { hp: 7.0, dmg: 3.9, xp: 8.8, gold: 3.8 },
-    { hp: 8.2, dmg: 4.4, xp: 10.4, gold: 4.2 }
+    { hp: 2.5, dmg: 1.8, xp: 2.2, gold: 1.8 },
+    { hp: 3.4, dmg: 2.2, xp: 2.5, gold: 2.2 },
+    { hp: 4.5, dmg: 2.7, xp: 3.1, gold: 2.6 },
+    { hp: 5.4, dmg: 3.1, xp: 3.7, gold: 3.0 },
+    { hp: 6.3, dmg: 3.5, xp: 5.1, gold: 3.4 },
+    { hp: 7.0, dmg: 3.9, xp: 5.5, gold: 3.8 },
+    { hp: 8.2, dmg: 4.4, xp: 5.8, gold: 4.2 }
   ];
   D.enemyFor = function (id, floor) {
     var e = D.enemies && D.enemies[id];
@@ -76,119 +84,119 @@
   D.enemies = {
     /* floor 1 */
     rat: { name: 'TUTORIAL RAT', tier: 1, hp: 3, dmg: 1, speed: 28, w: 12, h: 8, ai: 'walker',
-      xp: 2, gold: [0, 1], sprite: 'rat', kb: 1.2,
+      xp: 1, gold: [0, 1], sprite: 'rat', kb: 1.2,
       flavor: "A RAT. IN A SEWER. GROUNDBREAKING. IT HAS SEEN THINGS AND IT WANTS TO SHOW YOU." },
     roach: { name: 'SEWER ROACH', tier: 1, hp: 2, dmg: 1, speed: 48, w: 10, h: 6, ai: 'walker',
       xp: 1, gold: [0, 1], sprite: 'roach', kb: 1.4,
       flavor: "SURVIVED THREE APOCALYPSES. WILL NOT SURVIVE YOUR FOOT. PROBABLY." },
     goblin: { name: 'GOBLIN GRUNT', tier: 1, hp: 6, dmg: 1, speed: 40, w: 12, h: 16, ai: 'chaser',
-      aggro: 110, xp: 4, gold: [1, 3], sprite: 'goblin',
+      aggro: 110, xp: 3, gold: [1, 3], sprite: 'goblin',
       flavor: "SMALL, GREEN, AND DEEPLY OFFENDED BY YOUR PANTS SITUATION." },
     bat: { name: 'DRIP BAT', tier: 1, hp: 3, dmg: 1, speed: 50, w: 12, h: 10, ai: 'flyer', flying: true,
-      xp: 2, gold: [0, 1], sprite: 'bat',
+      xp: 1, gold: [0, 1], sprite: 'bat',
       flavor: "FLAPS AT FACE HEIGHT ON PURPOSE. NOBODY KNOWS WHY. NOBODY LIKES IT." },
 
     /* floor 2 */
     goblin_archer: { name: 'GOBLIN ARCHER', tier: 2, hp: 9, dmg: 2, speed: 34, w: 12, h: 16, ai: 'shooter',
-      projectile: 'arrow', shootEvery: 2.4, aggro: 150, xp: 6, gold: [1, 4], sprite: 'goblin_archer',
+      projectile: 'arrow', shootEvery: 2.4, aggro: 150, xp: 4, gold: [1, 4], sprite: 'goblin_archer',
       flavor: "FAILED ARCHERY SCHOOL TWICE. STILL BETTER AT IT THAN YOU ARE AT DODGING." },
     goblin_brute: { name: 'GOBLIN BRUTE', tier: 2, hp: 26, dmg: 2, speed: 36, w: 18, h: 22, ai: 'charger',
-      chargeSpeed: 150, aggro: 130, armor: 1, kb: 0.4, xp: 18, gold: [4, 9], sprite: 'goblin_brute',
+      chargeSpeed: 150, aggro: 130, armor: 1, kb: 0.4, xp: 13, gold: [4, 9], sprite: 'goblin_brute',
       flavor: "HIS NECK IS WIDER THAN HIS HEAD. THIS IS NOT A COMPLIMENT, AND ALSO IT IS." },
     grub: { name: 'CAVE GRUB', tier: 2, hp: 6, dmg: 1, speed: 18, w: 12, h: 8, ai: 'walker',
-      xp: 3, gold: [0, 2], sprite: 'grub', kb: 1.2,
+      xp: 2, gold: [0, 2], sprite: 'grub', kb: 1.2,
       flavor: "SQUISHY. SLOW. DELICIOUS, ACCORDING TO GOBLINS. DO NOT ASK GOBLINS ABOUT FOOD." },
     shaman: { name: 'GOBLIN SHAMAN', tier: 2, hp: 12, dmg: 2, speed: 26, w: 12, h: 18, ai: 'shooter',
-      projectile: 'fireball', shootEvery: 2.8, aggro: 160, xp: 10, gold: [2, 6], sprite: 'shaman',
+      projectile: 'fireball', shootEvery: 2.8, aggro: 160, xp: 7, gold: [2, 6], sprite: 'shaman',
       flavor: "TOOK ONE ONLINE COURSE IN FIRE MAGIC. PASSED. BARELY. AIMS FOR THE BOXERS." },
     juicer_minion: { name: 'JUICED GOBLIN', tier: 2, hp: 15, dmg: 2, speed: 46, w: 16, h: 20, ai: 'chaser',
-      aggro: 140, jump: 200, xp: 9, gold: [2, 5], sprite: 'juicer_minion',
+      aggro: 140, jump: 200, xp: 6, gold: [2, 5], sprite: 'juicer_minion',
       flavor: "SKIPS LEG DAY. SKIPS EVERY DAY THAT IS NOT CHEST DAY. VEINS HAVE VEINS." },
 
     /* floor 3 */
     clown: { name: 'HOBO CLOWN', tier: 3, hp: 15, dmg: 2, speed: 40, w: 14, h: 20, ai: 'jumper',
-      jump: 230, aggro: 140, xp: 9, gold: [2, 6], sprite: 'clown',
+      jump: 230, aggro: 140, xp: 5, gold: [2, 6], sprite: 'clown',
       flavor: "HONKS WHEN HIT. HONKS WHEN SAD. HONKS AT NIGHT. NOBODY SLEEPS ON FLOOR THREE." },
     clown_brute: { name: 'STRONGMAN CLOWN', tier: 3, hp: 42, dmg: 3, speed: 34, w: 20, h: 24, ai: 'hopper',
-      jump: 260, aggro: 150, armor: 1, kb: 0.3, xp: 30, gold: [6, 14], sprite: 'clown_brute',
+      jump: 260, aggro: 150, armor: 1, kb: 0.3, xp: 18, gold: [6, 14], sprite: 'clown_brute',
       flavor: "THE DUMBBELL IS PAINTED FOAM. THE FIST IS NOT. LEARN THE DIFFERENCE FAST." },
     skyfowl: { name: 'SKYFOWL', tier: 3, hp: 12, dmg: 2, speed: 62, w: 16, h: 12, ai: 'flyer', flying: true,
-      xp: 8, gold: [1, 4], sprite: 'skyfowl',
+      xp: 5, gold: [1, 4], sprite: 'skyfowl',
       flavor: "A PIGEON THAT GOT INTO THE LOOT. NOW IT HAS TALONS AND OPINIONS." },
     swamp_troll: { name: 'SWAMP TROLL', tier: 3, hp: 38, dmg: 3, speed: 30, w: 20, h: 24, ai: 'chaser',
-      aggro: 120, armor: 1, kb: 0.3, xp: 27, gold: [5, 12], sprite: 'swamp_troll',
+      aggro: 120, armor: 1, kb: 0.3, xp: 16, gold: [5, 12], sprite: 'swamp_troll',
       flavor: "SMELLS LIKE A GYM BAG LEFT IN A POND. BECAUSE THAT IS WHAT HE IS, MOSTLY." },
     gator: { name: 'BOG GATOR', tier: 3, hp: 18, dmg: 3, speed: 34, w: 22, h: 10, ai: 'charger',
-      chargeSpeed: 170, aggro: 120, xp: 11, gold: [2, 6], sprite: 'gator',
+      chargeSpeed: 170, aggro: 120, xp: 7, gold: [2, 6], sprite: 'gator',
       flavor: "ALL MOUTH, NO MANNERS. HAS NEVER ONCE SAID SEE YOU LATER." },
 
     /* floor 4 */
     steam_goblin: { name: 'STEAM GOBLIN', tier: 4, hp: 22, dmg: 3, speed: 34, w: 14, h: 18, ai: 'bomber',
-      projectile: 'bottle', shootEvery: 2.6, aggro: 160, xp: 13, gold: [3, 8], sprite: 'steam_goblin',
+      projectile: 'bottle', shootEvery: 2.6, aggro: 160, xp: 6, gold: [3, 8], sprite: 'steam_goblin',
       flavor: "BUILT HIS OWN BACKPACK BOILER. IT LEAKS. HE THROWS THE LEAKS AT YOU." },
     conductor: { name: 'THE CONDUCTOR', tier: 4, hp: 52, dmg: 3, speed: 36, w: 16, h: 22, ai: 'charger',
-      chargeSpeed: 190, aggro: 170, armor: 1, kb: 0.3, xp: 34, gold: [8, 16], sprite: 'conductor',
+      chargeSpeed: 190, aggro: 170, armor: 1, kb: 0.3, xp: 17, gold: [8, 16], sprite: 'conductor',
       flavor: "TICKETS, PLEASE. NO TICKET? THEN YOU ARE THE TICKET. PUNCHED. HARD." },
     rail_rat: { name: 'RAIL RAT', tier: 4, hp: 18, dmg: 3, speed: 52, w: 14, h: 10, ai: 'jumper',
-      jump: 210, aggro: 130, xp: 10, gold: [2, 5], sprite: 'rail_rat',
+      jump: 210, aggro: 130, xp: 5, gold: [2, 5], sprite: 'rail_rat',
       flavor: "A RAT THAT LIVES ON TRAINS. FASTER THAN YOUR RAT. ANGRIER THAN YOUR RAT." },
 
     /* floor 5 */
     fishman: { name: 'DEEP FISHMAN', tier: 5, hp: 30, dmg: 3, speed: 42, w: 14, h: 20, ai: 'chaser',
-      aggro: 140, jump: 220, xp: 16, gold: [3, 9], sprite: 'fishman',
+      aggro: 140, jump: 220, xp: 7, gold: [3, 9], sprite: 'fishman',
       flavor: "HALF FISH, HALF MAN, ALL CARDIO. MOIST HANDSHAKE. AVOID THE HANDSHAKE." },
     jelly: { name: 'STING JELLY', tier: 5, hp: 22, dmg: 3, speed: 30, w: 14, h: 14, ai: 'flyer', flying: true,
-      xp: 14, gold: [2, 7], sprite: 'jelly',
+      xp: 6, gold: [2, 7], sprite: 'jelly',
       flavor: "FLOATS. GLOWS. STINGS. HAS NO BRAIN AND IS STILL WINNING AGAINST YOU." },
     crab: { name: 'CHROME CRAB', tier: 5, hp: 64, dmg: 4, speed: 30, w: 18, h: 12, ai: 'walker',
-      armor: 2, kb: 0.3, xp: 38, gold: [8, 18], sprite: 'crab',
+      armor: 2, kb: 0.3, xp: 17, gold: [8, 18], sprite: 'crab',
       flavor: "ARMORED. SIDEWAYS. FURIOUS. KICK IT FROM ABOVE, THE SHELL IS ALL BRAG." },
 
     /* floor 6 */
     hunter: { name: 'TROPHY HUNTER', tier: 6, hp: 34, dmg: 4, speed: 36, w: 14, h: 20, ai: 'shooter',
-      projectile: 'arrow', shootEvery: 2.0, aggro: 180, xp: 20, gold: [4, 10], sprite: 'hunter',
+      projectile: 'arrow', shootEvery: 2.0, aggro: 180, xp: 9, gold: [4, 10], sprite: 'hunter',
       flavor: "PAID A LOT OF MONEY TO SHOOT YOU. WOULD LIKE A REFUND. DO NOT GIVE HIM ONE." },
     hound: { name: 'BLOOD HOUND', tier: 6, hp: 30, dmg: 4, speed: 50, w: 20, h: 12, ai: 'charger',
-      chargeSpeed: 210, aggro: 170, xp: 18, gold: [3, 8], sprite: 'hound',
+      chargeSpeed: 210, aggro: 170, xp: 8, gold: [3, 8], sprite: 'hound',
       flavor: "GOOD BOY. NOT YOUR GOOD BOY. SOMEBODY ELSE'S VERY BAD GOOD BOY." },
     masked_noble: { name: 'MASKED NOBLE', tier: 6, hp: 90, dmg: 5, speed: 40, w: 14, h: 22, ai: 'shooter',
-      projectile: 'knife', shootEvery: 1.8, aggro: 170, armor: 2, kb: 0.3, xp: 60, gold: [12, 24], sprite: 'masked_noble',
+      projectile: 'knife', shootEvery: 1.8, aggro: 170, armor: 2, kb: 0.3, xp: 26, gold: [12, 24], sprite: 'masked_noble',
       flavor: "OLD MONEY, NEW KNIVES. CONSIDERS YOU A SPORTING INCONVENIENCE." },
 
     /* floor 7 */
     ghoul: { name: 'MANOR GHOUL', tier: 7, hp: 42, dmg: 4, speed: 40, w: 14, h: 20, ai: 'chaser',
-      aggro: 140, xp: 22, gold: [4, 10], sprite: 'ghoul',
+      aggro: 140, xp: 11, gold: [4, 10], sprite: 'ghoul',
       flavor: "USED TO BE THE BUTLER. STILL DOES THE DISHES. THE DISHES ARE CRAWLERS NOW." },
     gargoyle: { name: 'GARGOYLE', tier: 7, hp: 40, dmg: 5, speed: 54, w: 18, h: 16, ai: 'flyer', flying: true,
-      armor: 2, xp: 24, gold: [4, 11], sprite: 'gargoyle',
+      armor: 2, xp: 12, gold: [4, 11], sprite: 'gargoyle',
       flavor: "SPENT FOUR HUNDRED YEARS ON A ROOF FROWNING. NOW IT GETS TO FROWN AT YOU UP CLOSE." },
     skeleton: { name: 'BONE THROWER', tier: 7, hp: 34, dmg: 4, speed: 34, w: 12, h: 20, ai: 'bomber',
-      projectile: 'rock', shootEvery: 2.2, aggro: 170, xp: 20, gold: [3, 9], sprite: 'skeleton',
+      projectile: 'rock', shootEvery: 2.2, aggro: 170, xp: 10, gold: [3, 9], sprite: 'skeleton',
       flavor: "THROWS HIS OWN BONES. ALWAYS HAS SPARES. DO NOT ASK WHERE THE SPARES COME FROM." },
 
     /* floor 8 */
     mutant: { name: 'RUIN MUTANT', tier: 8, hp: 50, dmg: 5, speed: 44, w: 18, h: 22, ai: 'chaser',
-      aggro: 150, jump: 210, xp: 26, gold: [5, 12], sprite: 'mutant',
+      aggro: 150, jump: 210, xp: 12, gold: [5, 12], sprite: 'mutant',
       flavor: "THREE ARMS. TWO OPINIONS. ONE GOAL: HUGGING YOU UNTIL YOU POP." },
     drone: { name: 'SURVEY DRONE', tier: 8, hp: 34, dmg: 4, speed: 60, w: 14, h: 10, ai: 'flyer', flying: true,
-      projectile: 'laser_orb', shootEvery: 3.0, aggro: 180, xp: 22, gold: [4, 10], sprite: 'drone',
+      projectile: 'laser_orb', shootEvery: 3.0, aggro: 180, xp: 10, gold: [4, 10], sprite: 'drone',
       flavor: "FILMING YOU FOR THE HIGHLIGHT REEL. ALSO SHOOTING YOU. MULTITASKER." },
     golem: { name: 'SCRAP GOLEM', tier: 8, hp: 130, dmg: 6, speed: 26, w: 22, h: 24, ai: 'hopper',
-      jump: 250, aggro: 150, armor: 3, kb: 0.1, xp: 72, gold: [14, 28], sprite: 'golem',
+      jump: 250, aggro: 150, armor: 3, kb: 0.1, xp: 32, gold: [14, 28], sprite: 'golem',
       flavor: "MADE OF CARS, FRIDGES AND ONE VERY CONFUSED VENDING MACHINE. STILL SELLS SODA." },
 
     /* floor 9 */
     soldier: { name: 'FACTION SOLDIER', tier: 9, hp: 54, dmg: 5, speed: 40, w: 14, h: 20, ai: 'shooter',
-      projectile: 'bolt', shootEvery: 1.8, aggro: 180, xp: 30, gold: [6, 14], sprite: 'soldier',
+      projectile: 'bolt', shootEvery: 1.8, aggro: 180, xp: 12, gold: [6, 14], sprite: 'soldier',
       flavor: "SIGNED UP FOR GLORY. GOT A HELMET THAT DOES NOT FIT AND YOU." },
     sniper: { name: 'ROOF SNIPER', tier: 9, hp: 40, dmg: 6, speed: 0, w: 14, h: 20, ai: 'turret',
-      projectile: 'laser_orb', shootEvery: 2.4, aggro: 240, xp: 30, gold: [6, 14], sprite: 'sniper',
+      projectile: 'laser_orb', shootEvery: 2.4, aggro: 240, xp: 12, gold: [6, 14], sprite: 'sniper',
       flavor: "HAS NOT MOVED IN NINE HOURS. HAS A JAR. DO NOT THINK ABOUT THE JAR." },
     war_beast: { name: 'WAR BEAST', tier: 9, hp: 150, dmg: 7, speed: 36, w: 24, h: 18, ai: 'charger',
-      chargeSpeed: 220, aggro: 190, armor: 3, kb: 0.1, xp: 85, gold: [16, 32], sprite: 'war_beast',
+      chargeSpeed: 220, aggro: 190, armor: 3, kb: 0.1, xp: 34, gold: [16, 32], sprite: 'war_beast',
       flavor: "SOMEBODY PUT ARMOR ON A RHINO AND TOLD IT YOU INSULTED ITS MOTHER." },
     cultist: { name: 'SHOW CULTIST', tier: 9, hp: 46, dmg: 5, speed: 0, w: 14, h: 22, ai: 'spawner',
-      spawn: 'skeleton', spawnEvery: 5, aggro: 200, xp: 32, gold: [6, 14], sprite: 'cultist',
+      spawn: 'skeleton', spawnEvery: 5, aggro: 200, xp: 13, gold: [6, 14], sprite: 'cultist',
       flavor: "WORSHIPS THE RATINGS. CHANTS THE SPONSOR NAMES. SUMMONS BONY BACKUP DANCERS." }
   };
 
@@ -212,7 +220,7 @@
      Projectile dmg in bosses' attacks uses the projectile table; contact uses boss dmg. */
   D.bosses = {
     hoarder: { name: 'THE HOARDER', title: 'MOTHER OF A THOUSAND ROACHES',
-      hp: 120, dmg: 2, w: 48, h: 32, sprite: 'hoarder', xp: 60, gold: [40, 70], flying: false,
+      hp: 120, dmg: 2, w: 48, h: 32, sprite: 'hoarder', xp: 45, gold: [40, 70], flying: false,
       phases: [
         { below: 1.0, speed: 34, pattern: ['walk:2', 'charge', 'idle:1.2', 'spawn:roach:2', 'walk:1.5', 'jump_slam', 'idle:1.4'] },
         { below: 0.5, speed: 48, pattern: ['charge', 'idle:0.8', 'rain:rock:5', 'spawn:roach:3', 'jump_slam', 'idle:1', 'charge', 'idle:0.8'] }
@@ -223,7 +231,7 @@
       loot: 'boss', unlock: { companion: 'squeaks' } },
 
     juicer: { name: 'THE JUICER', title: 'GOBLIN KING OF GAINS',
-      hp: 200, dmg: 2, w: 40, h: 40, sprite: 'juicer', xp: 120, gold: [70, 110], flying: false,
+      hp: 200, dmg: 2, w: 40, h: 40, sprite: 'juicer', xp: 85, gold: [70, 110], flying: false,
       phases: [
         { below: 1.0, speed: 44, pattern: ['walk:1.5', 'charge', 'idle:1', 'shoot:bottle:3', 'walk:1', 'jump_slam', 'idle:1.2'] },
         { below: 0.6, speed: 58, pattern: ['charge', 'charge', 'idle:0.8', 'spawn:juicer_minion:2', 'jump_slam', 'shockwave', 'idle:1'] },
@@ -235,7 +243,7 @@
       loot: 'boss', unlock: { companion: 'mongo' } },
 
     ringmaster: { name: 'THE RINGMASTER', title: 'MASTER OF THE MIDWAY',
-      hp: 280, dmg: 3, w: 32, h: 44, sprite: 'ringmaster', xp: 200, gold: [100, 150], flying: false,
+      hp: 280, dmg: 3, w: 32, h: 44, sprite: 'ringmaster', xp: 120, gold: [100, 150], flying: false,
       phases: [
         { below: 1.0, speed: 50, pattern: ['walk:1.5', 'spread:note:5', 'idle:1', 'spawn:clown:2', 'teleport', 'shoot:knife:3', 'idle:1.2'] },
         { below: 0.5, speed: 66, pattern: ['teleport', 'spread:note:7', 'summon_spikes', 'spawn:clown:2', 'teleport', 'rain:bottle:6', 'charge', 'idle:0.8'] }
@@ -246,7 +254,7 @@
       loot: 'boss', unlock: { skin: 'carl_clown' } },
 
     engineer: { name: 'THE ENGINEER', title: 'IRON HEART OF THE TANGLE',
-      hp: 360, dmg: 3, w: 56, h: 40, sprite: 'engineer', xp: 300, gold: [140, 200], flying: false,
+      hp: 360, dmg: 3, w: 56, h: 40, sprite: 'engineer', xp: 150, gold: [140, 200], flying: false,
       phases: [
         { below: 1.0, speed: 40, pattern: ['walk:2', 'charge', 'idle:1', 'spawn:steam_goblin:2', 'shoot:bolt:3', 'laser', 'idle:1.2'] },
         { below: 0.55, speed: 58, pattern: ['charge', 'shockwave', 'laser', 'rain:bottle:6', 'charge', 'spawn:rail_rat:3', 'idle:0.8'] }
@@ -257,7 +265,7 @@
       loot: 'boss', unlock: { companion: 'katia' } },
 
     tidemother: { name: 'THE TIDEMOTHER', title: 'QUEEN OF THE BUBBLE SEA',
-      hp: 440, dmg: 4, w: 56, h: 48, sprite: 'tidemother', xp: 420, gold: [180, 260], flying: false,
+      hp: 440, dmg: 4, w: 56, h: 48, sprite: 'tidemother', xp: 195, gold: [180, 260], flying: false,
       phases: [
         { below: 1.0, speed: 36, pattern: ['walk:1.5', 'spread:bubble:5', 'idle:1', 'spawn:jelly:2', 'summon_spikes', 'shoot:bubble:4', 'idle:1.2'] },
         { below: 0.5, speed: 50, pattern: ['spread:bubble:8', 'laser', 'spawn:fishman:2', 'rain:bubble:8', 'shockwave', 'summon_spikes', 'idle:0.8'] }
@@ -268,7 +276,7 @@
       loot: 'boss', unlock: { skin: 'carl_hazmat' } },
 
     butcher: { name: 'THE BUTCHER', title: 'GAMEKEEPER OF THE GROUNDS',
-      hp: 520, dmg: 4, w: 40, h: 44, sprite: 'butcher', xp: 540, gold: [220, 320], flying: false,
+      hp: 520, dmg: 4, w: 40, h: 44, sprite: 'butcher', xp: 240, gold: [220, 320], flying: false,
       phases: [
         { below: 1.0, speed: 46, pattern: ['walk:1.5', 'charge', 'shoot:knife:3', 'idle:0.9', 'spawn:hound:2', 'jump_slam', 'idle:1.1'] },
         { below: 0.6, speed: 60, pattern: ['charge', 'spread:knife:5', 'jump_slam', 'shockwave', 'spawn:hunter:1', 'charge', 'idle:0.8'] },
@@ -280,7 +288,7 @@
       loot: 'boss', unlock: { companion: 'zev' } },
 
     bride: { name: 'THE BRIDE', title: 'LADY OF THE BEDLAM MANOR',
-      hp: 600, dmg: 5, w: 36, h: 48, sprite: 'bride', xp: 680, gold: [260, 360], flying: true,
+      hp: 600, dmg: 5, w: 36, h: 48, sprite: 'bride', xp: 340, gold: [260, 360], flying: true,
       phases: [
         { below: 1.0, speed: 52, pattern: ['hover:1.5', 'swoop', 'idle:0.8', 'spread:fireball:5', 'teleport', 'spawn:ghoul:2', 'hover:1.2'] },
         { below: 0.5, speed: 68, pattern: ['teleport', 'laser', 'swoop', 'rain:fireball:8', 'spawn:skeleton:2', 'teleport', 'summon_spikes', 'hover:0.8'] }
@@ -291,7 +299,7 @@
       loot: 'boss', unlock: { skin: 'carl_bodyguard' } },
 
     overseer: { name: 'THE OVERSEER', title: 'ALL SEEING EYE OF THE RUIN',
-      hp: 680, dmg: 5, w: 48, h: 40, sprite: 'overseer', xp: 840, gold: [300, 420], flying: true,
+      hp: 680, dmg: 5, w: 48, h: 40, sprite: 'overseer', xp: 380, gold: [300, 420], flying: true,
       phases: [
         { below: 1.0, speed: 46, pattern: ['hover:1.2', 'laser', 'shoot:laser_orb:4', 'spawn:drone:2', 'swoop', 'hover:1.2'] },
         { below: 0.6, speed: 60, pattern: ['laser', 'teleport', 'spread:laser_orb:7', 'summon_spikes', 'swoop', 'spawn:mutant:1', 'laser', 'hover:0.8'] },
@@ -303,7 +311,7 @@
       loot: 'boss', unlock: { skin: 'carl_kilt' } },
 
     showrunner: { name: 'THE SHOWRUNNER', title: 'PRODUCER OF THE APOCALYPSE', final: true,
-      hp: 950, dmg: 6, w: 48, h: 56, sprite: 'showrunner', xp: 1500, gold: [500, 700], flying: false,
+      hp: 950, dmg: 6, w: 48, h: 56, sprite: 'showrunner', xp: 600, gold: [500, 700], flying: false,
       phases: [
         { below: 1.0, speed: 48, pattern: ['walk:1.5', 'spread:note:6', 'teleport', 'spawn:soldier:2', 'shoot:laser_orb:4', 'idle:1', 'laser', 'idle:1'] },
         { below: 0.66, speed: 62, pattern: ['teleport', 'laser', 'rain:fireball:10', 'spawn:war_beast:1', 'summon_spikes', 'spread:note:9', 'charge', 'idle:0.8'] },
@@ -838,10 +846,10 @@
 
   C.f3_f = { rows: [
     '................................',
-    '..........................?.....',
-    '.........................===....',
-    '....................oooo........',
-    '....................====........',
+    '.........................?......',
+    '........................===.....',
+    '..................oooo..........',
+    '..................====..........',
     '................................',
     '............ooo.................',
     '...........=====................',
@@ -1436,12 +1444,12 @@
     '......................f.............',
     '....................................',
     '....................................',
-    '.......oooo...........oooo..........',
+    '.......ooo............ooo...........',
     '....................................',
     '...........XXXX............XXXX.....',
     '..c..e.....XXXX...e........XXXX..e..',
-    '#######....###########....##########',
-    '#######....###########....##########'] };
+    '#######...############...###########',
+    '#######...############...###########'] };
 
   C.f8_b = { rows: [
     '................................',
@@ -1696,7 +1704,7 @@
     city8:   { enemies: [['mutant', 3], ['steam_goblin', 1], ['rail_rat', 1]], elite: [['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
     war9:    { enemies: [['soldier', 5], ['sniper', 1], ['cultist', 1], ['mutant', 1]], elite: [['war_beast', 2], ['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] }
   };
-  function mix(name, o) { var m = MIX[name]; o.enemies = m.enemies; o.elite = m.elite; o.flyers = m.flyers; return o; }
+  function mix(name, o) { var m = MIX[name]; o.enemies = o.enemies || m.enemies; o.elite = o.elite || m.elite; o.flyers = o.flyers || m.flyers; return o; }
 
   var AMB = ['amb_a', 'amb_b', 'amb_c'];
   var SIDE = ['sx_a', 'sx_b', 'sx_c'];
@@ -1704,7 +1712,7 @@
   /* ---------------- floor 1 ---------------- */
   st('f1_s1', mix('f1', { name: 'THE DRAINAGE TUTORIAL', floor: 1, theme: 'sewer', kind: 'main',
     chunks: { start: 'f1_tut_start', pool: ['f1_tut_mid', 'f1_a'], count: 2, end: 'f1_tut_end' },
-    reward: { box: 'bronze', xp: 10 },
+    reward: { box: 'bronze', xp: 5 },
     intro: "TUTORIAL TIME! READ THE SIGNS, CRAWLER. THEY ARE THE ONLY THINGS DOWN HERE THAT WANT YOU TO LIVE.",
     signs: [
       "LEFT AND RIGHT TO MOVE. PRESS JUMP TO JUMP. HOLD JUMP TO JUMP HIGHER. YOU ARE DOING GREAT, SWEETIE.",
@@ -1717,228 +1725,222 @@
     ] }));
   st('f1_s2', mix('f1', { name: 'THE BIG STINK', floor: 1, theme: 'sewer', kind: 'main',
     chunks: { start: 'f1_start', pool: ['f1_a', 'f1_b', 'f1_c', 'f1_d', 'f1_e', 'f1_f', 'f1_g'], count: 5, end: 'end_door' },
-    reward: { box: 'bronze', xp: 15 },
+    reward: { box: 'bronze', xp: 10 },
     intro: "THE SEWERS BENEATH YOUR FORMER CITY! YES, THE SMELL IS PART OF THE EXPERIENCE. NO, YOU CANNOT OPT OUT." }));
   st('f1_boss', { name: 'THE HOARD', floor: 1, theme: 'sewer', kind: 'boss', music: 'boss',
     chunks: { start: 'f1_start', pool: ['f1_b', 'f1_d'], count: 1, end: 'arena_hoarder' },
     enemies: [['roach', 3], ['rat', 1]], elite: [['goblin', 1]], flyers: [['bat', 1]],
-    boss: 'hoarder', reward: { box: 'boss', xp: 30 },
+    boss: 'hoarder', reward: { box: 'boss', xp: 20 },
     intro: "SOMETHING IS LIVING IN THE PILE OF JUNK AHEAD. SOMETHING WITH OPINIONS ABOUT HER STUFF." });
 
   /* ---------------- floor 2 ---------------- */
   var P2 = ['f2_a', 'f2_b', 'f2_c', 'f2_d', 'f2_e', 'f2_f', 'f2_g', 'f2_h'];
   st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cave', kind: 'main',
-    chunks: { start: 'f2_start', pool: P2, count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
+    chunks: { start: 'f2_start', pool: P2, count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
     intro: "THE GOBLIN WARRENS! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
   st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main',
-    chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
+    chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
     enemies: [['goblin_archer', 4], ['goblin', 3], ['shaman', 2]],
     intro: "THE GOBLINS PRACTICE THEIR AIM HERE. GUESS WHO VOLUNTEERED TO BE THE TARGET? YOU DID. JUST NOW." }));
   st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cave', kind: 'main', dark: true,
-    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
+    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 20 },
     enemies: [['grub', 4], ['goblin', 2], ['juicer_minion', 2], ['shaman', 1]],
     intro: "IT IS DARK. IT IS DAMP. SOMETHING IS CHEWING. STAY CLOSE TO THE CAT, SHE GLOWS WHEN SHE IS SMUG." }));
   st('f2_boss', { name: 'THE IRON GYM', floor: 2, theme: 'cave', kind: 'boss', music: 'boss',
     chunks: { start: 'f2_start', pool: ['f2_c', 'f2_g'], count: 1, end: 'arena_juicer' },
     enemies: [['goblin', 3], ['juicer_minion', 1]], elite: [['goblin_brute', 1]], flyers: [['bat', 1]],
-    boss: 'juicer', reward: { box: 'boss', xp: 50 },
+    boss: 'juicer', reward: { box: 'boss', xp: 35 },
     intro: "YOU HEAR GRUNTING. RHYTHMIC GRUNTING. SOMEONE IS DOING REPS ON A GOBLIN." });
 
   /* ---------------- floor 3 ---------------- */
   st('f3_s1', mix('city3', { name: 'TWENTY FLOORS OF RENT', floor: 3, theme: 'city', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f3_e', 'f3_g', 'f3_b'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 40 },
+    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f3_e', 'f3_g', 'f3_b'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
     intro: "AN APARTMENT TOWER. THE LANDLORD IS A CLOWN. THE TENANTS ARE ALSO CLOWNS. THE RENT IS YOUR LIFE." }));
   st('f3_s2', mix('circus3', { name: 'THE MIDWAY', floor: 3, theme: 'circus', kind: 'main', owMarker: 'ow_tent',
-    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'f3_a', 'f3_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 40 },
+    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'f3_a', 'f3_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 25 },
     intro: "STEP RIGHT UP! EVERY GAME IS RIGGED AND EVERY PRIZE BITES! FUN FOR THE WHOLE APOCALYPSE!" }));
   st('f3_s3', mix('swamp3', { name: 'STORM DRAIN BAYOU', floor: 3, theme: 'swamp', kind: 'main', owMarker: 'ow_manhole',
-    chunks: { start: 'f3_start', pool: ['f3_c', 'f3_h', 'f3_b', 'f3_e', 'f3_f'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 40 },
+    chunks: { start: 'f3_start', pool: ['f3_c', 'f3_h', 'f3_b', 'f3_e', 'f3_f'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
     intro: "THE STORM DRAINS FLOODED AND THE SWAMP MOVED IN. SO DID THE GATORS. SO DID THEIR COUSINS." }));
   st('f3_x1', mix('city3', { name: 'THE LOST AND FOUND', floor: 3, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['sx_a', 'f3_f', 'sx_b', 'f3_g', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'silver', xp: 60 },
+    chunks: { start: 'f3_start', pool: ['sx_a', 'f3_f', 'sx_b', 'f3_g', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "A HIDDEN PARK SHED FULL OF THINGS PEOPLE DROPPED WHILE RUNNING. FINDERS KEEPERS, CRAWLER." }));
   st('f3_ambush', mix('city3', { name: 'STREET TOUGHS', floor: 3, theme: 'city', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 15 },
+    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
     intro: "AMBUSH! THE LOCALS WOULD LIKE A WORD. THE WORD IS OW." }));
   st('f3_boss', { name: 'THE BIG TOP', floor: 3, theme: 'circus', kind: 'boss', music: 'boss', owMarker: 'ow_tent',
     chunks: { start: 'f3_start', pool: ['f3_f', 'f3_b'], count: 1, end: 'arena_ringmaster' },
     enemies: [['clown', 3]], elite: [['clown_brute', 1]], flyers: [['skyfowl', 1]],
-    boss: 'ringmaster', reward: { box: 'boss', xp: 80 },
+    boss: 'ringmaster', reward: { box: 'boss', xp: 50 },
     intro: "THE BIG TOP! THE LIGHTS GO DOWN. A DRUMROLL STARTS. NOBODY IS PLAYING THE DRUM." });
 
   /* ---------------- floor 4 ---------------- */
-  var P4 = ['f4_a', 'f4_b', 'f4_c', 'f4_d', 'f4_e', 'f4_f', 'f4_g', 'f4_h'];
   st('f4_s1', mix('city4', { name: 'PLATFORM NINE', floor: 4, theme: 'city', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_f', 'f4_e', 'f4_d', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 60 },
+    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_f', 'f4_e', 'f4_d', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
     intro: "A STATION CONCOURSE. THE DEPARTURE BOARD SAYS EVERY TRAIN IS DELAYED. FOREVER. ENJOY YOUR WAIT." }));
   st('f4_s2', mix('train4', { name: 'THE ENGINE SHED', floor: 4, theme: 'train', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_g', 'f4_h', 'f4_b', 'f4_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 60 },
+    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_g', 'f4_h', 'f4_b', 'f4_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
     intro: "THE ENGINE SHED. MIND THE GAP BETWEEN THE CARS. THE GAP IS HUNGRY." }));
   st('f4_s3', mix('train4', { name: 'DEAD END TUNNEL', floor: 4, theme: 'train', kind: 'main', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f4_start', pool: ['f4_g', 'f4_b', 'f4_h', 'f4_f', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 60 },
+    chunks: { start: 'f4_start', pool: ['f4_g', 'f4_b', 'f4_h', 'f4_f', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
     intro: "THE TUNNEL HAS NO LIGHTS. THE TRAINS HAVE NO DRIVERS. YOU HAVE NO PANTS. EVERYONE IS STRUGGLING." }));
   st('f4_x1', mix('train4', { name: 'THE OLD SPUR', floor: 4, theme: 'train', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['sx_b', 'f4_e', 'sx_a', 'f4_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 90 },
+    chunks: { start: 'f4_start', pool: ['sx_b', 'f4_e', 'sx_a', 'f4_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 45 },
     intro: "A DECOMMISSIONED PLATFORM. NOBODY COMES HERE. WHICH MEANS NOBODY TOOK THE GOOD STUFF." }));
   st('f4_x2', mix('city4', { name: 'FREIGHT MAZE', floor: 4, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_g', 'sx_c', 'f4_e', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 90 },
+    chunks: { start: 'f4_start', pool: ['f4_g', 'sx_c', 'f4_e', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 45 },
     intro: "SHIPPING CONTAINERS AS FAR AS THE EYE CAN SEE. ONE OF THEM HAS SNACKS. ONE OF THEM HAS TEETH." }));
   st('f4_ambush', mix('train4', { name: 'RAIL RAIDERS', floor: 4, theme: 'train', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 20 },
+    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
     intro: "AMBUSH! THE YARD CREW HAS DECIDED YOU ARE CARGO." }));
   st('f4_boss', { name: 'THE ROUNDHOUSE', floor: 4, theme: 'train', kind: 'boss', music: 'boss',
     chunks: { start: 'f4_start', pool: ['f4_a', 'f4_b'], count: 1, end: 'arena_engineer' },
     enemies: [['rail_rat', 2], ['steam_goblin', 2]], elite: [['conductor', 1]], flyers: [['bat', 1]],
-    boss: 'engineer', reward: { box: 'boss', xp: 120 },
+    boss: 'engineer', reward: { box: 'boss', xp: 60 },
     intro: "THE TRACKS ALL LEAD HERE. THE WHISTLE BLOWS. SOMETHING VERY BIG IS BACKING UP." });
 
   /* ---------------- floor 5 ---------------- */
-  var P5 = ['f5_a', 'f5_b', 'f5_c', 'f5_d', 'f5_e', 'f5_f', 'f5_g'];
   st('f5_s1', mix('bubble5', { name: 'THE SEA CAVES', floor: 5, theme: 'bubble', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 80 },
+    chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "THE BUBBLE SEA! THE AIR IS WATER AND THE WATER IS ALSO WATER. PHYSICS HAS LEFT THE CHAT." }));
   st('f5_s2', mix('swamp5', { name: 'KELP MARKET', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 80 },
+    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "A FLOATING MARKET. THE FISHMEN SELL KELP. THEY ALSO SELL CRAWLERS. GUESS WHICH ONE IS IN STOCK." }));
   st('f5_s3', mix('bubble5', { name: 'THE BUBBLE GARDENS', floor: 5, theme: 'bubble', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_e', 'f5_c', 'f5_a', 'f5_g', 'f5_f'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 80 },
+    chunks: { start: 'f5_start', pool: ['f5_e', 'f5_c', 'f5_a', 'f5_g', 'f5_f'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "RIDE THE BUBBLES, CRAWLER! THEY ONLY POP WHEN IT WOULD BE FUNNIEST." }));
   st('f5_s4', mix('swamp5', { name: 'MANGROVE MAZE', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_b', 'f5_f', 'f5_g', 'f5_c'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 80 },
+    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_b', 'f5_f', 'f5_g', 'f5_c'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "THE MANGROVES ARE ROOTS ALL THE WAY DOWN. SOMETHING ARMORED SCUTTLES IN THERE." }));
   st('f5_x1', mix('bubble5', { name: 'THE PEARL VAULT', floor: 5, theme: 'bubble', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f5_start', pool: ['sx_a', 'f5_e', 'sx_b', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 120 },
+    chunks: { start: 'f5_start', pool: ['sx_a', 'f5_e', 'sx_b', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 55 },
     intro: "A LITTLE ISLAND WITH A BIG SAFE. THE SAFE HAS A CRAB. THE CRAB HAS A GRUDGE." }));
   st('f5_x2', mix('swamp5', { name: 'THE REEF SHELF', floor: 5, theme: 'swamp', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_g', 'sx_c', 'f5_d', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 120 },
+    chunks: { start: 'f5_start', pool: ['f5_g', 'sx_c', 'f5_d', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 55 },
     intro: "THE EDGE OF THE REEF. BEYOND IT IS THE DEEP. DO NOT LOOK AT THE DEEP. IT IS LOOKING BACK." }));
   st('f5_ambush', mix('bubble5', { name: 'RIPTIDE', floor: 5, theme: 'bubble', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 30 },
+    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 15 },
     intro: "AMBUSH! A SCHOOL OF FISHMEN. CLASS IS IN SESSION. YOU ARE THE LESSON." }));
   st('f5_boss', { name: 'THE TIDE POOL', floor: 5, theme: 'bubble', kind: 'boss', music: 'boss',
     chunks: { start: 'f5_start', pool: ['f5_c', 'f5_b'], count: 1, end: 'arena_tidemother' },
     enemies: [['fishman', 2]], elite: [['crab', 1]], flyers: [['jelly', 1]],
-    boss: 'tidemother', reward: { box: 'boss', xp: 160 },
+    boss: 'tidemother', reward: { box: 'boss', xp: 75 },
     intro: "THE WATER GOES STILL. THE BUBBLES STOP. A VERY LARGE MOTHER WOULD LIKE TO SPEAK TO YOUR MANAGER." });
 
   /* ---------------- floor 6 ---------------- */
-  var P6 = ['f6_a', 'f6_b', 'f6_c', 'f6_d', 'f6_e', 'f6_f', 'f6_g'];
   st('f6_s1', mix('forest6', { name: 'THE LODGE', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_g', 'f6_d', 'f6_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 100 },
+    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_g', 'f6_d', 'f6_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
     intro: "A HUNTING LODGE! THE WALLS ARE COVERED IN TROPHIES. THERE IS AN EMPTY SPOT LABELED CARL." }));
   st('f6_s2', mix('forest6', { name: 'TRAPPER CAMP', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_tent',
-    chunks: { start: 'f6_start', pool: ['f6_d', 'f6_f', 'f6_b', 'f6_e', 'f6_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 100 },
+    chunks: { start: 'f6_start', pool: ['f6_d', 'f6_f', 'f6_b', 'f6_e', 'f6_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
     enemies: [['hunter', 4], ['hound', 2]],
     intro: "THE TRAPPERS SET SNARES EVERYWHERE. WATCH YOUR STEP. ACTUALLY, WATCH ALL YOUR STEPS." }));
   st('f6_s3', mix('forest6', { name: 'WOLF HOLLOW', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f6_start', pool: ['f6_f', 'f6_b', 'f6_g', 'f6_c', 'f6_d'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 100 },
+    chunks: { start: 'f6_start', pool: ['f6_f', 'f6_b', 'f6_g', 'f6_c', 'f6_d'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
     enemies: [['hound', 5], ['hunter', 1]],
     intro: "A HOLLOW FULL OF HOUNDS. THEY HAVE YOUR SCENT. IT IS MOSTLY SEWER. THEY LOVE IT." }));
   st('f6_s4', mix('forest6', { name: 'THE KENNELS', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_c', 'f6_e', 'f6_a', 'f6_f', 'f6_g'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 100 },
+    chunks: { start: 'f6_start', pool: ['f6_c', 'f6_e', 'f6_a', 'f6_f', 'f6_g'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
     intro: "WHERE THE HOUNDS ARE BRED. AND FED. GUESS WHAT IS ON THE MENU." }));
   st('f6_x1', mix('forest6', { name: 'THE QUIET GROVE', floor: 6, theme: 'forest', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f6_start', pool: ['sx_a', 'f6_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 150 },
+    chunks: { start: 'f6_start', pool: ['sx_a', 'f6_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "A GROVE SO QUIET YOU CAN HEAR THE LOOT. IT SOUNDS LIKE JINGLING." }));
   st('f6_x2', mix('forest6', { name: 'THE WISHING WELL', floor: 6, theme: 'forest', kind: 'side', owMarker: 'ow_manhole',
-    chunks: { start: 'f6_start', pool: ['sx_b', 'f6_g', 'sx_a', 'f6_e'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 150 },
+    chunks: { start: 'f6_start', pool: ['sx_b', 'f6_g', 'sx_a', 'f6_e'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "PEOPLE THREW COINS DOWN THIS WELL FOR LUCK. NOW YOU GO DOWN THE WELL FOR THE COINS. CIRCLE OF LIFE." }));
   st('f6_ambush', mix('forest6', { name: 'THE BEATERS', floor: 6, theme: 'forest', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 40 },
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 20 },
     intro: "AMBUSH! THE BEATERS FLUSHED YOU OUT OF THE BRUSH. HOW RUDE." }));
   st('f6_boss', { name: 'THE PROCESSING SHED', floor: 6, theme: 'forest', kind: 'boss', music: 'boss',
     chunks: { start: 'f6_start', pool: ['f6_a', 'f6_d'], count: 2, end: 'arena_butcher' },
     enemies: [['hound', 2], ['hunter', 1]], elite: [['masked_noble', 1]], flyers: [['skyfowl', 1]],
-    boss: 'butcher', reward: { box: 'boss', xp: 200 },
+    boss: 'butcher', reward: { box: 'boss', xp: 90 },
     intro: "THE SHED AT THE END OF THE HUNT. THE SIGN SAYS STAFF ONLY. YOU ARE THE STAFF NOW." });
 
   /* ---------------- floor 7 ---------------- */
-  var P7 = ['f7_a', 'f7_b', 'f7_c', 'f7_d', 'f7_e', 'f7_f', 'f7_g'];
   st('f7_s1', mix('castle7', { name: 'THE WINE CELLAR', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_c', 'f7_g', 'f7_a', 'f7_d'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 130 },
+    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_c', 'f7_g', 'f7_a', 'f7_d'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "THE CELLAR! A VINTAGE COLLECTION. THE WINE IS FOUR HUNDRED YEARS OLD. SO IS THE BUTLER." }));
   st('f7_s2', mix('castle7', { name: 'THE BALLROOM', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_f', 'f7_b', 'f7_g', 'f7_c'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 130 },
+    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_f', 'f7_b', 'f7_g', 'f7_c'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "THE DANCE OF THE DEAD IS ABOUT TO BEGIN! YOUR PARTNER IS A SKELETON. IT LEADS." }));
   st('f7_s3', mix('castle7', { name: 'THE GREENHOUSE', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_d', 'f7_b', 'f7_f', 'f7_e', 'f7_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 130 },
+    chunks: { start: 'f7_start', pool: ['f7_d', 'f7_b', 'f7_f', 'f7_e', 'f7_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "THE GREENHOUSE. THE PLANTS HAVE NOT BEEN WATERED IN CENTURIES. THEY HAVE FOUND OTHER WAYS TO DRINK." }));
   st('f7_s4', mix('castle7', { name: 'THE CHAPEL CRYPT', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door', dark: true,
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_d', 'f7_a', 'f7_c', 'f7_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 130 },
+    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_d', 'f7_a', 'f7_c', 'f7_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     enemies: [['ghoul', 3], ['skeleton', 4]],
     intro: "THE CRYPT UNDER THE CHAPEL. SHHH. EVERYONE DOWN HERE IS SLEEPING. LIGHTLY." }));
   st('f7_x1', mix('castle7', { name: 'HEART OF THE HEDGE', floor: 7, theme: 'castle', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f7_start', pool: ['sx_b', 'f7_g', 'sx_a', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 200 },
+    chunks: { start: 'f7_start', pool: ['sx_b', 'f7_g', 'sx_a', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 100 },
     intro: "YOU SOLVED THE HEDGE MAZE! MOST PEOPLE JUST DIE IN IT. THE PRIZE IS IN HERE SOMEWHERE." }));
   st('f7_ambush', mix('castle7', { name: 'NIGHT WATCH', floor: 7, theme: 'castle', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 50 },
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
     intro: "AMBUSH! THE GROUNDSKEEPERS NEVER CLOCKED OUT. NOT EVEN WHEN THEY DIED." }));
   st('f7_boss', { name: 'THE GRAND STAIR', floor: 7, theme: 'castle', kind: 'boss', music: 'boss',
     chunks: { start: 'f7_start', pool: ['f7_a', 'f7_g'], count: 2, end: 'arena_bride' },
     enemies: [['ghoul', 2], ['skeleton', 1]], elite: [['gargoyle', 1]], flyers: [['bat', 1]],
-    boss: 'bride', reward: { box: 'boss', xp: 260 },
+    boss: 'bride', reward: { box: 'boss', xp: 130 },
     intro: "AN ORGAN PLAYS A WEDDING MARCH. BADLY. FROM INSIDE THE WALLS." });
 
   /* ---------------- floor 8 ---------------- */
-  var P8 = ['f8_a', 'f8_b', 'f8_c', 'f8_d', 'f8_e', 'f8_f', 'f8_g'];
   st('f8_s1', mix('ruin8', { name: 'MEGAMALL', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 160 },
+    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
     intro: "THE MEGAMALL! EVERYTHING MUST GO! MOSTLY YOU. YOU MUST GO." }));
   st('f8_s2', mix('city8', { name: 'LINE ZERO', floor: 8, theme: 'city', kind: 'main', owMarker: 'ow_manhole', dark: true,
-    chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 160 },
+    chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
     intro: "THE OLD SUBWAY. THE LAST TRAIN LEFT A THOUSAND YEARS AGO. THE COMMUTERS STAYED. THEY CHANGED." }));
   st('f8_s3', mix('ruin8', { name: 'THE SCRAPWORKS', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 160 },
+    chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
     elite: [['golem', 2]],
     intro: "A FACTORY THAT BUILDS GOLEMS OUT OF YOUR OLD STUFF. THAT ONE HAS YOUR TOASTER." }));
   st('f8_s4', mix('ruin8', { name: 'DEAD AIR TOWER', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 160 },
+    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
     enemies: [['mutant', 2], ['drone', 3]],
     intro: "A RADIO TOWER STILL BROADCASTING THE LAST SONG ON EARTH. IT IS A JINGLE FOR A MATTRESS STORE." }));
   st('f8_x1', mix('ruin8', { name: 'THE BUNKER', floor: 8, theme: 'ruin', kind: 'side', owMarker: 'ow_manhole',
-    chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 240 },
+    chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
     intro: "A PREPPER BUNKER. CANNED BEANS. BATTERIES. ONE HUNDRED YEARS OF PARANOIA. WORTH IT, TURNS OUT." }));
   st('f8_x2', mix('city8', { name: 'THE SCHOOL BUS', floor: 8, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_g', 'sx_b', 'f8_d', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 240 },
+    chunks: { start: 'f8_start', pool: ['f8_g', 'sx_b', 'f8_d', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
     intro: "AN OVERTURNED SCHOOL BUS. SOMEBODY LEFT THEIR LUNCH. AND THEIR LUNCH MONEY. AND THEIR BOX." }));
   st('f8_ambush', mix('city8', { name: 'SCAVENGERS', floor: 8, theme: 'ruin', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 60 },
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
     intro: "AMBUSH! THE SCAVENGERS WANT YOUR STUFF. YOU HAVE ONE JACKET. THEY WANT IT." }));
   st('f8_boss', { name: 'THE WATCHTOWER', floor: 8, theme: 'ruin', kind: 'boss', music: 'boss',
     chunks: { start: 'f8_start', pool: ['f8_d', 'f8_a'], count: 2, end: 'arena_overseer' },
     enemies: [['mutant', 2]], elite: [['golem', 1]], flyers: [['drone', 1]],
-    boss: 'overseer', reward: { box: 'boss', xp: 320 },
+    boss: 'overseer', reward: { box: 'boss', xp: 145 },
     intro: "THE TALLEST THING LEFT STANDING. AT THE TOP, SOMETHING HAS BEEN WATCHING YOU THE WHOLE TIME." });
 
   /* ---------------- floor 9 ---------------- */
-  var P9 = ['f9_a', 'f9_b', 'f9_c', 'f9_d', 'f9_e', 'f9_f', 'f9_g'];
   st('f9_s1', mix('war9', { name: 'BUNKER ROW', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_c', 'f9_a', 'f9_g', 'f9_e', 'f9_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 200 },
+    chunks: { start: 'f9_start', pool: ['f9_c', 'f9_a', 'f9_g', 'f9_e', 'f9_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     intro: "THE FACTIONS HAVE DUG IN. EVERY BUNKER HAS A FLAG. EVERY FLAG HAS A SPONSOR." }));
   st('f9_s2', mix('war9', { name: 'THE TRENCHES', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_manhole',
-    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_b', 'f9_f', 'f9_d', 'f9_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 200 },
+    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_b', 'f9_f', 'f9_d', 'f9_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     intro: "DOWN INTO THE TRENCHES. IT IS MUDDY, IT IS LOUD, AND THE CATERING IS TERRIBLE." }));
   st('f9_s3', mix('war9', { name: 'ARTILLERY HILL', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_f', 'f9_d', 'f9_b', 'f9_e', 'f9_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 200 },
+    chunks: { start: 'f9_start', pool: ['f9_f', 'f9_d', 'f9_b', 'f9_e', 'f9_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     enemies: [['soldier', 3], ['sniper', 3], ['mutant', 1]],
     intro: "THE BIG GUNS LIVE UP HERE. THEY ARE AIMED AT YOU. THEY ARE ALWAYS AIMED AT YOU." }));
   st('f9_s4', mix('war9', { name: 'CHURCH OF THE RATINGS', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_g', 'f9_c', 'f9_e', 'f9_f', 'f9_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 200 },
+    chunks: { start: 'f9_start', pool: ['f9_g', 'f9_c', 'f9_e', 'f9_f', 'f9_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     enemies: [['cultist', 2], ['soldier', 2], ['mutant', 2]],
     intro: "THE CULT OF THE SHOW. THEY PRAY TO THE CAMERAS. THE CAMERAS DO NOT PRAY BACK. RUDE." }));
   st('f9_x1', mix('war9', { name: 'SUPPLY DROP', floor: 9, theme: 'warzone', kind: 'side', owMarker: 'ow_tent',
-    chunks: { start: 'f9_start', pool: ['sx_c', 'f9_g', 'sx_a', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 300 },
+    chunks: { start: 'f9_start', pool: ['sx_c', 'f9_g', 'sx_a', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 120 },
     intro: "A SPONSOR DROPPED A CRATE OF GOODIES INTO THE CORNER. FINDERS KEEPERS. SHOOTERS WEEPERS." }));
   st('f9_x2', mix('war9', { name: 'THE DROPSHIP', floor: 9, theme: 'warzone', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_e', 'sx_b', 'f9_c', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 300 },
+    chunks: { start: 'f9_start', pool: ['f9_e', 'sx_b', 'f9_c', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 120 },
     intro: "A CRASHED FACTION DROPSHIP. THE PILOT IS GONE. THE CARGO IS NOT. GO GO GO!" }));
   st('f9_ambush', mix('war9', { name: 'CROSSFIRE', floor: 9, theme: 'warzone', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 80 },
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
     intro: "AMBUSH! A PATROL FROM BOTH FACTIONS. THEY AGREE ON ONE THING. YOU." }));
   st('f9_boss', { name: 'THE SOUNDSTAGE', floor: 9, theme: 'warzone', kind: 'boss', music: 'boss_final',
     chunks: { start: 'f9_start', pool: ['f9_a', 'f9_d'], count: 2, end: 'arena_showrunner' },
     enemies: [['soldier', 2], ['cultist', 1]], elite: [['war_beast', 1]], flyers: [['drone', 1]],
-    boss: 'showrunner', reward: { box: 'boss', xp: 500 },
+    boss: 'showrunner', reward: { box: 'boss', xp: 200 },
     intro: "THE BROADCAST TOWER. THE STUDIO AUDIENCE IS SEATED. THE APPLAUSE SIGN IS ON. THIS IS IT, CRAWLER." });
 
   /* ---------------- floors ---------------- */
@@ -2194,7 +2196,7 @@
       '########################################################'
         ],
         entrances: { '1': 'f8_s1', '2': 'f8_s2', '3': 'f8_s3', '4': 'f8_s4', 'A': 'f8_x1', 'C': 'f8_x2', 'S': 'SAFE', 'B': 'f8_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'mutant', x: 20, y: 24 }, { enemy: 'drone', x: 30, y: 18 }, { enemy: 'mutant', x: 40, y: 12 }, { enemy: 'drone', x: 8, y: 4 }],
+        roamers: [{ enemy: 'mutant', x: 20, y: 24 }, { enemy: 'drone', x: 30, y: 18 }, { enemy: 'mutant', x: 40, y: 12 }, { enemy: 'drone', x: 14, y: 4 }],
         ambush: 'f8_ambush' },
       required: ['f8_s1', 'f8_s2', 'f8_s3', 'f8_s4'], boss: 'f8_boss', par: 1800 },
     { n: 9, name: 'FACTION WARS', tagline: 'THE SERIES FINALE. LIVE.', theme: 'warzone', music: 'floor9',
@@ -2625,9 +2627,11 @@
     ],
     credits: [
       "DUNGEON CRAWLER WORLD: EARTH",
-      "A PERSONAL FAN GAME. NOT FOR SALE. NOT AFFILIATED WITH ANYONE.",
-      "INSPIRED BY THE DUNGEON CRAWLER CARL BOOKS BY MATT DINNIMAN.",
-      "GO READ THEM. THEY ARE BETTER THAN THIS. THE CAT SAYS SO.",
+      "A PERSONAL FAN GAME. NOT FOR SALE.",
+      "NOT AFFILIATED WITH ANYONE. AT ALL.",
+      "INSPIRED BY DUNGEON CRAWLER CARL",
+      "BY MATT DINNIMAN. GO READ THE BOOKS.",
+      "THEY ARE BETTER THAN THIS. THE CAT SAYS SO.",
       "STARRING CARL AND PRINCESS DONUT",
       "WITH MONGO, KATIA, ZEV AND SIR SQUEAKS",
       "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
