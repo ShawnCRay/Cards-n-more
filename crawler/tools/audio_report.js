@@ -31,24 +31,26 @@ const path = require('path');
 
   const fmt = (v, w) => String(v).padStart(w);
   let bad = 0;
-  console.log('\nMUSIC  name          intro  loop   rendered  peak   rms     seamRms longestSil  warns');
+  console.log('\n(peak/rms = through compressor+limiter at bus gain 1; raw = same mix without dynamics; cpu = offline render time / audio time)');
+  console.log('MUSIC  name          intro  loop   rendered  peak   rms     rawPeak rawRms  seamRms longestSil warns cpu');
   for (const n of names.tracks) {
     if (only.length && !only.includes(n)) continue;
-    const t0 = Date.now();
     const r = await page.evaluate(n => DCW.audio.renderOffline('music', n), n);
-    const ms = Date.now() - t0;
-    const flag = (r.peak < 0.05 || r.peak >= 1 || r.rms < 0.01 || r.longestSilence > 1.5 || (r.warns && r.warns.length)) ? '  <-- CHECK' : '';
+    const q = await page.evaluate(n => DCW.audio.renderOffline('music', n, { raw: true }), n);
+    const flag = (r.peak < 0.05 || r.peak >= 1 || r.clipped || r.rms < 0.01 || r.longestSilence > 1.5 || (r.warns && r.warns.length)) ? '  <-- CHECK' : '';
     if (flag) bad++;
-    console.log('       ' + n.padEnd(13) + fmt(r.introSec, 6) + fmt(r.loopSec, 7) + fmt(r.sec, 9) + 's' + fmt(r.peak, 7) + fmt(r.rms, 8) + fmt(r.seamRms == null ? '-' : r.seamRms, 9) + fmt(r.longestSilence, 9) + 's  ' + (r.warns || []).length + ` (${ms}ms)` + flag);
+    console.log('       ' + n.padEnd(13) + fmt(r.introSec, 6) + fmt(r.loopSec, 7) + fmt(r.sec, 9) + 's' + fmt(r.peak, 7) + fmt(r.rms, 8) + fmt(q.peak, 8) + fmt(q.rms, 8) + fmt(r.seamRms == null ? '-' : r.seamRms, 9) + fmt(r.longestSilence, 8) + 's' + fmt((r.warns || []).length, 4) + fmt((r.renderMs / 1000 / r.sec * 100).toFixed(1) + '%', 7) + flag);
     (r.warns || []).forEach(w => console.log('         warn: ' + w));
   }
-  console.log('\nSFX    name            dur    peak   rms     ');
+  console.log('\nSFX    name            dur    peak   rms     rawPeak');
   for (const n of names.sfx) {
     if (only.length && !only.includes(n)) continue;
     const r = await page.evaluate(n => DCW.audio.renderOffline('sfx', n), n);
-    const flag = (r.peak < 0.03 || r.peak >= 1 || r.rms < 0.001) ? '  <-- CHECK' : '';
+    const q = await page.evaluate(n => DCW.audio.renderOffline('sfx', n, { raw: true }), n);
+    const quiet = n === 'text_blip' ? 0.01 : 0.03;
+    const flag = (r.peak < quiet || r.peak >= 1 || r.clipped || r.rms < 0.0003) ? '  <-- CHECK' : '';
     if (flag) bad++;
-    console.log('       ' + n.padEnd(15) + fmt(r.dur, 5) + 's' + fmt(r.peak, 7) + fmt(r.rms, 8) + flag);
+    console.log('       ' + n.padEnd(15) + fmt(r.dur, 5) + 's' + fmt(r.peak, 7) + fmt(r.rms, 8) + fmt(q.peak, 8) + flag);
   }
 
   // ---- live smoke test

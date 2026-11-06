@@ -1676,16 +1676,15 @@
       this.conf.forEach(function (c) { if (t > 0.4) R(c.x + Math.sin(t * 3 + c.w) * 3, c.y, 2, 3, c.c); });
       if (t > 0.35) {
         var k = clamp((t - 0.35) / 0.3, 0, 1);
-        T('FLOOR', 160 - Math.round((1 - k) * 200), 30, C.white, { align: 'center', scale: 2 });
+        T('FLOOR', 160 - Math.round((1 - k) * 200), 18, C.white, { align: 'center', scale: 2 });
         var popS = t < 0.9 ? 5 : 4;
-        if (t > 0.6) T(String(this.n), 162, 50, '#a81000', { align: 'center', scale: popS, shadow: null });
-        if (t > 0.6) T(String(this.n), 160, 48, C.gold, { align: 'center', scale: popS });
+        if (t > 0.6) T(String(this.n), 160, popS === 5 ? 32 : 36, C.gold, { align: 'center', scale: popS, shadow: '#a81000' });
       }
       if (t > 1.0) {
         var nm = String(fd.name || '').toUpperCase(), big = tw(nm, 2) <= 300;
-        T(nm, 160, 96, C.white, { align: 'center', scale: big ? 2 : 1, wrap: big ? null : 300 });
-        if (t > 1.4 && fd.tagline) wrap(String(fd.tagline).toUpperCase(), 280).slice(0, 2).forEach(function (l, i) { T(l, 160, 118 + i * 10, C.yellow, { align: 'center' }); });
-        T('★ ★ ★', 160, 142, blink(2) ? C.gold : C.yellow, { align: 'center' });
+        T(nm, 160, big ? 76 : 80, C.white, { align: 'center', scale: big ? 2 : 1, wrap: big ? null : 300 });
+        if (t > 1.4 && fd.tagline) wrap(String(fd.tagline).toUpperCase(), 280).slice(0, 2).forEach(function (l, i) { T(l, 160, 96 + i * 10, C.yellow, { align: 'center' }); });
+        if (!this.said) T('★ ★ ★', 160, 140, blink(2) ? C.gold : C.yellow, { align: 'center' });
       }
       if (t > 1.6 && !this.said && blink(2)) T(bn('confirm'), 312, 170, C.dgray, { align: 'right', shadow: null });
     }
@@ -2042,7 +2041,7 @@
         ['ACHIEVEMENTS', an + '/' + Object.keys(achs).length],
         ['WINS', String(meta.wins || 1)]
       ];
-      rows.forEach(function (r, i) { var yy = 26 + i * 13; T(r[0], 20, yy, C.gray); T(fitText(r[1], 140), 300, yy, i === 3 ? C.pink : C.white, { align: 'right' }); });
+      rows.forEach(function (r, i) { var yy = 26 + i * 13; T(r[0], 20, yy, C.gray); T(fitText(r[1], 200), 300, yy, i === 3 ? C.pink : C.white, { align: 'right' }); });
       spr(ctx, 'ai_screen', 286, 160 + Math.round(Math.sin(t * 2) * 2), { frame: Math.floor(t * 2) });
     }
   };

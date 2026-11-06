@@ -23,6 +23,8 @@
      e.g. 0.2), bombs (+bombs at floor start), doubleJump (true).
    - companions[id].special.time: seconds the special lasts (0 = instant).
    - bosses[id].final: true on the last boss (beating it wins the game).
+   - achievements[id].unlock: {skin:id} | {companion:id} granted with the box.
+   - companions[id].bonus {views} (zev) / bombChance (squeaks): ability tuning hints.
    - floors[n].sideRewardNote / ambushNote: none; kept simple.
    Chunk notes: moving platforms '<' '>' 'v' are ONE char each, placed on the
    platform's starting (center) tile, with >= 3 free tiles of travel each way.
@@ -2400,14 +2402,11 @@
     kill_500:     { name: 'BODY COUNT', desc: '500 KILLS. THE VIEWERS HAVE STARTED A DRINKING GAME. PLEASE SLOW DOWN.', event: 'kill', count: 500, box: 'gold' },
     kill_1000:    { name: 'ONE MAN APOCALYPSE', desc: '1000 KILLS. IN BOXERS. HISTORIANS WILL BE VERY CONFUSED.', event: 'kill', count: 1000, box: 'platinum' },
     rat_25:       { name: 'RATCATCHER', desc: 'YOU KILLED 25 RATS. SIR SQUEAKS WOULD LIKE A WORD. A SQUEAKY WORD.', event: 'kill:rat', count: 25, box: 'bronze' },
-    clown_25:     { name: 'NO MORE HONKING', desc: '25 CLOWNS DOWN. THE BALLOON ANIMALS ARE IN MOURNING.', event: 'kill:clown', count: 25, box: 'silver' },
     stomp_10:     { name: 'HEADS UP', desc: 'STOMPED 10 HEADS. YOUR FEET ARE DISGUSTING. THE CROWD LOVES IT.', event: 'stomp', count: 10, box: 'bronze' },
     stomp_100:    { name: 'GOOMBA TRAUMA', desc: '100 STOMPS. SOMEWHERE A PLUMBER NODS SOLEMNLY.', event: 'stomp', count: 100, box: 'gold' },
     kick_50:      { name: 'FOOT SOLDIER', desc: '50 KICKS WITH BARE FEET. WE ARE LEGALLY REQUIRED TO RECOMMEND A TETANUS SHOT.', event: 'kick', count: 50, box: 'bronze' },
-    kick_500:     { name: 'SOLE SURVIVOR', desc: '500 KICKS. YOUR FEET ARE NOW CLASSIFIED AS WEAPONS IN SIX SECTORS.', event: 'kick', count: 500, box: 'gold' },
     bomb_kill_25: { name: 'DEMOLITIONS EXPERT', desc: '25 BOMB KILLS. THE INSURANCE PEOPLE HAVE STOPPED RETURNING OUR CALLS.', event: 'bomb_kill', count: 25, box: 'silver' },
     multi_bomb:   { name: 'THREE FOR ONE', desc: 'THREE KILLS WITH ONE BOMB. EFFICIENT! HORRIFYING! RERUN-WORTHY!', event: 'multi_bomb', count: 1, box: 'silver' },
-    multi_bomb_10:{ name: 'BOOM ECONOMICS', desc: 'TEN MULTI-KILL BOMBS. YOU HAVE MASTERED THE ART OF THE GROUP DISCOUNT.', event: 'multi_bomb', count: 10, box: 'gold' },
     potion_10:    { name: 'HYDRATION STATION', desc: 'YOU DRANK 10 POTIONS. THEY ARE NOT SPORTS DRINKS, CRAWLER.', event: 'potion', count: 10, box: 'bronze' },
     crate_25:     { name: 'BOX HATER', desc: '25 CRATES SMASHED. WHAT DID CARDBOARD EVER DO TO YOU? DO NOT ANSWER THAT.', event: 'crate', count: 25, box: 'bronze' },
     coin_500:     { name: 'LOOSE CHANGE', desc: 'PICKED UP 500 COINS OFF A DUNGEON FLOOR. YOUR MOTHER WOULD BE SO GROSSED OUT.', event: 'coin', count: 500, box: 'silver' },
@@ -2419,11 +2418,11 @@
     box_10:       { name: 'UNBOXING CHANNEL', desc: 'OPENED 10 LOOT BOXES. SMASH THAT LIKE BUTTON. THERE IS NO BUTTON.', event: 'box_open', count: 10, box: 'silver' },
     box_50:       { name: 'GAMBLING PROBLEM', desc: '50 BOXES OPENED. THE NETWORK SALUTES YOUR TOTAL LACK OF IMPULSE CONTROL.', event: 'box_open', count: 50, box: 'gold' },
     combo_10:     { name: 'COMBO STARTER', desc: 'TEN HITS IN A ROW! YOU ARE BASICALLY A FIGHTING GAME CHARACTER NOW.', event: 'combo10', count: 1, box: 'bronze' },
-    combo_25:     { name: 'COMBO BREAKER BREAKER', desc: '25 HIT COMBO. THE ANNOUNCER BOOTH NEEDED A MINUTE. THE TOGA IS YOURS.', event: 'combo25', count: 1, box: 'gold' },
+    combo_25:     { name: 'COMBO BREAKER BREAKER', desc: '25 HIT COMBO. THE ANNOUNCER BOOTH NEEDED A MINUTE. THE TOGA IS YOURS.', event: 'combo25', count: 1, box: 'gold', unlock: { skin: 'carl_toga' } },
     no_damage:    { name: 'UNTOUCHABLE', desc: 'CLEARED A STAGE WITHOUT GETTING HIT. WHO ARE YOU AND WHAT DID YOU DO WITH CARL?', event: 'no_damage_stage', count: 1, box: 'silver' },
     no_damage_10: { name: 'GHOST IN THE BOXERS', desc: 'TEN FLAWLESS STAGES. THE MONSTERS ARE FILING A COMPLAINT ABOUT FAIRNESS.', event: 'no_damage_stage', count: 10, box: 'platinum' },
     pet_donut:    { name: 'GOOD KITTY', desc: 'YOU PET PRINCESS DONUT. SHE ALLOWED IT. THIS TIME. DO NOT GET COMFORTABLE.', event: 'pet_donut', count: 1, box: 'fan' },
-    pet_donut_25: { name: 'CRAZY CAT PERSON', desc: 'PET DONUT 25 TIMES. SHE HAS BEGUN REFERRING TO YOU AS HER STAFF. ENJOY THE PAJAMAS.', event: 'pet_donut', count: 25, box: 'gold' },
+    pet_donut_25: { name: 'CRAZY CAT PERSON', desc: 'PET DONUT 25 TIMES. SHE HAS BEGUN REFERRING TO YOU AS HER STAFF. ENJOY THE PAJAMAS.', event: 'pet_donut', count: 25, box: 'gold', unlock: { skin: 'carl_pajamas' } },
     flee_1:       { name: 'TACTICAL RETREAT', desc: 'YOU RAN AWAY FROM A STAGE. THE CHICKEN SPONSORS ARE THRILLED.', event: 'flee', count: 1, box: 'bronze' },
     shop_1:       { name: 'RETAIL THERAPY', desc: 'YOU BOUGHT SOMETHING. THE ECONOMY OF THE APOCALYPSE THANKS YOU.', event: 'shop', count: 1, box: 'bronze' },
     shop_25:      { name: 'VALUED CUSTOMER', desc: '25 PURCHASES. THE SHOPKEEPER HAS PUT YOUR PICTURE ON THE WALL. NEXT TO THE EXITS.', event: 'shop', count: 25, box: 'silver' },

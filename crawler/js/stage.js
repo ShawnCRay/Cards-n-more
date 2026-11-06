@@ -125,7 +125,7 @@
   var S = null;        // current stage state
   var I = null;        // DCW.input
   var lightCanvas = null;
-  var tileInfo = { up: false, down: false, left: false, right: false, t: 0 };
+  var tileInfo = { up: false, down: false, left: false, right: false, t: 0, tx: 0, ty: 0 };
 
   /* ---------------- level assembly ---------------- */
   function chunkRows(id) {
@@ -200,7 +200,7 @@
       var x = s.tx * TS, y = s.ty * TS, fx = x + 8, fy = y + TS; // fy = feet line of this cell
       switch (s.ch) {
         case 'P': if (!start) start = { x: fx, y: fy }; break;
-        case 'D': S.objects.push({ kind: 'door', x: x - 4, y: fy - 32, w: 24, h: 32, open: false }); break;
+        case 'D': S.objects.push({ kind: 'door', x: fx - 13, y: fy - 38, w: 26, h: 38, open: false }); break;
         case 'K': S.bossSpawn = { x: fx, y: fy, chunk: s.chunk }; break;
         case 'e': case 'E': case 'f': S.enemies.push(makeEnemy(pickEnemyId(def, s.ch, rnd), fx, fy, s.ch === 'E', s.ch === 'f')); break;
         case 'o': addPickup('coin', fx, fy - 4, 0, 0, false); break;
@@ -2140,6 +2140,7 @@
     var mx = stats().maxHp;
     if (!(run.hp > 0)) run.hp = mx;
     if (run.hp > mx) run.hp = mx;
+    if (has(ART(), 'prepare')) call(ART(), 'prepare', S.theme);
     updCamera(0, true);
     var trk = S.def.music || (S.floor && S.floor.music);
     if (trk) music(trk);
@@ -2201,6 +2202,7 @@
           var l = tx > 0 ? L.t[ty * L.w + tx - 1] : (sol ? 1 : 0), r = tx < L.w - 1 ? L.t[ty * L.w + tx + 1] : (sol ? 1 : 0);
           tileInfo.up = sol ? SOLIDISH[u] : u === t; tileInfo.down = sol ? SOLIDISH[d] : d === t;
           tileInfo.left = sol ? SOLIDISH[l] : l === t; tileInfo.right = sol ? SOLIDISH[r] : r === t;
+          tileInfo.tx = tx; tileInfo.ty = ty;
           try { art.tile(ctx, S.theme, CH_OF[t], x, y, tileInfo); continue; } catch (e) { console.error('[stage] art.tile', e); art = null; useArt = false; }
         }
         drawFallbackTile(ctx, t, x, y);
@@ -2217,10 +2219,11 @@
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + TS - 2, TS, 2); ctx.fillRect(x + TS - 2, y, 2, TS);
     if (t === T_CRATE) { ctx.fillStyle = '#5c3010'; ctx.fillRect(x + 2, y + 7, 12, 2); ctx.fillRect(x + 7, y + 2, 2, 12); }
   }
-  function drawTileAt(ctx, ch, x, y) {
+  function drawTileAt(ctx, ch, x, y, tx, ty) {
     var art = ART();
     if (has(art, 'tile')) {
-      tileInfo.up = false; tileInfo.down = false; tileInfo.left = true; tileInfo.right = true; tileInfo.t = S.t;
+      tileInfo.up = false; tileInfo.down = false; tileInfo.left = tx === undefined ? true : tx > 0; tileInfo.right = tx === undefined ? true : tx < 2; tileInfo.t = S.t;
+      tileInfo.tx = tx || 0; tileInfo.ty = ty || 0;
       try { art.tile(ctx, S.theme, ch, x, y, tileInfo); return; } catch (e) { /* fall through */ }
     }
     drawFallbackTile(ctx, TILE_OF[ch] || 1, x, y);
@@ -2237,7 +2240,7 @@
     for (i = 0; i < S.platforms.length; i++) {
       var pl = S.platforms[i];
       if (pl.x + pl.w < camX || pl.x > camX + W) continue;
-      for (var k = 0; k < 3; k++) drawTileAt(ctx, '=', Math.round(pl.x - camX) + k * 16, Math.round(pl.y - camY));
+      for (var k = 0; k < 3; k++) drawTileAt(ctx, '=', Math.round(pl.x - camX) + k * 16, Math.round(pl.y - camY), k, i);
     }
     // hazard telegraphs + hazards
     for (i = 0; i < S.haz.length; i++) drawHaz(ctx, S.haz[i], camX, camY);
@@ -2285,7 +2288,7 @@
     if (o.x + o.w < camX - 8 || o.x > camX + W + 8) return;
     var x = cx(o) - camX, y = o.y + o.h - camY;
     switch (o.kind) {
-      case 'door': spr(ctx, o.open ? 'door_open' : 'door', x, y, 0, false, null, 20, 32, o.open ? '#000' : '#7c4c2c'); break;
+      case 'door': spr(ctx, o.open ? 'door_open' : 'door', x, y, 0, false, null, 24, 36, o.open ? '#000' : '#7c4c2c'); break;
       case 'checkpoint': spr(ctx, 'checkpoint', x, y, o.on ? 1 : 0, false, null, 6, 24, o.on ? '#58f898' : '#f83800'); break;
       case 'sign': spr(ctx, 'sign', x, y, 0, false, null, 14, 14, '#c88848'); break;
       case 'chest': spr(ctx, o.open ? 'chest_open' : 'chest', x, y, 0, false, null, 16, 12, o.open ? '#7c4c2c' : '#f8b800'); break;
@@ -2299,7 +2302,7 @@
     switch (p.kind) {
       case 'coin': spr(ctx, 'coin', x, y, Math.floor(S.t * 10 + p.bob), false, null, 6, 7, '#f8d878'); break;
       case 'snack': spr(ctx, 'snack', x, y, 0, false, null, 8, 7, '#58f898'); break;
-      case 'bomb': spr(ctx, 'bomb_pickup', x, y, 0, false, null, 7, 7, '#303030'); break;
+      case 'bomb': spr(ctx, 'bomb_pickup', x, y, Math.floor(S.t * 4 + p.bob), false, null, 7, 7, '#303030'); break;
       case 'potion': spr(ctx, 'potion', x, y, 0, false, null, 6, 8, '#f83800'); break;
       case 'box': spr(ctx, 'box_bronze', x, y, Math.floor(S.t * 4), false, null, 12, 12, '#c87838'); break;
     }
