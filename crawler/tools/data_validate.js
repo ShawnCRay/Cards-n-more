@@ -28,20 +28,23 @@ const BOSS_IDS = 'hoarder juicer ringmaster engineer tidemother butcher bride ov
 const PROJ_SPRITES = 'arrow rock fireball bubble bolt bottle laser_orb knife spore note missile'.split(' ');
 const REQ_PROJ = 'arrow rock fireball bubble bolt bottle laser_orb knife spore note'.split(' ');
 const SKINS = 'carl_boxers carl_jacket carl_bodyguard carl_kilt carl_hazmat carl_pajamas carl_clown carl_toga carl_gold'.split(' ');
-const COMPANIONS = 'donut mongo katia zev squeaks'.split(' ');
-const ABILITIES = 'missile bite shield magnet fetch'.split(' ');
+const COMPANIONS = 'donut mongo katia zev squeaks samantha signet'.split(' ');
+const ABILITIES = 'missile bite shield magnet fetch lunge summon'.split(' ');
+// Update 2: where each companion must be rescued (donut starts with you)
+const COMP_FLOOR = { squeaks: 2, mongo: 3, samantha: 4, katia: 5, zev: 6, signet: 7 };
+const QI_SPRITES = 'qi_key qi_valve qi_ticket qi_gear qi_shell qi_horn qi_mask qi_crown qi_badge qi_map qi_lens qi_bolt'.split(' ');
 const AI_TYPES = 'walker chaser jumper flyer shooter charger turret spawner bomber hopper'.split(' ');
 const TIERS = 'bronze silver gold platinum legendary fan boss'.split(' ');
 const MUSIC = ('title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 ow3 ow4 ow5 ow6 ow7 ow8 ow9 ' +
   'boss boss_final safe results gameover ending lootbox').split(' ');
 const MARKERS = 'ow_door ow_manhole ow_tent ow_cave'.split(' ');
-const PORTRAITS = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_ai', 'p_mordecai', 'p_bopca'].concat(BOSS_IDS.map(b => 'p_' + b));
+const PORTRAITS = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_samantha', 'p_signet', 'p_ai', 'p_mordecai', 'p_bopca'].concat(BOSS_IDS.map(b => 'p_' + b));
 const EVENTS = ('kill stomp kick bomb_kill multi_bomb potion crate coin fall death revive box_open combo10 combo25 ' +
   'no_damage_stage skin_equip companion_equip shop flee secret win pet_donut').split(' ');
 const STATS = 'str con dex int'.split(' ');
 const PERKS = 'dmg def hp speed gold views bombs doubleJump'.split(' ');
 
-const CHUNK_CHARS = new Set('. #X=^~Hbohm?eEfPDK<>vcn$'.split(''));
+const CHUNK_CHARS = new Set('. #X=^~Hbohm?eEfPDK<>vcn$QRSL'.split(''));
 const SOLID = new Set(['#', 'X', 'b']);
 const SUPPORT = new Set(['#', 'X', 'b', '=', 'H']);
 const HAZARD = new Set(['^', '~']);
@@ -97,7 +100,7 @@ for (const [id, b] of Object.entries(D.bosses)) {
   if (!TIERS.includes(b.loot)) err(w + ': loot tier ' + b.loot);
   if (b.unlock) {
     if (b.unlock.skin && !SKINS.includes(b.unlock.skin)) err(w + ': unlock skin ' + b.unlock.skin);
-    if (b.unlock.companion && !COMPANIONS.includes(b.unlock.companion)) err(w + ': unlock companion');
+    if (b.unlock.companion) err(w + ': companion unlock not allowed');
   }
   if (!b.phases || !b.phases.length || b.phases[0].below !== 1) err(w + ': first phase must have below 1.0');
   let last = 2;
@@ -190,38 +193,57 @@ for (const [id, ch] of Object.entries(D.chunks)) {
   for (const x of [0, W - 1]) {
     if (rows[10][x] !== '#' || rows[11][x] !== '#') err(w + ': edge col ' + x + ' rows 10-11 must be #');
     if (isArena && x === W - 1) continue;
-    for (let y = 5; y <= 9; y++) { const c = rows[y][x]; if (SOLID.has(c) || HAZARD.has(c)) err(w + ': edge col ' + x + ' row ' + y + ' blocked "' + c + '"'); }
+    for (let y = 5; y <= 9; y++) { const c = rows[y][x]; if (SOLID.has(c) || HAZARD.has(c) || c === 'L') err(w + ': edge col ' + x + ' row ' + y + ' blocked "' + c + '"'); }
   }
+  // gates: L is solid while closed, empty once its lever is pulled
+  const closedRows = rows.map(r => r.replace(/L/g, 'X')), openRows = rows.map(r => r.replace(/L/g, '.'));
   // standing things need ground and headroom
   rows.forEach((r, y) => r.split('').forEach((c, x) => {
-    if ('eEPDKcn$?'.includes(c)) {
+    if ('eEPDKcn$?SR'.includes(c)) {
       const below = cell(rows, x, y + 1);
       if (!below || !SUPPORT.has(below)) err(w + ': "' + c + '" at ' + x + ',' + y + ' has no ground below');
     }
-    if ('eEPDK'.includes(c) && isSolid(cell(rows, x, y - 1))) err(w + ': "' + c + '" at ' + x + ',' + y + ' has no headroom');
-    if (c === '<' || c === '>') for (let dx = -3; dx <= 3; dx++) { const cc = cell(rows, x + dx, y); if (cc === null || isSolid(cc)) err(w + ': moving platform at ' + x + ',' + y + ' blocked'); }
-    if (c === 'v') for (let dy = -3; dy <= 3; dy++) { const cc = cell(rows, x, y + dy); if (cc === null || isSolid(cc)) err(w + ': v platform at ' + x + ',' + y + ' blocked at dy ' + dy); }
+    if ('eEPDKR'.includes(c) && (isSolid(cell(rows, x, y - 1)) || cell(rows, x, y - 1) === 'L')) err(w + ': "' + c + '" at ' + x + ',' + y + ' has no headroom');
+    if (c === 'Q') { // floats on/above walkable ground (within 3 tiles)
+      let ok = false;
+      for (let dy = 1; dy <= 3 && !ok; dy++) { const b = cell(rows, x, y + dy); if (b && SUPPORT.has(b)) ok = true; else if (!b || isSolid(b) || b === 'L' || HAZARD.has(b)) break; }
+      if (!ok) err(w + ': "Q" at ' + x + ',' + y + ' not on/above walkable ground');
+    }
+    if (c === '<' || c === '>') for (let dx = -3; dx <= 3; dx++) { const cc = cell(openRows, x + dx, y); if (cc === null || isSolid(cc)) err(w + ': moving platform at ' + x + ',' + y + ' blocked'); }
+    if (c === 'v') for (let dy = -3; dy <= 3; dy++) { const cc = cell(openRows, x, y + dy); if (cc === null || isSolid(cc)) err(w + ': v platform at ' + x + ',' + y + ' blocked at dy ' + dy); }
   }));
   const count = (c) => rows.join('').split(c).length - 1;
   ch._P = count('P'); ch._D = count('D'); ch._K = count('K'); ch._n = count('n'); ch._q = count('?');
-  ch._e = count('e') + count('E');
+  ch._e = count('e') + count('E'); ch._Q = count('Q'); ch._R = count('R'); ch._S = count('S'); ch._L = count('L');
   // reachability: from left edge (or P) to right edge, plus targets
   const starts = ch._P ? [] : [[0, 9], [1, 9]];
   rows.forEach((r, y) => { const x = r.indexOf('P'); if (x >= 0) starts.push([x, y]); });
-  // pass 1: as built; pass 2: crates broken (punch/kick/bomb) - targets may need that
-  const seen0 = reach(id, rows, starts, false), seen = reach(id, rows, starts, true);
-  const at = (x, y) => seen.has(x + ',' + y);
+  // pass 1: as built; pass 2: crates broken (punch/kick/bomb) - targets may need that. Gates open (lever pulled).
+  const seen0 = reach(id, openRows, starts, false), seen = reach(id, openRows, starts, true);
+  const near = (S, x, y, up) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= (up || 1); dy++) if (S.has((x + dx) + ',' + (y + dy))) return true; return false; };
   const right = (S) => [...S].some(k => +k.split(',')[0] === W - 1);
   if (!isArena && !right(seen)) err(w + ': right edge not reachable from left edge');
   else if (!isArena && !right(seen0) && !quiet) warn(w + ': right edge needs crates broken');
   ch._reach = seen0.size;
   rows.forEach((r, y) => r.split('').forEach((c, x) => {
-    if ('?D$K'.includes(c)) {
-      let ok = false;
-      for (let dx = -1; dx <= 1 && !ok; dx++) for (let dy = -1; dy <= 1 && !ok; dy++) if (at(x + dx, y + dy)) ok = true;
-      if (!ok) err(w + ': "' + c + '" at ' + x + ',' + y + ' not reachable');
-    }
+    if ('?D$KR'.includes(c) && !near(seen, x, y)) err(w + ': "' + c + '" at ' + x + ',' + y + ' not reachable');
+    if (c === 'Q' && !near(seen, x, y, 2)) err(w + ': "Q" at ' + x + ',' + y + ' not reachable');
   }));
+  // lever puzzles: every L needs an S reachable from the left edge without passing any L
+  if (ch._L && !ch._S) err(w + ': has L gate tiles but no S lever');
+  if (ch._S && !ch._L) warn(w + ': lever S without any L gate');
+  if (ch._L && ch._S) {
+    const shut = reach(id, closedRows, starts, true);
+    let lever = false;
+    rows.forEach((r, y) => r.split('').forEach((c, x) => { if (c === 'S' && near(shut, x, y)) lever = true; }));
+    if (!lever) err(w + ': no S lever reachable from the left edge without crossing L');
+    // the gate should guard something: the way forward, a Q, an R or loot
+    let guards = !isArena && right(seen) && !right(shut);
+    rows.forEach((r, y) => r.split('').forEach((c, x) => {
+      if ('QR?$ohm'.includes(c) && near(seen, x, y, c === 'Q' ? 2 : 1) && !near(shut, x, y, c === 'Q' ? 2 : 1)) guards = true;
+    }));
+    if (!guards) warn(w + ': gate L guards nothing (route, Q, R and loot all reachable with it shut)');
+  }
 }
 
 /* ---------------- stages ---------------- */
@@ -256,6 +278,33 @@ for (const [id, s] of Object.entries(D.stages)) {
   if (c.count > 1 && (c.pool || []).length < 2) err(w + ': count>1 needs 2+ pool chunks (no immediate repeats)');
   if (c.count > (c.pool || []).length + 4) warn(w + ': count large for pool');
   if (end._P) err(w + ': end chunk has P');
+  // Update 2: insert chunks (spliced into the middle) + quest item / rescue / padlocked exit
+  const ins = c.insert || [];
+  if (!Array.isArray(ins)) err(w + ': chunks.insert must be an array');
+  const insChunks = [];
+  ins.forEach(p => { const k = D.chunks[p]; if (!k) { err(w + ': insert chunk ' + p + ' missing'); return; } chunkUse[p]++; insChunks.push(k); if (k._P || k._D || k._K) err(w + ': insert chunk ' + p + ' has P/D/K'); });
+  (c.pool || []).forEach(p => { const k = D.chunks[p]; if (k && (k._Q || k._R)) err(w + ': pool chunk ' + p + ' has Q/R (put Q/R only in insert chunks)'); });
+  const fixed = [start, end].concat(insChunks);
+  const nQ = fixed.reduce((a, k) => a + (k._Q || 0), 0), nR = fixed.reduce((a, k) => a + (k._R || 0), 0);
+  if (s.questItem) {
+    const qi = (D.questItems || {})[s.questItem];
+    if (!qi) err(w + ': questItem ' + s.questItem + ' not in questItems');
+    else if (qi.floor !== s.floor) err(w + ': questItem ' + s.questItem + ' belongs to floor ' + qi.floor);
+    if (nQ !== 1) err(w + ': questItem stage needs exactly one Q in start+insert+end (has ' + nQ + ')');
+    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': questItem on a ' + s.kind + ' stage');
+  } else if (nQ) err(w + ': has Q but no questItem');
+  if (s.rescue) {
+    if (!COMP_FLOOR[s.rescue]) err(w + ': rescue ' + s.rescue + ' is not a rescuable companion');
+    else if (COMP_FLOOR[s.rescue] !== s.floor) err(w + ': rescue ' + s.rescue + ' belongs on floor ' + COMP_FLOOR[s.rescue]);
+    if (nR !== 1) err(w + ': rescue stage needs exactly one R in start+insert+end (has ' + nR + ')');
+    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': rescue on a ' + s.kind + ' stage');
+  } else if (nR) err(w + ': has R but no rescue');
+  if (s.exitNeeds) {
+    const qi = (D.questItems || {})[s.exitNeeds];
+    if (!qi) err(w + ': exitNeeds ' + s.exitNeeds + ' not in questItems');
+    else if (qi.floor !== s.floor) err(w + ': exitNeeds ' + s.exitNeeds + ' is a floor ' + qi.floor + ' item');
+    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': exitNeeds on a ' + s.kind + ' stage');
+  }
   if (s.kind === 'boss') {
     if (!D.bosses[s.boss]) err(w + ': boss ' + s.boss + ' missing');
     if (end._K !== 1) err(w + ': boss arena must have exactly one K');
@@ -266,7 +315,9 @@ for (const [id, s] of Object.entries(D.stages)) {
     if (start._D || start._K) err(w + ': start chunk has D/K');
   }
   const poolSigns = Math.max(0, ...(c.pool || []).map(p => (D.chunks[p] || {})._n || 0));
-  const needSigns = start._n + end._n + (c.count ? poolSigns : 0);
+  const insSigns = insChunks.reduce((a, k) => a + (k._n || 0), 0);
+  if (insSigns && poolSigns && c.count) err(w + ': insert chunk signs + pool chunk signs make sign order depend on the seed');
+  const needSigns = start._n + end._n + insSigns + (c.count ? poolSigns : 0);
   if (needSigns && !(s.signs && s.signs.length >= needSigns)) err(w + ': ' + needSigns + ' sign slots but ' + ((s.signs || []).length) + ' texts');
 }
 for (const [id, n] of Object.entries(chunkUse)) if (!n) warn('chunk ' + id + ' unused');
@@ -362,10 +413,112 @@ D.floors.forEach((f, i) => {
   used.forEach(s => { stageFloorRef[s] = (stageFloorRef[s] || 0) + 1; });
 });
 for (const id of Object.keys(D.stages)) if (!stageFloorRef[id]) err('stage ' + id + ' is not referenced by any floor');
-// boss unlocks per floor plan
-const PLAN = { hoarder: ['companion', 'squeaks'], juicer: ['companion', 'mongo'], ringmaster: ['skin', 'carl_clown'], engineer: ['companion', 'katia'],
-  tidemother: ['skin', 'carl_hazmat'], butcher: ['companion', 'zev'], bride: ['skin', 'carl_bodyguard'], overseer: ['skin', 'carl_kilt'], showrunner: ['skin', 'carl_gold'] };
-for (const [b, [k, v]] of Object.entries(PLAN)) if (!D.bosses[b] || !D.bosses[b].unlock || D.bosses[b].unlock[k] !== v) err('boss ' + b + ' unlock should be ' + k + ' ' + v);
+// boss unlocks per DESIGN Update 2 (no companion unlocks any more)
+const PLAN = { hoarder: 'carl_jacket', juicer: null, ringmaster: 'carl_clown', engineer: null,
+  tidemother: 'carl_hazmat', butcher: null, bride: 'carl_bodyguard', overseer: 'carl_kilt', showrunner: 'carl_gold' };
+for (const [b, sk] of Object.entries(PLAN)) {
+  const u = D.bosses[b] && D.bosses[b].unlock;
+  if (u && u.companion) err('boss ' + b + ' unlocks a companion (companions are rescued now)');
+  if (sk && !(u && u.skin === sk)) err('boss ' + b + ' unlock should be skin ' + sk);
+  if (!sk && u) err('boss ' + b + ' should unlock nothing');
+}
+
+/* ---------------- quest items, rescues, chains (Update 2) ---------------- */
+const QI = D.questItems || {};
+if (!D.questItems) err('questItems missing');
+const qiWhere = {};
+for (const [sid, s] of Object.entries(D.stages)) if (s.questItem) (qiWhere[s.questItem] = qiWhere[s.questItem] || []).push(sid);
+const qiUsed = {};
+for (const s of Object.values(D.stages)) if (s.exitNeeds) qiUsed[s.exitNeeds] = true;
+D.floors.forEach(f => Object.values(f.locks || {}).forEach(l => { qiUsed[l.needs] = true; }));
+for (const [id, q] of Object.entries(QI)) {
+  const w = 'questItems.' + id;
+  text(w + '.name', q.name, 22); text(w + '.desc', q.desc, 120); text(w + '.hint', q.hint, 140);
+  if (!(q.floor >= 2 && q.floor <= 9)) err(w + ': floor must be 2-9');
+  if (!QI_SPRITES.includes(q.sprite)) err(w + ': sprite ' + q.sprite + ' not in qi_* art list');
+  const where = qiWhere[id] || [];
+  if (where.length !== 1) err(w + ': placed in ' + where.length + ' stages (want exactly 1): ' + where.join(','));
+  if (!qiUsed[id]) warn(w + ': never needed by a lock or exit');
+}
+const rescueAt = {};
+for (const [sid, s] of Object.entries(D.stages)) if (s.rescue) (rescueAt[s.rescue] = rescueAt[s.rescue] || []).push(sid);
+for (const [cid, fl] of Object.entries(COMP_FLOOR)) {
+  const at = rescueAt[cid] || [];
+  if (at.length !== 1) err('companion ' + cid + ': ' + at.length + ' rescue stages (want exactly 1 on floor ' + fl + ')');
+  const f = D.floors[fl - 1];
+  if (f && f.companion !== cid) err('floors[' + (fl - 1) + '].companion should be ' + cid);
+}
+for (const [cid, sids] of Object.entries(rescueAt)) if (!COMP_FLOOR[cid]) err('rescue of ' + cid + ' in ' + sids.join(','));
+
+const chainReport = [];
+D.floors.forEach((f, i) => {
+  const w = 'floors[' + i + ']';
+  if (f.companion != null) {
+    if (!COMP_FLOOR[f.companion] || COMP_FLOOR[f.companion] !== f.n) err(w + ': companion ' + f.companion + ' does not belong on this floor');
+  }
+  if (f.n >= 2) texts(w + '.hints', f.hints, 3);
+  if (f.hints && f.hints.length > 5) warn(w + ': more than 5 hints');
+  const floorStages = Object.keys(D.stages).filter(k => D.stages[k].floor === f.n);
+  const items = Object.keys(QI).filter(k => QI[k].floor === f.n);
+  const has = (it) => !!QI[it] && QI[it].floor === f.n && (qiWhere[it] || []).some(sid => D.stages[sid].floor === f.n);
+  const locks = f.locks || {};
+  for (const [ch, l] of Object.entries(locks)) {
+    if (!l || !l.needs) { err(w + '.locks.' + ch + ': needs missing'); continue; }
+    if (!QI[l.needs]) err(w + '.locks.' + ch + ': item ' + l.needs + ' not in questItems');
+    else if (!has(l.needs)) err(w + '.locks.' + ch + ': item ' + l.needs + ' not obtainable on this floor');
+    if (l.text != null) text(w + '.locks.' + ch + '.text', l.text, 100);
+  }
+  for (const sid of floorStages) { const s = D.stages[sid]; if (s.exitNeeds && !has(s.exitNeeds)) err('stages.' + sid + ': exitNeeds ' + s.exitNeeds + ' not obtainable on its floor'); }
+
+  const held = new Set(), entered = new Set(), cleared = new Set(), rescued = new Set(), order = [];
+  const visit = (sid) => {
+    const s = D.stages[sid];
+    if (!entered.has(sid)) { entered.add(sid); order.push(sid); }
+    if (s.questItem && !held.has(s.questItem)) { held.add(s.questItem); order.push('+' + s.questItem); }
+    if (s.rescue && !rescued.has(s.rescue)) { rescued.add(s.rescue); order.push('@' + s.rescue); }
+    if (!s.exitNeeds || held.has(s.exitNeeds)) cleared.add(sid);
+  };
+  if (!f.overworld) {
+    if (Object.keys(locks).length) err(w + ': linear floors cannot use locks');
+    for (const sid of (f.sequence || [])) {
+      if (sid === 'SAFE' || !D.stages[sid]) continue;
+      visit(sid);
+      if (!cleared.has(sid)) { err(w + ': chain stuck, ' + sid + ' exit needs ' + D.stages[sid].exitNeeds + ' (not held by then)'); break; }
+    }
+  } else {
+    const ents = f.overworld.entrances || {};
+    for (const ch of Object.keys(locks)) if (!(ch in ents) || ch === 'S' || ch === 'X') err(w + '.locks: ' + ch + ' is not a stage entrance');
+    for (const [ch, l] of Object.entries(locks)) { const sid = ents[ch]; const s = D.stages[sid]; if (s && s.questItem && s.questItem === l.needs) err(w + ': item ' + l.needs + ' sits inside ' + sid + ', which needs it to enter'); }
+    if (f.n >= 3) {
+      if (items.length < 2 || items.length > 3) err(w + ': wants 2-3 quest items (has ' + items.length + ')');
+      if (!locks.B) err(w + ': boss entrance B must be locked by the boss key');
+      const mainLock = Object.entries(locks).some(([ch, l]) => /[1-9]/.test(ch) && !(qiWhere[l.needs] || []).includes(ents[ch]));
+      if (!mainLock) err(w + ': no main area entrance locked by an item from another area');
+      const exitLock = floorStages.some(sid => { const s = D.stages[sid]; return s.exitNeeds && !(qiWhere[s.exitNeeds] || []).includes(sid); });
+      if (!exitLock) err(w + ': no area exit locked by an item from a different area');
+    }
+    const req = f.required || [];
+    let changed = true, guard = 0;
+    while (changed && guard++ < 100) {
+      changed = false;
+      for (const [ch, sid] of Object.entries(ents)) {
+        if (ch === 'S' || ch === 'X' || !D.stages[sid]) continue;
+        if (locks[ch] && !held.has(locks[ch].needs)) continue;
+        if (ch === 'B' && !req.every(r => cleared.has(r))) continue;
+        const before = entered.size + held.size + cleared.size + rescued.size;
+        visit(sid);
+        if (entered.size + held.size + cleared.size + rescued.size !== before) changed = true;
+      }
+    }
+    req.forEach(r => { if (!cleared.has(r)) err(w + ': chain unsolvable, required ' + r + ' never cleared'); });
+    if (!cleared.has(f.boss)) err(w + ': chain unsolvable, boss ' + f.boss + ' never reachable');
+    for (const [ch, sid] of Object.entries(ents)) if (D.stages[sid] && !entered.has(sid)) warn(w + ': entrance ' + ch + ' (' + sid + ') never becomes enterable');
+  }
+  for (const it of items) if (!held.has(it)) err(w + ': item ' + it + ' never obtained by the chain');
+  if (f.companion && !rescued.has(f.companion)) err(w + ': companion ' + f.companion + ' never rescued by the chain');
+  chainReport.push('  floor ' + f.n + ' chain: ' + order.join(' > '));
+});
+if (!quiet) chainReport.forEach(l => console.log(l));
 
 /* ---------------- loot / shop / skins / companions ---------------- */
 function reward(w, r, inShop) {
@@ -373,7 +526,7 @@ function reward(w, r, inShop) {
   if (k === 'gold') { if (!(r.min >= 0 && r.max >= r.min)) err(w + ': gold min/max'); }
   else if (k === 'item') { if (!['potion', 'bomb'].includes(r.id) || !(r.count > 0)) err(w + ': item'); }
   else if (k === 'skin') { if (!r.any && !SKINS.includes(r.id)) err(w + ': skin id'); }
-  else if (k === 'companion') { if (!r.any && !COMPANIONS.includes(r.id)) err(w + ': companion id'); }
+  else if (k === 'companion') err(w + ': companion rewards are not allowed (companions are rescued)');
   else if (k === 'stat') { if (!r.any && !STATS.includes(r.stat)) err(w + ': stat'); if (!(r.amount > 0)) err(w + ': stat amount'); }
   else if (k === 'xp' || k === 'hp') { if (!(r.amount > 0)) err(w + ': amount'); }
   else if (inShop && k === 'revival') { if (!(r.count > 0)) err(w + ': revival count'); }
@@ -391,7 +544,7 @@ for (const t of TIERS) {
   if (!cos && t !== 'bronze') warn('lootTables.' + t + ' has no cosmetics');
 }
 const leg = D.lootTables.legendary;
-if (!(leg && (leg.guaranteed || []).some(r => (r.kind === 'skin' || r.kind === 'companion') && r.any))) err('legendary must guarantee a skin/companion any:true');
+if (!(leg && (leg.guaranteed || []).some(r => r.kind === 'skin' && r.any))) err('legendary must guarantee a skin any:true');
 const shopIds = new Set();
 D.shop.forEach((s, i) => {
   const w = 'shop[' + i + ']';
@@ -416,6 +569,11 @@ for (const id of COMPANIONS) {
   if (!ABILITIES.includes(c.ability)) err(w + ': ability');
   if (!(c.cooldown > 0 && c.power > 0)) err(w + ': cooldown/power');
   if (c.sprite !== id) err(w + ': sprite should be ' + id);
+  if (id !== 'donut') {
+    if (!Array.isArray(c.rescueLines) || c.rescueLines.length < 1 || c.rescueLines.length > 2) err(w + ': rescueLines wants 1-2 lines');
+    else texts(w + '.rescueLines', c.rescueLines, 1, 120);
+  }
+  if (c.special.time != null && !(c.special.time >= 0)) err(w + ': special.time');
 }
 for (const id of Object.keys(D.companions)) if (!COMPANIONS.includes(id)) err('companion ' + id + ' not in fixed list');
 
@@ -431,7 +589,7 @@ for (const [id, a] of Object.entries(D.achievements)) {
   if (!ok) err(w + ': bad event ' + ev);
   if (!(a.count >= 1)) err(w + ': count');
   if (!TIERS.includes(a.box)) err(w + ': box tier');
-  if (a.unlock) { if (a.unlock.skin && !SKINS.includes(a.unlock.skin)) err(w + ': unlock skin'); if (a.unlock.companion && !COMPANIONS.includes(a.unlock.companion)) err(w + ': unlock companion'); }
+  if (a.unlock) { if (a.unlock.skin && !SKINS.includes(a.unlock.skin)) err(w + ': unlock skin'); if (a.unlock.companion) err(w + ': companion unlocks are not allowed (companions are rescued)'); }
 }
 for (const b of BOSS_IDS) if (!Object.values(D.achievements).some(a => a.event === 'boss:' + b)) warn('no achievement for boss ' + b);
 

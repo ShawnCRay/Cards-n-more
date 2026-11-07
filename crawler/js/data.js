@@ -228,7 +228,7 @@
       intro: ["OUR FIRST BOSS! SHE HAS NOT THROWN ANYTHING AWAY SINCE 1987, INCLUDING HER FEELINGS.",
         "SHE IS GUARDING A PILE OF CRAP AND SHE WILL DIE FOR IT. LET'S HELP HER WITH THAT."],
       defeat: "THE HOARDER IS DOWN! HER COLLECTION OF EMPTY YOGURT CUPS WILL BE AUCTIONED FOR CHARITY.",
-      loot: 'boss', unlock: { companion: 'squeaks' } },
+      loot: 'boss', unlock: { skin: 'carl_jacket' } },
 
     juicer: { name: 'THE JUICER', title: 'GOBLIN KING OF GAINS',
       hp: 200, dmg: 2, w: 40, h: 40, sprite: 'juicer', xp: 85, gold: [70, 110], flying: false,
@@ -240,7 +240,7 @@
       intro: ["HE BENCHES GOBLINS. HE CURLS GOBLINS. HE HAS NEVER ONCE STRETCHED.",
         "CRAWLER, PLEASE WELCOME THE JUICER! HIS PROTEIN SHAKE IS MOSTLY LIGHTER FLUID!"],
       defeat: "THE JUICER HAS TAPPED OUT! SOMEBODY PLEASE SPOT HIM. NO? FAIR.",
-      loot: 'boss', unlock: { companion: 'mongo' } },
+      loot: 'boss', unlock: null },
 
     ringmaster: { name: 'THE RINGMASTER', title: 'MASTER OF THE MIDWAY',
       hp: 280, dmg: 3, w: 32, h: 44, sprite: 'ringmaster', xp: 120, gold: [100, 150], flying: false,
@@ -262,7 +262,7 @@
       intro: ["ALL ABOARD! THE ENGINEER IS HALF GOBLIN, HALF LOCOMOTIVE, AND ZERO PERCENT ON SCHEDULE.",
         "HE HAS NOT STOPPED FOR A PASSENGER IN SIX HUNDRED YEARS. HE IS NOT STARTING WITH YOU."],
       defeat: "THE ENGINEER HAS BEEN DERAILED! DELAYS EXPECTED ON ALL LINES! FOREVER!",
-      loot: 'boss', unlock: { companion: 'katia' } },
+      loot: 'boss', unlock: null },
 
     tidemother: { name: 'THE TIDEMOTHER', title: 'QUEEN OF THE BUBBLE SEA',
       hp: 440, dmg: 4, w: 56, h: 48, sprite: 'tidemother', xp: 195, gold: [180, 260], flying: false,
@@ -285,7 +285,7 @@
       intro: ["THE HUNT IS OVER, CRAWLER. THE PROCESSING BEGINS. THAT IS HIS JOKE. HE ONLY HAS THE ONE.",
         "THE BUTCHER RUNS THESE GROUNDS FOR RICH PEOPLE WHO WANT YOUR HEAD ON A WALL. SMILE FOR THE TAXIDERMIST!"],
       defeat: "THE BUTCHER HAS BEEN, AND I CANNOT STRESS THIS ENOUGH, TENDERIZED!",
-      loot: 'boss', unlock: { companion: 'zev' } },
+      loot: 'boss', unlock: null },
 
     bride: { name: 'THE BRIDE', title: 'LADY OF THE BEDLAM MANOR',
       hp: 600, dmg: 5, w: 36, h: 48, sprite: 'bride', xp: 340, gold: [260, 360], flying: true,
@@ -2265,76 +2265,70 @@
 
   /* gold amounts are floor-1 values; game.js scales them by floor.
      Cosmetics: bronze ~3% per roll, silver ~6%, gold ~12%, platinum ~20%,
-     fan ~10%, boss ~10%; legendary always has one (guaranteed). */
+     fan ~10%, boss ~10%; legendary always has one (guaranteed). Companions are
+     never in loot (Update 2): they are rescued from cages on floors 2-7. */
   D.lootTables = {
     bronze: { rolls: 2, entries: [
       [{ kind: 'gold', min: 8, max: 20 }, 40],
-      [{ kind: 'item', id: 'potion', count: 1 }, 16],
+      [{ kind: 'item', id: 'potion', count: 1 }, 17],
       [{ kind: 'item', id: 'bomb', count: 2 }, 16],
       [{ kind: 'xp', amount: 12 }, 12],
       [{ kind: 'stat', any: true, amount: 1 }, 4],
       [{ kind: 'hp', amount: 1 }, 3],
-      [{ kind: 'skin', any: true }, 2],
-      [{ kind: 'companion', any: true }, 1]
+      [{ kind: 'skin', any: true }, 2]
     ] },
     silver: { rolls: 3, entries: [
       [{ kind: 'gold', min: 20, max: 45 }, 34],
       [{ kind: 'item', id: 'potion', count: 1 }, 16],
       [{ kind: 'item', id: 'bomb', count: 3 }, 14],
       [{ kind: 'xp', amount: 30 }, 10],
-      [{ kind: 'stat', any: true, amount: 1 }, 9],
+      [{ kind: 'stat', any: true, amount: 1 }, 10],
       [{ kind: 'hp', amount: 2 }, 6],
-      [{ kind: 'skin', any: true }, 4],
-      [{ kind: 'companion', any: true }, 2]
+      [{ kind: 'skin', any: true }, 5]
     ] },
     gold: { rolls: 3, entries: [
-      [{ kind: 'gold', min: 45, max: 90 }, 28],
+      [{ kind: 'gold', min: 45, max: 90 }, 30],
       [{ kind: 'item', id: 'potion', count: 2 }, 15],
       [{ kind: 'item', id: 'bomb', count: 4 }, 12],
       [{ kind: 'xp', amount: 70 }, 10],
-      [{ kind: 'stat', any: true, amount: 1 }, 14],
-      [{ kind: 'hp', amount: 2 }, 9],
-      [{ kind: 'skin', any: true }, 8],
-      [{ kind: 'companion', any: true }, 4]
+      [{ kind: 'stat', any: true, amount: 1 }, 15],
+      [{ kind: 'hp', amount: 2 }, 10],
+      [{ kind: 'skin', any: true }, 9]
     ] },
     platinum: { rolls: 4, entries: [
-      [{ kind: 'gold', min: 90, max: 180 }, 24],
-      [{ kind: 'item', id: 'potion', count: 2 }, 13],
+      [{ kind: 'gold', min: 90, max: 180 }, 27],
+      [{ kind: 'item', id: 'potion', count: 2 }, 14],
       [{ kind: 'item', id: 'bomb', count: 5 }, 10],
       [{ kind: 'xp', amount: 140 }, 10],
-      [{ kind: 'stat', any: true, amount: 2 }, 14],
-      [{ kind: 'hp', amount: 3 }, 9],
-      [{ kind: 'skin', any: true }, 12],
-      [{ kind: 'companion', any: true }, 8]
+      [{ kind: 'stat', any: true, amount: 2 }, 16],
+      [{ kind: 'hp', amount: 3 }, 11],
+      [{ kind: 'skin', any: true }, 12]
     ] },
     legendary: { rolls: 3, guaranteed: [{ kind: 'skin', any: true }], entries: [
-      [{ kind: 'skin', any: true }, 20],
-      [{ kind: 'companion', any: true }, 20],
-      [{ kind: 'gold', min: 150, max: 300 }, 20],
-      [{ kind: 'stat', any: true, amount: 2 }, 15],
-      [{ kind: 'hp', amount: 4 }, 10],
-      [{ kind: 'item', id: 'potion', count: 3 }, 10],
-      [{ kind: 'xp', amount: 250 }, 5]
+      [{ kind: 'skin', any: true }, 22],
+      [{ kind: 'gold', min: 150, max: 300 }, 26],
+      [{ kind: 'stat', any: true, amount: 2 }, 20],
+      [{ kind: 'hp', amount: 4 }, 14],
+      [{ kind: 'item', id: 'potion', count: 3 }, 12],
+      [{ kind: 'xp', amount: 250 }, 6]
     ] },
     fan: { rolls: 2, entries: [
-      [{ kind: 'gold', min: 15, max: 40 }, 30],
+      [{ kind: 'gold', min: 15, max: 40 }, 32],
       [{ kind: 'item', id: 'potion', count: 1 }, 18],
       [{ kind: 'item', id: 'bomb', count: 3 }, 16],
       [{ kind: 'xp', amount: 25 }, 12],
-      [{ kind: 'stat', any: true, amount: 1 }, 8],
+      [{ kind: 'stat', any: true, amount: 1 }, 9],
       [{ kind: 'hp', amount: 1 }, 6],
-      [{ kind: 'skin', any: true }, 6],
-      [{ kind: 'companion', any: true }, 4]
+      [{ kind: 'skin', any: true }, 7]
     ] },
     boss: { rolls: 3, guaranteed: [{ kind: 'item', id: 'potion', count: 1 }], entries: [
       [{ kind: 'gold', min: 60, max: 120 }, 26],
       [{ kind: 'item', id: 'potion', count: 2 }, 12],
       [{ kind: 'item', id: 'bomb', count: 4 }, 12],
       [{ kind: 'stat', any: true, amount: 2 }, 16],
-      [{ kind: 'hp', amount: 2 }, 12],
-      [{ kind: 'xp', amount: 100 }, 10],
-      [{ kind: 'skin', any: true }, 7],
-      [{ kind: 'companion', any: true }, 5]
+      [{ kind: 'hp', amount: 2 }, 14],
+      [{ kind: 'xp', amount: 100 }, 11],
+      [{ kind: 'skin', any: true }, 9]
     ] }
   };
 
@@ -2356,7 +2350,7 @@
     carl_boxers: { name: 'THE CLASSIC', desc: 'BOXERS, A LEATHER JACKET, AND BARE FEET IN THE SNOW. ICONIC. TRAGIC. MOSTLY TRAGIC.',
       perk: null, how: 'WHAT YOU WERE WEARING WHEN THE WORLD ENDED.' },
     carl_jacket: { name: 'JACKET AND JEANS', desc: 'YOU FOUND PANTS. THE AUDIENCE IS DEVASTATED. YOUR KNEES ARE GRATEFUL.',
-      perk: { def: 1 }, how: 'RANDOM DROP FROM LOOT BOXES.' },
+      perk: { def: 1 }, how: 'DEFEAT THE HOARDER ON FLOOR 1, OR LOOT BOXES.' },
     carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, DARK SHADES, EARPIECE THAT CONNECTS TO NOTHING. VERY PROFESSIONAL.',
       perk: { hp: 4 }, how: 'DEFEAT THE BRIDE ON FLOOR 7.' },
     carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICKING FREEDOM. THE CAMERAS ARE KEEPING A RESPECTFUL DISTANCE.',
@@ -2373,27 +2367,47 @@
       perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'BEAT THE SHOWRUNNER ON FLOOR 9.' }
   };
 
+  /* Update 2: every companion except Donut is FOUND and RESCUED, one per floor
+     (floors 2-7), per crawl. `how` hints where; rescueLines are said on release. */
   D.companions = {
     donut: { name: 'PRINCESS DONUT', desc: 'A PERSIAN SHOW CAT AND ROYALTY, ACCORDING TO HER. CASTS MAGIC MISSILE AT ANYTHING THAT LOOKS AT HER.',
       ability: 'missile', cooldown: 1.6, power: 2, sprite: 'donut',
       special: { name: 'MAGIC MISSILE BARRAGE', desc: 'A STORM OF HOMING MISSILES HITS EVERY ENEMY ON SCREEN.', time: 0 },
       how: 'SHE WAS ALWAYS HERE. SHE WOULD LIKE THAT NOTED.' },
+    squeaks: { name: 'SIR SQUEAKS', desc: 'A TUTORIAL RAT WHO ESCAPED FLOOR ONE AND GOT NABBED BY GOBLINS. FETCHES PICKUPS AND SOMETIMES DIGS UP A BOMB.',
+      ability: 'fetch', cooldown: 3, power: 1, sprite: 'squeaks', bombChance: 0.15,
+      special: { name: 'RAT KING RANSOM', desc: 'SIR SQUEAKS CALLS IN A FAVOR. SNACKS, COINS AND BOMBS RAIN FROM ABOVE.', time: 0 },
+      how: 'CAUGHT BY GOBLINS ON FLOOR 2. THEY NEED A TARGET.',
+      rescueLines: ["SQUEAK! SQUEAK SQUEAK! (TRANSLATION: THE GOBLINS WERE USING ME FOR DARTS. I AM YOURS FOREVER NOW.)"] },
     mongo: { name: 'MONGO', desc: 'A BABY VELOCIRAPTOR WHO THINKS HE IS A GOOD DOG. HE IS A GOOD DOG. WITH 80 TEETH.',
       ability: 'bite', cooldown: 1.2, power: 3, sprite: 'mongo',
       special: { name: 'DINO STAMPEDE', desc: 'MONGO CHARGES ACROSS THE SCREEN, BITING EVERYTHING IN HIS PATH.', time: 2.5 },
-      how: 'DEFEAT THE JUICER ON FLOOR 2.' },
+      how: 'AN EGG ON FLOOR 3. SOMEBODY IS GIVING IT AWAY AS A PRIZE.',
+      rescueLines: ["*CRACK* ...MREEP? *SNIFF* *SNIFF* MREEEEP!", "(MONGO HAS DECIDED CARL IS HIS MOTHER. THIS IS NOT UP FOR DEBATE.)"] },
+    samantha: { name: 'SAMANTHA', desc: 'A CURSED PORCELAIN DOLL HEAD WITH CURLY BLACK HAIR AND BIG RED LIPS. A DEMIGODDESS, SHE SAYS. LOUDLY. OFTEN.',
+      ability: 'lunge', cooldown: 2.2, power: 4, sprite: 'samantha',
+      special: { name: 'DIVINE SHRIEK', desc: 'SAMANTHA SCREAMS AT A PITCH ONLY GODS CAN HIT. EVERYTHING ON SCREEN TAKES DAMAGE AND IS STUNNED.', time: 2 },
+      how: 'HIDDEN SOMEWHERE ON FLOOR 4. LISTEN FOR CURSING.',
+      rescueLines: ["FINALLY! A HERO! OR A SWEATY MAN IN UNDERWEAR. CLOSE ENOUGH. KNEEL, MORTAL. THEN CARRY ME.",
+        "I AM A DEMIGODDESS, NOT A HEAD. I JUST HAPPEN TO BE A HEAD RIGHT NOW. POINT ME AT SOMETHING. I BITE."] },
     katia: { name: 'KATIA', desc: 'A SHAPESHIFTER WHO TURNS PART OF HERSELF INTO A SHIELD. CALM, KIND, AND MADE OF CONCERNING PUTTY.',
       ability: 'shield', cooldown: 6, power: 1, sprite: 'katia',
       special: { name: 'FORTRESS FORM', desc: 'KATIA WRAPS YOU IN ARMOR. YOU TAKE NO DAMAGE FOR A FEW SECONDS.', time: 4 },
-      how: 'DEFEAT THE ENGINEER ON FLOOR 4.' },
+      how: 'HELD PAST THE REEF ON FLOOR 5. BRING A CHART.',
+      rescueLines: ["OH THANK GOODNESS. THEY KEPT ASKING ME TO TURN INTO A FISH. I AM NOT A FISH. I CAN BE A WALL, THOUGH.",
+        "STAY BEHIND ME, CARL. WELL, BEHIND THE PART OF ME THAT IS CURRENTLY A SHIELD."] },
     zev: { name: 'ZEV', desc: 'YOUR PR HANDLER. A FISH LADY WITH A CLIPBOARD. PULLS IN GOLD AND MAKES SURE THE CAMERAS CATCH YOUR GOOD SIDE.',
       ability: 'magnet', cooldown: 0.5, power: 1, sprite: 'zev', bonus: { views: 0.3 },
       special: { name: 'PRESS JUNKET', desc: 'ALL ENEMIES FREEZE FOR A PHOTO OP. VIEWS POUR IN.', time: 3 },
-      how: 'DEFEAT THE BUTCHER ON FLOOR 6.' },
-    squeaks: { name: 'SIR SQUEAKS', desc: 'A TUTORIAL RAT YOU DID NOT KILL. HE REMEMBERS. HE FETCHES PICKUPS AND SOMETIMES DIGS UP A BOMB.',
-      ability: 'fetch', cooldown: 3, power: 1, sprite: 'squeaks', bombChance: 0.15,
-      special: { name: 'RAT KING RANSOM', desc: 'SIR SQUEAKS CALLS IN A FAVOR. SNACKS, COINS AND BOMBS RAIN FROM ABOVE.', time: 0 },
-      how: 'DEFEAT THE HOARDER ON FLOOR 1.' }
+      how: 'STUCK DOWN A WELL ON FLOOR 6. MAKE A WISH.',
+      rescueLines: ["CARL! DARLING! I HAVE BEEN IN A WELL FOR THREE DAYS. DO YOU KNOW WHAT THAT DOES TO ENGAGEMENT?",
+        "SMILE, YOU ARE TRENDING. NO, YOUR OTHER SIDE. THE ONE WITH LESS SEWER ON IT."] },
+    signet: { name: 'SIGNET', desc: 'A WILD-HAIRED HALF-ELF SUMMONER IN A LEAFY CLOAK. HER CARVED STAFF CALLS FAE SPIRITS THAT ZAP ANYTHING RUDE.',
+      ability: 'summon', cooldown: 5, power: 2, sprite: 'signet',
+      special: { name: 'SPIRIT STAMPEDE', desc: 'A HERD OF GLOWING FAE SPIRITS THUNDERS ACROSS THE SCREEN AND TRAMPLES EVERY ENEMY IN THE WAY.', time: 2 },
+      how: 'LOST IN THE GREEN HEART OF FLOOR 7. BRING A KEY.',
+      rescueLines: ["THE HEDGES LISTEN TO ME AND THE SPIRITS LISTEN TO ME. THE BRIDE DID NOT. LET US GO TEACH HER MANNERS.",
+        "MY SPIRITS LIKE YOU. THEY THINK YOUR FEET ARE A KIND OF MUSHROOM. TAKE THE COMPLIMENT."] }
   };
 
   /* achievements: event matches DCW.game.track names; count = counter threshold */
