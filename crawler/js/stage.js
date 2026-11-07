@@ -30,10 +30,10 @@
     updateMargin: W * 0.6,   // enemies update only within this of the screen
     maxParts: 320
   };
-  var T_EMPTY = 0, T_SOLID = 1, T_ALT = 2, T_ONEWAY = 3, T_SPIKE = 4, T_LIQUID = 5, T_LADDER = 6, T_CRATE = 7;
-  var TILE_OF = { '#': T_SOLID, 'X': T_ALT, '=': T_ONEWAY, '^': T_SPIKE, '~': T_LIQUID, 'H': T_LADDER, 'b': T_CRATE };
-  var CH_OF = ['.', '#', 'X', '=', '^', '~', 'H', 'b'];
-  var FALLBACK_TILE_COLOR = ['', '#7c4c2c', '#8c6c4c', '#c09060', '#d8d8d8', '#2c8c3c', '#c08828', '#a86c30'];
+  var T_EMPTY = 0, T_SOLID = 1, T_ALT = 2, T_ONEWAY = 3, T_SPIKE = 4, T_LIQUID = 5, T_LADDER = 6, T_CRATE = 7, T_GATE = 8;
+  var TILE_OF = { '#': T_SOLID, 'X': T_ALT, '=': T_ONEWAY, '^': T_SPIKE, '~': T_LIQUID, 'H': T_LADDER, 'b': T_CRATE, 'L': T_GATE };
+  var CH_OF = ['.', '#', 'X', '=', '^', '~', 'H', 'b', 'L'];
+  var FALLBACK_TILE_COLOR = ['', '#7c4c2c', '#8c6c4c', '#c09060', '#d8d8d8', '#2c8c3c', '#c08828', '#a86c30', '#5c5c6c'];
 
   /* ---------------- built-in fallback chunks (used only when data is missing) ---------------- */
   var FB = {
@@ -86,6 +86,9 @@
     var r = getRun(), fl = D().floors || [];
     return fl[(r.floor || 1) - 1] || null;
   }
+  function hasItem(id) { if (has(G(), 'hasItem')) return !!call(G(), 'hasItem', id); var r = getRun(); return !!(r.items && r.items[id]); }
+  function hasComp(id) { if (has(G(), 'hasCompanion')) return !!call(G(), 'hasCompanion', id); return id === 'donut'; }
+  function itemName(id) { var q = (D().questItems || {})[id]; return (q && q.name) || String(id || '').toUpperCase(); }
   function xpNeed(lv) { var n = call(G(), 'xpNeed', lv); return n || Math.round(18 * Math.pow(lv, 1.5)); }
   function num(v, d) { return (typeof v === 'number' && !isNaN(v)) ? v : d; }
 
@@ -153,6 +156,9 @@
       do { pick = pool[Math.floor(rnd() * pool.length)]; } while (pool.length > 1 && pick === last && ++tries < 12);
       ids.push(pick); last = pick;
     }
+    // quest / rescue / puzzle chunks that must appear: spliced evenly into the middle
+    var ins = (cd.insert || []).filter(function (id) { return !!chunkRows(id); });
+    ins.forEach(function (id, k) { var pos = 1 + Math.round((k + 1) * (ids.length - 1) / (ins.length + 1)); ids.splice(Math.max(1, pos), 0, id); });
     var isBoss = def.kind === 'boss' || !!def.boss;
     var endId = cd.end && chunkRows(cd.end) ? cd.end : (isBoss ? '_fb_arena' : '_fb_end');
     ids.push(endId);
@@ -176,6 +182,7 @@
           var ch = row.charAt(rx) || '.';
           var tx = c.x0 + rx, ty = ry;
           var tt = TILE_OF[ch];
+          if (tt === T_GATE) (c.gates = c.gates || []).push(ty * LW + tx);
           if (tt) { L.t[ty * LW + tx] = tt; continue; }
           if (ch === '.' || ch === ' ') continue;
           spawns.push({ ch: ch, tx: tx, ty: ty, chunk: c });
@@ -200,7 +207,13 @@
       var x = s.tx * TS, y = s.ty * TS, fx = x + 8, fy = y + TS; // fy = feet line of this cell
       switch (s.ch) {
         case 'P': if (!start) start = { x: fx, y: fy }; break;
-        case 'D': S.objects.push({ kind: 'door', x: fx - 13, y: fy - 38, w: 26, h: 38, open: false }); break;
+        case 'D': S.objects.push({ kind: 'door', x: fx - 13, y: fy - 38, w: 26, h: 38, open: false, needs: def.exitNeeds || null }); break;
+        case 'Q': if (def.questItem && !hasItem(def.questItem)) S.objects.push({ kind: 'qitem', id: def.questItem, x: x, y: fy - 18, w: 16, h: 16, t: 0 }); break;
+        case 'R': if (def.rescue && !hasComp(def.rescue)) {
+          var egg = def.rescue === 'mongo';
+          S.objects.push({ kind: 'cage', comp: def.rescue, egg: egg, x: fx - (egg ? 8 : 12), y: fy - (egg ? 18 : 28), w: egg ? 16 : 24, h: egg ? 18 : 28, hp: 3, shakeT: 0, broken: false, t: 0 });
+        } break;
+        case 'S': S.objects.push({ kind: 'lever', x: x, y: fy - 16, w: 16, h: 16, on: false, chunk: s.chunk }); break;
         case 'K': S.bossSpawn = { x: fx, y: fy, chunk: s.chunk }; break;
         case 'e': case 'E': case 'f': S.enemies.push(makeEnemy(pickEnemyId(def, s.ch, rnd), fx, fy, s.ch === 'E', s.ch === 'f')); break;
         case 'o': addPickup('coin', fx, fy - 4, 0, 0, false); break;
@@ -236,7 +249,7 @@
     var L = S.L, tx = Math.floor(px / TS);
     for (var ty = Math.max(0, Math.floor(py / TS)); ty < L.h; ty++) {
       var t = tileAt(tx, ty);
-      if (t === T_SOLID || t === T_ALT || t === T_ONEWAY || t === T_CRATE) return ty * TS;
+      if (t === T_SOLID || t === T_ALT || t === T_ONEWAY || t === T_CRATE || t === T_GATE) return ty * TS;
     }
     return (L.h - 2) * TS;
   }
@@ -249,7 +262,7 @@
     return L.t[ty * L.w + tx];
   }
   function setTile(tx, ty, v) { var L = S.L; if (tx >= 0 && tx < L.w && ty >= 0 && ty < L.h) L.t[ty * L.w + tx] = v; }
-  function isSolidT(t) { return t === T_SOLID || t === T_ALT || t === T_CRATE; }
+  function isSolidT(t) { return t === T_SOLID || t === T_ALT || t === T_CRATE || t === T_GATE; }
   function isLadderTop(tx, ty) { return tileAt(tx, ty) === T_LADDER && tileAt(tx, ty - 1) !== T_LADDER; }
   function solidAt(px, py) { return isSolidT(tileAt(Math.floor(px / TS), Math.floor(py / TS))); }
   function standableAt(px, py) {
@@ -534,6 +547,8 @@
     for (i = 0; i < S.objects.length; i++) {
       var o = S.objects[i];
       if (o.kind === 'chest' && !o.open && overlap(box, o)) { openChest(o); hits++; }
+      else if (o.kind === 'lever' && !o.on && overlap(box, o)) { pullLever(o); hits++; }
+      else if (o.kind === 'cage' && !o.broken && overlap(box, o) && !(hl && hl.indexOf(o) >= 0)) { if (hl) hl.push(o); hitCage(o); hits++; }
     }
     // crates
     if (opts.breaks !== false) {
@@ -562,6 +577,54 @@
     sfx('unlock'); sfx('coin');
     spillCoins(cx(o), o.y, Math.round(U.randi(8, 16) * floorScale()), 8);
     fxSprite('sparkle', cx(o), o.y + 4, 0.4, { color: '#f8d878', size: 8 });
+  }
+  function pullLever(o) {
+    o.on = true;
+    sfx('door'); sfx('checkpoint'); DCW.shake(2, 0.25);
+    var gates = (o.chunk && o.chunk.gates) || [], L = S.L;
+    gates.forEach(function (idx, k) {
+      if (L.t[idx] !== T_GATE) return;
+      L.t[idx] = T_EMPTY;
+      var gx = (idx % L.w) * TS + 8, gy = Math.floor(idx / L.w) * TS + 8;
+      if (k % 2 === 0) debris(gx, gy, 6, '#7c7c7c', 90);
+      if (k % 3 === 0) smoke(gx, gy, 1);
+    });
+    numText(cx(o), o.y - 10, gates.length ? 'GATE OPEN!' : 'CLICK.', '#58f898');
+    track('lever');
+  }
+  function hitCage(o) {
+    o.hp--; o.shakeT = 0.25;
+    sfx(o.hp > 0 ? 'hit' : 'crate_break');
+    debris(cx(o), cy(o), o.hp > 0 ? 4 : 14, o.egg ? '#a8e4a0' : '#7c7c7c', 110);
+    if (o.hp > 0) { numText(cx(o), o.y - 6, o.egg ? 'CRACK!' : 'CLANG!', '#fcfcfc'); return; }
+    o.broken = true;
+    freeCompanion(o);
+  }
+  function freeCompanion(o) {
+    var id = o.comp, cdef = (D().companions || {})[id] || COMP_DEFAULTS[id] || {};
+    flash('#fcfcfc', 0.25); DCW.shake(3, 0.3); DCW.freeze(8);
+    sfx('unlock');
+    fxSprite('sparkle', cx(o), cy(o), 0.6, { color: '#f8d878', size: 14 });
+    if (has(G(), 'rescueCompanion')) call(G(), 'rescueCompanion', id);
+    else { DCW.save.equipped.companion = id; }
+    // swap the follower to the new friend, right where the cage was
+    var P = S.player;
+    S.comp = makeCompanion(P);
+    if (S.comp) { S.comp.x = cx(o) - S.comp.w / 2; S.comp.y = o.y + o.h - S.comp.h - 2; S.comp.actT = 0.6; }
+    var nm = (cdef.name || String(id).toUpperCase());
+    var lines = cdef.rescueLines && cdef.rescueLines.length ? cdef.rescueLines : [cdef.desc || (nm + ' JOINS YOU!')];
+    var seq = lines.map(function (t) { return { who: nm, portrait: 'p_' + id, text: t }; });
+    seq.push({ who: 'SYSTEM AI', portrait: 'p_ai', text: nm + ' HAS JOINED YOUR PARTY! SWAP COMPANIONS IN THE WARDROBE ANY TIME.' });
+    if (!say(seq)) toast(nm + ' JOINED YOUR PARTY!', { title: 'NEW COMPANION', icon: 'star', color: '#f8b800' });
+  }
+  function collectItem(o) {
+    o.taken = true;
+    var q = (D().questItems || {})[o.id] || {};
+    if (has(G(), 'giveItem')) call(G(), 'giveItem', o.id); else { var r = getRun(); r.items = r.items || {}; r.items[o.id] = true; }
+    sfx('unlock'); flash('#f8d878', 0.2); DCW.freeze(6);
+    fxSprite('sparkle', cx(o), cy(o), 0.6, { color: '#f8d878', size: 14 });
+    announce('KEY ITEM', { color: '#f8d878', time: 1.6, sub: q.name || itemName(o.id) });
+    say([{ who: 'SYSTEM AI', portrait: 'p_ai', text: 'KEY ITEM GET: ' + (q.name || itemName(o.id)) + '. ' + (q.desc || '') }]);
   }
   function rollCrit(dmg) {
     var c = Math.random() < num(stats().crit, 0.04);
@@ -596,7 +659,13 @@
       }
       var B = S.boss;
       if (B && B.active && !B.dying && B.alpha > 0.5 && circ(B)) damageActor(B, dmg, { kind: 'bomb' });
-      for (i = 0; i < S.objects.length; i++) if (S.objects[i].kind === 'chest' && !S.objects[i].open && circ(S.objects[i])) openChest(S.objects[i]);
+      for (i = 0; i < S.objects.length; i++) {
+        var ob = S.objects[i];
+        if (!circ(ob)) continue;
+        if (ob.kind === 'chest' && !ob.open) openChest(ob);
+        else if (ob.kind === 'lever' && !ob.on) pullLever(ob);
+        else if (ob.kind === 'cage' && !ob.broken) { ob.hp = 1; hitCage(ob); }
+      }
       var x0 = Math.floor(box.x / TS), x1 = Math.floor((box.x + box.w) / TS), y0 = Math.floor(box.y / TS), y1 = Math.floor((box.y + box.h) / TS);
       for (var ty = y0; ty <= y1; ty++) for (var tx = x0; tx <= x1; tx++) if (tileAt(tx, ty) === T_CRATE && circ({ x: tx * TS, y: ty * TS, w: TS, h: TS })) breakCrate(tx, ty);
       var k = S.kills - killsBefore;
@@ -936,12 +1005,14 @@
     // checkpoints
     for (var i = 0; i < S.objects.length; i++) {
       var o = S.objects[i];
+      if (o.kind === 'qitem' && !o.taken && overlap(P, o)) { collectItem(o); continue; }
       if (o.kind === 'checkpoint' && !o.on && overlap(P, o)) {
         o.on = true; S.checkpoint = { x: cx(o), y: o.y + o.h }; S.lastSafe = S.checkpoint;
         sfx('checkpoint'); fxSprite('sparkle', cx(o), o.y + 6, 0.4, { color: '#58f898', size: 10 });
         numText(cx(o), o.y - 8, 'CHECKPOINT', '#58f898');
       }
     }
+    if (S.lockMsgT > 0) S.lockMsgT -= dt;
     // keep inside level horizontally
     if (P.x < 0) P.x = 0;
     if (P.x + P.w > S.L.pxW) P.x = S.L.pxW - P.w;
@@ -997,6 +1068,15 @@
     var P = S.player;
     if (S.done || P.state === 'victory') return;
     if (S.isBoss && S.boss && !S.boss.dead) { numText(cx(o), o.y - 6, 'LOCKED', '#f83800'); sfx('error'); return; }
+    if (o.needs && !hasItem(o.needs)) {
+      if (!(S.lockMsgT > 0)) {
+        S.lockMsgT = 2.5;
+        sfx('error'); numText(cx(o), o.y - 6, 'LOCKED', '#f83800');
+        var q = (D().questItems || {})[o.needs] || {};
+        toast('EXIT LOCKED. NEEDS: ' + itemName(o.needs), { title: 'PADLOCKED', icon: 'key', color: '#f83800', time: 3.5, sub: q.hint || '' });
+      }
+      return;
+    }
     o.open = true;
     P.x = cx(o) - P.w / 2; P.vx = 0;
     startVictory('door');
@@ -1026,9 +1106,11 @@
     mongo: { name: 'MONGO', ability: 'bite', cooldown: 1.2, power: 3, special: { name: 'MONGO RAMPAGE' } },
     katia: { name: 'KATIA', ability: 'shield', cooldown: 7, power: 1, special: { name: 'IRON WALL' } },
     zev: { name: 'ZEV', ability: 'magnet', cooldown: 3, power: 1, special: { name: 'PRESS CONFERENCE' } },
-    squeaks: { name: 'SIR SQUEAKS', ability: 'fetch', cooldown: 2.5, power: 1, special: { name: 'RAT SWARM' } }
+    squeaks: { name: 'SIR SQUEAKS', ability: 'fetch', cooldown: 2.5, power: 1, special: { name: 'RAT SWARM' } },
+    samantha: { name: 'SAMANTHA', ability: 'lunge', cooldown: 1.8, power: 3, special: { name: 'DIVINE SHRIEK' } },
+    signet: { name: 'SIGNET', ability: 'summon', cooldown: 5, power: 2, special: { name: 'THE WILD HUNT' } }
   };
-  var COMP_COLORS = { missile: '#f8f8f8', bite: '#58d854', shield: '#9878f8', magnet: '#3cbcfc', fetch: '#bcbcbc' };
+  var COMP_COLORS = { missile: '#f8f8f8', bite: '#58d854', shield: '#9878f8', magnet: '#3cbcfc', fetch: '#bcbcbc', lunge: '#f83800', summon: '#58f8d8' };
   function makeCompanion(P) {
     var id = (DCW.save && DCW.save.equipped && DCW.save.equipped.companion) || 'donut';
     var def = (D().companions || {})[id] || COMP_DEFAULTS[id] || COMP_DEFAULTS.donut;
@@ -1073,6 +1155,24 @@
       hitBox({ x: C.x - 6, y: C.y - 24, w: C.w + 12, h: C.h + 30 }, Math.round(power * 4 + st.kickDmg), { kind: 'comp', kb: 160, dir: C.face, hitList: C.hitList, breaks: true, noCombo: false });
       if (C.rt <= 0) { teleportComp(C, P); }
       return;
+    }
+    if (C.state === 'lunge') {
+      // Samantha flies straight at her target, teeth first, then bounces back
+      C.dt -= dt;
+      var lt = C.target;
+      if (!lt || lt.dead || C.dt <= 0) { C.state = 'follow'; C.vy = -120; }
+      else {
+        var ldx = cx(lt) - cx(C), ldy = cy(lt) - cy(C), ld = Math.max(1, Math.sqrt(ldx * ldx + ldy * ldy));
+        C.face = U.sign(ldx) || C.face;
+        C.x += ldx / ld * 280 * dt; C.y += ldy / ld * 280 * dt; C.vx = 0; C.vy = 0;
+        if (Math.random() < 0.5) part({ kind: 'px', x: cx(C), y: cy(C), vx: 0, vy: 0, life: 0.25, color: '#f8b8b8', size: 2 });
+        if (overlap({ x: C.x - 3, y: C.y - 3, w: C.w + 6, h: C.h + 6 }, lt)) {
+          damageActor(lt, Math.max(1, Math.round(power * 1.8)), { kind: 'comp', kb: 110, dir: C.face });
+          sfx('bite'); numText(cx(lt), lt.y - 10, 'CHOMP!', '#f83800');
+          C.state = 'follow'; C.vx = -C.face * 120; C.vy = -200; C.actT = 0.3;
+        }
+        return;
+      }
     }
     if (C.state === 'dash') {
       C.dt -= dt;
@@ -1128,6 +1228,20 @@
         case 'bite': {
           var b = nearestEnemy(cx(C), cy(C), 80, true);
           if (b) { C.state = 'dash'; C.target = b; C.dt = 0.6; C.actT = 0.3; used = true; }
+          break;
+        }
+        case 'lunge': {
+          var lg = nearestEnemy(cx(C), cy(C), 150, true);
+          if (lg) { C.state = 'lunge'; C.target = lg; C.dt = 0.9; C.actT = 0.9; used = true; sfx('bite', { pitch: 1.3 }); }
+          break;
+        }
+        case 'summon': {
+          var near2 = nearestEnemy(cx(P), cy(P), 220, true);
+          var alive = S.allies.filter(function (a) { return a.kind === 'spirit'; }).length;
+          if (near2 && alive < 2) {
+            S.allies.push({ kind: 'spirit', x: cx(C), y: C.y - 8, w: 10, h: 10, vx: 0, vy: 0, life: 4 + power, t: Math.random() * 6, ang: Math.random() * 6.28, zap: 0.4, dmg: Math.max(1, Math.round(power)), hitList: [] });
+            C.actT = 0.5; used = true; sfx('spawn', { pitch: 1.5 });
+          }
           break;
         }
         case 'shield': {
@@ -1211,6 +1325,23 @@
         numText(cx(P), P.y - 16, 'DOUBLE VIEWS!', '#f878f8', 1);
         sfx('views');
         break;
+      case 'lunge': {
+        // DIVINE SHRIEK: everything on screen takes it in the ears
+        var shriekD = Math.round(power * 3 + st.dmg * 2), shT = num(def.special && def.special.time, 0) || 2;
+        for (i = 0; i < S.enemies.length; i++) { e = S.enemies[i]; if (!e.dead && e.active && onScreen(e, 8)) { damageActor(e, shriekD, { kind: 'comp', kb: 140, dir: cx(e) < cx(P) ? -1 : 1 }); if (!e.dead) { e.stun = shT; e.vx = 0; } } }
+        if (S.boss && S.boss.active && !S.boss.dying) { damageActor(S.boss, shriekD, { kind: 'comp' }); S.boss.stun = Math.min(1, shT); }
+        flash('#f878f8', 0.3); DCW.shake(5, 0.6);
+        sfx('boss_roar', { pitch: 1.8 });
+        for (i = 0; i < 4; i++) fxSprite('shockwave', cx(C), cy(C), 0.4 + i * 0.12, { color: '#f878f8', size: 20 + i * 14 });
+        break;
+      }
+      case 'summon':
+        for (i = 0; i < 8; i++) {
+          var fromL = i % 2 === 0;
+          S.allies.push({ kind: 'rush', x: fromL ? S.cam.x - 20 - i * 10 : S.cam.x + W + 10 + i * 10, y: S.cam.y + 30 + (i * 17) % (H - 60), w: 12, h: 10, vx: (fromL ? 1 : -1) * (230 + Math.random() * 60), vy: 0, life: 2.6, t: Math.random() * 3, dmg: Math.max(2, Math.round(power * 2.5 + st.dmg)), hitList: [] });
+        }
+        sfx('spawn'); sfx('missile', { pitch: 0.6 });
+        break;
       case 'fetch':
         for (i = 0; i < 12; i++) {
           S.allies.push({ x: S.cam.x - 20 - i * 14, y: P.y + P.h - 10 - (i % 3) * 2, w: 12, h: 8, vx: 210 + Math.random() * 60, vy: 0, life: 3.2, dmg: Math.max(1, Math.round(power * 2 + st.dmg)), hitList: [], onGround: false, t: Math.random() });
@@ -1238,6 +1369,30 @@
     }
     for (var i = S.allies.length - 1; i >= 0; i--) {
       var a = S.allies[i];
+      if (a.kind === 'spirit' || a.kind === 'rush') {
+        a.life -= dt; a.t += dt;
+        if (a.kind === 'spirit') {
+          var P2 = S.player; a.ang += dt * 3.2;
+          a.x = cx(P2) + Math.cos(a.ang) * 24 - a.w / 2; a.y = P2.y + 4 + Math.sin(a.ang) * 12 - a.h / 2;
+          a.zap -= dt;
+          if (a.zap <= 0) {
+            var zt = nearestEnemy(cx(a), cy(a), 100, true);
+            if (zt) {
+              damageActor(zt, a.dmg, { kind: 'comp', kb: 40, dir: cx(zt) < cx(a) ? -1 : 1 });
+              S.zaps = S.zaps || []; S.zaps.push({ x0: cx(a), y0: cy(a), x1: cx(zt), y1: cy(zt), life: 0.12 });
+              sfx('laser', { vol: 0.35, pitch: 1.8 });
+              a.zap = 0.7;
+            } else a.zap = 0.2;
+          }
+        } else {
+          a.x += a.vx * dt; a.y += Math.sin(a.t * 8) * 30 * dt;
+          hitBox(a, a.dmg, { kind: 'comp', kb: 120, dir: U.sign(a.vx), hitList: a.hitList, breaks: false });
+          if ((a.vx > 0 && a.x > S.cam.x + W + 40) || (a.vx < 0 && a.x < S.cam.x - 60)) a.life = 0;
+        }
+        if (Math.random() < 0.3) part({ kind: 'px', x: cx(a), y: cy(a), vx: 0, vy: -10, life: 0.3, color: '#a4fcf0', size: 1 });
+        if (a.life <= 0) { smoke(cx(a), cy(a), 1); S.allies.splice(i, 1); }
+        continue;
+      }
       a.life -= dt; a.t += dt;
       a.vy = Math.min(a.vy + K.gravity * dt, K.fallMax);
       var vx = a.vx;
@@ -2213,7 +2368,7 @@
   function idle() { /* UI modal open: the world holds still */ }
 
   /* ---------------- drawing ---------------- */
-  var SOLIDISH = [false, true, true, false, false, false, false, true];
+  var SOLIDISH = [false, true, true, false, false, false, false, true, true];
   function drawTiles(ctx, camX, camY) {
     var L = S.L, art = ART(), useArt = has(art, 'tile');
     var tx0 = Math.max(0, Math.floor(camX / TS)), tx1 = Math.min(L.w - 1, Math.floor((camX + W) / TS));
@@ -2246,6 +2401,7 @@
     ctx.fillRect(x, y, TS, TS);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + TS - 2, TS, 2); ctx.fillRect(x + TS - 2, y, 2, TS);
     if (t === T_CRATE) { ctx.fillStyle = '#5c3010'; ctx.fillRect(x + 2, y + 7, 12, 2); ctx.fillRect(x + 7, y + 2, 2, 12); }
+    if (t === T_GATE) { ctx.fillStyle = '#1c1c24'; ctx.fillRect(x + 2, y, 3, TS); ctx.fillRect(x + 7, y, 3, TS); ctx.fillRect(x + 12, y, 3, TS); ctx.fillRect(x, y + 3, TS, 2); }
   }
   function drawTileAt(ctx, ch, x, y, tx, ty) {
     var art = ART();
@@ -2316,7 +2472,30 @@
     if (o.x + o.w < camX - 8 || o.x > camX + W + 8) return;
     var x = cx(o) - camX, y = o.y + o.h - camY;
     switch (o.kind) {
-      case 'door': spr(ctx, o.open ? 'door_open' : 'door', x, y, 0, false, null, 24, 36, o.open ? '#000' : '#7c4c2c'); break;
+      case 'door': {
+        var locked = o.needs && !hasItem(o.needs);
+        spr(ctx, o.open ? 'door_open' : locked && hasArt('door_locked') ? 'door_locked' : 'door', x, y, 0, false, null, 24, 36, o.open ? '#000' : locked ? '#7c7c7c' : '#7c4c2c');
+        if (locked && !hasArt('door_locked')) DCW.text('\u2620', Math.round(x), Math.round(y - 22), '#f8b800', { align: 'center' });
+        break;
+      }
+      case 'lever': spr(ctx, 'lever', x, y, o.on ? 1 : 0, false, null, 8, 14, o.on ? '#58d854' : '#f83800'); break;
+      case 'qitem': {
+        if (o.taken) break;
+        o.t += 1 / 60;
+        var q = (D().questItems || {})[o.id] || {}, bob = Math.round(Math.sin(o.t * 3) * 2);
+        if (Math.floor(o.t * 6) % 3 === 0) { ctx.globalAlpha = 0.35; DCW.rect(x - 9, y - 18 + bob, 18, 18, '#f8d878'); ctx.globalAlpha = 1; }
+        spr(ctx, q.sprite || 'qi_key', x, y + bob, Math.floor(o.t * 4), false, null, 12, 12, '#f8d878');
+        break;
+      }
+      case 'cage': {
+        o.t += 1 / 60; if (o.shakeT > 0) o.shakeT -= 1 / 60;
+        var sx = o.shakeT > 0 ? Math.round(Math.sin(o.t * 60) * 2) : 0;
+        if (o.egg) { spr(ctx, o.broken ? 'egg_broken' : 'egg', x + sx, y, Math.floor(o.t * 2), false, null, 14, 16, '#a8e4a0'); break; }
+        var cs = ((D().companions || {})[o.comp] || {}).sprite || o.comp;
+        if (!o.broken) spr(ctx, cs + '_idle', x, y - 2, Math.floor(o.t * 2), true, null, 12, 12, '#fcfcfc');
+        spr(ctx, o.broken ? 'cage_broken' : 'cage', x + sx, y, Math.floor(o.t * 1.5), false, null, 22, 26, '#7c7c7c');
+        break;
+      }
       case 'checkpoint': spr(ctx, 'checkpoint', x, y, o.on ? 1 : 0, false, null, 6, 24, o.on ? '#58f898' : '#f83800'); break;
       case 'sign': spr(ctx, 'sign', x, y, 0, false, null, 14, 14, '#c88848'); break;
       case 'chest': spr(ctx, o.open ? 'chest_open' : 'chest', x, y, 0, false, null, 16, 12, o.open ? '#7c4c2c' : '#f8b800'); break;
@@ -2404,10 +2583,25 @@
     spr(ctx, name, cx(C) - camX, C.y + C.h - camY, frame, C.face < 0, null, C.w, C.h, C.color);
   }
   function drawAllies(ctx, camX, camY) {
+    if (S.zaps && S.zaps.length) {
+      ctx.save(); ctx.strokeStyle = '#a4fcf0'; ctx.lineWidth = 1;
+      for (var z = S.zaps.length - 1; z >= 0; z--) {
+        var zp = S.zaps[z]; zp.life -= 1 / 60;
+        var mx = (zp.x0 + zp.x1) / 2 + U.rand(-4, 4), my = (zp.y0 + zp.y1) / 2 + U.rand(-4, 4);
+        ctx.beginPath(); ctx.moveTo(Math.round(zp.x0 - camX) + 0.5, Math.round(zp.y0 - camY) + 0.5); ctx.lineTo(Math.round(mx - camX) + 0.5, Math.round(my - camY) + 0.5); ctx.lineTo(Math.round(zp.x1 - camX) + 0.5, Math.round(zp.y1 - camY) + 0.5); ctx.stroke();
+        if (zp.life <= 0) S.zaps.splice(z, 1);
+      }
+      ctx.restore();
+    }
     if (!S.allies.length) return;
     var name = hasArt('squeaks_run') ? 'squeaks_run' : 'rat_walk';
     for (var i = 0; i < S.allies.length; i++) {
       var a = S.allies[i];
+      if (a.kind === 'spirit' || a.kind === 'rush') {
+        var sp = hasArt('signet_spirit') ? 'signet_spirit' : 'sparkle';
+        spr(ctx, sp, cx(a) - camX, a.y + a.h - camY, Math.floor(a.t * 8), a.vx < 0, null, a.w, a.h, '#a4fcf0');
+        continue;
+      }
       spr(ctx, name, cx(a) - camX, a.y + a.h - camY, Math.floor(a.t * 10), false, null, a.w, a.h, '#bcbcbc');
     }
   }

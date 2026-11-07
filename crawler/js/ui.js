@@ -56,7 +56,14 @@
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function save() { return DCW.save || { unlocks: { skins: ['carl_boxers'], companions: ['donut'] }, equipped: { skin: 'carl_boxers', companion: 'donut' }, meta: { achievements: {}, counters: {} }, settings: {} }; }
   function equipped(kind) { var s = save(); return (s.equipped && s.equipped[kind]) || (kind === 'skin' ? 'carl_boxers' : 'donut'); }
-  function owned(kind, id) { var s = save(); var l = s.unlocks && s.unlocks[kind === 'skin' ? 'skins' : 'companions']; return !!(l && l.indexOf(id) >= 0); }
+  function owned(kind, id) {
+    var s = save();
+    if (kind !== 'skin') { // companions are rescued per crawl
+      if (id === 'donut') return true;
+      if (DCW.game && typeof DCW.game.hasCompanion === 'function') return !!DCW.game.hasCompanion(id);
+    }
+    var l = s.unlocks && s.unlocks[kind === 'skin' ? 'skins' : 'companions']; return !!(l && l.indexOf(id) >= 0);
+  }
 
   /* ---------------- input ---------------- */
   function I() { return DCW.input || { pressed: function () { return false; }, down: function () { return false; } }; }
@@ -2175,7 +2182,12 @@
       else if (o.id === 'mordecai') {
         sfx('menu_select');
         var run = getRun() || {}, mf = mordForm();
-        var tip = function () { ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
+        var fl = (D('floors') || [])[(run.floor || 1) - 1] || {};
+        var rumorPool = (fl.hints || []).slice();
+        var tip = function () {
+          var useRumor = rumorPool.length && Math.random() < 0.7;
+          if (useRumor) { ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(rumorPool) }]); return; }
+          ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
         var openMenu = function () { ui.menu([
           { label: 'ASK FOR A TIP', action: tip },
           { label: (run.statPoints > 0 ? 'TRAIN (' + run.statPoints + ' STAT POINT' + (run.statPoints > 1 ? 'S' : '') + ')' : 'TRAIN'), disabled: !(run.statPoints > 0), why: 'NO STAT POINTS. GO LEVEL UP.', action: function () { ui.openCharacter(); } },

@@ -54,6 +54,7 @@
       gold: 0, bombs: 3, potions: 1, views: 0, fanTier: 0,
       boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0,
       currentStage: null, inSafe: false, pendingAmbush: null, won: false,
+      companions: ['donut'], items: {},
       seed: (Math.random() * 1e9) >>> 0
     };
   }
@@ -72,6 +73,7 @@
   G.newRun = function () {
     var s = DCW.save;
     s.run = makeRun();
+    s.equipped.companion = 'donut';   // companions are found again every crawl
     s.meta.runs = (s.meta.runs || 0) + 1;
     persist();
     if (S().intro && !DCW.params.has('skipintro')) {
@@ -79,9 +81,17 @@
     } else G.startFloor(1);
   };
 
+  // runs saved before quests existed keep the companions they already had
+  G.migrateRun = function () {
+    var r = G.run; if (!r) return;
+    if (!r.companions) r.companions = (DCW.save.unlocks.companions || ['donut']).slice();
+    if (!r.items) r.items = {};
+    if (r.companions.indexOf(DCW.save.equipped.companion) < 0) DCW.save.equipped.companion = 'donut';
+  };
   G.continueRun = function () {
     var r = G.run;
     if (!r) { G.newRun(); return; }
+    G.migrateRun();
     if (r.won) { go(S().ending || fallbackScene('YOU WON'), {}); return; }
     if (r.hp <= 0) { go(S().death || fallbackScene('YOU HAVE DIED', function () { G.revive() || G.endRun(); }), { result: r.lastDeath || {} }); return; }
     if (r.inSafe) { G.enterSafeRoom(); return; }
@@ -168,7 +178,7 @@
         if (b.loot && b.loot !== 'boss') { G.giveLootBox('boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: 'boss' }); }
         var un = b.unlock || {};
         if (un.skin) rewards.push({ kind: 'skin', id: un.skin, isNew: G.unlockSkin(un.skin, true) });
-        if (un.companion) rewards.push({ kind: 'companion', id: un.companion, isNew: G.unlockCompanion(un.companion, true) });
+        if (un.companion) rewards.push({ kind: 'companion', id: un.companion, isNew: G.rescueCompanion(un.companion) });
       }
       G.track('boss:' + bossId);
     }
@@ -266,6 +276,13 @@
       if (left > 0) { out.locked = true; out.lockText = 'CLEAR ' + left + ' MORE AREA' + (left > 1 ? 'S' : '') + ' TO OPEN'; }
       if (r && r.bossDown) out.cleared = true;
     }
+    var lock = (f.locks || {})[code];
+    if (lock && lock.needs && !G.hasItem(lock.needs) && !out.cleared) {
+      out.locked = true; out.itemLock = true; out.needs = lock.needs;
+      out.lockText = 'NEEDS: ' + G.itemName(lock.needs); out.lockFlavor = lock.text || '';
+    }
+    if (!out.locked && st.exitNeeds && !G.hasItem(st.exitNeeds) && !out.cleared) out.note = 'EXIT LOCKED: NEEDS ' + G.itemName(st.exitNeeds);
+    if (st.rescue && !G.hasCompanion(st.rescue)) out.rumor = true;
     return out;
   };
 
@@ -480,8 +497,11 @@
         if (rw.id === 'bomb') r.bombs += c; else if (rw.id === 'potion') r.potions += c;
         return { kind: 'item', id: rw.id, count: c };
       }
-      case 'skin':
-      case 'companion': {
+      case 'companion': { // companions are rescued, never boxed
+        var cg = Math.round(60 * floorScale()); r.gold += cg;
+        return { kind: 'gold', amount: cg, converted: true };
+      }
+      case 'skin': {
         var id = rw.id;
         var owned = rw.kind === 'skin' ? DCW.save.unlocks.skins : DCW.save.unlocks.companions;
         if (rw.any || !id) { var pool = lockedOf(rw.kind); id = pool.length ? U.pick(pool) : null; }
@@ -536,6 +556,35 @@
     if (!quiet) { sfx('unlock'); toast((sk && sk.name) || id, { title: 'NEW SKIN', icon: 'star', color: '#f8b800' }); }
     return true;
   };
+  /* ---------------- key items + rescued companions ---------------- */
+  G.itemDef = function (id) { return (D().questItems || {})[id] || null; };
+  G.itemName = function (id) { var q = G.itemDef(id); return (q && q.name) || String(id || '').toUpperCase(); };
+  G.hasItem = function (id) { var r = G.run; return !!(r && r.items && r.items[id]); };
+  G.giveItem = function (id) {
+    var r = G.run; if (!r) return false;
+    r.items = r.items || {};
+    if (r.items[id]) return false;
+    r.items[id] = true;
+    G.track('quest_item');
+    persist();
+    return true;
+  };
+  G.hasCompanion = function (id) {
+    if (id === 'donut') return true;
+    var r = G.run;
+    return !!(r && r.companions && r.companions.indexOf(id) >= 0);
+  };
+  G.rescueCompanion = function (id) {
+    var r = G.run; if (!r) return false;
+    r.companions = r.companions || ['donut'];
+    if (r.companions.indexOf(id) >= 0) return false;
+    r.companions.push(id);
+    G.unlockCompanion(id, true);          // remembered forever for the collection screen
+    DCW.save.equipped.companion = id;     // the new friend tags along right away
+    G.track('rescue'); G.track('rescue:' + id);
+    persist();
+    return true;
+  };
   G.unlockCompanion = function (id, quiet) {
     var list = DCW.save.unlocks.companions;
     if (list.indexOf(id) >= 0) return false;
@@ -546,8 +595,8 @@
   };
   G.equip = function (kind, id) {
     var s = DCW.save;
-    var list = kind === 'skin' ? s.unlocks.skins : s.unlocks.companions;
-    if (list.indexOf(id) < 0) { sfx('error'); return false; }
+    var ok = kind === 'skin' ? s.unlocks.skins.indexOf(id) >= 0 : (s.run ? G.hasCompanion(id) : id === 'donut');
+    if (!ok) { sfx('error'); return false; }
     s.equipped[kind] = id;
     if (kind === 'skin' && s.run) s.run.hp = Math.min(s.run.hp, G.playerStats().maxHp);
     G.track(kind === 'skin' ? 'skin_equip' : 'companion_equip');
@@ -625,8 +674,16 @@
     } else {
       (f.sequence || []).forEach(function (id, i) {
         var name = id === 'SAFE' ? 'SAFE ROOM' : ((st[id] && st[id].name) || id);
-        out.push((i < r.seqIndex ? '✓ ' : i === r.seqIndex ? '▶ ' : '- ') + name);
+        out.push((i < r.seqIndex ? '\u2713 ' : i === r.seqIndex ? '\u25B6 ' : '- ') + name);
       });
+    }
+    // key items for this floor
+    var qi = D().questItems || {};
+    var mine = Object.keys(qi).filter(function (k) { return qi[k].floor === r.floor; });
+    if (mine.length) out.push('KEY ITEMS: ' + mine.map(function (k) { return G.hasItem(k) ? qi[k].name : '???'; }).join(', '));
+    if (f.companion) {
+      var cd = (D().companions || {})[f.companion] || {};
+      out.push(G.hasCompanion(f.companion) ? '\u2713 RESCUED ' + (cd.name || f.companion.toUpperCase()) : '- SOMEONE IS TRAPPED ON THIS FLOOR');
     }
     if (f.par) out.push('PAR ' + U.fmtTime(f.par) + '  TIME ' + U.fmtTime(r.floorTime));
     return out;
@@ -649,6 +706,8 @@
     for (var i = 1; i < lvl; i++) { r.level++; var pts = (r.level % 5 === 0) ? 2 : 1; r.stats[['str', 'con', 'dex', 'int'][i % 4]] += pts; }
     r.hp = G.playerStats().maxHp; r.gold = 100 * n; r.bombs = 5; r.potions = 3;
     if (p.has('god')) r.god = true;
+    if (p.has('allcomp')) r.companions = ['donut', 'squeaks', 'mongo', 'samantha', 'katia', 'zev', 'signet'];
+    if (p.get('comp')) { r.companions.push(p.get('comp')); s.equipped.companion = p.get('comp'); }
     var scene = p.get('scene');
     if (scene === 'safe') { r.inSafe = true; DCW.setScene(S().safeRoom, {}); return; }
     if (scene === 'ending') { DCW.setScene(S().ending, {}); return; }

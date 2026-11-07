@@ -383,7 +383,7 @@
   }
   function enter(e) {
     var st = e.st || entranceState(e.ch, S.ow) || {};
-    if (st.locked) { sfx('error'); S.bannerShake = 0.35; return; }
+    if (st.locked) { sfx('error'); if (!(S.bannerShake > 0) && st.lockFlavor && DCW.ui && DCW.ui.toast) DCW.ui.toast(st.lockFlavor, { icon: 'key', color: '#f83800', time: 3 }); S.bannerShake = 0.35; return; }
     savePos();
     S.leaving = true;
     var res = tryCall(DCW.game, 'enterEntrance', [e.ch]);
@@ -412,6 +412,7 @@
       if (on) { ctx.globalAlpha = 0.35 + 0.25 * Math.sin(S.t * 6); DCW.rect(sx, sy, 16, 16, '#fcfcfc'); ctx.globalAlpha = 1; }
       spr(ctx, e.marker || 'ow_door', sx + 8, sy + 16, { frame: Math.floor(S.t * 3) });
       var st = e.st || {};
+      if (st.itemLock || (st.locked && st.kind === 'stage')) spr(ctx, 'ow_lock', sx + 12, sy + 9, {});
       if (st.cleared) spr(ctx, 'ow_flag', sx + 13, sy + 9, { frame: Math.floor(S.t * 4) });
       else if (!st.locked && st.kind === 'stage' && !st.side && !on) T('!', sx + 8, sy - 9 + Math.round(Math.sin(S.t * 4 + e.tx) * 1.5), '#f8d878', { align: 'center' });
     });
@@ -491,6 +492,7 @@
       else if (st.kind === 'boss' && st.cleared) { line = '✓ BOSS DEFEATED'; col = '#58d854'; }
       else if (st.kind === 'boss') { line = 'PRESS ' + bn('confirm') + ' TO FIGHT THE BOSS'; col = blink(3) ? '#fcfcfc' : '#f8d878'; }
       else if (st.cleared) { line = '✓ CLEARED  ' + bn('confirm') + ': REPLAY'; col = '#58d854'; }
+      else if (st.note) { line = bn('confirm') + ': ENTER  (' + st.note + ')'; col = '#fca044'; }
       else line = 'PRESS ' + bn('confirm') + ' TO ENTER';
       if (st.locked) icon(ctx, 'lock', bx + bw / 2 - tw(fit(line, bw - 24)) / 2 - 11, by + 15);
       T(fit(line, bw - 24), bx + bw / 2 + (st.locked ? 5 : 0), by + 16, col, { align: 'center' });

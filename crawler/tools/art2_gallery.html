@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCW art gallery - update 2</title>
+<style>
+  body { background: #111; color: #ccc; font: 12px monospace; margin: 8px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; margin: 0 0 8px 0; }
+  .sec { margin-bottom: 16px; display: inline-block; vertical-align: top; margin-right: 12px; }
+  h2 { font-size: 13px; margin: 6px 0; color: #fc8; }
+  #wrap { position: absolute; left: -2000px; top: 0; width: 320px; height: 180px; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="out"></div>
+<script src="../js/engine.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script>
+/* Update-2 art gallery: Samantha, Signet, cages/eggs over every companion, lever,
+   door_locked, quest items, ow_lock, quest icon and the 'L' gate tile per theme.
+   Params: ?scale=3 */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var SCALE = +(qs.get('scale') || 3);
+  DCW.boot();
+  var A = DCW.art, out = document.getElementById('out');
+  var report = window.ART_REPORT = { errors: [], missing: [], info: {} };
+  var NEW = ['samantha_idle', 'samantha_run', 'samantha_act', 'p_samantha', 'signet_idle', 'signet_run', 'signet_act', 'p_signet', 'signet_spirit',
+    'cage', 'cage_broken', 'egg', 'egg_broken', 'lever', 'door_locked', 'ow_lock', 'icon_quest',
+    'qi_key', 'qi_valve', 'qi_ticket', 'qi_gear', 'qi_shell', 'qi_horn', 'qi_mask', 'qi_crown', 'qi_badge', 'qi_map', 'qi_lens', 'qi_bolt'];
+  NEW.forEach(function (n) { if (!A.has(n)) report.missing.push(n); else report.info[n] = A.info(n); });
+
+  function section(id, title, w, h, scale) {
+    var d = document.createElement('div'); d.className = 'sec'; d.id = 'sec_' + id;
+    var hh = document.createElement('h2'); hh.textContent = title; d.appendChild(hh);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = (w * (scale || SCALE)) + 'px'; c.style.height = (h * (scale || SCALE)) + 'px';
+    d.appendChild(c); out.appendChild(d);
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    return g;
+  }
+  function label(g, s, x, y, col, o) { var old = DCW.ctx; DCW.ctx = g; try { DCW.text(s, x, y, col || '#fff', o || {}); } finally { DCW.ctx = old; } }
+  function spr(g, name, x, y, o) { try { A.sprite(g, name, x, y, o); } catch (e) { report.errors.push(name + ': ' + e.message); } }
+  function bg(g, theme, w, h) { if (theme) { A.background(g, theme, 100, 0); } else { g.fillStyle = '#24344c'; g.fillRect(0, 0, w, h); } }
+  function ground(g, theme, y, w) { for (var x = 0; x < w; x += 16) A.tile(g, theme, '#', x, y, { up: false, down: true, left: x > 0, right: x < w - 16, tx: x / 16, ty: 9 }); }
+
+  var COMP = ['donut', 'mongo', 'katia', 'zev', 'squeaks', 'samantha', 'signet'];
+
+  // 1. companions lineup with Carl for scale
+  (function () {
+    var g = section('companions', 'COMPANIONS idle/run/act (+carl)', 320, 180);
+    bg(g, 'forest', 320, 180);
+    for (var r = 0; r < 3; r++) ground(g, 'forest', 52 + r * 56, 320);
+    var y0 = 52;
+    ['idle', 'run', 'act'].forEach(function (k, row) {
+      var y = y0 + row * 56;
+      spr(g, 'carl_idle', 14, y, { frame: 0 });
+      COMP.forEach(function (c, i) {
+        var n = c + '_' + k, nf = A.info(n).frames;
+        for (var f = 0; f < 2; f++) { if (f >= nf) continue; spr(g, n, 40 + i * 40 + f * 18, y, { frame: f }); }
+      });
+      label(g, k.toUpperCase(), 2, y + 4, '#fff');
+    });
+    spr(g, 'signet_spirit', 300, 30, { frame: 0 }); spr(g, 'signet_spirit', 312, 30, { frame: 1 });
+  })();
+
+  // 1b. big zoom of the two new companions on a plain backdrop
+  (function () {
+    var g = section('new_zoom', 'SAMANTHA / SIGNET zoom (and flipped)', 200, 60, 5);
+    g.fillStyle = '#3c4c6c'; g.fillRect(0, 0, 200, 60);
+    var x = 12;
+    ['samantha_idle', 'samantha_run', 'samantha_act', 'signet_idle', 'signet_run', 'signet_act', 'signet_spirit'].forEach(function (n) {
+      var inf = A.info(n);
+      for (var f = 0; f < inf.frames; f++) { spr(g, n, x, 28, { frame: f }); spr(g, n, x, 58, { frame: f, flip: true }); x += inf.w + 3; }
+      x += 3;
+    });
+  })();
+
+  // 2. portraits
+  (function () {
+    var ps = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_samantha', 'p_signet'];
+    var g = section('portraits', 'PORTRAITS', ps.length * 36 + 4, 40, 4);
+    g.fillStyle = '#000'; g.fillRect(0, 0, 400, 40);
+    ps.forEach(function (p, i) { try { A.portrait(g, p, 4 + i * 36, 4); } catch (e) { report.errors.push(p + ' ' + e.message); } });
+  })();
+
+  // 3. cages over every companion idle, egg for mongo
+  (function () {
+    var g = section('cages', 'CAGE over each companion idle (f0/f1), cage_broken, egg, egg_broken', 320, 180);
+    bg(g, 'cave', 320, 180);
+    ground(g, 'cave', 64, 320); ground(g, 'cave', 128, 320);
+    COMP.forEach(function (c, i) {
+      var x = 22 + i * 44;
+      if (c === 'mongo') {
+        spr(g, 'egg', x - 9, 64, { frame: 0 }); spr(g, 'egg', x + 9, 64, { frame: 1 });
+      } else {
+        spr(g, c + '_idle', x, 64, { frame: 0 }); spr(g, 'cage', x, 64, { frame: (i & 1) });
+      }
+      label(g, c.slice(0, 6).toUpperCase(), x, 68, '#fff', { align: 'center' });
+      if (c === 'mongo') { spr(g, 'egg_broken', x - 8, 128, {}); spr(g, 'mongo_idle', x + 10, 128, {}); }
+      else { spr(g, 'cage_broken', x - 4, 128, {}); spr(g, c + '_idle', x + 12, 128, {}); }
+    });
+    spr(g, 'carl_idle', 300, 128, {});
+    spr(g, 'cage', 160, 170, { frame: 0 }); spr(g, 'cage', 190, 170, { frame: 1 }); spr(g, 'cage_broken', 220, 170, {});
+    spr(g, 'egg', 250, 170, { frame: 0 }); spr(g, 'egg', 270, 170, { frame: 1 }); spr(g, 'egg_broken', 292, 170, {});
+    g.fillStyle = '#000'; g.fillRect(0, 140, 150, 40);
+    spr(g, 'cage', 20, 176, { frame: 0 }); spr(g, 'cage_broken', 50, 176, {}); spr(g, 'egg', 80, 176, {}); spr(g, 'egg_broken', 104, 176, {}); spr(g, 'lever', 128, 176, { frame: 0 }); spr(g, 'lever', 144, 176, { frame: 1 });
+  })();
+
+  // 4. objects: lever, doors, quest items, ow_lock, icons
+  (function () {
+    var g = section('objects', 'LEVER / DOOR vs DOOR_LOCKED / QUEST ITEMS f0,f1 / OW_LOCK / ICON QUEST', 320, 180);
+    bg(g, 'city', 320, 180);
+    ground(g, 'city', 60, 320);
+    spr(g, 'carl_idle', 14, 60, {});
+    spr(g, 'lever', 40, 60, { frame: 0 }); spr(g, 'lever', 60, 60, { frame: 1 });
+    spr(g, 'door', 100, 60, {}); spr(g, 'door_locked', 132, 60, {}); spr(g, 'door_open', 164, 60, {});
+    spr(g, 'checkpoint', 190, 60, { frame: 1 }); spr(g, 'chest', 210, 60, {});
+    var QI = ['key', 'valve', 'ticket', 'gear', 'shell', 'horn', 'mask', 'crown', 'badge', 'map', 'lens', 'bolt'];
+    QI.forEach(function (q, i) {
+      var x = 14 + i * 25;
+      spr(g, 'qi_' + q, x, 88, { frame: 0 }); spr(g, 'qi_' + q, x, 106, { frame: 1 });
+      label(g, q.slice(0, 4).toUpperCase(), x, 110, '#fff', { align: 'center' });
+    });
+    // overworld markers with lock
+    g.fillStyle = '#000'; g.fillRect(0, 122, 320, 58);
+    var ow = ['ow_door', 'ow_manhole', 'ow_tent', 'ow_cave', 'ow_safe', 'ow_boss_locked', 'ow_stairs_locked'];
+    ow.forEach(function (m, i) {
+      var x = 14 + i * 24;
+      for (var tx = -8; tx < 8; tx += 16) A.owTile(g, 'ow_city', '.', x - 8, 128, {});
+      spr(g, m, x, 145, {}); spr(g, 'ow_lock', x, 145, {});
+      spr(g, m, x, 170, {});
+    });
+    spr(g, 'ow_lock', 200, 145, {});
+    var icons = ['heart', 'coin', 'bomb', 'potion', 'key', 'box', 'star', 'quest'];
+    icons.forEach(function (ic, i) { A.icon(g, ic, 220 + i * 11, 130); A.icon(g, ic, 220 + i * 11, 145, { scale: 2 }); });
+  })();
+
+  // 5. L gate tile in every theme
+  var GATE_LEVEL = [
+    '..........',
+    '..........',
+    '..#####...',
+    '....L.....',
+    '....L.....',
+    '....LL....',
+    '#.S.LL..##',
+    '##########'
+  ];
+  (A.themes || []).forEach(function (theme) {
+    var g = section('gate_' + theme, 'L GATE ' + theme, 160, 128, 2);
+    try {
+      A.background(g, theme, 60, 40);
+      var m = GATE_LEVEL;
+      var cell = function (x, y) { return (m[y] && m[y].charAt(x)) || ''; };
+      var SOL = { '#': 1, 'X': 1 };
+      for (var y = 0; y < m.length; y++) for (var x = 0; x < m[y].length; x++) {
+        var ch = cell(x, y);
+        if (ch === '.' || ch === 'S') continue;
+        var info = ch === 'L'
+          ? { up: cell(x, y - 1) === 'L', down: cell(x, y + 1) === 'L', left: cell(x - 1, y) === 'L', right: cell(x + 1, y) === 'L', tx: x, ty: y, t: 0 }
+          : { up: !!SOL[cell(x, y - 1)], down: !!SOL[cell(x, y + 1)] || y === m.length - 1, left: !!SOL[cell(x - 1, y)] || x === 0, right: !!SOL[cell(x + 1, y)] || x === m[y].length - 1, tx: x, ty: y, t: 0 };
+        A.tile(g, theme, ch, x * 16, y * 16, info);
+      }
+      spr(g, 'lever', 2 * 16 + 8, 7 * 16, { frame: theme.length & 1 });
+      spr(g, 'carl_idle', 16 + 8, 7 * 16, {});
+      // half-open gate demo
+      A.tile(g, theme, 'L', 8 * 16, 3 * 16, { up: false, down: true, open: 0.5 });
+      A.tile(g, theme, 'L', 8 * 16, 4 * 16, { up: true, down: false, open: 0.5 });
+    } catch (e) { report.errors.push('gate ' + theme + ': ' + e.message); }
+  });
+  // robustness: every theme + unknown theme, no info / odd info
+  ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'nope'].forEach(function (th) {
+    var c = document.createElement('canvas').getContext('2d');
+    try { A.tile(c, th, 'L', 0, 0); A.tile(c, th, 'L', 0, 0, {}); A.tile(c, th, 'L', 0, 0, { up: true, down: true, left: true, right: true, open: 2 }); }
+    catch (e) { report.errors.push('tile L ' + th + ': ' + e.message); }
+  });
+})();
+</script>
+</body>
+</html>
