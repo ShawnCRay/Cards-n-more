@@ -278,8 +278,9 @@
     }
     var lock = (f.locks || {})[code];
     if (lock && lock.needs && !G.hasItem(lock.needs) && !out.cleared) {
-      out.locked = true; out.itemLock = true; out.needs = lock.needs;
-      out.lockText = 'NEEDS: ' + G.itemName(lock.needs); out.lockFlavor = lock.text || '';
+      out.itemLock = true; out.needs = lock.needs; out.lockFlavor = lock.text || '';
+      if (out.locked) out.lockText += ' + ' + G.itemName(lock.needs);
+      else { out.locked = true; out.lockText = 'NEEDS: ' + G.itemName(lock.needs); }
     }
     if (!out.locked && st.exitNeeds && !G.hasItem(st.exitNeeds) && !out.cleared) out.note = 'EXIT LOCKED: NEEDS ' + G.itemName(st.exitNeeds);
     if (st.rescue && !G.hasCompanion(st.rescue)) out.rumor = true;
@@ -680,12 +681,11 @@
     // key items for this floor
     var qi = D().questItems || {};
     var mine = Object.keys(qi).filter(function (k) { return qi[k].floor === r.floor; });
-    if (mine.length) out.push('KEY ITEMS: ' + mine.map(function (k) { return G.hasItem(k) ? qi[k].name : '???'; }).join(', '));
+    if (mine.length) out.push('KEY ITEMS: ' + mine.filter(function (k) { return G.hasItem(k); }).length + '/' + mine.length + ' FOUND');
     if (f.companion) {
       var cd = (D().companions || {})[f.companion] || {};
-      out.push(G.hasCompanion(f.companion) ? '\u2713 RESCUED ' + (cd.name || f.companion.toUpperCase()) : '- SOMEONE IS TRAPPED ON THIS FLOOR');
+      out.push(G.hasCompanion(f.companion) ? '\u2713 ' + (cd.name || f.companion.toUpperCase()) + ' RESCUED' : '- SOMEONE IS TRAPPED HERE');
     }
-    if (f.par) out.push('PAR ' + U.fmtTime(f.par) + '  TIME ' + U.fmtTime(r.floorTime));
     return out;
   };
 

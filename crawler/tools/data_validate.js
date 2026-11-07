@@ -476,7 +476,7 @@ D.floors.forEach((f, i) => {
     if (!entered.has(sid)) { entered.add(sid); order.push(sid); }
     if (s.questItem && !held.has(s.questItem)) { held.add(s.questItem); order.push('+' + s.questItem); }
     if (s.rescue && !rescued.has(s.rescue)) { rescued.add(s.rescue); order.push('@' + s.rescue); }
-    if (!s.exitNeeds || held.has(s.exitNeeds)) cleared.add(sid);
+    if (!cleared.has(sid) && (!s.exitNeeds || held.has(s.exitNeeds))) { cleared.add(sid); if (s.exitNeeds) order.push(sid + ':exit'); }
   };
   if (!f.overworld) {
     if (Object.keys(locks).length) err(w + ': linear floors cannot use locks');

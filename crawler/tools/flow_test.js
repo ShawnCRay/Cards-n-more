@@ -47,7 +47,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
           const cur = await name();
           if (cur === 'stage') {
             await step(60); await snap('f' + f + '_stage');
-            await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 1, maxCombo: 4, views: 100, gold: 10 }));
+            await page.evaluate(() => { (() => { const st = DCW.data.stages[DCW.game.run.currentStage] || {}; if (st.questItem) DCW.game.giveItem(st.questItem); if (st.rescue) DCW.game.rescueCompanion(st.rescue); })(); DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 1, maxCombo: 4, views: 100, gold: 10 }); });
           } else if (cur === 'safeRoom') {
             await snap('f' + f + '_safe');
             await page.evaluate(() => DCW.game.leaveSafeRoom());
@@ -62,14 +62,25 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
       } else {
         await step(30); await snap('f' + f + '_ow');
         const codes = Object.keys(fd.ents);
-        for (const c of codes) {
-          const st = await page.evaluate(c => DCW.game.entranceState(c), c);
-          if (st.kind !== 'stage') continue;
-          await page.evaluate(c => DCW.game.enterEntrance(c), c);
-          await advanceTo(['stage']);
-          await step(30);
-          await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 0, maxCombo: 4, views: 100, gold: 10 }));
-          await advanceTo(['overworld']);
+        // keep sweeping the map: locked areas open as key items turn up
+        for (let pass = 0; pass < 6; pass++) {
+          let progressed = false;
+          for (const c of codes) {
+            const st = await page.evaluate(c => DCW.game.entranceState(c), c);
+            if (st.kind !== 'stage' || st.locked || st.cleared) continue;
+            await page.evaluate(c => DCW.game.enterEntrance(c), c);
+            await advanceTo(['stage']);
+            await step(30);
+            const exitNeeds = await page.evaluate(() => (DCW.data.stages[DCW.game.run.currentStage] || {}).exitNeeds);
+            await page.evaluate(() => { (() => { const st = DCW.data.stages[DCW.game.run.currentStage] || {}; if (st.questItem) DCW.game.giveItem(st.questItem); if (st.rescue) DCW.game.rescueCompanion(st.rescue); })(); });
+            if (exitNeeds && !(await page.evaluate(n => DCW.game.hasItem(n), exitNeeds))) {
+              await page.evaluate(() => DCW.game.fleeStage()); await advanceTo(['overworld']); continue;  // padlocked: come back later
+            }
+            await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 0, maxCombo: 4, views: 100, gold: 10 }));
+            await advanceTo(['overworld']);
+            progressed = true;
+          }
+          if (!progressed) break;
         }
         const bossCode = codes.find(c => fd.ents[c] === fd.boss);
         const bs = await page.evaluate(c => DCW.game.entranceState(c), bossCode);
@@ -83,7 +94,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
         await step(20);
         await advanceTo(['floorCard', 'ending', 'stage', 'overworld']);
       }
-      const st = await page.evaluate(() => ({ floor: DCW.game.run && DCW.game.run.floor, lvl: DCW.game.run && DCW.game.run.level, boxes: DCW.game.run && DCW.game.run.boxes.length, skins: DCW.save.unlocks.skins, comps: DCW.save.unlocks.companions }));
+      const st = await page.evaluate(() => ({ floor: DCW.game.run && DCW.game.run.floor, lvl: DCW.game.run && DCW.game.run.level, boxes: DCW.game.run && DCW.game.run.boxes.length, skins: DCW.save.unlocks.skins, comps: DCW.game.run && DCW.game.run.companions, items: DCW.game.run && Object.keys(DCW.game.run.items || {}).length }));
       console.log('after floor', f, JSON.stringify(st));
     }
     await snap('end_' + (await name()));

@@ -4,6 +4,7 @@
 //   node crawler/tools/data_render.js f1_s1 f3_s2      render stages (seeded like a run)
 //   node crawler/tools/data_render.js --map 5          print floor 5's overworld map
 //   node crawler/tools/data_render.js --balance        enemies per stage + xp/level pacing
+//   node crawler/tools/data_render.js --chain          quest items, locks and rescues per floor
 //   add --seed=123 to change the layout seed
 'use strict';
 const fs = require('fs');
@@ -31,6 +32,9 @@ function assemble(id, seed) {
     const pick = opts[Math.floor(r() * opts.length)];
     order.push(pick); prev = pick;
   }
+  // Update 2: chunks.insert are spliced into the middle of the generated list (after start + half the picks)
+  const ins = s.chunks.insert || [];
+  if (ins.length) order.splice(1 + Math.floor(s.chunks.count / 2), 0, ...ins);
   order.push(s.chunks.end);
   const rows = Array.from({ length: 12 }, () => '');
   order.forEach(c => D.chunks[c].rows.forEach((row, y) => { rows[y] += row; }));
@@ -42,6 +46,11 @@ function render(id) {
   if (!s) { console.log('no stage ' + id); return; }
   const a = assemble(id, SEED);
   console.log('\n=== ' + id + ' "' + s.name + '" floor ' + s.floor + ' ' + s.theme + ' ' + s.kind + ' | ' + a.order.join(' > ') + ' | ' + a.rows[0].length + ' tiles');
+  const tags = [];
+  if (s.questItem) tags.push('Q=' + s.questItem);
+  if (s.rescue) tags.push('R=' + s.rescue);
+  if (s.exitNeeds) tags.push('exit needs ' + s.exitNeeds);
+  if (tags.length) console.log('    ' + tags.join(' | ') + '   (S lever, L gate)');
   const W = a.rows[0].length, step = 120;
   for (let x0 = 0; x0 < W; x0 += step) {
     let ruler = '';
@@ -87,6 +96,29 @@ function balance() {
   });
 }
 
+// --chain: per floor, where each quest item / rescue is and what each item opens
+function chain() {
+  const QI = D.questItems || {};
+  D.floors.forEach(f => {
+    const ids = Object.keys(D.stages).filter(k => D.stages[k].floor === f.n);
+    const ents = f.overworld ? f.overworld.entrances : {};
+    const entOf = (sid) => Object.keys(ents).find(k => ents[k] === sid) || '-';
+    const lines = [];
+    ids.forEach(sid => {
+      const s = D.stages[sid], bits = [];
+      if (s.questItem) bits.push('holds ' + s.questItem);
+      if (s.rescue) bits.push('cage: ' + s.rescue);
+      if (s.exitNeeds) bits.push('exit needs ' + s.exitNeeds);
+      const lk = f.locks && f.locks[entOf(sid)];
+      if (lk) bits.push('entrance needs ' + lk.needs);
+      if (bits.length) lines.push('    ' + entOf(sid) + ' ' + sid.padEnd(9) + ' ' + bits.join(', '));
+    });
+    if (!lines.length) return;
+    console.log('floor ' + f.n + ' (' + Object.keys(QI).filter(k => QI[k].floor === f.n).join(', ') + ')' + (f.companion ? ' companion ' + f.companion : ''));
+    lines.forEach(l => console.log(l));
+  });
+}
+if (args.includes('--chain')) chain();
 if (args.includes('--balance')) balance();
 const mi = args.indexOf('--map');
 if (mi >= 0) {
@@ -94,4 +126,4 @@ if (mi >= 0) {
   if (f && f.overworld) { console.log(f.name); f.overworld.map.forEach((r, y) => console.log((y < 10 ? ' ' : '') + y + ' ' + r)); }
 }
 args.filter(a => !a.startsWith('--') && !/^\d+$/.test(a)).forEach(render);
-if (!args.length) console.log('usage: data_render.js <stageId...> | --map N | --balance [--seed=N]');
+if (!args.length) console.log('usage: data_render.js <stageId...> | --map N | --balance | --chain [--seed=N]');

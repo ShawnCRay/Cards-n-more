@@ -1610,7 +1610,7 @@
         DCW.box(8, 20, 164, 140, { fill: '#000' });
         drawMinimap(ctx, ow, 12, 24, 156, 132);
         var x = 180, y = 21;
-        obj.forEach(function (l, i) { if (y <= 120) y = objLines(l, i, 126, x, y, 120, 10); });
+        obj.forEach(function (l, i) { if (y <= 124) y = objLines(l, i, 126, x, y, 124, 9); });
         var leg = [[C.white, 'YOU'], [C.yellow, 'AREA'], [C.green, 'CLEARED'], [C.blue, 'SAFE'], [C.red, 'BOSS'], [C.purple, 'EXIT']];
         leg.forEach(function (lg, i) { var lx = x + (i % 2) * 66, ly = 132 + Math.floor(i / 2) * 9; R(lx, ly + 1, 5, 5, lg[0]); T(lg[1], lx + 8, ly, C.dgray, { shadow: null }); });
       } else {

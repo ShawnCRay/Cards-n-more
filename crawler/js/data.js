@@ -27,6 +27,20 @@
    - companions[id].bonus {views} (zev) / bombChance (squeaks): ability tuning hints.
    - boxTiers[tier].rank (1-5) for sorting; projectiles.missile (friendly:true)
      for Donut; D.version, D.themes, D.owThemes are informational.
+   UPDATE 2 (quests, rescues, levers; binding spec in DESIGN.md):
+   - D.questItems[id] = {name, floor, sprite:'qi_*', desc, hint}. hint says where
+     the item is (shown on padlocked exit doors).
+   - stages[id].questItem / .rescue / .exitNeeds, stages[id].chunks.insert:
+     chunk ids spliced into the middle of the generated list (data_render.js
+     assumes after start + floor(count/2) picks). Q and R only appear in insert
+     chunks, never in pool chunks, so each stage has exactly one.
+   - floor.locks[ch] = {needs, text}: text is optional flavor (<= 100 chars).
+   - floor.companion (floors 2-7), floor.hints (Mordecai rumors, 3-5 lines).
+   - companions[id].rescueLines: 1-2 lines said when freed from the cage/egg.
+   - No companion rewards in loot tables, no companion boss/achievement unlocks.
+   - Chunk chars S (lever, on ground) and L (gate, solid until any S in the
+     same chunk is punched). lv_* chunks are general lever puzzles in pools.
+     node crawler/tools/data_render.js --chain prints every floor's chain.
    Chunk notes: moving platforms '<' '>' 'v' are ONE char each, placed on the
    platform's starting (center) tile, with >= 3 free tiles of travel each way
    ('<' starts moving left, '>' right, 'v' down). Arena chunks (with 'K') are
@@ -475,20 +489,6 @@
     '.....=======........................',
     '..........................bbb.......',
     '.n.......e........m.n.....bbb.e.e...',
-    '####################################',
-    '####################################'] };
-
-  C.f1_tut_end = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '...............ooo..................',
-    '..............=====.................',
-    '..n..h....e..........e....n.....D...',
     '####################################',
     '####################################'] };
 
@@ -1675,6 +1675,486 @@
     '..c.....h...................K..............X',
     '############################################',
     '############################################'] };
+  /* ==========================================================================
+     UPDATE 2 CHUNKS: levers (S), gates (L), quest item spots (Q), rescues (R).
+     Q / R chunks are only ever used through stages[id].chunks.insert, so each
+     quest/rescue stage gets exactly one. lv_* chunks are ordinary pool chunks.
+     ========================================================================== */
+
+  /* ---------- general lever puzzles (pool chunks, any theme) ---------- */
+  // gate blocks the way; the lever sits on a ledge you climb to
+  C.lv_gate_climb = { rows: [
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '..........ooo.........X.........',
+    '.........S............X.........',
+    '........XXXX..........X.........',
+    '......................L.........',
+    '......................L...ooo...',
+    '...===................L.........',
+    '..e..........e........L....e....',
+    '################################',
+    '################################'] };
+
+  // treasure nook: climb over it, punch the bell on the roof, come back down
+  C.lv_cache = { rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..................ooooo.........',
+    '.................H....S.........',
+    '.................HXXXXXXXXX.....',
+    '.................HX.o.o.o.X.....',
+    '.................HL.......X.....',
+    '..e..............HL...$...X..e..',
+    '################################',
+    '################################'] };
+
+  // low tunnel with a stash; the lever is up on the tunnel roof
+  C.lv_tunnel = { rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '................e.......S...........',
+    '............XXXXXXXXXXXXXXXX........',
+    '............XXXXXXXXXXXXXXXX........',
+    '.......===..XXXXXXXXXXXXXXXX........',
+    '....................Lo.o.o.X........',
+    '..e.................L..m...X...e....',
+    '####################################',
+    '####################################'] };
+
+  // gate blocks the way; the lever hides in a nook behind a crate
+  C.lv_crates = { rows: [
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..................L.........',
+    '..........XXXXXX..L.........',
+    '..........b....X..L.........',
+    '..e.......b.S..X..L...e.....',
+    '############################',
+    '############################'] };
+
+  /* ---------- floor 1: the lever lesson (end chunk of the tutorial) ---------- */
+  // replaces the old f1_tut_end: sign 8 explains levers, then a gate before the door
+  C.f1_tut_end = { rows: [
+    '..............................X.....',
+    '..............................X.....',
+    '..............................X.....',
+    '..............................X.....',
+    '..............................X.....',
+    '..............................L.....',
+    '..............................L.....',
+    '...............ooo............L.....',
+    '..............=====...........L.....',
+    '..n..h....e........n.e...n.S..L..D..',
+    '####################################',
+    '####################################'] };
+
+  /* ---------- floor 2 (cave) ---------- */
+  // GRUB GULLY: the exit key sits at the end of an upper side tunnel
+  C.q_cave_branch = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXX..................................XXX',
+    'XXX.....o.o.o.................b...Q..XXX',
+    'XXX..........e..^^............b......XXX',
+    'XXXHXXXXXXXXXXXXXXX====XXXXXXXXXXXXXXXXX',
+    '...H....................................',
+    '...H....................................',
+    '...H.......ooo..........................',
+    '...H......=====.........................',
+    '...H..e.............h.........E..e......',
+    '########################################',
+    '########################################'] };
+
+  // ARCHERY RANGE: Sir Squeaks tied up in the target room; lever up the ladder
+  C.r_cave_target = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXX...XXXXXXXXXXX.........XXXXXXXXXXXXXX',
+    'XXXS..XXXX......L....o....XXXXXXXXXXXXXX',
+    'XXX=H=XXXX......L....R....XXXXXXXXXXXXXX',
+    '....H.......====XXXXXXXXXXX.............',
+    '....H...................................',
+    '....H.....====..........................',
+    '....H...................................',
+    '....H..e...........e.........e.......e..',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 3 (city / circus / swamp) ---------- */
+  // boiler room: lever on the roof, doors on both sides at street level
+  C.q_city_boiler = { rows: [
+    '....................................',
+    '....................................',
+    '.........H....S.......ooo...........',
+    '.........HXXXXXXXXXXXXXXXXXX........',
+    '.........HXXXXXXXXXXXXXXXXXX........',
+    '.........HXX..............XX........',
+    '.........HXX..............XX........',
+    '.........HXX..............XX........',
+    '.........HL.........Q.....LL........',
+    '..e......HL......e........LL...e....',
+    '####################################',
+    '####################################'] };
+
+  // lost and found / freight lockers: lever on the roof, reached from the far ladder
+  C.q_city_lockers = { rows: [
+    '....................................',
+    '...................S...........H....',
+    '.............XXXXXXXXXXXXXXXXXXH....',
+    '.............X................XH....',
+    '.............L.........o.o....XH....',
+    '.............L............Q...XH....',
+    '.........====XXXXXXXXXXXXXXXXXXH....',
+    '...............................H....',
+    '.....===.......................H....',
+    '..e........b........e..........H..e.',
+    '####################################',
+    '####################################'] };
+
+  // bayou: the ticket waits on a floating island; ride the lift up
+  C.q_swamp_stump = { rows: [
+    '........................................',
+    '...............oo..Q....................',
+    '...............XXXXXXX..................',
+    '...............XXXXXXX..................',
+    '.............v..........................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '..........XXX.....>......XXX............',
+    '..e.......XXX............XXX.........e..',
+    '#######~~~XXX~~~~~~~~~~~~XXX~~~~########',
+    '########################################'] };
+
+  // the midway: ring the high striker bell to open the prize booth
+  C.r_circus_prize = { rows: [
+    '........................................',
+    '.......S................................',
+    '.....HXXH...............................',
+    '.....HXXH.............ooo...............',
+    '.....HXXH...........XXXXXXXXXXXX........',
+    '.....HXXH...........X..........X........',
+    '.....HXXH...........X..........X........',
+    '.....HXXH.....===...L..........X........',
+    '.....HXXH...........L..........X........',
+    '..e..HXXH.....e.....L......R...X....e...',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 4 (train / city) ---------- */
+  // platform nine: office on the left, lever on the tall container across the pit
+  C.q_city_stack = { rows: [
+    '....................................',
+    '....................................',
+    '..............................S.....',
+    '............................HXXX....',
+    '............................HXXX....',
+    '...................ooo......HXXX....',
+    '.............XXXXXXXXX......HXXX....',
+    '.............X.......X......HXXX....',
+    '..........XX.X...Q...L......HXXX....',
+    '..e.......XX.X.......L.^^^..HXXX..e.',
+    '####################################',
+    '####################################'] };
+
+  // engine shed: walk over the hatch, pull the lever, drop into the pit
+  C.q_train_pit = { rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '.........ooo..........ooo...........',
+    '....................................',
+    '...................f................',
+    '.........^^...............S.........',
+    '.....XXXXXXXLLLLLLXXXXXXXXXX........',
+    '...XXXXXXXXX..Q..HXXXXXXXXXXXX......',
+    '.e.XXXXXXXXX.....HXXXXXXXXXXXX...e..',
+    '####################################',
+    '####################################'] };
+
+  // the old spur: a caboose up on blocks; lever in the crate shed, lift up to the door
+  C.r_train_caboose = { rows: [
+    '........................................',
+    '.....................XXXXXXXXXXXX.......',
+    '.....................L..........X.......',
+    '.....................L.....R....X.......',
+    '....................XXXXXXXXXXXXX.......',
+    '..................v.....................',
+    '........................................',
+    '..................................XXXXX.',
+    '...................................b..X.',
+    '..e.........e......................b.SX.',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 5 (bubble / swamp) ---------- */
+  // sea caves: lever up the coral stairs, then ride the bubble to the alcove
+  C.q_bubble_grotto = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXXX.....L.........................',
+    'XXXXX..Q..L..................S......',
+    'XXXXXXXXXXXX..............XXXXX.....',
+    '..............v.....................',
+    '....................................',
+    '..............................===...',
+    '..........ooo.......................',
+    '..e.......h.........e.........e.....',
+    '################~~~~################',
+    '####################################'] };
+
+  // mangrove maze: climb the root arch, cross the branches to the crown nest
+  C.q_swamp_roots = { rows: [
+    '........................................',
+    '........................XXXXXXX.........',
+    '.......H..S.............L.....X.........',
+    '.......HXXXX..===...===.L..Q..X.........',
+    '.......HXXXX...........XXXXXXXX.........',
+    '.......HXXXX...........XXXXXXXX.........',
+    '.......HXXXX............................',
+    '.......H................................',
+    '.......H....ooo.........................',
+    '..e....H.......e................e....e..',
+    '################~~~#####################',
+    '########################################'] };
+
+  // pearl vault: the conch is in the vault; the bell is up on a perch, take the bubble
+  C.q_bubble_clam = { rows: [
+    '....................................',
+    '....................................',
+    '.................S..................',
+    '................XXX.................',
+    '....................................',
+    '............v.......................',
+    '....................ooooo...........',
+    '.................XXXXXXXXXXXX.......',
+    '.................L.....Q....X.......',
+    '..e..............L..........X....e..',
+    '####################################',
+    '####################################'] };
+
+  // reef shelf: Katia in a fishing net up on the shelf; a tricky climb
+  C.r_swamp_net = { rows: [
+    '........................................',
+    '........................................',
+    '...........................ooo.R........',
+    '...........===...........XXXXXXXXX......',
+    '..................>.....................',
+    '....................f...................',
+    '........===.............................',
+    '........................................',
+    '....===.................................',
+    '..e.........^^^......e.............e....',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 6 (forest) ---------- */
+  // trapper camp: a leaf-covered snare pit; the lever inside lets you out
+  C.q_forest_snare = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '..........e..............ooo............',
+    '......XXXXXXXXXX..XXXXLXXXXXXXXX........',
+    '......XXXXXXX.......X.HXXXXXXXXX........',
+    '......XXXXXXX.......X.HXXXXXXXXX........',
+    '...XX.XXXXXXX.......X.HXXXXXXXXXXX......',
+    '...XX.XXXXXXX.......LQHXXXXXXXXXXX......',
+    '..eXX.XXXXXXX.S.....L.HXXXXXXXXXXX..e...',
+    '########################################',
+    '########################################'] };
+
+  // wolf hollow: the den under the hill; lever on the rock, hatch on top
+  C.q_forest_den = { rows: [
+    '....................................',
+    '.........................S..........',
+    '........................XXX.........',
+    '..........ooo...........XXX.........',
+    '........XXXXXXXXXXLXXXXXXXXX........',
+    '........XXXXXXXXXXHXXXXXXXXX........',
+    '........XXXX......H.....XXXX........',
+    '.....XX.XXXX......H.....XXXX.XX.....',
+    '.....XX.XXXX.Q....H.....XXXX.XX.....',
+    '..e..XX.XXXX......H..E..XXXX.XX..e..',
+    '####################################',
+    '####################################'] };
+
+  // kennels: the horn hangs at the end of a branch up the big tree
+  C.q_forest_tree = { rows: [
+    '..............oooo..................',
+    '.............HXXXX..E.Q.............',
+    '.............HXXXX=====.............',
+    '.............HXXXX..................',
+    '.............HXXXX..................',
+    '.............HXXXX......f...........',
+    '.............HXXXX..................',
+    '.............HXXXX..................',
+    '.............H......................',
+    '..e..........H.........e............',
+    '####################################',
+    '####################################'] };
+
+  // wishing well: lever on the ledge over the shaft, then the well-house door opens
+  C.r_forest_well = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '...........ooo..........................',
+    '.............S..........................',
+    '............XXX.........XXXXXXXXXX......',
+    '........................X........X......',
+    '........................X........X......',
+    '.............<..........L...............',
+    '..e.....................L...R...........',
+    '##########........######################',
+    '##########........######################'] };
+
+  /* ---------- floor 7 (castle) ---------- */
+  // wine cellar: smash the rack to reach the lever; the invitation is in the alcove
+  C.q_castle_cellar = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    '......bb..................L........X',
+    '....S.bb..................L....Q...X',
+    '...XXXXXX................XXXXXXXXXXX',
+    '....................................',
+    '..............f.....................',
+    '........===.........===.............',
+    '...........ooo......................',
+    '..e.........e.......E.......e.......',
+    '####################################',
+    '####################################'] };
+
+  // greenhouse: lever atop the left vine, hatch atop the right vine
+  C.q_castle_vines = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    '........................XXXXXXXX....',
+    '........S...............X......X....',
+    '....XXHXX...............X....Q.X....',
+    '......H.................XXXLXXXX....',
+    '......H...........f...........H.....',
+    '......H....................H........',
+    '......H....................H........',
+    '......H....ooo.............H........',
+    '..e...H.......e............H....e...',
+    '####################################',
+    '####################################'] };
+
+  // ballroom: ride the chandelier to the lever; the tiara waits on the balcony
+  C.q_castle_balcony = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    '.............................XXXXXXXXXXX',
+    '.............................L.........X',
+    '...............S.............L...Q.....X',
+    '..............XXX...........XXXXXXXXXXXX',
+    '........................................',
+    '........................................',
+    '..........>...........====..............',
+    '........................................',
+    '..e.......e........e...........e....e...',
+    '########################################',
+    '########################################'] };
+
+  // heart of the hedge maze: Signet held in the topiary chamber
+  C.r_castle_hedge = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '....S...............^...e...............',
+    '...XXXXX......HXXXXXXXXXXXX.............',
+    '..............HX..........X.............',
+    '..............HX..........X.............',
+    '.........===..HX..........X.............',
+    '..............HL..........X.............',
+    '..e...........HL.....R....X......e......',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 8 (ruin / city) ---------- */
+  // megamall: up the dead escalator, lever upstairs, guard office below
+  C.q_ruin_store = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '.........................e....S.........',
+    '....................XXXXXXXXXXXXXXXXXX..',
+    '..................XX...............X....',
+    '................XXXX...............X....',
+    '..............XXXXXX...............X....',
+    '............XXXXXXXX....Q..........L....',
+    '..e.........XXXXXXXX.........E.....L.e..',
+    '########################################',
+    '########################################'] };
+
+  // dead air tower: climb the mast, hop the swinging rig to the top perch
+  C.q_ruin_mast = { rows: [
+    '...........................Q....',
+    '..........................XXX...',
+    '.....................<..........',
+    '..............==H==.............',
+    '................H...............',
+    '................H.......f.......',
+    '................H...............',
+    '................H...............',
+    '................H...............',
+    '..e.............H........e......',
+    '################################',
+    '################################'] };
+
+  /* ---------- floor 9 (warzone) ---------- */
+  // command bunker: hatch on the roof, lever on the watchtower
+  C.q_war_bunker = { rows: [
+    '....................................',
+    '....................................',
+    '.............................S......',
+    '...........................HXX......',
+    '...........................HXX......',
+    '...........ooo.............HXX......',
+    '........XXXXXXXLXXXXXX.....HXX......',
+    '........XX.....H....XX.....HXX......',
+    '.....XX.XX.Q...H....XX.....HXX......',
+    '..e..XX.XX.....H..e.XX.....HXX...e..',
+    '####################################',
+    '####################################'] };
+
+  // artillery hill: lever on the sniper ledge, lift up to the gun nest
+  C.q_war_hill = { rows: [
+    '............................XXXXXXXXXX..',
+    '............................L........X..',
+    '............................L....Q...X..',
+    '...........................XXXXXXXXXXX..',
+    '.......S.e..............................',
+    '......XXXXXH............v...............',
+    '...........H............................',
+    '...........H............................',
+    '...........H............................',
+    '..e........H......^^^........e........e.',
+    '########################################',
+    '########################################'] };
+
+  // dropship wreck: lever on the hull, the pass at the back of the cargo bay
+  C.q_war_wreck = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '....................S.....e.............',
+    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
+    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
+    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
+    '.........H..............L.....X.........',
+    '.........H.....bb.......L..Q..X.........',
+    '..e......H.....bb..^^...L.....X....e....',
+    '########################################',
+    '########################################'] };
 })();
 
 /* ==========================================================================
@@ -1721,7 +2201,8 @@
       "IN THE AIR, HOLD DOWN + ATTACK FOR A DIVING STOMP KICK. LAND ON HEADS. BOUNCE. FEEL ALIVE.",
       "PRESS BOMB TO LOB A HOB-LOBBER. IT ARCS. IT BOOMS. IT DOES NOT CARE WHO IS STANDING THERE.",
       "PRESS POTION TO DRINK A HEALTH POTION. HEALS HALF YOUR HP. SNACKS ON THE FLOOR HEAL A LITTLE.",
-      "PRINCESS DONUT FIGHTS ON HER OWN. HITTING THINGS FILLS THE SPECIAL METER. WHEN FULL, PRESS SPECIAL!"
+      "PRINCESS DONUT FIGHTS ON HER OWN. HITTING THINGS FILLS THE SPECIAL METER. WHEN FULL, PRESS SPECIAL!",
+      "SEE THE LEVER? PUNCH IT. LEVERS OPEN IRON GATES NEARBY. LATER FLOORS HIDE THEIR LEVERS. THE SHOW IS PETTY LIKE THAT."
     ] }));
   st('f1_s2', mix('f1', { name: 'THE BIG STINK', floor: 1, theme: 'sewer', kind: 'main',
     chunks: { start: 'f1_start', pool: ['f1_a', 'f1_b', 'f1_c', 'f1_d', 'f1_e', 'f1_f', 'f1_g'], count: 5, end: 'end_door' },
@@ -1736,14 +2217,14 @@
   /* ---------------- floor 2 ---------------- */
   var P2 = ['f2_a', 'f2_b', 'f2_c', 'f2_d', 'f2_e', 'f2_f', 'f2_g', 'f2_h'];
   st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cave', kind: 'main',
-    chunks: { start: 'f2_start', pool: P2, count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
+    chunks: { start: 'f2_start', pool: P2.concat(['lv_crates']), count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
     intro: "THE GOBLIN WARRENS! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
-  st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main',
-    chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
+  st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main', rescue: 'squeaks',
+    chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door', insert: ['r_cave_target'] }, reward: { box: 'bronze', xp: 20 },
     enemies: [['goblin_archer', 4], ['goblin', 3], ['shaman', 2]],
     intro: "THE GOBLINS PRACTICE THEIR AIM HERE. GUESS WHO VOLUNTEERED TO BE THE TARGET? YOU DID. JUST NOW." }));
-  st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cave', kind: 'main', dark: true,
-    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 20 },
+  st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cave', kind: 'main', questItem: 'goblin_key', exitNeeds: 'goblin_key', dark: true,
+    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_cave_branch'] }, reward: { box: 'silver', xp: 20 },
     enemies: [['grub', 4], ['goblin', 2], ['juicer_minion', 2], ['shaman', 1]],
     intro: "IT IS DARK. IT IS DAMP. SOMETHING IS CHEWING. STAY CLOSE TO THE CAT, SHE GLOWS WHEN SHE IS SMUG." }));
   st('f2_boss', { name: 'THE IRON GYM', floor: 2, theme: 'cave', kind: 'boss', music: 'boss',
@@ -1753,17 +2234,17 @@
     intro: "YOU HEAR GRUNTING. RHYTHMIC GRUNTING. SOMEONE IS DOING REPS ON A GOBLIN." });
 
   /* ---------------- floor 3 ---------------- */
-  st('f3_s1', mix('city3', { name: 'TWENTY FLOORS OF RENT', floor: 3, theme: 'city', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f3_e', 'f3_g', 'f3_b'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
+  st('f3_s1', mix('city3', { name: 'TWENTY FLOORS OF RENT', floor: 3, theme: 'city', kind: 'main', questItem: 'valve', owMarker: 'ow_door',
+    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f3_e', 'f3_g', 'f3_b', 'lv_cache'], count: 5, end: 'end_door', insert: ['q_city_boiler'] }, reward: { box: 'bronze', xp: 25 },
     intro: "AN APARTMENT TOWER. THE LANDLORD IS A CLOWN. THE TENANTS ARE ALSO CLOWNS. THE RENT IS YOUR LIFE." }));
-  st('f3_s2', mix('circus3', { name: 'THE MIDWAY', floor: 3, theme: 'circus', kind: 'main', owMarker: 'ow_tent',
-    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'f3_a', 'f3_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 25 },
+  st('f3_s2', mix('circus3', { name: 'THE MIDWAY', floor: 3, theme: 'circus', kind: 'main', rescue: 'mongo', exitNeeds: 'honk_horn', owMarker: 'ow_tent',
+    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'f3_a', 'f3_d', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['r_circus_prize'] }, reward: { box: 'silver', xp: 25 },
     intro: "STEP RIGHT UP! EVERY GAME IS RIGGED AND EVERY PRIZE BITES! FUN FOR THE WHOLE APOCALYPSE!" }));
-  st('f3_s3', mix('swamp3', { name: 'STORM DRAIN BAYOU', floor: 3, theme: 'swamp', kind: 'main', owMarker: 'ow_manhole',
-    chunks: { start: 'f3_start', pool: ['f3_c', 'f3_h', 'f3_b', 'f3_e', 'f3_f'], count: 5, end: 'end_door' }, reward: { box: 'bronze', xp: 25 },
+  st('f3_s3', mix('swamp3', { name: 'STORM DRAIN BAYOU', floor: 3, theme: 'swamp', kind: 'main', questItem: 'bigtop_ticket', owMarker: 'ow_manhole',
+    chunks: { start: 'f3_start', pool: ['f3_c', 'f3_h', 'f3_b', 'f3_e', 'f3_f', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_swamp_stump'] }, reward: { box: 'bronze', xp: 25 },
     intro: "THE STORM DRAINS FLOODED AND THE SWAMP MOVED IN. SO DID THE GATORS. SO DID THEIR COUSINS." }));
-  st('f3_x1', mix('city3', { name: 'THE LOST AND FOUND', floor: 3, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['sx_a', 'f3_f', 'sx_b', 'f3_g', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
+  st('f3_x1', mix('city3', { name: 'THE LOST AND FOUND', floor: 3, theme: 'city', kind: 'side', questItem: 'honk_horn', owMarker: 'ow_door',
+    chunks: { start: 'f3_start', pool: ['sx_a', 'f3_f', 'sx_b', 'f3_g', 'sx_c', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['q_city_lockers'] }, reward: { box: 'silver', xp: 35 },
     intro: "A HIDDEN PARK SHED FULL OF THINGS PEOPLE DROPPED WHILE RUNNING. FINDERS KEEPERS, CRAWLER." }));
   st('f3_ambush', mix('city3', { name: 'STREET TOUGHS', floor: 3, theme: 'city', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
@@ -1775,20 +2256,20 @@
     intro: "THE BIG TOP! THE LIGHTS GO DOWN. A DRUMROLL STARTS. NOBODY IS PLAYING THE DRUM." });
 
   /* ---------------- floor 4 ---------------- */
-  st('f4_s1', mix('city4', { name: 'PLATFORM NINE', floor: 4, theme: 'city', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_f', 'f4_e', 'f4_d', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
+  st('f4_s1', mix('city4', { name: 'PLATFORM NINE', floor: 4, theme: 'city', kind: 'main', questItem: 'switch_key', owMarker: 'ow_door',
+    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_f', 'f4_e', 'f4_d', 'f4_a', 'lv_tunnel'], count: 5, end: 'end_door', insert: ['q_city_stack'] }, reward: { box: 'silver', xp: 30 },
     intro: "A STATION CONCOURSE. THE DEPARTURE BOARD SAYS EVERY TRAIN IS DELAYED. FOREVER. ENJOY YOUR WAIT." }));
-  st('f4_s2', mix('train4', { name: 'THE ENGINE SHED', floor: 4, theme: 'train', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_g', 'f4_h', 'f4_b', 'f4_d'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
+  st('f4_s2', mix('train4', { name: 'THE ENGINE SHED', floor: 4, theme: 'train', kind: 'main', questItem: 'drive_gear', owMarker: 'ow_door',
+    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_g', 'f4_h', 'f4_b', 'f4_d', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_train_pit'] }, reward: { box: 'silver', xp: 30 },
     intro: "THE ENGINE SHED. MIND THE GAP BETWEEN THE CARS. THE GAP IS HUNGRY." }));
-  st('f4_s3', mix('train4', { name: 'DEAD END TUNNEL', floor: 4, theme: 'train', kind: 'main', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f4_start', pool: ['f4_g', 'f4_b', 'f4_h', 'f4_f', 'f4_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
+  st('f4_s3', mix('train4', { name: 'DEAD END TUNNEL', floor: 4, theme: 'train', kind: 'main', exitNeeds: 'signal_lens', owMarker: 'ow_cave', dark: true,
+    chunks: { start: 'f4_start', pool: ['f4_g', 'f4_b', 'f4_h', 'f4_f', 'f4_a', 'lv_gate_climb'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
     intro: "THE TUNNEL HAS NO LIGHTS. THE TRAINS HAVE NO DRIVERS. YOU HAVE NO PANTS. EVERYONE IS STRUGGLING." }));
-  st('f4_x1', mix('train4', { name: 'THE OLD SPUR', floor: 4, theme: 'train', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['sx_b', 'f4_e', 'sx_a', 'f4_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 45 },
+  st('f4_x1', mix('train4', { name: 'THE OLD SPUR', floor: 4, theme: 'train', kind: 'side', rescue: 'samantha', owMarker: 'ow_door',
+    chunks: { start: 'f4_start', pool: ['sx_b', 'f4_e', 'sx_a', 'f4_c', 'lv_cache'], count: 4, end: 'end_door', insert: ['r_train_caboose'] }, reward: { box: 'gold', xp: 45 },
     intro: "A DECOMMISSIONED PLATFORM. NOBODY COMES HERE. WHICH MEANS NOBODY TOOK THE GOOD STUFF." }));
-  st('f4_x2', mix('city4', { name: 'FREIGHT MAZE', floor: 4, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_g', 'sx_c', 'f4_e', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 45 },
+  st('f4_x2', mix('city4', { name: 'FREIGHT MAZE', floor: 4, theme: 'city', kind: 'side', questItem: 'signal_lens', owMarker: 'ow_door',
+    chunks: { start: 'f4_start', pool: ['f4_g', 'sx_c', 'f4_e', 'sx_a'], count: 4, end: 'end_door', insert: ['q_city_lockers'] }, reward: { box: 'gold', xp: 45 },
     intro: "SHIPPING CONTAINERS AS FAR AS THE EYE CAN SEE. ONE OF THEM HAS SNACKS. ONE OF THEM HAS TEETH." }));
   st('f4_ambush', mix('train4', { name: 'RAIL RAIDERS', floor: 4, theme: 'train', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
@@ -1800,23 +2281,23 @@
     intro: "THE TRACKS ALL LEAD HERE. THE WHISTLE BLOWS. SOMETHING VERY BIG IS BACKING UP." });
 
   /* ---------------- floor 5 ---------------- */
-  st('f5_s1', mix('bubble5', { name: 'THE SEA CAVES', floor: 5, theme: 'bubble', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
+  st('f5_s1', mix('bubble5', { name: 'THE SEA CAVES', floor: 5, theme: 'bubble', kind: 'main', questItem: 'tide_chart', owMarker: 'ow_cave',
+    chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e', 'lv_cache'], count: 5, end: 'end_door', insert: ['q_bubble_grotto'] }, reward: { box: 'silver', xp: 35 },
     intro: "THE BUBBLE SEA! THE AIR IS WATER AND THE WATER IS ALSO WATER. PHYSICS HAS LEFT THE CHAT." }));
   st('f5_s2', mix('swamp5', { name: 'KELP MARKET', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
+    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b', 'lv_gate_climb', 'lv_tunnel'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "A FLOATING MARKET. THE FISHMEN SELL KELP. THEY ALSO SELL CRAWLERS. GUESS WHICH ONE IS IN STOCK." }));
-  st('f5_s3', mix('bubble5', { name: 'THE BUBBLE GARDENS', floor: 5, theme: 'bubble', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_e', 'f5_c', 'f5_a', 'f5_g', 'f5_f'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
+  st('f5_s3', mix('bubble5', { name: 'THE BUBBLE GARDENS', floor: 5, theme: 'bubble', kind: 'main', exitNeeds: 'singing_conch', owMarker: 'ow_cave',
+    chunks: { start: 'f5_start', pool: ['f5_e', 'f5_c', 'f5_a', 'f5_g', 'f5_f', 'lv_crates'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "RIDE THE BUBBLES, CRAWLER! THEY ONLY POP WHEN IT WOULD BE FUNNIEST." }));
-  st('f5_s4', mix('swamp5', { name: 'MANGROVE MAZE', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_b', 'f5_f', 'f5_g', 'f5_c'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
+  st('f5_s4', mix('swamp5', { name: 'MANGROVE MAZE', floor: 5, theme: 'swamp', kind: 'main', questItem: 'coral_crown', owMarker: 'ow_cave',
+    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_b', 'f5_f', 'f5_g', 'f5_c', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_swamp_roots'] }, reward: { box: 'silver', xp: 35 },
     intro: "THE MANGROVES ARE ROOTS ALL THE WAY DOWN. SOMETHING ARMORED SCUTTLES IN THERE." }));
-  st('f5_x1', mix('bubble5', { name: 'THE PEARL VAULT', floor: 5, theme: 'bubble', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f5_start', pool: ['sx_a', 'f5_e', 'sx_b', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 55 },
+  st('f5_x1', mix('bubble5', { name: 'THE PEARL VAULT', floor: 5, theme: 'bubble', kind: 'side', questItem: 'singing_conch', owMarker: 'ow_door',
+    chunks: { start: 'f5_start', pool: ['sx_a', 'f5_e', 'sx_b', 'sx_c'], count: 4, end: 'end_door', insert: ['q_bubble_clam'] }, reward: { box: 'gold', xp: 55 },
     intro: "A LITTLE ISLAND WITH A BIG SAFE. THE SAFE HAS A CRAB. THE CRAB HAS A GRUDGE." }));
-  st('f5_x2', mix('swamp5', { name: 'THE REEF SHELF', floor: 5, theme: 'swamp', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_g', 'sx_c', 'f5_d', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 55 },
+  st('f5_x2', mix('swamp5', { name: 'THE REEF SHELF', floor: 5, theme: 'swamp', kind: 'side', rescue: 'katia', owMarker: 'ow_cave',
+    chunks: { start: 'f5_start', pool: ['f5_g', 'sx_c', 'f5_d', 'sx_b', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['r_swamp_net'] }, reward: { box: 'gold', xp: 55 },
     intro: "THE EDGE OF THE REEF. BEYOND IT IS THE DEEP. DO NOT LOOK AT THE DEEP. IT IS LOOKING BACK." }));
   st('f5_ambush', mix('bubble5', { name: 'RIPTIDE', floor: 5, theme: 'bubble', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 15 },
@@ -1828,25 +2309,25 @@
     intro: "THE WATER GOES STILL. THE BUBBLES STOP. A VERY LARGE MOTHER WOULD LIKE TO SPEAK TO YOUR MANAGER." });
 
   /* ---------------- floor 6 ---------------- */
-  st('f6_s1', mix('forest6', { name: 'THE LODGE', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_g', 'f6_d', 'f6_b'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
+  st('f6_s1', mix('forest6', { name: 'THE LODGE', floor: 6, theme: 'forest', kind: 'main', exitNeeds: 'guest_mask', owMarker: 'ow_door',
+    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_g', 'f6_d', 'f6_b', 'lv_cache'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
     intro: "A HUNTING LODGE! THE WALLS ARE COVERED IN TROPHIES. THERE IS AN EMPTY SPOT LABELED CARL." }));
-  st('f6_s2', mix('forest6', { name: 'TRAPPER CAMP', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_tent',
-    chunks: { start: 'f6_start', pool: ['f6_d', 'f6_f', 'f6_b', 'f6_e', 'f6_a'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
+  st('f6_s2', mix('forest6', { name: 'TRAPPER CAMP', floor: 6, theme: 'forest', kind: 'main', questItem: 'kennel_key', owMarker: 'ow_tent',
+    chunks: { start: 'f6_start', pool: ['f6_d', 'f6_f', 'f6_b', 'f6_e', 'f6_a', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_forest_snare'] }, reward: { box: 'silver', xp: 45 },
     enemies: [['hunter', 4], ['hound', 2]],
     intro: "THE TRAPPERS SET SNARES EVERYWHERE. WATCH YOUR STEP. ACTUALLY, WATCH ALL YOUR STEPS." }));
-  st('f6_s3', mix('forest6', { name: 'WOLF HOLLOW', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f6_start', pool: ['f6_f', 'f6_b', 'f6_g', 'f6_c', 'f6_d'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
+  st('f6_s3', mix('forest6', { name: 'WOLF HOLLOW', floor: 6, theme: 'forest', kind: 'main', questItem: 'guest_mask', owMarker: 'ow_cave', dark: true,
+    chunks: { start: 'f6_start', pool: ['f6_f', 'f6_b', 'f6_g', 'f6_c', 'f6_d', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_forest_den'] }, reward: { box: 'silver', xp: 45 },
     enemies: [['hound', 5], ['hunter', 1]],
     intro: "A HOLLOW FULL OF HOUNDS. THEY HAVE YOUR SCENT. IT IS MOSTLY SEWER. THEY LOVE IT." }));
-  st('f6_s4', mix('forest6', { name: 'THE KENNELS', floor: 6, theme: 'forest', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_c', 'f6_e', 'f6_a', 'f6_f', 'f6_g'], count: 6, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
+  st('f6_s4', mix('forest6', { name: 'THE KENNELS', floor: 6, theme: 'forest', kind: 'main', questItem: 'hunt_horn', owMarker: 'ow_door',
+    chunks: { start: 'f6_start', pool: ['f6_c', 'f6_e', 'f6_a', 'f6_f', 'f6_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_forest_tree'] }, reward: { box: 'silver', xp: 45 },
     intro: "WHERE THE HOUNDS ARE BRED. AND FED. GUESS WHAT IS ON THE MENU." }));
   st('f6_x1', mix('forest6', { name: 'THE QUIET GROVE', floor: 6, theme: 'forest', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f6_start', pool: ['sx_a', 'f6_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+    chunks: { start: 'f6_start', pool: ['sx_a', 'f6_e', 'sx_c', 'sx_b', 'lv_cache'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     intro: "A GROVE SO QUIET YOU CAN HEAR THE LOOT. IT SOUNDS LIKE JINGLING." }));
-  st('f6_x2', mix('forest6', { name: 'THE WISHING WELL', floor: 6, theme: 'forest', kind: 'side', owMarker: 'ow_manhole',
-    chunks: { start: 'f6_start', pool: ['sx_b', 'f6_g', 'sx_a', 'f6_e'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+  st('f6_x2', mix('forest6', { name: 'THE WISHING WELL', floor: 6, theme: 'forest', kind: 'side', rescue: 'zev', owMarker: 'ow_manhole',
+    chunks: { start: 'f6_start', pool: ['sx_b', 'f6_g', 'sx_a', 'f6_e'], count: 4, end: 'end_door', insert: ['r_forest_well'] }, reward: { box: 'gold', xp: 65 },
     intro: "PEOPLE THREW COINS DOWN THIS WELL FOR LUCK. NOW YOU GO DOWN THE WELL FOR THE COINS. CIRCLE OF LIFE." }));
   st('f6_ambush', mix('forest6', { name: 'THE BEATERS', floor: 6, theme: 'forest', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 20 },
@@ -1858,21 +2339,21 @@
     intro: "THE SHED AT THE END OF THE HUNT. THE SIGN SAYS STAFF ONLY. YOU ARE THE STAFF NOW." });
 
   /* ---------------- floor 7 ---------------- */
-  st('f7_s1', mix('castle7', { name: 'THE WINE CELLAR', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_c', 'f7_g', 'f7_a', 'f7_d'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+  st('f7_s1', mix('castle7', { name: 'THE WINE CELLAR', floor: 7, theme: 'castle', kind: 'main', questItem: 'invitation', exitNeeds: 'garden_key', owMarker: 'ow_door',
+    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_c', 'f7_g', 'f7_a', 'f7_d', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_castle_cellar'] }, reward: { box: 'gold', xp: 65 },
     intro: "THE CELLAR! A VINTAGE COLLECTION. THE WINE IS FOUR HUNDRED YEARS OLD. SO IS THE BUTLER." }));
-  st('f7_s2', mix('castle7', { name: 'THE BALLROOM', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_f', 'f7_b', 'f7_g', 'f7_c'], count: 5, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+  st('f7_s2', mix('castle7', { name: 'THE BALLROOM', floor: 7, theme: 'castle', kind: 'main', questItem: 'bridal_tiara', owMarker: 'ow_door',
+    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_f', 'f7_b', 'f7_g', 'f7_c', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_castle_balcony'] }, reward: { box: 'gold', xp: 65 },
     intro: "THE DANCE OF THE DEAD IS ABOUT TO BEGIN! YOUR PARTNER IS A SKELETON. IT LEADS." }));
-  st('f7_s3', mix('castle7', { name: 'THE GREENHOUSE', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_d', 'f7_b', 'f7_f', 'f7_e', 'f7_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+  st('f7_s3', mix('castle7', { name: 'THE GREENHOUSE', floor: 7, theme: 'castle', kind: 'main', questItem: 'garden_key', owMarker: 'ow_door',
+    chunks: { start: 'f7_start', pool: ['f7_d', 'f7_b', 'f7_f', 'f7_e', 'f7_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_castle_vines'] }, reward: { box: 'gold', xp: 65 },
     intro: "THE GREENHOUSE. THE PLANTS HAVE NOT BEEN WATERED IN CENTURIES. THEY HAVE FOUND OTHER WAYS TO DRINK." }));
   st('f7_s4', mix('castle7', { name: 'THE CHAPEL CRYPT', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door', dark: true,
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_d', 'f7_a', 'f7_c', 'f7_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
+    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_d', 'f7_a', 'f7_c', 'f7_b', 'lv_cache', 'lv_crates'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
     enemies: [['ghoul', 3], ['skeleton', 4]],
     intro: "THE CRYPT UNDER THE CHAPEL. SHHH. EVERYONE DOWN HERE IS SLEEPING. LIGHTLY." }));
-  st('f7_x1', mix('castle7', { name: 'HEART OF THE HEDGE', floor: 7, theme: 'castle', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f7_start', pool: ['sx_b', 'f7_g', 'sx_a', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 100 },
+  st('f7_x1', mix('castle7', { name: 'HEART OF THE HEDGE', floor: 7, theme: 'castle', kind: 'side', rescue: 'signet', owMarker: 'ow_cave',
+    chunks: { start: 'f7_start', pool: ['sx_b', 'f7_g', 'sx_a', 'sx_c'], count: 4, end: 'end_door', insert: ['r_castle_hedge'] }, reward: { box: 'platinum', xp: 100 },
     intro: "YOU SOLVED THE HEDGE MAZE! MOST PEOPLE JUST DIE IN IT. THE PRIZE IS IN HERE SOMEWHERE." }));
   st('f7_ambush', mix('castle7', { name: 'NIGHT WATCH', floor: 7, theme: 'castle', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
@@ -1884,22 +2365,22 @@
     intro: "AN ORGAN PLAYS A WEDDING MARCH. BADLY. FROM INSIDE THE WALLS." });
 
   /* ---------------- floor 8 ---------------- */
-  st('f8_s1', mix('ruin8', { name: 'MEGAMALL', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
+  st('f8_s1', mix('ruin8', { name: 'MEGAMALL', floor: 8, theme: 'ruin', kind: 'main', questItem: 'security_badge', owMarker: 'ow_door',
+    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_store'] }, reward: { box: 'gold', xp: 70 },
     intro: "THE MEGAMALL! EVERYTHING MUST GO! MOSTLY YOU. YOU MUST GO." }));
-  st('f8_s2', mix('city8', { name: 'LINE ZERO', floor: 8, theme: 'city', kind: 'main', owMarker: 'ow_manhole', dark: true,
-    chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
+  st('f8_s2', mix('city8', { name: 'LINE ZERO', floor: 8, theme: 'city', kind: 'main', questItem: 'power_cell', owMarker: 'ow_manhole', dark: true,
+    chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_city_boiler'] }, reward: { box: 'gold', xp: 70 },
     intro: "THE OLD SUBWAY. THE LAST TRAIN LEFT A THOUSAND YEARS AGO. THE COMMUTERS STAYED. THEY CHANGED." }));
-  st('f8_s3', mix('ruin8', { name: 'THE SCRAPWORKS', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
+  st('f8_s3', mix('ruin8', { name: 'THE SCRAPWORKS', floor: 8, theme: 'ruin', kind: 'main', exitNeeds: 'power_cell', owMarker: 'ow_door',
+    chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g', 'lv_cache', 'lv_tunnel'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
     elite: [['golem', 2]],
     intro: "A FACTORY THAT BUILDS GOLEMS OUT OF YOUR OLD STUFF. THAT ONE HAS YOUR TOASTER." }));
-  st('f8_s4', mix('ruin8', { name: 'DEAD AIR TOWER', floor: 8, theme: 'ruin', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
+  st('f8_s4', mix('ruin8', { name: 'DEAD AIR TOWER', floor: 8, theme: 'ruin', kind: 'main', questItem: 'tower_lens', owMarker: 'ow_door',
+    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_mast'] }, reward: { box: 'gold', xp: 70 },
     enemies: [['mutant', 2], ['drone', 3]],
     intro: "A RADIO TOWER STILL BROADCASTING THE LAST SONG ON EARTH. IT IS A JINGLE FOR A MATTRESS STORE." }));
   st('f8_x1', mix('ruin8', { name: 'THE BUNKER', floor: 8, theme: 'ruin', kind: 'side', owMarker: 'ow_manhole',
-    chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
+    chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b', 'lv_cache'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
     intro: "A PREPPER BUNKER. CANNED BEANS. BATTERIES. ONE HUNDRED YEARS OF PARANOIA. WORTH IT, TURNS OUT." }));
   st('f8_x2', mix('city8', { name: 'THE SCHOOL BUS', floor: 8, theme: 'city', kind: 'side', owMarker: 'ow_door',
     chunks: { start: 'f8_start', pool: ['f8_g', 'sx_b', 'f8_d', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
@@ -1914,25 +2395,25 @@
     intro: "THE TALLEST THING LEFT STANDING. AT THE TOP, SOMETHING HAS BEEN WATCHING YOU THE WHOLE TIME." });
 
   /* ---------------- floor 9 ---------------- */
-  st('f9_s1', mix('war9', { name: 'BUNKER ROW', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_c', 'f9_a', 'f9_g', 'f9_e', 'f9_b'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
+  st('f9_s1', mix('war9', { name: 'BUNKER ROW', floor: 9, theme: 'warzone', kind: 'main', questItem: 'field_map', owMarker: 'ow_door',
+    chunks: { start: 'f9_start', pool: ['f9_c', 'f9_a', 'f9_g', 'f9_e', 'f9_b', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_war_bunker'] }, reward: { box: 'gold', xp: 80 },
     intro: "THE FACTIONS HAVE DUG IN. EVERY BUNKER HAS A FLAG. EVERY FLAG HAS A SPONSOR." }));
-  st('f9_s2', mix('war9', { name: 'THE TRENCHES', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_manhole',
-    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_b', 'f9_f', 'f9_d', 'f9_g'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
+  st('f9_s2', mix('war9', { name: 'THE TRENCHES', floor: 9, theme: 'warzone', kind: 'main', exitNeeds: 'blast_charge', owMarker: 'ow_manhole',
+    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_b', 'f9_f', 'f9_d', 'f9_g', 'lv_gate_climb', 'lv_tunnel'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     intro: "DOWN INTO THE TRENCHES. IT IS MUDDY, IT IS LOUD, AND THE CATERING IS TERRIBLE." }));
-  st('f9_s3', mix('war9', { name: 'ARTILLERY HILL', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_f', 'f9_d', 'f9_b', 'f9_e', 'f9_a'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
+  st('f9_s3', mix('war9', { name: 'ARTILLERY HILL', floor: 9, theme: 'warzone', kind: 'main', questItem: 'blast_charge', owMarker: 'ow_door',
+    chunks: { start: 'f9_start', pool: ['f9_f', 'f9_d', 'f9_b', 'f9_e', 'f9_a', 'lv_cache'], count: 6, end: 'end_door', insert: ['q_war_hill'] }, reward: { box: 'gold', xp: 80 },
     enemies: [['soldier', 3], ['sniper', 3], ['mutant', 1]],
     intro: "THE BIG GUNS LIVE UP HERE. THEY ARE AIMED AT YOU. THEY ARE ALWAYS AIMED AT YOU." }));
   st('f9_s4', mix('war9', { name: 'CHURCH OF THE RATINGS', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_g', 'f9_c', 'f9_e', 'f9_f', 'f9_d'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
+    chunks: { start: 'f9_start', pool: ['f9_g', 'f9_c', 'f9_e', 'f9_f', 'f9_d', 'lv_crates', 'lv_gate_climb'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
     enemies: [['cultist', 2], ['soldier', 2], ['mutant', 2]],
     intro: "THE CULT OF THE SHOW. THEY PRAY TO THE CAMERAS. THE CAMERAS DO NOT PRAY BACK. RUDE." }));
   st('f9_x1', mix('war9', { name: 'SUPPLY DROP', floor: 9, theme: 'warzone', kind: 'side', owMarker: 'ow_tent',
     chunks: { start: 'f9_start', pool: ['sx_c', 'f9_g', 'sx_a', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 120 },
     intro: "A SPONSOR DROPPED A CRATE OF GOODIES INTO THE CORNER. FINDERS KEEPERS. SHOOTERS WEEPERS." }));
-  st('f9_x2', mix('war9', { name: 'THE DROPSHIP', floor: 9, theme: 'warzone', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_e', 'sx_b', 'f9_c', 'sx_a'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 120 },
+  st('f9_x2', mix('war9', { name: 'THE DROPSHIP', floor: 9, theme: 'warzone', kind: 'side', questItem: 'backstage_pass', owMarker: 'ow_door',
+    chunks: { start: 'f9_start', pool: ['f9_e', 'sx_b', 'f9_c', 'sx_a'], count: 4, end: 'end_door', insert: ['q_war_wreck'] }, reward: { box: 'platinum', xp: 120 },
     intro: "A CRASHED FACTION DROPSHIP. THE PILOT IS GONE. THE CARGO IS NOT. GO GO GO!" }));
   st('f9_ambush', mix('war9', { name: 'CROSSFIRE', floor: 9, theme: 'warzone', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
@@ -1942,6 +2423,79 @@
     enemies: [['soldier', 2], ['cultist', 1]], elite: [['war_beast', 1]], flyers: [['drone', 1]],
     boss: 'showrunner', reward: { box: 'boss', xp: 200 },
     intro: "THE BROADCAST TOWER. THE STUDIO AUDIENCE IS SEATED. THE APPLAUSE SIGN IS ON. THIS IS IT, CRAWLER." });
+
+  /* ---------------- quest items (Update 2) ----------------
+     Each sits in exactly one stage (stages[id].questItem, a 'Q' in an insert
+     chunk) and opens floor.locks entrances and/or stages[id].exitNeeds doors.
+     hint = where to look (shown on padlocked exit doors). */
+  D.questItems = {
+    goblin_key: { name: 'GOBLIN SKELETON KEY', floor: 2, sprite: 'qi_key',
+      desc: "A KEY CARVED FROM SOMEBODY'S FINGER BONE. OPENS THE PADLOCK ON THE GRUB GULLY EXIT. DO NOT ASK WHOSE FINGER.",
+      hint: "THE GOBLINS HIDE THE KEY UP TOP. GO BACK AND FIND THE LADDER INTO THE HIGH TUNNEL. IT IS AT THE FAR END." },
+    valve: { name: 'VALVE WHEEL', floor: 3, sprite: 'qi_valve',
+      desc: "A RUSTY IRON WHEEL OFF A BOILER. TURN IT AT THE FLOODED STORM DRAIN AND THE WATER GOES DOWN.",
+      hint: "THE APARTMENT TOWER HAS A LOCKED BOILER ROOM. THE LEVER FOR IT IS UP ON THE ROOF. THE WHEEL IS INSIDE." },
+    honk_horn: { name: 'GOLDEN HONKER', floor: 3, sprite: 'qi_horn',
+      desc: "A GOLD-PLATED CLOWN HORN. THE MIDWAY EXIT GATE ONLY OPENS FOR THE OFFICIAL HONK.",
+      hint: "EVERYTHING DROPPED ON THIS FLOOR ENDS UP IN THE LOST AND FOUND SHED IN THE WEST PARK. LOOK IN THE LOCKERS." },
+    bigtop_ticket: { name: 'BIG TOP TICKET', floor: 3, sprite: 'qi_ticket',
+      desc: "ADMIT ONE. TO YOUR OWN FUNERAL, PROBABLY. THE BIG TOP WILL NOT OPEN WITHOUT IT.",
+      hint: "A CLOWN WENT INTO THE STORM DRAIN BAYOU WITH A TICKET. IT IS UP ON A FLOATING ISLAND. RIDE THE LIFT." },
+    switch_key: { name: 'SWITCHYARD KEY', floor: 4, sprite: 'qi_key',
+      desc: "A BRASS KEY STAMPED SWITCHYARD. THROWS THE POINTS TO THE ENGINE SHED AND THE OLD SPUR.",
+      hint: "THE STATION MASTER LOCKED HIS KEY IN HIS OFFICE ON PLATFORM NINE. THE LEVER IS ON THE TALL CONTAINER." },
+    signal_lens: { name: 'GREEN SIGNAL LENS', floor: 4, sprite: 'qi_lens',
+      desc: "GREEN GLASS FOR A RAIL SIGNAL. FIT IT AND THE TUNNEL EXIT SIGNAL FINALLY TURNS GREEN.",
+      hint: "THE TUNNEL EXIT IS STUCK ON RED. SPARE SIGNAL GLASS IS STORED IN THE FREIGHT MAZE, IN A LOCKED CONTAINER." },
+    drive_gear: { name: 'DRIVE GEAR', floor: 4, sprite: 'qi_gear',
+      desc: "A GEAR AS BIG AS YOUR HEAD. THE ROUNDHOUSE TURNTABLE WILL NOT TURN WITHOUT IT.",
+      hint: "THE ENGINE SHED HAS A PIT FULL OF SPARE GEARS UNDER A HATCH. THE HATCH LEVER IS PAST THE PIT." },
+    tide_chart: { name: 'TIDE CHART', floor: 5, sprite: 'qi_map',
+      desc: "A SOGGY MAP OF THE CURRENTS. SHOWS THE WAY INTO THE MANGROVE MAZE AND OUT TO THE REEF SHELF.",
+      hint: "THE SEA CAVES HAD A MAPMAKER. HIS CHART IS IN A HIGH ALCOVE. CLIMB THE CORAL TO THE LEVER, THEN RIDE A BUBBLE." },
+    singing_conch: { name: 'SINGING CONCH', floor: 5, sprite: 'qi_shell',
+      desc: "A SHELL THAT HUMS. THE EXIT BUBBLE IN THE GARDENS ONLY RISES WHEN IT HEARS THE TUNE.",
+      hint: "THE PEARL VAULT ON THE WEST ISLAND KEEPS A SINGING SHELL. THE VAULT LEVER IS ON A PERCH. TAKE A BUBBLE UP." },
+    coral_crown: { name: 'CORAL CROWN', floor: 5, sprite: 'qi_crown',
+      desc: "THE TIDEMOTHER'S SPARE CROWN. WEAR IT TO THE TIDE POOL AND SHE HAS TO RECEIVE YOU.",
+      hint: "THE CROWN IS TANGLED HIGH IN THE MANGROVE MAZE, IN A NEST OF ROOTS. YOU NEED THE TIDE CHART TO GET IN." },
+    kennel_key: { name: 'KENNEL KEY', floor: 6, sprite: 'qi_key',
+      desc: "A KEY ON A CHEWED LANYARD. OPENS THE KENNEL GATES. THE HOUNDS WOULD PREFER YOU DID NOT.",
+      hint: "THE TRAPPERS DROPPED THE KENNEL KEY INTO ONE OF THEIR OWN SNARE PITS. FALL IN. THERE IS A LEVER DOWN THERE." },
+    guest_mask: { name: 'GUEST MASK', floor: 6, sprite: 'qi_mask',
+      desc: "A FANCY HUNTING-PARTY MASK. THE LODGE DOORMAN ONLY LETS MASKED GUESTS LEAVE.",
+      hint: "A LODGE GUEST WANDERED INTO WOLF HOLLOW AND THE WOLVES DRAGGED HIS MASK INTO THEIR DEN UNDER THE HILL." },
+    hunt_horn: { name: 'HUNTING HORN', floor: 6, sprite: 'qi_horn',
+      desc: "THE GAMEKEEPER'S HORN. BLOW IT AT THE PROCESSING SHED AND THE BUTCHER COMES OUT TO PLAY.",
+      hint: "THE BUTCHER'S HORN HANGS IN THE KENNELS, OUT ON A BRANCH OF THE BIG TREE. CLIMB THE IVY." },
+    invitation: { name: 'BLACK INVITATION', floor: 7, sprite: 'qi_ticket',
+      desc: "A BLACK CARD WITH SILVER LETTERS. YOU ARE INVITED TO THE BALLROOM. DRESS CODE: ALIVE OR OTHERWISE.",
+      hint: "THE BUTLER HID SPARE INVITATIONS IN THE WINE CELLAR, BEHIND THE RACKS. SMASH THE RACK, PULL THE LEVER." },
+    garden_key: { name: 'GARDEN KEY', floor: 7, sprite: 'qi_key',
+      desc: "A KEY WRAPPED IN IVY. OPENS THE CELLAR GARDEN DOOR AND THE GATE OF THE HEDGE MAZE.",
+      hint: "THE GARDENER KEPT HIS KEY IN THE GREENHOUSE, UP IN A GLASS BOX OVER THE VINES. FIND THE OTHER VINE FIRST." },
+    bridal_tiara: { name: 'BRIDAL TIARA', floor: 7, sprite: 'qi_crown',
+      desc: "A TIARA OF BLACK PEARLS. THE BRIDE WILL NOT COME DOWN THE GRAND STAIR WITHOUT IT.",
+      hint: "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. THE BALCONY LEVER HANGS FROM A CHANDELIER." },
+    security_badge: { name: 'SECURITY BADGE', floor: 8, sprite: 'qi_badge',
+      desc: "A MALL COP BADGE WITH A WORKING CHIP. THE DEAD AIR TOWER DOOR STILL READS IT.",
+      hint: "THE MEGAMALL GUARD OFFICE IS LOCKED. ITS LEVER IS UPSTAIRS. TAKE THE DEAD ESCALATOR." },
+    power_cell: { name: 'POWER CELL', floor: 8, sprite: 'qi_bolt',
+      desc: "A HUMMING BATTERY THE SIZE OF A LUNCHBOX. ENOUGH JUICE TO RUN THE SCRAPWORKS FREIGHT LIFT.",
+      hint: "LINE ZERO HAS AN OLD SUBSTATION WITH A WORKING CELL INSIDE. THE LEVER IS ON THE SUBSTATION ROOF." },
+    tower_lens: { name: 'GIANT CONTACT LENS', floor: 8, sprite: 'qi_lens',
+      desc: "A CONTACT LENS AS BIG AS A MANHOLE COVER. THE WATCHTOWER EYE SCANNER THINKS YOU ARE THE OVERSEER.",
+      hint: "THE OVERSEER DROPPED A SPARE LENS ON TOP OF THE DEAD AIR TOWER MAST. CLIMB, THEN HOP THE SWINGING RIG." },
+    field_map: { name: 'MINEFIELD MAP', floor: 9, sprite: 'qi_map',
+      desc: "A SPONSOR-BRANDED MAP OF EVERY MINE ON ARTILLERY HILL. MOSTLY ACCURATE. MOSTLY.",
+      hint: "THE MAP IS IN A COMMAND BUNKER ON BUNKER ROW. THE ROOF HATCH LEVER IS ON THE WATCHTOWER." },
+    blast_charge: { name: 'BLASTING CHARGE', floor: 9, sprite: 'qi_bolt',
+      desc: "A SHAPED CHARGE WITH A SMILEY STICKER. BLOWS THE TRENCH BARRICADE AND THE DROPSHIP HULL.",
+      hint: "THE GUN CREWS ON ARTILLERY HILL KEEP CHARGES IN A HIGH GUN NEST. LEVER ON THE SNIPER LEDGE, THEN TAKE THE LIFT." },
+    backstage_pass: { name: 'BACKSTAGE PASS', floor: 9, sprite: 'qi_badge',
+      desc: "ALL ACCESS. LAMINATED. SOUNDSTAGE SECURITY WILL WAVE YOU STRAIGHT THROUGH TO THE SHOWRUNNER.",
+      hint: "THE PASS IS IN THE CARGO BAY OF THE CRASHED DROPSHIP. YOU NEED A BLASTING CHARGE TO GET INTO THE WRECK." }
+  };
 
   /* ---------------- floors ---------------- */
   D.floors = [
@@ -1954,10 +2508,16 @@
       intro: ["FLOOR TWO! THE GOBLIN WARRENS. THE GOBLINS HAVE HEARD OF YOU. THEY ARE NOT IMPRESSED. YET.",
         "THREE STAGES, A SAFE ROOM, AND A BOSS WHO HAS NEVER SKIPPED A WORKOUT. LET'S GET PHYSICAL!"],
       sequence: ['f2_s1', 'f2_s2', 'f2_s3', 'SAFE', 'f2_boss'], overworld: null,
+      companion: 'squeaks',
+      hints: [
+        "GOBLINS LOVE TARGET PRACTICE, KID. WORD IS THEY CAUGHT A RAT FOR THE ARCHERY RANGE. A RAT WITH VERY GOOD MANNERS.",
+        "IRON GATES OPEN WHEN YOU PUNCH A LEVER. THE LEVER IS NEVER RIGHT NEXT TO THE GATE. THAT WOULD BE TOO NICE.",
+        "THE GRUB GULLY EXIT IS PADLOCKED. THE KEY IS IN THE GULLY TOO. LOOK UP. GOBLINS LOVE A HIGH SHELF."],
       required: ['f2_s1', 'f2_s2', 'f2_s3'], boss: 'f2_boss', par: 900 },
     { n: 3, name: 'THE OVER CITY', tagline: 'A WHOLE CITY. NO EXITS. GREAT CLOWNS.', theme: 'city', music: 'floor3',
       intro: ["FLOOR THREE! YOU NOW HAVE A MAP. WALK AROUND, CRAWLER. DOORS, TENTS AND MANHOLES ARE ALL STAGES.",
-        "CLEAR THE NUMBERED AREAS TO UNLOCK THE BOSS. LETTERED AREAS ARE OPTIONAL AND FULL OF LOOT. MONSTERS WANDER."],
+        "CLEAR THE NUMBERED AREAS AND FIND THE BOSS KEY TO OPEN THE BOSS DOOR. LETTERED AREAS HIDE LOOT, KEYS AND LOST FRIENDS.",
+        "SOME DOORS ARE PADLOCKED. THE KEY IS ALWAYS SOMEWHERE ELSE ON THE FLOOR. ASK THE GUILD BARTENDER FOR GOSSIP."],
       overworld: { theme: 'ow_city', music: 'ow3',
         map: [
       '##################################################',
@@ -1992,6 +2552,13 @@
         entrances: { '1': 'f3_s1', '2': 'f3_s2', '3': 'f3_s3', 'A': 'f3_x1', 'S': 'SAFE', 'B': 'f3_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'clown', x: 20, y: 14 }, { enemy: 'skyfowl', x: 35, y: 5 }, { enemy: 'gator', x: 43, y: 24 }, { enemy: 'rat', x: 5, y: 19 }],
         ambush: 'f3_ambush' },
+      locks: { '3': { needs: 'valve', text: "THE STORM DRAIN IS FLOODED TO THE BRIM. SOMEBODY RAN OFF WITH THE VALVE WHEEL." }, 'B': { needs: 'bigtop_ticket', text: "THE BIG TOP IS CHAINED SHUT. A CLOWN AT THE FLAP SAYS NO TICKET, NO SHOW." } },
+      companion: 'mongo',
+      hints: [
+        "THE STORM DRAIN IS FLOODED. THERE IS A VALVE WHEEL IN THE APARTMENT TOWER BOILER ROOM. TRY THE ROOF FIRST.",
+        "THE MIDWAY EXIT ONLY OPENS FOR A PROPER HONK. EVERYTHING LOST ON THIS FLOOR ENDS UP IN THE PARK SHED.",
+        "THE RINGMASTER WANTS A TICKET. A CLOWN WENT DOWN INTO THE BAYOU WITH ONE. NOBODY SAW HIM COME BACK UP.",
+        "ONE OF THE MIDWAY GAMES HAS A REAL EGG AS THE TOP PRIZE. RING THE BELL. TRUST ME ON THIS ONE, KID."],
       required: ['f3_s1', 'f3_s2', 'f3_s3'], boss: 'f3_boss', par: 1200 },
     { n: 4, name: 'THE RAIL TANGLE', tagline: 'EVERY TRAIN IS LATE. EVERY TRACK IS LOADED.', theme: 'train', music: 'floor4',
       intro: ["FLOOR FOUR! A KNOT OF RAILWAYS OVER A BOTTOMLESS VOID. WALK ON THE BRIDGES, CRAWLER. NOT OFF THEM.",
@@ -2032,6 +2599,13 @@
         entrances: { '1': 'f4_s1', '2': 'f4_s2', '3': 'f4_s3', 'A': 'f4_x1', 'C': 'f4_x2', 'S': 'SAFE', 'B': 'f4_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'rail_rat', x: 30, y: 20 }, { enemy: 'steam_goblin', x: 38, y: 15 }, { enemy: 'bat', x: 5, y: 22 }, { enemy: 'rail_rat', x: 20, y: 3 }],
         ambush: 'f4_ambush' },
+      locks: { '2': { needs: 'switch_key', text: "THE POINTS ARE LOCKED. NO TRAIN, AND NO CRAWLER, GETS TO THE ENGINE SHED." }, 'A': { needs: 'switch_key', text: "THE OLD SPUR SWITCH IS PADLOCKED. SOMETHING DOWN THAT LINE IS SWEARING." }, 'B': { needs: 'drive_gear', text: "THE ROUNDHOUSE TURNTABLE IS JAMMED. THERE IS A GEAR-SHAPED HOLE IN IT." } },
+      companion: 'samantha',
+      hints: [
+        "PLATFORM NINE HAS THE SWITCHYARD KEY. IT THROWS THE POINTS FOR THE ENGINE SHED AND THE OLD SPUR.",
+        "THE ROUNDHOUSE IS JAMMED UNTIL SOMEBODY BRINGS A DRIVE GEAR. THE ENGINE SHED HAS A PIT FULL OF THEM.",
+        "THE DEAD END TUNNEL EXIT IS STUCK ON RED. THE FREIGHT MAZE STORES SPARE SIGNAL GLASS.",
+        "THE YARD CREW SAYS SOMETHING IN A CABOOSE ON THE OLD SPUR HAS BEEN CURSING FOR A WEEK. IN A VERY POSH VOICE."],
       required: ['f4_s1', 'f4_s2', 'f4_s3'], boss: 'f4_boss', par: 1300 },
     { n: 5, name: 'THE BUBBLE SEA', tagline: 'HOLD YOUR BREATH. OR DO NOT. NOBODY CARES.', theme: 'bubble', music: 'floor5',
       intro: ["FLOOR FIVE! A SEA OF ISLANDS CONNECTED BY THE WORST BOARDWALKS EVER BUILT.",
@@ -2074,6 +2648,13 @@
         entrances: { '1': 'f5_s1', '2': 'f5_s2', '3': 'f5_s3', '4': 'f5_s4', 'A': 'f5_x1', 'C': 'f5_x2', 'S': 'SAFE', 'B': 'f5_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'fishman', x: 26, y: 19 }, { enemy: 'jelly', x: 25, y: 13 }, { enemy: 'crab', x: 43, y: 25 }, { enemy: 'fishman', x: 45, y: 7 }],
         ambush: 'f5_ambush' },
+      locks: { '4': { needs: 'tide_chart', text: "THE MANGROVES ARE A MAZE. WITHOUT A CHART YOU WILL JUST WALK IN WET CIRCLES." }, 'C': { needs: 'tide_chart', text: "THE CURRENTS PAST THE REEF ARE A MESS. YOU NEED A CHART TO REACH THE SHELF." }, 'B': { needs: 'coral_crown', text: "THE TIDE POOL GUARDS BOW TO A CROWN, NOT A CRAWLER. GO FIND A CROWN." } },
+      companion: 'katia',
+      hints: [
+        "WITHOUT A TIDE CHART YOU WILL NEVER FIND THE MANGROVE MAZE OR THE REEF SHELF. CHECK THE SEA CAVES.",
+        "THE GARDENS EXIT BUBBLE WANTS A SONG. THE PEARL VAULT HAS A SHELL THAT SINGS.",
+        "THE TIDEMOTHER ONLY RECEIVES CROWNED GUESTS. HER SPARE CROWN IS TANGLED UP IN THE MANGROVE ROOTS.",
+        "THE FISHMEN NETTED A SHAPESHIFTER OUT ON THE REEF SHELF. SHE KEEPS TURNING INTO A WALL. SOUNDS LIKE A FRIEND."],
       required: ['f5_s1', 'f5_s2', 'f5_s3', 'f5_s4'], boss: 'f5_boss', par: 1500 },
     { n: 6, name: 'THE HUNTING GROUNDS', tagline: 'YOU ARE THE GAME. LITERALLY.', theme: 'forest', music: 'floor6',
       intro: ["FLOOR SIX! A PRIVATE HUNTING PRESERVE FOR THE GALAXY'S RICHEST JERKS. YOU ARE THE PREY. SMILE!",
@@ -2116,6 +2697,13 @@
         entrances: { '1': 'f6_s1', '2': 'f6_s2', '3': 'f6_s3', '4': 'f6_s4', 'A': 'f6_x1', 'C': 'f6_x2', 'S': 'SAFE', 'B': 'f6_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'hound', x: 8, y: 20 }, { enemy: 'hunter', x: 27, y: 18 }, { enemy: 'skyfowl', x: 36, y: 10 }, { enemy: 'hound', x: 45, y: 21 }],
         ambush: 'f6_ambush' },
+      locks: { '4': { needs: 'kennel_key', text: "THE KENNEL GATES ARE LOCKED. THE HOUNDS INSIDE ARE VERY EXCITED ABOUT IT." }, 'B': { needs: 'hunt_horn', text: "THE PROCESSING SHED IS BOLTED. THE BUTCHER ONLY COMES OUT FOR HIS OWN HORN." } },
+      companion: 'zev',
+      hints: [
+        "CAREFUL WITH THE LODGE. THE DOORMAN WILL NOT LET YOU OUT WITHOUT A GUEST MASK. WOLF HOLLOW ATE THE LAST GUEST.",
+        "THE TRAPPERS HOLD THE KENNEL KEY. IT FELL INTO ONE OF THEIR OWN SNARE PITS. HA.",
+        "THE BUTCHER COMES OUT FOR HIS HORN AND NOTHING ELSE. IT HANGS IN THE KENNELS, UP A BIG TREE.",
+        "SOMEBODY DOWN THE WISHING WELL IS YELLING ABOUT ENGAGEMENT NUMBERS. KID, I THINK THAT IS YOUR PR LADY."],
       required: ['f6_s1', 'f6_s2', 'f6_s3', 'f6_s4'], boss: 'f6_boss', par: 1600 },
     { n: 7, name: 'THE BEDLAM MANOR', tagline: 'A LOVELY ESTATE. TERRIBLE HOSTESS.', theme: 'castle', music: 'floor7',
       intro: ["FLOOR SEVEN! A HAUNTED MANOR WITH GARDENS, A MAZE, AND A GRAVEYARD. REAL ESTATE AGENTS CALL IT CHARMING.",
@@ -2156,6 +2744,13 @@
         entrances: { '1': 'f7_s1', '2': 'f7_s2', '3': 'f7_s3', '4': 'f7_s4', 'A': 'f7_x1', 'S': 'SAFE', 'B': 'f7_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'ghoul', x: 33, y: 22 }, { enemy: 'gargoyle', x: 12, y: 14 }, { enemy: 'skeleton', x: 40, y: 14 }, { enemy: 'bat', x: 30, y: 7 }],
         ambush: 'f7_ambush' },
+      locks: { '2': { needs: 'invitation', text: "A SKELETON BUTLER BLOCKS THE BALLROOM. INVITATION ONLY. HE IS VERY FIRM ABOUT IT." }, 'A': { needs: 'garden_key', text: "THE HEDGE MAZE GATE IS LOCKED AND OVERGROWN. SOMEONE INSIDE IS SINGING TO THE PLANTS." }, 'B': { needs: 'bridal_tiara', text: "THE GRAND STAIR IS ROPED OFF. THE BRIDE WILL NOT COME DOWN WITHOUT HER TIARA." } },
+      companion: 'signet',
+      hints: [
+        "THE BALLROOM BUTLER WANTS AN INVITATION. THE CELLAR HAS SPARES, BUT THE CELLAR DOOR NEEDS A GARDEN KEY TO LEAVE.",
+        "THE GARDEN KEY IS IN THE GREENHOUSE, UP IN THE VINES. IT ALSO OPENS THE HEDGE MAZE.",
+        "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. NO TIARA, NO WEDDING, NO BOSS FIGHT.",
+        "AT THE HEART OF THE HEDGE MAZE IS A SUMMONER WHO ANNOYED THE BRIDE. ANYONE WHO ANNOYS THE BRIDE IS A FRIEND."],
       required: ['f7_s1', 'f7_s2', 'f7_s3', 'f7_s4'], boss: 'f7_boss', par: 1700 },
     { n: 8, name: 'THE RUIN', tagline: 'WHAT IS LEFT OF A CITY. WHAT IS LEFT OF HOPE.', theme: 'ruin', music: 'floor8',
       intro: ["FLOOR EIGHT! A CITY THAT LOST. TOXIC CRATERS, SCRAP GOLEMS, AND A DRONE ON EVERY CORNER.",
@@ -2198,6 +2793,11 @@
         entrances: { '1': 'f8_s1', '2': 'f8_s2', '3': 'f8_s3', '4': 'f8_s4', 'A': 'f8_x1', 'C': 'f8_x2', 'S': 'SAFE', 'B': 'f8_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'mutant', x: 20, y: 24 }, { enemy: 'drone', x: 30, y: 18 }, { enemy: 'mutant', x: 40, y: 12 }, { enemy: 'drone', x: 14, y: 4 }],
         ambush: 'f8_ambush' },
+      locks: { '4': { needs: 'security_badge', text: "THE TOWER DOOR HAS A BADGE READER. IT BEEPS AT YOU IN A JUDGMENTAL WAY." }, 'B': { needs: 'tower_lens', text: "THE WATCHTOWER EYE SCANNER BLINKS RED. YOU ARE NOT THE OVERSEER. YET." } },
+      hints: [
+        "THE DEAD AIR TOWER READS BADGES. THE MEGAMALL GUARD OFFICE HAS ONE. ITS LEVER IS UPSTAIRS.",
+        "THE SCRAPWORKS FREIGHT LIFT NEEDS A POWER CELL. LINE ZERO HAS AN OLD SUBSTATION. BRING YOUR NERVE.",
+        "THE WATCHTOWER SCANS EYES. THERE IS A SPARE LENS AT THE VERY TOP OF THE DEAD AIR TOWER MAST."],
       required: ['f8_s1', 'f8_s2', 'f8_s3', 'f8_s4'], boss: 'f8_boss', par: 1800 },
     { n: 9, name: 'FACTION WARS', tagline: 'THE SERIES FINALE. LIVE.', theme: 'warzone', music: 'floor9',
       intro: ["FLOOR NINE! THE FINALE! TWO ARMIES, ONE PLANET, AND YOU IN THE MIDDLE IN YOUR UNDERWEAR.",
@@ -2242,6 +2842,11 @@
         entrances: { '1': 'f9_s1', '2': 'f9_s2', '3': 'f9_s3', '4': 'f9_s4', 'A': 'f9_x1', 'C': 'f9_x2', 'S': 'SAFE', 'B': 'f9_boss', 'X': 'STAIRS' },
         roamers: [{ enemy: 'soldier', x: 8, y: 18 }, { enemy: 'soldier', x: 24, y: 12 }, { enemy: 'cultist', x: 40, y: 20 }, { enemy: 'soldier', x: 54, y: 20 }],
         ambush: 'f9_ambush' },
+      locks: { '3': { needs: 'field_map', text: "WARNING SIGNS: MINES. LOTS OF MINES. YOU WILL WANT A MAP OF THE MINES." }, 'C': { needs: 'blast_charge', text: "THE DROPSHIP HULL IS SEALED TIGHT. A BIG ENOUGH BOOM WOULD OPEN IT RIGHT UP." }, 'B': { needs: 'backstage_pass', text: "SOUNDSTAGE SECURITY: NO PASS, NO SHOW. THE GUARDS HAVE VERY LARGE GUNS." } },
+      hints: [
+        "ARTILLERY HILL IS MINED. BUNKER ROW HAS THE MAP. YOU WILL NOT GET FAR WITHOUT IT.",
+        "THE GUN CREWS ON THE HILL KEEP BLASTING CHARGES. ONE OPENS THE TRENCH BARRICADE. ONE OPENS THE DROPSHIP.",
+        "THE BACKSTAGE PASS IS IN THE DROPSHIP WRECK. NO PASS, NO SHOWRUNNER. GO FINISH THIS, KID."],
       required: ['f9_s1', 'f9_s2', 'f9_s3', 'f9_s4'], boss: 'f9_boss', par: 2000 }
   ];
 })();
@@ -2602,14 +3207,17 @@
     "STR IS PUNCH DAMAGE. CON IS HEALTH. DEX IS CRITS AND SPEED. INT MAKES YOUR COMPANION HURT THINGS MORE.",
     "LEVELING UP HEALS YOU A LITTLE. SOMETIMES IT IS SMART TO FINISH A FIGHT BEFORE YOU DRINK.",
     "FALLING IN A PIT COSTS 3 HP AND PUTS YOU BACK AT THE CHECKPOINT. TOUCH THE FLAGS.",
-    "ON THE MAP, LETTERED AREAS ARE OPTIONAL. THEY HAVE BETTER LOOT. GO IF YOU ARE STRONG ENOUGH.",
+    "ON THE MAP, LETTERED AREAS ARE OPTIONAL. BETTER LOOT, AND SOMETIMES A KEY OR A FRIEND IN A CAGE. GO LOOK.",
     "THE WANDERING MONSTERS ON THE MAP START A SHORT FIGHT. AVOID THEM IF YOU ARE HURT.",
     "BEAT THE FLOOR UNDER PAR TIME AND THE SHOW GIVES YOU A BONUS BOX. SPEED PAYS.",
     "BOSSES CHANGE THEIR MOVES WHEN THEY GET HURT. WATCH FOR THE FLASH BEFORE A CHARGE OR A LASER.",
     "SPIKES HURT AND THROW YOU UP. THAT CAN BE WORSE THAN THE SPIKES. LOOK BEFORE YOU LEAP.",
     "THE SHOP PRICES GO UP EVERY FLOOR. BUY TONICS EARLY. YOU WILL THANK ME LATER.",
     "COMBOS GET YOU MORE VIEWERS. VIEWERS GET YOU FAN BOXES. KEEP THE HITS CHAINED UNDER TWO SECONDS.",
-    "LOOT BOXES CAN HAVE OUTFITS AND NEW COMPANIONS. EVERY COMPANION FIGHTS DIFFERENT. TRY THEM ALL.",
+    "LOOT BOXES HAVE OUTFITS. FRIENDS YOU HAVE TO FIND YOURSELF. THEY ARE LOCKED IN CAGES ACROSS FLOORS 2 TO 7. PUNCH THE CAGE.",
+    "A PADLOCKED DOOR MEANS A KEY ITEM. FLEE, GO FIND IT, COME BACK. ITEMS STAY IN YOUR POCKET FOR THE WHOLE FLOOR.",
+    "LEVERS OPEN EVERY IRON GATE NEARBY. IF A GATE WILL NOT BUDGE, LOOK UP. THE LEVER IS USUALLY SOMEWHERE ANNOYING.",
+    "EVERY CRAWL, YOUR FRIENDS GET LOCKED UP AGAIN. THE SHOW CALLS IT A REBOOT. I CALL IT CHEAP WRITING.",
     "IF THE CAT LETS YOU PET HER, PET HER. MORALE MATTERS DOWN HERE. TRUST ME.",
     "ENEMIES WITH SHELLS OR ARMOR SHRUG OFF WEAK HITS. KICKS AND BOMBS GET THROUGH.",
     "DO NOT FIGHT EVERYTHING ON THE GROUND. GET UP ON A PLATFORM AND MAKE THEM COME TO YOU.",
