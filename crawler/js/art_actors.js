@@ -2856,3 +2856,75 @@
     A['p_mordecai_f' + n] = { w: 32, h: 32, pal: merge(merge(basePort.pal, pal), { z: '#000000', Z: '#0000bc' }), frames: [out] };
   });
 })();
+
+/* ==================================================================
+ *  LOOK TWEAKS (player requests)
+ *  - Samantha is blonde.
+ *  - Signet wears only a plain top and shorts (like Carl in his boxers):
+ *    her body rows are redrawn, head/hair/staff rows are kept.
+ * ================================================================== */
+(function () {
+  'use strict';
+  var A = window.DCW && window.DCW.artDefs;
+  if (!A) return;
+  function merge(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
+  // ---- Samantha: blonde curls
+  ['samantha_idle', 'samantha_run', 'samantha_act', 'p_samantha'].forEach(function (n) {
+    if (A[n]) A[n].pal = merge(A[n].pal, { h: '#f8d878', H: '#c88c10' });
+  });
+  // ---- Signet: underwear instead of the leaf cloak
+  var UNDER = { u: '#e4e4ec', U: '#9c9cb4' };
+  var BODY_STAFF = [  // rows 11-21, staff at cols 14-16
+    '.khhksssssssssssk..',
+    '..khkuuuuuuuSkkYk..',
+    '..khksssssssSkkyk..',
+    '...kksssssssSkkYk..',
+    '....ksssssssSkkyk..',
+    '....kuuuuuuuUkkYk..',
+    '....kuuuUuuuUkkyk..',
+    '....kssk..ksskkYk..',
+    '....kssk..ksskkyk..',
+    '...kssk..kssk.kYk..',
+    '...kkkk..kkkk..k...'
+  ];
+  var LEGS_STRIDE = [
+    '...kssk...ksskkYk..',
+    '..kssk.....kskkyk..',
+    '.kssk......kskkYk..',
+    '.kkkk......kkk.k...'
+  ];
+  function head(rows, n) { // keep rows above the body, turning any leftover cloak pixels into skin
+    return rows.slice(0, n).map(function (r) { return r.replace(/[gl]/g, 's').replace(/G/g, 'S'); });
+  }
+  function bodyNoStaff(rows) { return rows.map(function (r) { return r.slice(0, 14).replace(/k$/, 'k') + '.....'; }); }
+  ['signet_idle', 'signet_run'].forEach(function (n) {
+    var d = A[n]; if (!d || d.h !== 22) return;
+    d.pal = merge(d.pal, UNDER);
+    d.frames = d.frames.map(function (f, fi) {
+      var body = BODY_STAFF.slice();
+      if (n === 'signet_run' && fi === 1) body = body.slice(0, 7).concat(LEGS_STRIDE);
+      return head(f, 11).concat(body);
+    });
+  });
+  var act = A.signet_act;
+  if (act && act.h === 27) {
+    act.pal = merge(act.pal, UNDER);
+    act.frames = act.frames.map(function (f) {
+      var top = head(f, 16);
+      var body = bodyNoStaff(BODY_STAFF);
+      body[0] = '.khhksssssssssk....';
+      return top.concat(body);
+    });
+  }
+  var ps = A.p_signet;
+  if (ps && ps.h === 32) {
+    ps.pal = merge(ps.pal, UNDER);
+    ps.frames = ps.frames.map(function (f) {
+      return f.map(function (r, y) {
+        if (y < 24) return r;
+        if (y >= 29) return r.replace(/[glG]/g, function (c) { return c === 'G' ? 'U' : 'u'; });
+        return r.replace(/[gl]/g, 's').replace(/G/g, 'S');
+      });
+    });
+  }
+})();
