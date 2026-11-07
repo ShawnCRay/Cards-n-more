@@ -151,6 +151,7 @@
     var first = !r.cleared[id];
     var rw = st.reward || {};
     r.cleared[id] = true;
+    if (result.place) rewards.push({ kind: 'place', place: result.place, of: result.racers || 0 });
     sfx('fanfare');
     // xp + gold for the clear
     var xp = rw.xp ? (first ? rw.xp : Math.round(rw.xp / 3)) : 0;
@@ -206,6 +207,7 @@
   G.floorCleared = function () {
     var r = G.run, f = G.floorDef();
     if (!r) return;
+    if (!G.floorDef(r.floor + 1)) { G.win(); return; }
     if (f && f.overworld) {
       G.resumeFloor();
       setTimeout(function () { if (DCW.overworld && DCW.scene === DCW.overworld.scene) toast('THE STAIRWELL IS OPEN', { icon: 'key', color: '#f8b800' }); }, 900);
@@ -277,7 +279,17 @@
       if (r && r.bossDown) out.cleared = true;
     }
     var lock = (f.locks || {})[code];
-    if (lock && lock.needs && !G.hasItem(lock.needs) && !out.cleared) {
+    if (lock && lock.afterCleared && !(r && r.cleared[lock.afterCleared]) && !out.cleared) {
+      var prev = G.stageDef(lock.afterCleared);
+      out.locked = true; out.lockText = 'FINISH ' + ((prev && prev.name) || 'THE LAST RACE') + ' FIRST'; out.lockFlavor = lock.text || '';
+    }
+    if (lock && Array.isArray(lock.needs) && !out.cleared) {
+      var missing = lock.needs.filter(function (id) { return !G.hasItem(id); });
+      if (missing.length) {
+        out.itemLock = true; out.needs = missing[0]; out.lockFlavor = lock.text || '';
+        out.locked = true; out.lockText = 'NEEDS ' + missing.length + ' MORE: ' + missing.map(G.itemName).join(', ');
+      }
+    } else if (lock && lock.needs && !G.hasItem(lock.needs) && !out.cleared) {
       out.itemLock = true; out.needs = lock.needs; out.lockFlavor = lock.text || '';
       if (out.locked) out.lockText += ' + ' + G.itemName(lock.needs);
       else { out.locked = true; out.lockText = 'NEEDS: ' + G.itemName(lock.needs); }
@@ -567,6 +579,8 @@
     if (r.items[id]) return false;
     r.items[id] = true;
     G.track('quest_item');
+    var qd = G.itemDef(id);
+    if (qd && qd.float) G.track('float_part');
     persist();
     return true;
   };

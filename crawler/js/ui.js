@@ -396,6 +396,7 @@
       case 'hp': return { text: '+' + (r.amount || 1) + ' MAX HP', icon: 'heart', color: C.red };
       case 'box': return { text: tierName(r.tier), icon: 'box', color: boxColor(r.tier) };
       case 'views': return { text: '+' + fmtNum(r.amount) + ' VIEWS' + (r.note ? ' (' + r.note + ')' : ''), icon: 'eye', color: C.pink };
+      case 'place': return { text: (r.place === 1 ? '1ST' : r.place === 2 ? '2ND' : r.place === 3 ? '3RD' : r.place + 'TH') + ' PLACE' + (r.of ? ' OF ' + r.of : ''), icon: 'star', color: r.place === 1 ? C.gold : C.white };
       case 'revival': n = r.count || 1; return { text: '+' + n + ' SPONSOR REVIVAL' + (n > 1 ? 'S' : ''), icon: 'heart', color: C.pink };
       default: return { text: r.text || String(r.kind || '?').toUpperCase(), icon: r.icon || 'star', color: C.white };
     }

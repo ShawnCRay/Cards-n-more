@@ -15,8 +15,8 @@ const path = require('path');
   await page.goto('file://' + path.resolve(__dirname, 'audio_test.html'));
   await page.waitForTimeout(200);
 
-  const CONTRACT_SFX = 'jump land punch kick hit crit enemy_die hurt coin pickup bomb_throw explosion missile bite shield menu_move menu_select menu_back lootbox_shake lootbox_open unlock level_up door boss_roar boss_die achievement stairs death heal block buy error text_blip pause checkpoint crate_break spawn laser warn stomp splash fanfare views'.split(' ');
-  const CONTRACT_MUSIC = 'title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 ow3 ow4 ow5 ow6 ow7 ow8 ow9 boss boss_final safe results gameover ending lootbox'.split(' ');
+  const CONTRACT_SFX = 'jump land punch kick hit crit enemy_die hurt coin pickup bomb_throw explosion missile bite shield menu_move menu_select menu_back lootbox_shake lootbox_open unlock level_up door boss_roar boss_die achievement stairs death heal block buy error text_blip pause checkpoint crate_break spawn laser warn stomp splash fanfare views engine boost horn countdown go skid crash'.split(' ');
+  const CONTRACT_MUSIC = 'title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 ow3 ow4 ow5 ow6 ow7 ow8 ow9 boss boss_final safe results gameover ending lootbox floor10 ow10 floor11 ow11'.split(' ');
   const names = await page.evaluate(() => ({ tracks: DCW.audio.tracks, sfx: DCW.audio.sfxNames }));
   const missS = CONTRACT_SFX.filter(n => !names.sfx.includes(n)), missM = CONTRACT_MUSIC.filter(n => !names.tracks.includes(n));
   console.log('contract sfx missing:', missS.length ? missS.join(',') : 'none', '| music missing:', missM.length ? missM.join(',') : 'none');

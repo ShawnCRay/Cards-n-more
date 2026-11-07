@@ -549,3 +549,62 @@ inside a stage that needs it to enter.
 - Quest items (16x16, glowing, readable): `qi_key qi_valve qi_ticket qi_gear qi_shell qi_horn
   qi_mask qi_crown qi_badge qi_map qi_lens qi_bolt`.
 - Overworld: `ow_lock` (16x16 padlock badge drawn over a locked entrance marker). Icon (8x8): `quest`.
+
+## Update 3: Floor 10 (the races) and Floor 11 (the parade)  (binding for this update)
+
+The game grows to 11 floors. Floor 9's boss is no longer the end; the ending, the gold skin
+(`G.win`, automatic after the last floor) and `boss_final` music move to Floor 11.
+All content is ORIGINAL writing and ORIGINAL character/vehicle designs (the player told us the
+premise only: Floor 10 is a series of races in vehicles or on mounts, Carl and Donut race in a food
+truck, other racers plus enemies along the way, the overworld is a cul-de-sac with the other racers;
+Floor 11 is a parade where the same vehicles become floats, and you find the parts to build your float).
+
+### Floor 10 - THE RACES
+- `floor.overworld.theme: 'ow_suburb'` (a suburban cul-de-sac: houses, lawns, driveways, mailboxes,
+  rival garages). Entrances: `1 2 3` race heats, `A C` side areas on foot (truck upgrades), `S` safe
+  room, `B` the championship race, `X` stairs. Heats unlock in order:
+  `floor.locks = { '2': {afterCleared: 'f10_r1'}, '3': {afterCleared: 'f10_r2'}, 'B': {afterCleared: 'f10_r3'} }`.
+  `floor.required = ['f10_r1','f10_r2','f10_r3']`. Roamers on this floor are rival pit crews (use enemy ids).
+- Rival racers wait in their driveways as overworld NPCs: `floor.overworld.npcs = [{ racer: 'id', x, y, lines: ['trash talk'] }]`
+  (walkable tiles; press A next to them to hear a line).
+- Race stages: `kind: 'race'`, theme `raceway`, music `floor10`, plus
+  `race: { rivals: ['racer ids'], place: 3 }` (must finish in top `place` to clear; championship `place: 1`,
+  `boss: 'champion'`). Chunk legend additions (race chunks only):
+  `r` rival start spot (start chunk), `Z` boost pad, `J` jump pad, `O` oil slick (each sits in the empty
+  cell directly above ground), `F` finish line (end chunk `race_finish`). Gaps up to 6 tiles (jump pads before
+  wide ones), crates `b` as ram-through obstacles, enemies `e`/`f` on the track, `=` overpass routes.
+  Race chunks are 12 rows and 32-48 wide; a heat is ~6-9 chunks.
+- `DCW.data.racers = { id: { name, title, sprite, portrait, speed, accel, hp, aggression (0..1), weapon: projectile id|null, skill (0..1), lines: [] } }`
+  4-5 original rivals (vehicle OR mount) + `champion` (the boss racer: a big vehicle, has `boss: true`).
+- `DCW.data.truck = { name: 'THE FOOD TRUCK', sprite: 'truck', speed: 170, accel: 140, hp: 30 }`.
+  Truck upgrades are quest items with a `truck` field: `{ hp: 15 }`, `{ speed: 25 }`, `{ mines: true }`.
+
+### Floor 11 - THE PARADE
+- `floor.overworld.theme: 'ow_parade'` (parade staging grounds: half-built floats, bleachers, tents, a
+  route banner). Areas `1-4` on foot, each holds one float part (quest item with a `float` field:
+  `'confetti' | 'spotlight' | 'balloons' | 'banner'`), `S` safe room, `B` the parade itself, locked by
+  `floor.locks.B = { needs: ['part1','part2','part3','part4'] }` (array = all required). No stairs: the parade is the finale.
+- Parade stage: `kind: 'parade'`, theme `parade`, boss `grand_marshal`, `parade: { speed: 34, waves: [['enemy id', weight], ...] }`.
+  The camera autoscrolls; Carl fights on top of the float. Chunks are street (flat ground row 10-11, crowd
+  barriers, a few `=` for hecklers), ending in the boss arena chunk (`K`).
+- New final boss `grand_marshal` (original design: a towering alien parade grand marshal on a throne float,
+  sash, giant baton, confetti, multiple phases incl. summoning balloon minions). Floor 9's showrunner stays as the Floor 9 boss.
+
+### New art (art agent)
+- `truck` (~48x28, side view food truck, 2 frames wheel spin, Donut visible in the window) + `truck_hurt`;
+  float overlays drawn on top of the truck at the same anchor: `float_confetti float_spotlight float_balloons float_banner`
+  (each its own decoration so any combination stacks) and `float_base` (bunting skirt for the parade).
+- Rival vehicles/mounts `racer_<id>` (2 frames, 40-56 wide) for each racer id the content agent defines
+  (art agent gets the list; ids: `goblin_bike skull_chariot beetle_mount steam_buggy champion`).
+- Portraits `p_racer_<id>` for each; `p_grand_marshal`; boss sprites `grand_marshal_idle(2) _walk(2) _attack _hurt _special`
+  (~64x64), `p_champion` alias ok.
+- Tiles/backgrounds for themes `raceway` (asphalt track with curbs, barriers, grandstands + crowd + flags
+  background, fast parallax) and `parade` (street with crowd barriers, confetti, buildings with bunting).
+- Objects: `boost_pad(2)` 16x6, `jump_pad(2)` 16x8, `oil_slick` 16x4, `finish_line` (32x48 checkered arch),
+  `mine` (8x6), `countdown` not needed (UI draws it).
+- Overworld tiles for `ow_suburb` and `ow_parade`; markers `ow_garage` (race entrance), `ow_float` (parade entrance).
+- Mordecai forms `mordecai_f10 mordecai_f11` + `p_mordecai_f10 p_mordecai_f11` (same method as existing forms).
+
+### New audio (audio agent)
+Tracks `floor10` (driving race theme), `ow10` (sunny suburban), `floor11` (parade march), `ow11` (festival),
+SFX `engine` (short loopable rev), `boost`, `horn`, `countdown` (beep), `go` (higher beep), `skid`, `crash`.

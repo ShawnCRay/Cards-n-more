@@ -212,7 +212,13 @@
     T: function (e, o, t, v) { tone(e, o, t, { w: 'tri', f: 150, f2: 72, dur: 0.17, v: 0.5 * v }); noise(e, o, t, { hz: 3000, dur: 0.025, v: 0.07 * v }); },
     m: function (e, o, t, v) { noise(e, o, t, { hz: 24000, dur: 0.035, v: 0.06 * v, short: true }); },
     g: function (e, o, t, v) { noise(e, o, t, { hz: 7000, hz2: 3000, dur: 0.07, v: 0.1 * v }); },
-    w: function (e, o, t, v) { noise(e, o, t, { hz: 2600, hz2: 1200, dur: 2.6, v: 0.05 * v, a: 0.9, filter: { type: 'bandpass', f: 600, f2: 1400, q: 0.7 } }); }
+    w: function (e, o, t, v) { noise(e, o, t, { hz: 2600, hz2: 1200, dur: 2.6, v: 0.05 * v, a: 0.9, filter: { type: 'bandpass', f: 600, f2: 1400, q: 0.7 } }); },
+    // engine hat: buzzy short-mode (periodic) noise tick
+    e: function (e, o, t, v) { noise(e, o, t, { hz: 11000, dur: 0.04, v: 0.065 * v, short: true }); },
+    // rev sweep: rising short-mode noise swell into the next downbeat
+    v: function (e, o, t, v) { noise(e, o, t, { hz: 2500, hz2: 15000, dur: 0.55, v: 0.1 * v, a: 0.42, short: true }); },
+    // buzz-roll stroke: three quick snare taps per step (march rolls)
+    z: function (e, o, t, v) { for (var i = 0; i < 3; i++) noise(e, o, t + i * 0.042, { hz: 14000 - i * 900, hz2: 8000, dur: 0.045, v: (0.1 + i * 0.025) * v }); }
   };
 
   /* ================================================================== tracker */
@@ -973,6 +979,148 @@
     seq: ['A']
   };
 
+  // FLOOR 10 - the races: high-octane driving theme, D mixolydian / B minor, engine-buzz hats
+  (function () {
+    function drv(n, o) { o = o || 2; return R(n + o + ' ' + n + o + ' ' + n + (o + 1) + ' ' + n + o, 4); } // 16th pumping bass bar
+    var Dd = a16('D4', 'F#4', 'A4', 'D5'), Cc = a16('C4', 'E4', 'G4', 'C5'), Gg = a16('B3', 'D4', 'G4', 'B4'), Aa = a16('C#4', 'E4', 'A4', 'C#5'),
+        Bm = a16('B3', 'D4', 'F#4', 'B4'), Ee = a16('B3', 'E4', 'G#4', 'B4'), Ff = a16('A3', 'C4', 'F4', 'A4');
+    var g = 'k e h e s e h e k e k e s e h e';
+    SONGS.floor10 = {
+      bpm: 168, inst: { p1: I('lead', { vib: 10, vibD: 0.14 }), p2: 'arp', tr: 'bassS' },
+      parts: {
+        A: {
+          p1: 'A4:2 D5:2 F#5:2 A5:4 F#5:2 A5:2 B5:2 | A5:6 F#5:2 D5:4 E5:4 | G5:2 E5:2 C5:2 G5:4 A5:2 G5:2 E5:2 | D5:6 E5:2 G5:4 B5:4 | ' +
+              'A5:2 D6:2 C6:2 D6:4 A5:2 F#5:2 A5:2 | G5:4 E5:2 G5:2 C6:4 B5:2 A5:2 | B5:2 A5:2 G5:2 A5:2 B5:4 D6:4 | C#6:4 B5:2 A5:2 E5:4 A5:4',
+          p2: B(Dd, Dd, Cc, Gg, Dd, Cc, Gg, Aa),
+          tr: B(drv('D'), drv('D'), drv('C'), drv('G'), drv('D'), drv('C'), drv('G'), drv('A')),
+          nz: B('c e h e s e h e k e k e s e h e', RB(g, 7))
+        },
+        B: {
+          p1: 'F#5:6 D5:2 B4:4 D5:4 | G5:6 D5:2 B4:4 G5:4 | F#5:4 A5:4 D6:6 C#6:2 | E6:8 C#6:4 A5:4 | ' +
+              'B5:2 A5:2 F#5:2 D5:2 B4:2 D5:2 F#5:2 B5:2 | D6:2 B5:2 G5:2 D5:2 G5:2 B5:2 D6:2 G6:2 | G#6:4 E6:4 B5:4 G#5:4 | A5:4 E5:2 A5:2 C#6:4 E6:4',
+          p2: B(Bm, Gg, Dd, Aa, Bm, Gg, Ee, Aa),
+          tr: B(drv('B', 1), drv('G'), drv('D'), drv('A'), drv('B', 1), drv('G'), drv('E'), drv('A')),
+          nz: B(RB(g, 7), 's s s s s s s s s! s! s! s! v:4')
+        },
+        C: {
+          p1: 'F5:2 A5:2 C6:2 F6:4 C6:2 A5:2 C6:2 | G5:2 B5:2 D6:2 G6:4 D6:2 B5:2 D6:2 | A5:2 C#6:2 E6:2 A6:4 E6:2 C#6:2 E6:2 | A6:2 G6:2 E6:2 C#6:2 A5:2 G5:2 E5:2 C#5:2',
+          p2: B(Ff, Gg, Aa, Aa),
+          tr: B(drv('F'), drv('G'), drv('A'), 'A2 A2 A3 A2 A2 A2 A3 A2 A2 A3 A2 A3 E2:2 C#2:2'),
+          nz: B('k e s e k e s e k e s e k e s e', 'k e s e k e s e k e s e k e s e', 'k s k s k s k s s s s s s s s s', 's! s s s s! s s s s! s! s! s! v:4')
+        }
+      },
+      seq: ['A', 'B', 'A', 'C']
+    };
+  })();
+
+  // OW10 - suburban cul-de-sac: sunny, smug swung stroll (triplet shuffle), G major
+  (function () {
+    function ch(x) { return '.:3 ' + x + ':2 ' + x + ':1 .:3 ' + x + ':3'; }
+    function ch2(x, y) { return '.:3 ' + x + ':2 ' + x + ':1 .:3 ' + y + ':3'; }
+    var G = 'G3+47', Em = 'E4+37', Am = 'A3+37', D7 = 'D4+47a', E7 = 'E4+47a', A7 = 'A3+47a', C = 'C4+47', Cm = 'C4+37';
+    var dr = 'k:2 h:1 h:2 h:1 s:2 h:1 h:2 k:1';
+    SONGS.ow10 = {
+      bpm: 112, spb: 3, bar: 12,
+      inst: { p1: I('lead50', { v: 0.12, vib: 20, vibD: 0.15, vibR: 5.5, echo: { steps: 3, v: 0.25 } }), p2: I('stab', { v: 0.075, d: 0.15, s: 0.35 }), tr: 'bass' },
+      parts: {
+        A: {
+          p1: 'B4:2 D5:1 G5:3 F#5:2 G5:1 E5:3 | D5:2 B4:1 G4:3 .:2 G4:1 B4:2 D5:1 | C5:2 E5:1 A5:3 G#5:2 A5:1 C6:3 | B5:3 A5:2 F#5:1 D5:6 | ' +
+              'B4:2 D5:1 G5:3 F#5:2 G5:1 B5:3 | G#5:2 B5:1 D6:3 C6:2 B5:1 G#5:3 | A5:2 C6:1 E6:2 D6:1 C6:2 A5:1 F#5:3 | G5:3 D5:2 B4:1 G4:3 .:3',
+          p2: B(ch(G), ch(Em), ch(Am), ch(D7), ch(G), ch(E7), ch2(Am, D7), ch(G)),
+          tr: 'G2:3 B2:3 D3:3 B2:3 | E2:3 G2:3 B2:3 G2:3 | A2:3 C3:3 E3:3 C3:3 | D2:3 F#2:3 A2:3 C3:3 | ' +
+              'G2:3 B2:3 D3:3 B2:3 | E2:3 G#2:3 B2:3 D3:3 | A2:3 E2:3 D2:3 F#2:3 | G2:3 D2:3 G2:3 B2:3',
+          nz: dr
+        },
+        B: {
+          p1: 'E5:2 G5:1 C6:3 B5:2 C6:1 E6:3 | Eb6:3 D6:2 C6:1 G5:6 | D5:2 G5:1 B5:3 A5:2 G5:1 D5:3 | E5:2 G#5:1 B5:3 D6:6 | ' +
+              'C#6:2 B5:1 A5:3 G5:2 A5:1 E5:3 | F#5:2 A5:1 C6:3 B5:2 A5:1 F#5:3 | G5:2 B5:1 D6:3 E6:2 D6:1 B5:3 | C6:2 B5:1 A5:2 G5:1 F#5:2 E5:1 D5:3',
+          p2: B(ch(C), ch(Cm), ch(G), ch(E7), ch(A7), ch(D7), ch2(G, Em), ch2(Am, D7)),
+          tr: 'C2:3 E2:3 G2:3 E2:3 | C2:3 Eb2:3 G2:3 Eb2:3 | G2:3 B2:3 D3:3 B2:3 | E2:3 G#2:3 B2:3 D3:3 | ' +
+              'A2:3 C#3:3 E3:3 C#3:3 | D2:3 F#2:3 A2:3 C3:3 | G2:3 B2:3 E2:3 G2:3 | A2:3 C3:3 D3:3 F#2:3',
+          nz: B(RB(dr, 7), 'k:2 h:1 s:2 s:1 s:2 s:1 s:2 s:1')
+        }
+      },
+      seq: ['A', 'B']
+    };
+  })();
+
+  // FLOOR 11 - the parade: big brassy march (oom-pah, snare rolls), Bb major with a trio in Eb
+  (function () {
+    function op(r, f) { return r + ':3 . ' + f + ':3 . ' + r + ':3 . ' + f + ':3 .'; }    // staccato oom-pah bass bar
+    function pah(x) { return '.:4 ' + x + ':3 .:1 .:4 ' + x + ':3 .:1'; }                 // afterbeats on 2 and 4
+    var dr = 'K:2 s? s? s:2 s?:2 K:2 s? s? z z z s!';
+    var dr2 = 'K:2 s:2 K:2 s:2 K:2 s s z z s!:2';
+    var roll = 'z? z? z? z? z z z z z z z z s! . s! .';
+    var Bb = 'Bb3+47', F7 = 'A3+36', Eb = 'Eb4+47', Gm = 'G3+37', Dm = 'D4+37', Cm = 'C4+37';
+    SONGS.floor11 = {
+      bpm: 120, loopFrom: 1, inst: { p1: I('brass', { v: 0.17 }), p2: I('horn', { v: 0.085 }), tr: 'bass' },
+      parts: {
+        I: {
+          p1: 'F4 . F4 . F4 . Bb4:6 D5:4 | F5:12 .:4',
+          p2: 'D4 . D4 . D4 . F4:6 Bb4:4 | A4:12 .:4',
+          tr: 'Bb1:4 .:12 | F1:12 .:4',
+          nz: 'z? z? z? z? z? z? z? z? z z z z z z z z | z z z z z z z z z z z z s! . K! .'
+        },
+        A: {
+          p1: 'Bb4:2 .:1 Bb4:1 D5:2 F5:2 Bb5:6 A5:2 | G5:2 F5:2 D5:2 Bb4:2 F5:8 | A4:2 .:1 A4:1 C5:2 Eb5:2 A5:6 G5:2 | F5:2 Eb5:2 D5:2 C5:2 D5:8 | ' +
+              'Eb5:2 .:1 Eb5:1 G5:2 Bb5:2 Eb6:6 D6:2 | D6:2 C6:2 Bb5:2 F5:2 D5:4 F5:4 | E5:2 G5:2 Bb5:2 C6:2 F5:2 A5:2 C6:2 Eb6:2 | D6:4 F6:4 Bb5:6 .:2',
+          p2: B(pah(Bb), pah(Bb), pah(F7), pah(Bb), pah(Eb), pah(Bb), '.:4 E4+36:3 .:1 .:4 A3+36:3 .:1', pah(Bb)),
+          tr: B(op('Bb1', 'F2'), op('Bb1', 'F2'), op('F1', 'C2'), op('Bb1', 'F2'), op('Eb2', 'Bb1'), op('Bb1', 'F2'), 'C2:3 . G1:3 . F1:3 . C2:3 .', 'Bb1:3 . F1:3 . Bb1:2 C2:2 D2:2 F2:2'),
+          nz: B('c:2 s? s? s:2 s?:2 K:2 s? s? z z z s!', RB(dr, 6), roll)
+        },
+        B: {
+          p1: 'D5:6 G5:2 Bb5:4 A5:4 | A5:6 F5:2 D5:8 | G5:6 Bb5:2 Eb6:4 D6:4 | D6:6 C6:2 Bb5:8 | ' +
+              'C6:4 Eb6:4 G5:4 C6:4 | A5:4 C6:4 F6:4 Eb6:4 | D6:4 Bb5:4 B5:4 D6:4 | C6:2 Bb5:2 G5:2 Eb5:2 F5:2 Ab5:2 Bb5:2 D6:2',
+          p2: B(st(Gm), st(Dm), st(Eb), st(Bb), st(Cm), st(F7), '.:2 Bb3+47:2 .:2 Bb3+47:2 .:2 B3+36:2 .:2 B3+36:2', '.:2 C4+37:2 .:2 C4+37:2 .:2 D4+36:2 .:2 D4+36:2'),
+          tr: B(op('G1', 'D2'), op('D2', 'A1'), op('Eb2', 'Bb1'), op('Bb1', 'F2'), op('C2', 'G1'), op('F1', 'C2'), 'Bb1:3 . F2:3 . G1:3 . D2:3 .', 'C2:3 . G1:3 . Bb1:3 . F1:3 .'),
+          nz: B(RB(dr2, 7), roll)
+        },
+        T: {
+          p1: 'G5:6 Ab5:2 Bb5:8 | C6:6 Bb5:2 Ab5:4 C6:4 | Bb5:6 G5:2 Eb5:4 G5:4 | F5:4 Ab5:4 D6:4 C6:4 | ' +
+              'Bb5:6 C6:2 Eb6:8 | Eb6:4 C6:4 Ab5:4 F5:4 | G5:4 Bb5:4 E6:4 C6:4 | F6:2 Eb6:2 C6:2 A5:2 F5:2 Eb5:2 C5:2 A4:2',
+          p2: '@picc ' + B(ap('G6', 'Bb6', 'Eb7', 'Bb6'), ap('Ab6', 'C7', 'Eb7', 'C7'), ap('G6', 'Bb6', 'Eb7', 'Bb6'), ap('F6', 'Ab6', 'D7', 'Ab6'),
+            ap('G6', 'Bb6', 'Eb7', 'Bb6'), ap('Ab6', 'C7', 'Eb7', 'C7'), 'G6:2 Bb6:2 Eb7:2 Bb6:2 G6:2 Bb6:2 E7:2 Bb6:2', 'F6:2 A6:2 C7:2 Eb7:2 C7:2 A6:2 F6:2 Eb6:2'),
+          tr: B(op('Eb2', 'Bb1'), op('Ab1', 'Eb2'), op('Eb2', 'Bb1'), op('Bb1', 'F2'), op('Eb2', 'Bb1'), op('Ab1', 'Eb2'), 'Eb2:3 . Bb1:3 . C2:3 . G1:3 .', 'F1:3 . C2:3 . F2:2 Eb2:2 D2:2 C2:2'),
+          nz: B('c:2 s:2 K:2 s:2 K:2 s s z z s!:2', RB(dr2, 6), roll)
+        }
+      },
+      insts: { picc: I('thin', { v: 0.045, gate: 0.6, d: 0.12, s: 0.4 }) },
+      seq: ['I', 'A', 'B', 'T']
+    };
+  })();
+
+  // OW11 - parade staging grounds: festive fairground calliope waltz (3/4, step = 8th), C major
+  (function () {
+    function wz(x) { return '.:2 ' + x + ':2 ' + x + ':2'; }
+    function bw(n) { return n + ':2 .:4'; }
+    var C = 'C4+47', G7 = 'G3+47a', F = 'F3+47', Am = 'A3+37', Dm = 'D4+37', Gc = 'G3+47';
+    function bars(chs, bass) { return { p2: B.apply(null, chs.map(wz)), tr: B.apply(null, bass.map(bw)) }; }
+    var dA = B('k:2 h:2 h:2', 'k:2 h:2 h:1 m:1', 'k:2 h:2 h:2', 'k:2 s?:2 h:2');
+    var hA = bars([C, C, G7, G7, G7, G7, C, C, C, C, F, F, C, G7, C, C],
+      ['C2', 'G1', 'G1', 'D2', 'G1', 'D2', 'C2', 'G1', 'C2', 'G1', 'F1', 'C2', 'C2', 'G1', 'C2', 'G1']);
+    var hB = bars([F, F, C, C, G7, G7, C, C, Am, Am, Dm, Dm, Gc, G7, C, C],
+      ['F1', 'C2', 'C2', 'G1', 'G1', 'D2', 'C2', 'G1', 'A1', 'E2', 'D2', 'A1', 'G1', 'D2', 'C2', 'G1']);
+    SONGS.ow11 = {
+      bpm: 176, spb: 2, bar: 6,
+      inst: { p1: I('organ', { v: 0.115, vib: 22, vibD: 0.06, vibR: 6.5, arpT: 1 / 30 }), p2: I('organ2', { v: 0.075, gate: 0.7 }), tr: 'bassS' },
+      parts: {
+        A: {
+          p1: 'E5:2 G5:2 C6:2 | E6:4 D6:1 C6:1 | B5:2 G5:2 D5:2 | F5:4 E5:1 F5:1 | G5:2 F5:2 D5:2 | B4:4 C5:1 D5:1 | E5:2 G5:2 E5:2 | C5:4 .:2 | ' +
+              'E5:2 G5:2 C6:2 | E6:4 F6:1 E6:1 | D6:2 C6:2 A5:2 | F5:4 A5:2 | G5:2 E5:2 C6:2 | B5:2 A5:2 G5:1 F5:1 | E5:2 C5:2 G4:2 | C5:4 .:2',
+          p2: hA.p2, tr: hA.tr,
+          nz: B(dA, dA, dA, 'k:2 h:2 h:2 | k:2 h:2 h:2 | k:2 s:2 s:2 | s s s s c:2')
+        },
+        B: {
+          p1: 'A5:2 C6:2 F6:2 | F6+2:4 E6:1 D6:1 | C6:2 G5:2 E5:2 | C6:4 .:2 | B5:2 D6:2 F6:2 | F6+1:4 E6:1 D6:1 | E6:2 C6:2 G5:2 | E5:4 .:2 | ' +
+              'A5:2 C6:2 E6:2 | E6+1:4 D6:1 C6:1 | D6:2 F6:2 A5:2 | F5:4 G5:1 A5:1 | B5:2 D6:2 G6:2 | F6:2 D6:2 B5:2 | C6:2 G5:2 E5:2 | C5:4 G4:2',
+          p2: hB.p2, tr: hB.tr,
+          nz: B(dA, dA, dA, 'k:2 h:2 h:2 | k:2 h:2 h:2 | k:2 h:2 m:1 m:1 | k:2 s:2 s s')
+        }
+      },
+      seq: ['A', 'B']
+    };
+  })();
+
   /* ================================================================== SFX */
   var SFX = {
     jump: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 300 * p, f2: 760 * p, ft: 0.1, dur: 0.15, v: 0.3, sus: 0.3 }); },
@@ -1202,6 +1350,61 @@
       tone(e, o, t + 0.2, { w: 'p12', f: 1300 * p, f2: 2100 * p, dur: 0.3, v: 0.04, a: 0.05 });
       tone(e, o, t + 0.45, { w: 'p12', f: 1500 * p, f2: 2400 * p, dur: 0.28, v: 0.035, a: 0.05 });
       return t + 1.5;
+    },
+    engine: function (e, o, t, p) { // short rev: stepped pitch rise + sag, putt-putt noise; soft ends so ~0.4s retriggers overlap cleanly
+      var d = 0.4, st = [], k;
+      for (k = 0; k < 20; k++) { var x = k / 20; st.push([x * d, (x < 0.65 ? 60 + 46 * (x / 0.65) : 106 - 18 * ((x - 0.65) / 0.35)) * p]); }
+      tone(e, o, t, { w: 'p25', f: st[0][1], steps: st, dur: d, v: 0.11, a: 0.02, sus: 0.65 });
+      tone(e, o, t, { w: 'tri', f: st[0][1], steps: st, dur: d, v: 0.22, a: 0.02, sus: 0.65 });
+      noise(e, o, t, { hz: 2200 * p, hz2: 3600 * p, ft: 0.26, dur: d, v: 0.09, a: 0.02, sus: 0.6, short: true, trem: { rate: 26 * p, depth: 0.85 } });
+      return t + d;
+    },
+    boost: function (e, o, t, p) {
+      noise(e, o, t, { hz: 6000 * p, hz2: 40000, dur: 0.62, v: 0.34, a: 0.06, sus: 0.35, filter: { type: 'bandpass', f: 700, f2: 6500, q: 0.8 } });
+      tone(e, o, t, { w: 'p25', f: 220 * p, f2: 1760 * p, ft: 0.45, dur: 0.58, v: 0.15, vib: 40, vibR: 16, sus: 0.5 });
+      tone(e, o, t + 0.04, { w: 'p12', f: 440 * p, f2: 3520 * p, ft: 0.45, dur: 0.5, v: 0.06, sus: 0.4 });
+      tone(e, o, t, { w: 'tri', f: 110 * p, f2: 440 * p, dur: 0.4, v: 0.3, sus: 0.5 });
+      return t + 0.62;
+    },
+    horn: function (e, o, t, p) { // comic two-tone truck horn: "hon-HONK" (slightly sour pairs, last note sags)
+      function honk(tt, f1, f2, d, sag) {
+        tone(e, o, tt, { w: 'p50', f: f1 * p, steps: [[0.025, f1 * 1.03 * p], [d * 0.7, f1 * sag * p]], dur: d, v: 0.16, a: 0.01, sus: 0.85 });
+        tone(e, o, tt, { w: 'p25', f: f2 * p, steps: [[0.025, f2 * 1.03 * p], [d * 0.7, f2 * sag * p]], dur: d, v: 0.12, a: 0.01, sus: 0.85 });
+        tone(e, o, tt, { w: 'tri', f: f1 * 0.5 * p, dur: d, v: 0.28, a: 0.01, sus: 0.85 });
+      }
+      honk(t, 302, 362, 0.15, 1.03);
+      honk(t + 0.19, 404, 482, 0.36, 0.95);
+      return t + 0.55;
+    },
+    countdown: function (e, o, t, p) {
+      tone(e, o, t, { w: 'p50', f: 880 * p, dur: 0.2, v: 0.2, a: 0.003, sus: 0.85 });
+      tone(e, o, t, { w: 'p25', f: 440 * p, dur: 0.2, v: 0.08, a: 0.003, sus: 0.85 });
+      return t + 0.2;
+    },
+    go: function (e, o, t, p) {
+      tone(e, o, t, { w: 'p50', f: 1760 * p, dur: 0.6, v: 0.19, a: 0.003, sus: 0.8, vib: 12, vibR: 9 });
+      tone(e, o, t, { w: 'p25', f: 880 * p, dur: 0.6, v: 0.1, a: 0.003, sus: 0.8 });
+      tone(e, o, t, { w: 'tri', f: 440 * p, dur: 0.5, v: 0.25, sus: 0.7 });
+      noise(e, o, t, { hz: 30000, hz2: 16000, dur: 0.25, v: 0.06 });
+      return t + 0.6;
+    },
+    skid: function (e, o, t, p) {
+      noise(e, o, t, { hz: 17000 * p, hz2: 11000 * p, dur: 0.55, v: 0.24, a: 0.015, sus: 0.6, short: true, filter: { type: 'bandpass', f: 2600, f2: 1700, q: 1.6 } });
+      noise(e, o, t, { hz: 30000, hz2: 14000, dur: 0.5, v: 0.12, a: 0.015, sus: 0.5, filter: { type: 'highpass', f: 2500 } });
+      return tone(e, o, t, { w: 'p12', f: 1900 * p, f2: 1350 * p, dur: 0.55, v: 0.08, a: 0.015, vib: 90, vibR: 23, sus: 0.6 });
+    },
+    crash: function (e, o, t, p) { // heavy crunch + metal clang + tumbling debris
+      noise(e, o, t, { hz: 20000 * p, hz2: 3000, dur: 0.25, v: 0.45 });
+      noise(e, o, t, { hz: 2600 * p, hz2: 260, dur: 0.6, v: 0.45, sus: 0.1 });
+      noise(e, o, t + 0.01, { hz: 9000 * p, hz2: 5000, dur: 0.22, v: 0.14, short: true });
+      tone(e, o, t, { w: 'tri', f: 140 * p, f2: 35, dur: 0.35, v: 0.6 });
+      tone(e, o, t, { w: 'p50', f: 210 * p, f2: 60, dur: 0.15, v: 0.17 });
+      for (var i = 0; i < 10; i++) {
+        var tt = t + 0.13 + i * 0.065 + Math.random() * 0.03, fade = 1 - i / 12;
+        noise(e, o, tt, { hz: (5000 + Math.random() * 15000) * p, dur: 0.03, v: 0.15 * fade, short: true });
+        tone(e, o, tt, { w: 'p12', f: (280 + Math.random() * 700) * p, dur: 0.026, v: 0.055 * fade });
+      }
+      return t + 0.85;
     }
   };
   var DUCK = { fanfare: 1, unlock: 1, level_up: 1, achievement: 1, boss_die: 1 };

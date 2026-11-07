@@ -227,6 +227,15 @@
       }).filter(Boolean);
       // don't spawn a roamer on top of the player
       S.roamers.forEach(function (r) { if (Math.abs(r.x - S.p.x) < 48 && Math.abs(r.y - S.p.y) < 48) { r.x = r.hx; r.y = r.hy; if (Math.abs(r.x - S.p.x) < 40 && Math.abs(r.y - S.p.y) < 40) r.wt = 2.5; } });
+      // rival racers / characters parked around the map (Floor 10 cul-de-sac)
+      var rdefs = D('racers') || {};
+      S.npcs = (ow.npcs || []).map(function (n) {
+        if (!n || solidT(n.x | 0, n.y | 0)) return null;
+        var rd = rdefs[n.racer] || {};
+        return { id: n.racer, name: rd.name || String(n.racer || '').toUpperCase(), sprite: rd.sprite || ('racer_' + n.racer), portrait: 'p_racer_' + n.racer,
+          lines: (n.lines && n.lines.length ? n.lines : rd.lines) || ['...'], li: 0, x: (n.x | 0) * TS + 8, y: (n.y | 0) * TS + 14, t: Math.random() * 3 };
+      }).filter(Boolean);
+      S.nearNpc = null;
       S.grace = 1.4; S.leaving = false; S.onEnt = null; S.bannerShake = 0; S.dust = []; S.dustT = 0;
       S.hint = ''; S.hintT = 0; S.ambush = null;
       refreshEntrances();
@@ -255,6 +264,14 @@
       var tp = tileOf(S.p), e = S.entAt[tp.x + ',' + tp.y] || null;
       if (e !== S.onEnt) { S.onEnt = e; if (e) sfx('menu_move'); }
       if (e && P('confirm')) enter(e);
+      // talk to a nearby rival
+      S.nearNpc = null;
+      if (!e) for (var ni = 0; ni < (S.npcs || []).length; ni++) { var npc = S.npcs[ni]; npc.t += dt; if (Math.abs(npc.x - S.p.x) < 26 && Math.abs(npc.y - S.p.y) < 22) { S.nearNpc = npc; break; } }
+      if (S.nearNpc && P('confirm') && DCW.ui && DCW.ui.say) {
+        var nn = S.nearNpc, line = nn.lines[nn.li % nn.lines.length]; nn.li++;
+        sfx('horn');
+        DCW.ui.say([{ who: nn.name, portrait: nn.portrait, text: line }]);
+      }
       camTarget(false, dt);
     },
     idle: function (dt) { if (S) S.t += dt; },
@@ -419,6 +436,13 @@
     // actors, y-sorted
     var actors = [];
     S.roamers.forEach(function (r) { if (r.alive) actors.push({ y: r.y, f: function () { drawRoamer(ctx, r, cx, cy); } }); });
+    (S.npcs || []).forEach(function (n) { actors.push({ y: n.y, f: function () {
+      var x = Math.round(n.x - cx), y = Math.round(n.y - cy);
+      if (x < -40 || x > W + 40 || y < -8 || y > H + 40) return;
+      shadow(ctx, x, y, 18);
+      spr(ctx, n.sprite, x, y, { frame: Math.floor(n.t * 2) });
+      if (S.nearNpc === n) T((blink(3) ? '\u25BC ' : '  ') + bn('confirm') + ': TALK', x, y - 34, '#fcfcfc', { align: 'center' });
+    } }); });
     actors.push({ y: S.c.y - 0.5, f: function () { drawCompanion(ctx, cx, cy); } });
     actors.push({ y: S.p.y, f: function () { drawPlayer(ctx, cx, cy); } });
     actors.sort(function (a, b) { return a.y - b.y; });
