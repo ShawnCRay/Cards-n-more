@@ -481,3 +481,71 @@ arcing), use potion, companion special (special button when meter full: meter fi
 damage dealt and over time). Companion follows the player and uses its ability on cooldown.
 Combo counter: hits within 2s chain; views gained per kill scale with combo.
 Debug (`DCW.debug`): key `9` (code Digit9) clears the stage, `0` toggles god mode.
+
+## Update 2: quests, rescues, levers (binding for this update)
+
+Goals from playtesting: companions came too early and too easily (loot boxes, bosses). Now every
+companion except Donut must be FOUND and RESCUED, one per floor, spread from Floor 2 to Floor 7,
+and they are per-crawl (each new run you find them again). Floors need more effort: key items
+found in one area unlock another area's entrance or exit, the boss door needs the floor's key
+item, and in-level levers open gates.
+
+### Companions (ids fixed)
+`donut` (start), `squeaks` (Floor 2), `mongo` (Floor 3, found as an egg), `samantha` (Floor 4),
+`katia` (Floor 5), `zev` (Floor 6), `signet` (Floor 7).
+- **Samantha**: a cursed porcelain doll head with curly black hair and big red lips. She insists she
+  is a demigoddess. Ability `lunge`: hurls herself at the nearest enemy (big bite damage) and bounces
+  back. Special: an ear-splitting shriek that damages and stuns everything on screen.
+- **Signet**: a wild-haired half-elf summoner in a leafy cloak with a carved staff. Ability `summon`:
+  calls a fae spirit that orbits Carl and zaps enemies for a few seconds. Special: a stampede of
+  spirits sweeps the screen.
+- No loot table may contain `{kind:'companion'}`. No boss `unlock` may be a companion.
+  Boss skin unlocks: hoarder `carl_jacket`, ringmaster `carl_clown`, tidemother `carl_hazmat`,
+  bride `carl_bodyguard`, overseer `carl_kilt`, showrunner `carl_gold`; juicer, engineer, butcher: none.
+
+### New data
+```js
+DCW.data.questItems = {
+  valve: { name: 'VALVE WHEEL', floor: 3, sprite: 'qi_valve', desc: 'what it is (<=120 chars)',
+           hint: 'where to look, in Mordecai voice (<=140 chars)' }
+}
+stages[id].questItem = 'valve'     // this stage contains exactly one 'Q'; it spawns that item (until the run holds it)
+stages[id].rescue = 'mongo'        // this stage contains exactly one 'R'; the companion's cage (or egg for mongo)
+stages[id].exitNeeds = 'valve'     // the exit door is padlocked until the run holds the item
+stages[id].chunks.insert = ['q_city_vault']   // extra chunk ids spliced into the middle of the generated chunk list, in order
+floor.locks = { '3': { needs: 'valve' } }      // overworld entrance char -> blocked until the item is held (works on 'B' too)
+floor.companion = 'mongo'          // companion hidden on this floor (objectives, hints)
+floor.hints = ['Mordecai rumor lines pointing at where the items and companion are']
+```
+Linear floors (1, 2) use the same stage fields (`questItem`, `exitNeeds`, `rescue`); an item may be
+found and used in the same stage (the key is on a side branch, the exit door needs it).
+
+### New chunk legend chars
+| ch | meaning |
+|---|---|
+| `Q` | quest item spot (stage.questItem). Floats; put it on/above walkable ground |
+| `R` | rescue cage / egg (stage.rescue) standing on ground. Punch it open |
+| `S` | lever standing on ground. Punch it: every `L` in the SAME chunk opens |
+| `L` | gate tile: solid until a lever in its chunk is pulled |
+
+Puzzle rules: a chunk with `L` must contain at least one `S`, reachable from the chunk's left edge
+without passing any `L`. Gates guard the route forward, a `Q`, or an `R`. Chunks keep the standard
+ground at both edges (rows 10-11) so they chain.
+
+### Chain rules (overworld floors 3-9)
+Each floor has 2-3 quest items: at least one main area whose ENTRANCE is locked (`floor.locks`) by an
+item found in another area, at least one area whose EXIT is locked (`exitNeeds`) by an item found in
+a different area, and the boss entrance `B` needs the floor's boss key item (also listed in
+`floor.locks`). The chain must be solvable from the start with no cycles, and an item may never sit
+inside a stage that needs it to enter.
+
+### New art names
+- Companions: `samantha_idle(2) samantha_run(2) samantha_act`, `signet_idle(2) signet_run(2) signet_act`,
+  portraits `p_samantha p_signet`, summon fx `signet_spirit(2)` (~10x10 glowing wisp).
+- Objects: `cage(2)` (~24x28, bars with gaps; the companion's idle sprite is drawn behind it),
+  `cage_broken`, `egg(2)` (16x18 speckled dinosaur egg, wobble), `egg_broken`, `lever(2)` (16x16:
+  frame 0 up/off, frame 1 down/on), `door_locked` (26x38, the door with chains and a padlock).
+- Tile `L` for every side-scroll theme through `DCW.art.tile` (an iron portcullis / bars block).
+- Quest items (16x16, glowing, readable): `qi_key qi_valve qi_ticket qi_gear qi_shell qi_horn
+  qi_mask qi_crown qi_badge qi_map qi_lens qi_bolt`.
+- Overworld: `ow_lock` (16x16 padlock badge drawn over a locked entrance marker). Icon (8x8): `quest`.
