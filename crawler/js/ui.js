@@ -96,10 +96,10 @@
   function bn(b) {
     var dev = (DCW.input && DCW.input.lastDevice) || 'keyboard';
     var map = dev === 'keyboard'
-      ? { confirm: kbName('jump', 'Z'), back: kbName('attack', 'X'), start: 'ENTER', select: kbName('select', 'TAB'), down: '↓', up: '↑' }
+      ? { confirm: kbName('jump', 'Z'), back: kbName('attack', 'X'), start: 'ENTER', select: kbName('select', 'TAB'), special: kbName('special', 'V'), down: '↓', up: '↑' }
       : dev === 'touch'
-        ? { confirm: 'A', back: 'B', start: 'START', select: 'MAP', down: '↓', up: '↑' }
-        : { confirm: 'A', back: 'B', start: 'START', select: 'SELECT', down: '↓', up: '↑' };
+        ? { confirm: 'A', back: 'B', start: 'START', select: 'MAP', special: 'SPC', down: '↓', up: '↑' }
+        : { confirm: 'A', back: 'B', start: 'START', select: 'SELECT', special: 'Y', down: '↓', up: '↑' };
     return map[b] || b.toUpperCase();
   }
   ui.buttonName = bn;
@@ -1013,6 +1013,47 @@
   };
 
   /* ================================================================
+     READER - full text, scrollable (descriptions that don't fit a panel)
+     ================================================================ */
+  // o = { title, titleColor, border, blocks: [{ head, text, color }] }
+  ui.readMore = function (o) {
+    o = o || {};
+    var m = { kind: 'reader', scroll: 0 };
+    var lines = [];
+    (o.blocks || []).forEach(function (b, bi) {
+      if (!b || (!b.text && !b.head)) return;
+      if (lines.length) lines.push(['', C.gray]);
+      if (b.head) lines.push([String(b.head).toUpperCase(), b.headColor || C.gold]);
+      if (b.text) wrap(String(b.text).toUpperCase(), 284).forEach(function (t) { lines.push([t, b.color || C.white]); });
+    });
+    var VIS = 13;
+    var maxScroll = Math.max(0, lines.length - VIS);
+    m.update = function (dt) {
+      m.t += dt;
+      if (rep(m, 'down', dt)) { if (m.scroll < maxScroll) { m.scroll++; sfx('menu_move'); } }
+      else if (rep(m, 'up', dt)) { if (m.scroll > 0) { m.scroll--; sfx('menu_move'); } }
+      else if (P('right')) { m.scroll = Math.min(maxScroll, m.scroll + VIS - 1); }
+      else if (P('left')) { m.scroll = Math.max(0, m.scroll - VIS + 1); }
+      else if (m.t > 0.1 && (backPressed() || P('confirm') || P('start') || P('special') || P('select'))) { sfx('menu_back'); close(m); }
+    };
+    m.draw = function (ctx) {
+      frame(ctx, o.title || 'DETAILS', { titleColor: o.titleColor, border: o.border,
+        footer: maxScroll ? '↑↓:SCROLL  ◀▶:PAGE  ' + bn('back') + ':CLOSE' : bn('back') + ':CLOSE' });
+      for (var i = 0; i < VIS && i + m.scroll < lines.length; i++) {
+        var ln = lines[i + m.scroll];
+        T(ln[0], 14, 24 + i * 10, ln[1]);
+      }
+      if (maxScroll) {
+        scrollArrows(302, 20, 152, m.scroll, VIS, lines.length);
+        var trackH = VIS * 10 - 8, thumb = Math.max(8, Math.round(trackH * VIS / lines.length));
+        R(304, 30, 2, trackH, '#1c2c5c');
+        R(304, 30 + Math.round((trackH - thumb) * m.scroll / maxScroll), 2, thumb, C.gray);
+      }
+    };
+    return push(m);
+  };
+
+  /* ================================================================
      WARDROBE
      ================================================================ */
   ui.openWardrobe = function () {
@@ -1021,6 +1062,25 @@
     var DEF_COMPS = ['donut', 'mongo', 'katia', 'zev', 'squeaks'];
     function ids() { var d = m.tab === 0 ? D('skins') : D('companions'); var l = d ? Object.keys(d) : (m.tab === 0 ? DEF_SKINS : DEF_COMPS); return l.length ? l : (m.tab === 0 ? DEF_SKINS : DEF_COMPS); }
     function kind() { return m.tab === 0 ? 'skin' : 'companion'; }
+    function detailBlocks(k, id) {
+      var dd = (k === 'skin' ? skinDef(id) : compDef(id)) || {}, own = owned(k, id), out = [];
+      if (!own) {
+        out.push({ head: 'HOW TO UNLOCK', text: dd.how || 'FIND IT IN A LOOT BOX.', color: C.yellow });
+        return out;
+      }
+      if (dd.desc) out.push({ text: dd.desc, color: C.gray });
+      if (k === 'skin') out.push({ head: 'PERK', text: dd.perk ? perkText(dd.perk) : 'NONE. PURE STYLE.', color: C.green, headColor: C.green });
+      else {
+        if (dd.ability) out.push({ head: 'ABILITY', text: String(dd.ability).toUpperCase() + (dd.cooldown ? ' (EVERY ' + dd.cooldown + 'S)' : ''), color: C.green, headColor: C.green });
+        if (dd.special) out.push({ head: 'SPECIAL: ' + (dd.special.name || ''), text: dd.special.desc || '', color: C.blue, headColor: C.blue });
+      }
+      return out;
+    }
+    function openInfo() {
+      var l = ids(), id = l[m.sel], k = kind(), own = owned(k, id);
+      sfx('menu_select');
+      ui.readMore({ title: own ? (k === 'skin' ? skinName(id) : compName(id)) : 'LOCKED', titleColor: own ? C.gold : C.dgray, blocks: detailBlocks(k, id) });
+    }
     function selectEquipped() { var l = ids(), e = equipped(kind()); m.sel = Math.max(0, l.indexOf(e)); m.scroll = 0; scrollTo(m, 11, l.length); }
     selectEquipped();
     m.update = function (dt) {
@@ -1028,9 +1088,10 @@
       var l = ids();
       if (P('left') || P('right')) { m.tab = 1 - m.tab; m.msgT = 0; sfx('menu_move'); selectEquipped(); return; }
       listNav(m, l.length, dt); scrollTo(m, 11, l.length);
+      if (P('special') || P('select')) { openInfo(); return; }
       if (P('confirm')) {
         var id = l[m.sel];
-        if (!owned(kind(), id)) { sfx('error'); m.msg = 'STILL LOCKED!'; m.msgT = 1.2; return; }
+        if (!owned(kind(), id)) { openInfo(); return; }
         if (equipped(kind()) === id) { sfx('menu_move'); return; }
         var ok;
         if (hasG('equip')) ok = G('equip', kind(), id);
@@ -1040,7 +1101,7 @@
     };
     m.draw = function (ctx) {
       var l = ids(), k = kind();
-      frame(ctx, 'WARDROBE', { footer: '◀▶:TAB  ' + bn('confirm') + ':EQUIP  ' + bn('back') + ':BACK' });
+      frame(ctx, 'WARDROBE', { footer: '◀▶:TAB  ' + bn('confirm') + ':EQUIP  ' + bn('special') + ':INFO  ' + bn('back') + ':BACK' });
       // tabs
       var tabs = ['SKINS', 'PALS'];
       tabs.forEach(function (t, i) {
@@ -1075,14 +1136,16 @@
       if (equipped(k) === id2) T('EQUIPPED', pv.x + pv.w, yy2, C.green, { align: 'right' });
       yy2 += 11;
       var lines = [];
-      if (own2) {
-        wrap(dd.desc || '', 168).slice(0, 3).forEach(function (t) { lines.push([t, C.gray]); });
-        var extra = k === 'skin' ? (dd.perk ? 'PERK: ' + perkText(dd.perk) : 'PERK: NONE. PURE STYLE.') : (dd.special ? 'SPECIAL: ' + (dd.special.name || '') : (dd.ability ? 'ABILITY: ' + String(dd.ability).toUpperCase() : ''));
-        wrap(extra, 168).slice(0, 2).forEach(function (t) { lines.push([t, C.green]); });
-      } else {
-        wrap('HOW: ' + (dd.how || 'FIND IT IN A LOOT BOX.'), 168).slice(0, 4).forEach(function (t) { lines.push([t, C.yellow]); });
+      detailBlocks(k, id2).forEach(function (b) {
+        if (b.head) lines.push([String(b.head).toUpperCase() + (b.text ? '' : ''), b.headColor || C.gold]);
+        if (b.text) wrap(String(b.text).toUpperCase(), 168).forEach(function (t) { lines.push([t, b.color || C.gray]); });
+      });
+      var FIT = 5;
+      if (lines.length > FIT) {
+        lines = lines.slice(0, FIT - 1);
+        lines.push([(blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE', C.white]);
       }
-      lines.slice(0, 5).forEach(function (ln, i) { T(ln[0], pv.x, yy2 + i * 10, ln[1]); });
+      lines.forEach(function (ln, i) { T(ln[0], pv.x, yy2 + i * 10, ln[1]); });
       if (m.msgT > 0) { DCW.box(80, 74, 160, 18, { border: m.msg === 'EQUIPPED!' ? C.green : C.red }); T(fitText(m.msg, 150), 160, 79, m.msg === 'EQUIPPED!' ? C.green : C.red, { align: 'center' }); }
     };
     return push(m);
@@ -1099,11 +1162,20 @@
       m.t += dt;
       var l = list();
       listNav(m, l.length, dt); scrollTo(m, 12, l.length);
-      if (backPressed() || P('start') || P('confirm')) { sfx('menu_back'); close(m); }
+      if ((P('confirm') || P('special')) && l[m.sel]) {
+        var e = l[m.sel], a = e.a, g = got(e.id);
+        var cnt = (save().meta && save().meta.counters && save().meta.counters[a.event]) || 0;
+        sfx('menu_select');
+        ui.readMore({ title: g ? (a.name || e.id) : 'LOCKED ACHIEVEMENT', titleColor: g ? C.gold : C.dgray, border: g ? C.gold : C.dgray, blocks: [
+          { text: g ? (a.desc || '') : '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.', color: g ? C.white : C.dgray },
+          (!g && (a.count || 1) > 1) ? { head: 'PROGRESS', text: Math.min(cnt, a.count) + ' / ' + a.count, color: C.gray } : null,
+          { head: 'REWARD', text: String(a.box || 'bronze').toUpperCase() + ' BOX', color: boxColor(a.box || 'bronze') }
+        ].filter(Boolean) });
+      } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
     };
     m.draw = function (ctx) {
       var l = list(), n = l.filter(function (e) { return got(e.id); }).length;
-      frame(ctx, 'ACHIEVEMENTS', { footer: '↑↓:BROWSE  ' + bn('back') + ':BACK' });
+      frame(ctx, 'ACHIEVEMENTS', { footer: '↑↓:BROWSE  ' + bn('confirm') + ':READ  ' + bn('back') + ':BACK' });
       T('UNLOCKED ' + n + '/' + l.length, 12, 21, C.white);
       DCW.bar(110, 23, 44, 3, l.length ? n / l.length : 0, C.gold, '#2c2000');
       if (!l.length) { T('NO ACHIEVEMENTS LOADED.', 160, 90, C.gray, { align: 'center' }); return; }
@@ -1124,7 +1196,9 @@
       var yy2 = 26;
       wrap(g2 ? (a.name || e2.id) : '???', pw - 44).slice(0, 2).forEach(function (t) { T(t, px + 36, yy2, g2 ? C.gold : C.dgray); yy2 += 10; });
       yy2 = Math.max(yy2, 50) + 4;
-      wrap(g2 ? (a.desc || '') : '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.', pw - 12).slice(0, 6).forEach(function (t) { T(t, px + 6, yy2, g2 ? C.white : C.dgray); yy2 += 10; });
+      var dl = wrap(g2 ? (a.desc || '') : '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.', pw - 12);
+      if (dl.length > 6) { dl = dl.slice(0, 5); dl.push((blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ ALL'); }
+      dl.forEach(function (t, i) { T(t, px + 6, yy2, i === 5 && t.indexOf('READ ALL') >= 0 ? C.gold : g2 ? C.white : C.dgray); yy2 += 10; });
       var cnt = (save().meta && save().meta.counters && save().meta.counters[a.event]) || 0;
       if (!g2 && (a.count || 1) > 1) {
         T('PROGRESS ' + Math.min(cnt, a.count) + '/' + a.count, px + 6, 128, C.gray);
@@ -1405,7 +1479,10 @@
       m.t += dt; if (m.flash > 0) m.flash -= dt;
       var l = items();
       listNav(m, l.length, dt); scrollTo(m, 6, l.length);
-      if (P('confirm') && l.length) {
+      if ((P('special') || P('select')) && l.length) {
+        var iti = l[m.sel]; sfx('menu_select');
+        ui.readMore({ title: iti.name || iti.id, titleColor: C.orange, blocks: [{ text: iti.desc || '', color: C.white }, { head: 'PRICE', text: price(iti) + ' GOLD', color: C.gold }] });
+      } else if (P('confirm') && l.length) {
         var it = l[m.sel], res;
         if (hasG('buy')) res = G('buy', it.id) || { ok: false, msg: 'SOMETHING WENT WRONG.' };
         else { res = { ok: false, msg: 'THE REGISTER IS BROKEN. COME BACK LATER.' }; sfx('error'); }
@@ -1417,7 +1494,7 @@
     };
     m.draw = function (ctx) {
       var l = items(), run = getRun() || {};
-      frame(ctx, keeper + "'S SHOP", { footer: bn('confirm') + ':BUY  ' + bn('back') + ':LEAVE' });
+      frame(ctx, keeper + "'S SHOP", { footer: bn('confirm') + ':BUY  ' + bn('special') + ':INFO  ' + bn('back') + ':LEAVE' });
       R(11, 21, 34, 34, C.white); R(12, 22, 32, 32, '#000');
       portrait(ctx, 'p_bopca', 12, 22, { frame: Math.floor((DCW.t || 0) * 3) });
       DCW.box(50, 20, 260, 36, { fill: '#2c1c00', border: C.orange });
@@ -1439,7 +1516,9 @@
       scrollArrows(302, 72, 136, m.scroll, vis, l.length);
       R(10, 143, 300, 1, '#2c3c7c');
       var d = l[m.sel] && l[m.sel].desc;
-      wrap(d || '', 296).slice(0, 1).forEach(function (t, i) { T(t, 12, 147 + i * 10, C.gray); });
+      var sl = wrap(d || '', 296);
+      if (sl.length > 2) { sl = sl.slice(0, 1); sl.push((blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE'); }
+      sl.forEach(function (t, i) { T(t, 12, 146 + i * 9, i === 1 && t.indexOf('READ MORE') >= 0 ? C.white : C.gray, { shadow: null }); });
     };
     return push(m);
   };
