@@ -814,6 +814,48 @@
     return cv;
   }
 
+  // 'L' gate: iron portcullis bars (theme-tinted). mask bits: 1 = gate above (no header beam),
+  // 2 = gate below (no spiked foot), 4/8 = gate left/right (no side frame). step 0..16 = raised px.
+  var GATE_BARS = [1, 6, 11];
+  function paintGate(spec, mask, step) {
+    var cv = mkCanvas(16, 16), g = g2(cv);
+    var tint = spec.lad.m, up = mask & 1, dn = mask & 2, L = mask & 4, Rt = mask & 8;
+    var il = mix('#bcbcbc', tint, 0.3), im = mix('#7c7c7c', tint, 0.4), id = mix('#3c3c3c', tint, 0.3), ix = mix('#fcfcfc', tint, 0.1);
+    var hb = mix('#4c4c54', spec.body.m || spec.body.base || tint, 0.35), hl = mix(hb, '#fcfcfc', 0.3), hd = dk(hb, 0.45);
+    var top = up ? 0 : 5, foot = dn ? 16 : 13, s = step | 0, i, x, y;
+    // dark backing so the block reads solid while the bars stay see-through
+    if (s >= 16) foot = top; // fully raised: header only
+    else { g.globalAlpha = 0.6; R(g, 0, top, 16, (dn ? 16 : 14) - top, '#000000'); g.globalAlpha = 1; }
+    g.save(); g.beginPath(); g.rect(0, top, 16, 16 - top); g.clip();
+    g.translate(0, -s);
+    // heavy vertical bars (3px, black seams)
+    for (i = 0; i < GATE_BARS.length; i++) {
+      x = GATE_BARS[i];
+      R(g, x - 1, 0, 5, foot, K);
+      R(g, x, 0, 1, foot, il); R(g, x + 1, 0, 1, foot, im); R(g, x + 2, 0, 1, foot, id);
+      if (!dn) { // spiked foot
+        R(g, x - 1, 11, 5, 3, K); R(g, x, 11, 1, 2, il); R(g, x + 1, 11, 1, 3, im); R(g, x + 2, 11, 1, 2, id);
+        P(g, x, 13, K); P(g, x + 2, 13, K); P(g, x + 1, 14, ix); P(g, x, 14, K); P(g, x + 2, 14, K); P(g, x + 1, 15, K);
+      }
+    }
+    // one cross beam per tile, riveted at each bar
+    y = dn ? 7 : 6;
+    R(g, 0, y - 1, 16, 5, K); R(g, 0, y, 16, 1, il); R(g, 0, y + 1, 16, 1, im); R(g, 0, y + 2, 16, 1, id);
+    for (i = 0; i < GATE_BARS.length; i++) { P(g, GATE_BARS[i] + 1, y + 1, ix); P(g, GATE_BARS[i] + 1, y + 2, K); }
+    g.restore();
+    // side frame where the gate meets something else
+    if (!L && foot > top) { R(g, 0, top, 1, foot - top, K); }
+    if (!Rt && foot > top) { R(g, 15, top, 1, foot - top, K); }
+    // header beam (the portcullis housing) with hazard stripes: a gate never reads like ground or a ladder
+    if (!up) {
+      R(g, 0, 0, 16, 6, K);
+      for (x = 0; x < 16; x++) for (y = 1; y < 4; y++) P(g, x, y, ((x + y) & 3) < 2 ? '#f8b800' : '#202020');
+      R(g, 0, 4, 16, 1, hb); P(g, 3, 4, hl); P(g, 12, 4, hl);
+      if (!L) { R(g, 0, 0, 1, 6, K); } if (!Rt) { R(g, 15, 0, 1, 6, K); }
+    }
+    return cv;
+  }
+
   var tileCache = {};
   art.tile = function (ctx, theme, ch, x, y, info) {
     var spec = TT[theme] || TT.sewer;
@@ -821,6 +863,14 @@
     if (info) {
       mask = (info.up ? 1 : 0) | (info.down ? 2 : 0) | (info.left ? 4 : 0) | (info.right ? 8 : 0);
       if (info.tx !== undefined) v = hash2(info.tx | 0, (info.ty | 0) * 3 + 1) & 3;
+    }
+    if (ch === 'L') {
+      var op = info && info.open > 0 ? Math.min(16, Math.round(+info.open * 16)) : 0;
+      if (op >= 16 && (mask & 1)) return; // fully raised: only the header beam stays
+      var gk = (TT[theme] ? theme : 'sewer') + 'L', gc = tileCache[gk] || (tileCache[gk] = {}), gid = (mask << 5) | op;
+      var gcv = gc[gid] || (gc[gid] = paintGate(spec, mask, op));
+      ctx.drawImage(gcv, Math.round(x), Math.round(y));
+      return;
     }
     if (ch === '=') { mask &= 12; v = 0; }
     else if (ch === '~') { mask &= 1; v = 0; a = Math.floor(((info && info.t !== undefined) ? info.t : (DCW.t || 0)) * 5) & 3; }
@@ -2328,6 +2378,416 @@
     '.bbb.......',
     '...........']]);
 
+  /* =====================================================================
+     UPDATE 2: rescue cage, dino egg, lever, padlocked door, quest items,
+     overworld lock badge
+     ===================================================================== */
+  // ---- cage (24x28): thin bars with wide gaps so the companion drawn behind stays visible ----
+  var IRON = { l: '#bcbcbc', m: '#7c7c7c', d: '#3c3c3c', k: '#000000', y: '#f8b800', Y: '#f8d878', o: '#ac7c00' };
+  function bar(g, x, y0, y1) { R(g, x, y0, 1, y1 - y0, IRON.l); R(g, x + 1, y0, 1, y1 - y0, IRON.d); }
+  function cageTop(g, dx) {
+    // hanging ring + domed top band
+    R(g, 10 + dx, 0, 4, 1, K); R(g, 9 + dx, 1, 1, 2, K); R(g, 14 + dx, 1, 1, 2, K); R(g, 10 + dx, 1, 4, 1, IRON.l); R(g, 10 + dx, 2, 1, 1, IRON.m); R(g, 13 + dx, 2, 1, 1, IRON.m);
+    R(g, 3 + dx, 3, 18, 1, K); R(g, 1 + dx, 4, 22, 1, K); R(g, 0 + dx, 5, 24, 3, K);
+    R(g, 4 + dx, 4, 16, 1, IRON.m); R(g, 2 + dx, 5, 20, 1, IRON.l); R(g, 1 + dx, 6, 22, 1, IRON.m);
+    for (var x = 3; x < 22; x += 4) P(g, x + dx, 6, IRON.l);
+  }
+  function cageBase(g) {
+    R(g, 0, 25, 24, 3, K); R(g, 1, 26, 22, 1, IRON.l);
+    for (var x = 3; x < 22; x += 5) P(g, x, 26, IRON.m);
+  }
+  var CAGE_BARS = [1, 6, 11, 16, 21];
+  function cagePadlock(g, x, y) { // hangs on the door bar; stage.js draws the prisoner flipped (facing left), so this sits behind its head
+    R(g, x, y + 2, 6, 5, K); R(g, x + 1, y, 4, 1, K); P(g, x, y + 1, K); P(g, x + 5, y + 1, K);
+    P(g, x + 1, y + 1, IRON.l); P(g, x + 4, y + 1, IRON.m);
+    R(g, x + 1, y + 3, 4, 3, IRON.y); R(g, x + 1, y + 3, 4, 1, IRON.Y); P(g, x + 2, y + 4, K); P(g, x + 4, y + 5, IRON.o);
+  }
+  function cageBody(g, sway) {
+    // sway: the upper half of the cage leans 1px (frame 1 = rattle)
+    for (var i = 0; i < CAGE_BARS.length; i++) {
+      var x = CAGE_BARS[i];
+      bar(g, x, 16, 25);
+      bar(g, x + sway, 8, 16);
+    }
+    // outer posts get a black edge so the cage silhouette reads
+    R(g, 0, 16, 1, 9, K); R(g, 23, 16, 1, 9, K); R(g, sway, 8, 1, 8, K); R(g, 23 + sway, 8, 1, 8, K);
+    // thin band high up, above a small companion's head
+    R(g, 1 + sway, 10, 22, 1, IRON.l); R(g, 1 + sway, 11, 22, 1, IRON.d);
+    cagePadlock(g, 15, 14);
+  }
+  proc('cage', 24, 28, 2, function (g, f) {
+    cageBody(g, f); cageTop(g, f); cageBase(g);
+  }, false);
+  proc('cage_broken', 30, 28, 1, function (g) {
+    g.translate(1, 0);
+    // dented top band tilted down to the left
+    R(g, 1, 6, 22, 3, K); R(g, 3, 5, 18, 1, K); R(g, 6, 4, 12, 1, K);
+    R(g, 2, 7, 20, 1, IRON.m); R(g, 4, 6, 16, 1, IRON.l); R(g, 7, 5, 10, 1, IRON.m);
+    P(g, 9, 6, IRON.d); P(g, 10, 7, IRON.d); P(g, 11, 6, K);
+    // left post + bar intact
+    R(g, 0, 8, 1, 17, K);
+    bar(g, 1, 8, 25); bar(g, 6, 8, 25);
+    R(g, 1, 10, 7, 1, IRON.l); R(g, 1, 11, 7, 1, IRON.d);
+    // centre bars pried apart (punched open)
+    var bent = [[11, -1], [16, 1]];
+    for (var i = 0; i < 2; i++) {
+      var bx = bent[i][0], dir = bent[i][1];
+      for (var y = 9; y < 25; y++) {
+        var off = Math.round(Math.sin((y - 9) / 16 * Math.PI) * 3) * dir;
+        P(g, bx + off, y, IRON.l); P(g, bx + off + 1, y, IRON.d);
+      }
+    }
+    // right post (the hinge side)
+    bar(g, 21, 8, 25); R(g, 23, 8, 1, 17, K);
+    // the door: torn off its top hinge, swung out and hanging askew to the right
+    var tmp = mkCanvas(30, 28), tg = g2(tmp);
+    for (var c = 0; c < 6; c++) {
+      var dy = Math.round(c * 0.8);
+      if (c === 0 || c === 5 || c === 3) R(tg, 23 + c, 14 + dy, 1, 10, c === 5 ? IRON.m : IRON.l);
+      P(tg, 23 + c, 14 + dy, IRON.l); P(tg, 23 + c, 23 + dy, IRON.m);
+    }
+    outlineCanvas(tmp, 30, 28, 1, K);
+    g.drawImage(tmp, 0, 0);
+    // floor plate; the snapped padlock lies in front
+    cageBase(g);
+    R(g, 14, 22, 6, 4, K); R(g, 15, 23, 4, 2, IRON.y); P(g, 15, 23, IRON.Y); P(g, 16, 24, K);
+    P(g, 13, 21, IRON.l); P(g, 12, 20, IRON.l); P(g, 12, 21, K); P(g, 13, 20, K);
+    // flying bits
+    P(g, 14, 2, IRON.l); P(g, 20, 2, IRON.m); P(g, 4, 1, IRON.m);
+  }, false);
+
+  // ---- dino egg (16x18): speckled green, sits in a straw nest; frame 1 wobbles ----
+  var EGG = { b: '#b8f8b8', m: '#58d854', d: '#00a800', s: '#006800', w: '#fcfcfc', n: '#ac7c00', N: '#fca044', D: '#503000' };
+  var EGG_ROWS = [
+    '.....bbbb.....',
+    '....bbwbbb....',
+    '...bbwbbsbb...',
+    '..bbwbbbbbbb..',
+    '..bbbbbsbbmb..',
+    '.bsbbbbbbbbmb.',
+    '.bbbbbsbbbbmb.',
+    '.bbsbbbbbsbmb.',
+    '.bbbbbbbbbmmb.',
+    '.bbbbsbbbbmmb.',
+    '..bsbbbbbmmb..',
+    '..bbbbbsmmdb..',
+    '...bbmmmmdd...',
+    '....dddddd....'
+  ];
+  function nest(g) {
+    R(g, 1, 14, 14, 3, EGG.n);
+    for (var x = 1; x < 15; x += 2) { P(g, x, 14, EGG.N); P(g, x + 1, 16, EGG.D); }
+    P(g, 0, 15, EGG.n); P(g, 15, 15, EGG.n); P(g, 0, 13, EGG.N); P(g, 15, 13, EGG.N); P(g, 3, 13, EGG.N); P(g, 12, 13, EGG.N);
+  }
+  proc('egg', 16, 18, 2, function (g, f) {
+    var tmp = mkCanvas(16, 18), tg = g2(tmp);
+    if (f === 0) rows(tg, 1, 1, EGG_ROWS, EGG);
+    else for (var j = 0; j < EGG_ROWS.length; j++) rows(tg, 1 + (j < 5 ? 1 : 0), 1 + j, [EGG_ROWS[j]], EGG);
+    nest(tg);
+    outlineCanvas(tmp, 16, 18, 1, K);
+    g.drawImage(tmp, 0, 0);
+    if (f === 1) { P(g, 0, 2, EGG.w); P(g, 15, 4, EGG.w); P(g, 1, 1, EGG.m); }
+  }, false);
+  proc('egg_broken', 20, 14, 1, function (g) {
+    var tmp = mkCanvas(20, 14), tg = g2(tmp);
+    // bottom half of the shell: jagged rim, dark empty inside
+    rows(tg, 1, 3, [
+      'b.b..b.b..',
+      'bbsbbbdbbb',
+      'bsssssssmb',
+      'bbbbbbbbmb',
+      'bsbbbbsmmb',
+      '.bbbbbmmd.',
+      '..ddddd...'], EGG);
+    // top half: a little dome lying tipped over on the right
+    rows(tg, 12, 3, [
+      '...bb...',
+      '..bwbb..',
+      '.bwbbsb.',
+      'bbbbbbmb',
+      '.b.b.b.b'], EGG);
+    R(tg, 1, 10, 18, 2, EGG.n); for (var x = 1; x < 19; x += 2) { P(tg, x, 10, EGG.N); P(tg, x + 1, 11, EGG.D); }
+    outlineCanvas(tmp, 20, 14, 1, K);
+    g.drawImage(tmp, 0, 0);
+    // shell crumbs
+    P(g, 1, 3, EGG.b); P(g, 16, 2, EGG.b); P(g, 12, 1, EGG.m);
+  }, false);
+
+  // ---- lever (16x16): frame 0 = handle up-left (off, red light), frame 1 = down-right (on, green) ----
+  proc('lever', 16, 16, 2, function (g, f) {
+    var tmp = mkCanvas(16, 16), tg = g2(tmp);
+    // base box
+    R(tg, 2, 10, 12, 5, '#5c5c64'); R(tg, 2, 10, 12, 1, '#8c8c94'); R(tg, 2, 14, 12, 1, '#3c3c44');
+    R(tg, 5, 9, 6, 2, '#3c3c44');
+    // slot + status light
+    R(tg, 4, 12, 3, 1, '#202020');
+    R(tg, 10, 12, 2, 2, f ? '#58d854' : '#a80020'); P(tg, 10, 12, f ? '#b8f818' : '#f85898');
+    P(tg, 3, 13, '#8c8c94'); P(tg, 12, 11, '#8c8c94');
+    // handle shaft from the pivot (8,9) + red ball grip
+    if (f === 0) { line(tg, 7, 9, 3, 3, '#9c9c9c'); line(tg, 8, 9, 4, 3, '#5c5c5c'); disc(tg, 3, 3, 2, '#e40058'); P(tg, 2, 2, '#f8a4c0'); }
+    else { line(tg, 8, 8, 12, 6, '#9c9c9c'); line(tg, 8, 9, 12, 7, '#5c5c5c'); disc(tg, 13, 6, 2, '#e40058'); P(tg, 12, 5, '#f8a4c0'); }
+    R(tg, 7, 9, 2, 1, '#bcbcbc');
+    outlineCanvas(tmp, 16, 16, 1, K);
+    g.drawImage(tmp, 0, 0);
+    if (f) { P(g, 15, 2, '#b8f818'); P(g, 14, 1, '#58d854'); }
+  }, false);
+
+  // ---- door_locked: the exit door with chains across it and a big padlock ----
+  proc('door_locked', 26, 38, 1, function (g) {
+    doorFrame(g);
+    R(g, 4, 13, 18, 25, '#7c2c08'); R(g, 4, 13, 18, 1, '#a84c18'); R(g, 4, 13, 1, 25, '#a84c18');
+    R(g, 6, 16, 6, 9, '#5c1c04'); R(g, 14, 16, 6, 9, '#5c1c04'); R(g, 6, 27, 6, 9, '#5c1c04'); R(g, 14, 27, 6, 9, '#5c1c04');
+    R(g, 6, 16, 6, 1, '#4c1404'); R(g, 14, 16, 6, 1, '#4c1404');
+    R(g, 12, 13, 2, 25, '#3c1004');
+    exitSign(g, false);
+    // red "locked" lamp over the sign
+    R(g, 21, 2, 2, 2, '#e40058'); P(g, 21, 2, '#f8a4c0');
+    // chains: an X of links bolted to the frame
+    function chain(x0, y0, x1, y1) {
+      var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+      for (var i = 0; i <= n; i++) {
+        var x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n);
+        var ph = i % 4;
+        if (ph === 3) continue;
+        R(g, x - 1, y - 1, 3, 3, K);
+      }
+      for (i = 0; i <= n; i++) {
+        x = Math.round(x0 + (x1 - x0) * i / n); y = Math.round(y0 + (y1 - y0) * i / n);
+        ph = i % 4;
+        if (ph === 3) continue;
+        P(g, x, y, ph === 1 ? '#fcfcfc' : (ph === 0 ? '#bcbcbc' : '#7c7c7c'));
+      }
+    }
+    chain(3, 15, 22, 34); chain(22, 15, 3, 34);
+    // bolts on the frame where the chains anchor
+    [[2, 14], [23, 14], [2, 35], [23, 35]].forEach(function (b) { R(g, b[0] - 1, b[1] - 1, 3, 3, K); P(g, b[0], b[1], '#bcbcbc'); });
+    // big padlock in the middle
+    R(g, 9, 19, 8, 3, K); R(g, 10, 18, 6, 1, K);
+    R(g, 10, 19, 1, 4, '#bcbcbc'); R(g, 15, 19, 1, 4, '#7c7c7c'); R(g, 11, 19, 4, 1, '#bcbcbc'); R(g, 11, 20, 4, 2, K);
+    R(g, 7, 22, 12, 10, K);
+    R(g, 8, 23, 10, 8, '#f8b800'); R(g, 8, 23, 10, 1, '#f8d878'); R(g, 8, 23, 1, 8, '#f8d878'); R(g, 8, 30, 10, 1, '#ac7c00'); R(g, 17, 23, 1, 8, '#ac7c00');
+    R(g, 12, 25, 2, 2, K); R(g, 12, 27, 2, 2, K); P(g, 12, 26, K);
+    P(g, 9, 24, '#fcfcfc');
+  });
+
+  // ---- quest items (16x16, 2 frames): golden halo + sparkles, glint on frame 1 ----
+  function qiItem(name, pal, rs, glow) {
+    var h = rs.length, w = 0;
+    for (var i = 0; i < h; i++) w = Math.max(w, rs[i].length);
+    var ox = (16 - w) >> 1, oy = ((16 - h) >> 1);
+    glow = glow || '#f8d878';
+    // masks: item fill -> black outline ring -> aura ring (no canvas readback needed)
+    var fill = new Uint8Array(256), ol = new Uint8Array(256), aura = new Uint8Array(256), q, nx, ny, kx, ky;
+    for (ky = 0; ky < h; ky++) for (kx = 0; kx < rs[ky].length; kx++) {
+      var c0 = rs[ky].charAt(kx);
+      if (c0 !== '.' && c0 !== ' ' && pal[c0]) fill[(oy + ky) * 16 + ox + kx] = 1;
+    }
+    function ring(src, dst, block) {
+      for (ny = 0; ny < 16; ny++) for (nx = 0; nx < 16; nx++) {
+        q = ny * 16 + nx;
+        if (src[q] || block[q]) continue;
+        if ((nx > 0 && src[q - 1]) || (nx < 15 && src[q + 1]) || (ny > 0 && src[q - 16]) || (ny < 15 && src[q + 16])) dst[q] = 1;
+      }
+    }
+    ring(fill, ol, fill);
+    var both = new Uint8Array(256); for (q = 0; q < 256; q++) both[q] = fill[q] | ol[q];
+    ring(ol, aura, both);
+    proc(name, 16, 16, 2, function (g, f) {
+      // pixel aura just outside the black outline: dithered on frame 0, solid on frame 1 (pulse)
+      for (var ay = 0; ay < 16; ay++) for (var ax = 0; ax < 16; ax++) {
+        if (aura[ay * 16 + ax] && (f === 1 || ((ax + ay) & 1) === 0)) P(g, ax, ay, glow);
+      }
+      var tmp = mkCanvas(16, 16), tg = g2(tmp);
+      if (f === 1) { // glint: a diagonal white streak across the item's lighter colours
+        for (var j = 0; j < h; j++) for (var i2 = 0; i2 < rs[j].length; i2++) {
+          var ch = rs[j].charAt(i2), col = pal[ch];
+          if (!col || ch === '.') continue;
+          var d = (ox + i2) + (oy + j), rgb = parseColor(col);
+          if ((d === 13 || d === 14) && rgb[0] + rgb[1] + rgb[2] > 200) col = '#fcfcfc';
+          P(tg, ox + i2, oy + j, col);
+        }
+      } else rows(tg, ox, oy, rs, pal);
+      outlineCanvas(tmp, 16, 16, 1, K);
+      g.drawImage(tmp, 0, 0);
+      // twinkles (plus-shaped), alternate corners per frame
+      var sp = f ? [[13, 2], [2, 12]] : [[2, 2], [13, 12]];
+      for (var s = 0; s < sp.length; s++) {
+        var x = sp[s][0], y = sp[s][1];
+        P(g, x, y, '#fcfcfc'); P(g, x - 1, y, glow); P(g, x + 1, y, glow); P(g, x, y - 1, glow); P(g, x, y + 1, glow);
+      }
+    }, false);
+  }
+  var GOLD = { y: '#f8b800', Y: '#f8d878', o: '#ac7c00', w: '#fcfcfc', d: '#503000' };
+  function qpal(extra) { var o = {}, k; for (k in GOLD) o[k] = GOLD[k]; for (k in extra) o[k] = extra[k]; return o; }
+  qiItem('qi_key', qpal({ r: '#e40058' }), [
+    '.YYy.......',
+    'YyyyY......',
+    'yy.yo......',
+    'yyyyr......',
+    '.yooyy.....',
+    '.....yy....',
+    '......yy...',
+    '.......yy..',
+    '......yyyy.',
+    '.......o.yy',
+    '........yo.',
+    '.........o.'
+  ]);
+  qiItem('qi_valve', { r: '#e40058', R: '#f85898', d: '#a80020', g: '#bcbcbc', G: '#7c7c7c', w: '#fcfcfc' }, [
+    '....rRRr....',
+    '..rRd..drr..',
+    '.rd..rr..dr.',
+    '.R...rr...r.',
+    'rd...rr...dr',
+    'Rrrrrggrrrrr',
+    'rrrrrGGrrrrd',
+    'rd...rr...dr',
+    '.r...rr...d.',
+    '.rd..rr..dd.',
+    '..rrd..ddd..',
+    '....rddd....'
+  ], '#f8a4c0');
+  qiItem('qi_ticket', { y: '#f8d878', Y: '#fce0a8', o: '#ac7c00', r: '#e40058', R: '#a80020', w: '#fcfcfc' }, [
+    'YYYYYYYYYYYY',
+    'yyyyyyyyoyyo',
+    '.yrRrRrRoyy.',
+    'yyyy.ryyoyyy',
+    '.yy.rrryoyy.',
+    'yyyrrrrroyyy',
+    '.yyyrrryoyy.',
+    'yyyyrorroyyo',
+    'yrRrRrRyoyyo',
+    'oooooooooooo'
+  ]);
+  qiItem('qi_gear', { g: '#bcbcbc', G: '#7c7c7c', w: '#fcfcfc', d: '#3c3c3c', y: '#f8b800' }, [
+    '....gg.gg...',
+    '....gg.gG...',
+    '.gwgggggggG.',
+    '.wggggggggG.',
+    '..ggg..gGG..',
+    'gggg.yy.gGGG',
+    'gggg.yy.gGGd',
+    '..ggg..gGG..',
+    '.gggggggGGd.',
+    '.GggggggGGd.',
+    '....GG.Gd...',
+    '....Gd.dd...'
+  ], '#a4e4fc');
+  qiItem('qi_shell', { p: '#f8a4c0', P: '#fce0f0', m: '#e45878', d: '#a80020', w: '#fcfcfc' }, [
+    '...PpPpPp...',
+    '.pPpPpPpPpm.',
+    'pPpPpPpPpPpm',
+    'pPpPpPpPpPmm',
+    'pmPpPpPpPmPm',
+    '.pmPpPpPmPm.',
+    '..pmPpPmPd..',
+    '...pmPpmd...',
+    '..mmpPpmdd..',
+    '..ddmmmddd..'
+  ], '#f8b8f8');
+  qiItem('qi_horn', { i: '#fce0a8', I: '#f0d0b0', s: '#c8a070', y: '#f8b800', o: '#ac7c00', w: '#fcfcfc' }, [
+    'yy..........',
+    'oy..........',
+    '.is......iy.',
+    '.iis....iiiy',
+    '..iisssiiwiy',
+    '..yiiiiiiwiy',
+    '...oiiyiiiiy',
+    '....ssoiiiy.',
+    '.......sooy.'
+  ]);
+  qiItem('qi_mask', { p: '#9878f8', P: '#d8b8f8', m: '#4428bc', y: '#f8b800', Y: '#f8d878', w: '#fcfcfc', r: '#e40058', f: '#f878f8' }, [
+    '...........f',
+    '..........ff',
+    '.pPPp..pPPpf',
+    'pPPPPppPPPPp',
+    'pP..Ppp..Pp.',
+    'p...ppp...p.',
+    'pp..pYp..pp.',
+    '.ppppYYpppm.',
+    '..mmy..ymm..',
+    '...y....y...'
+  ], '#d8b8f8');
+  qiItem('qi_crown', qpal({ r: '#e40058', b: '#3cbcfc', g: '#58d854' }), [
+    'w....w....w.',
+    'y...yYy...y.',
+    'yy..yyy..yy.',
+    'yYy.yyy.yyy.',
+    'yyyyyyyyyyy.',
+    'yyryybyygyo.',
+    'yYyyyyyyyyo.',
+    'yyyyyyyyyyo.',
+    'Yoooooooooo.'
+  ]);
+  qiItem('qi_badge', qpal({ b: '#0058f8', B: '#3cbcfc', r: '#e40058', R: '#a80020' }), [
+    '.....Y......',
+    '.....y......',
+    '....yYy.....',
+    'yyyyyyyyyyy.',
+    '.yyYYyyyyy..',
+    '..yyYbbyy...',
+    '..yyybyyy...',
+    '.yyyyyyyyy..',
+    '.yyo...oyy..',
+    'yo.......oy.',
+    '...rR.Rr....',
+    '...r...r....'
+  ]);
+  qiItem('qi_map', { p: '#fce0a8', P: '#f0d0b0', s: '#c8a070', d: '#7c4c18', r: '#e40058', b: '#3cbcfc', g: '#58d854', w: '#fcfcfc' }, [
+    'dd........dd',
+    'dPpppppppPdd',
+    'dpgg.ppbbpd.',
+    '.pgggppbbp..',
+    '.ppg.pp.rp.r',
+    '.pp..p.p.rr.',
+    '.p..ppp.rpr.',
+    '.pbbppppppr.',
+    'dpbbpgg.ppd.',
+    'dPppppppppdd',
+    'dd........dd'
+  ]);
+  qiItem('qi_lens', { y: '#f8b800', o: '#ac7c00', c: '#a4e4fc', C: '#3cbcfc', w: '#fcfcfc', b: '#7c4c18', B: '#503000' }, [
+    '...yyyyy....',
+    '..yccccCy...',
+    '.ywwcccCCy..',
+    'ycwccccCCy..',
+    'yccccccCCo..',
+    'ycccccCCCo..',
+    'yCcccCCCCo..',
+    '.oCCCCCCo...',
+    '..oooooobb..',
+    '........bb..',
+    '.........bB.',
+    '..........B.'
+  ], '#a4e4fc');
+  qiItem('qi_bolt', { y: '#f8d878', Y: '#f8b800', o: '#fca044', w: '#fcfcfc' }, [
+    '......wyy',
+    '.....wyyo',
+    '....wyyo.',
+    '...wyyo..',
+    '..wyyyyyy',
+    '.wyyyyyo.',
+    '....yyo..',
+    '...yyo...',
+    '..yyo....',
+    '.yyo.....',
+    'yyo......',
+    'yo.......'
+  ], '#f8f8a0');
+
+  // ---- overworld lock badge (16x16): padlock to draw over a locked entrance marker ----
+  // small padlock badge, bottom-centred in a 16x16 cell (overworld.js pins it to a marker's corner)
+  proc('ow_lock', 16, 16, 1, function (g) {
+    var tmp = mkCanvas(16, 16), tg = g2(tmp);
+    // shackle
+    R(tg, 6, 4, 4, 1, '#bcbcbc'); R(tg, 5, 5, 1, 4, '#bcbcbc'); R(tg, 10, 5, 1, 4, '#7c7c7c'); P(tg, 6, 5, '#7c7c7c'); P(tg, 9, 5, '#7c7c7c');
+    // body
+    R(tg, 4, 8, 8, 7, '#f8b800'); R(tg, 4, 8, 8, 1, '#f8d878'); R(tg, 4, 8, 1, 7, '#f8d878'); R(tg, 4, 14, 8, 1, '#ac7c00'); R(tg, 11, 9, 1, 6, '#ac7c00');
+    R(tg, 7, 10, 2, 2, '#000000'); P(tg, 7, 12, '#000000'); P(tg, 8, 12, '#000000'); P(tg, 5, 9, '#fcfcfc');
+    outlineCanvas(tmp, 16, 16, 1, K);
+    g.drawImage(tmp, 0, 0);
+  }, false);
+
   /* ---- HUD icons 8x8 (outline drawn in the rows) ---- */
   var IP = { k: '#000000', r: '#e40058', R: '#f85898', w: '#fcfcfc', d: '#3c1420', y: '#f8b800', Y: '#f8d878', o: '#ac7c00', g: '#7c7c7c', G: '#bcbcbc', b: '#3c3c3c', B: '#0058f8', L: '#3cbcfc', c: '#a84c18', C: '#e48c48', p: '#f878f8', P: '#f8b8f8', n: '#7c2c08', e: '#0078f8', f: '#f83800' };
   function icon(name, rs) { def('icon_' + name, { w: 8, h: 8, pal: IP, frames: [rs] }); }
@@ -2345,6 +2805,7 @@
   icon('shield', ['kkkkkkk.', 'kLLyLek.', 'kLLyeek.', 'kyyyyyk.', 'kLeyeek.', '.keyek..', '..kek...', '...k....']);
   icon('boot', ['.kkkk...', '.kCck...', '.kCck...', '.kCck...', '.kCcckk.', 'kCcccck.', 'knnnnnk.', 'kkkkkkk.']);
   icon('brain', ['..kkkk..', '.kPPpPk.', 'kPpPPpPk', 'kPPpPPpk', 'kpPPpPPk', '.kPPPPk.', '..kpk...', '...k....']);
+  icon('quest', ['.kkkkkk.', 'kYYYYYok', '.kYrYok.', '.kYrYk..', '.kYYYk..', '.kYrYok.', 'kYYYYYok', '.kkkkkk.']);
   icon('eye', ['........', '..kkkk..', '.kwwwwk.', 'kwwekwwk', 'kwekkwwk', '.kwwwwk.', '..kkkk..', '........']);
 
   art.init = function () {

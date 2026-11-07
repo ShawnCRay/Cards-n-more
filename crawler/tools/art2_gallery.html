@@ -69,12 +69,12 @@
 
   // 1b. big zoom of the two new companions on a plain backdrop
   (function () {
-    var g = section('new_zoom', 'SAMANTHA / SIGNET zoom (and flipped)', 200, 60, 5);
-    g.fillStyle = '#3c4c6c'; g.fillRect(0, 0, 200, 60);
+    var g = section('new_zoom', 'SAMANTHA / SIGNET zoom (and flipped)', 250, 64, 5);
+    g.fillStyle = '#3c4c6c'; g.fillRect(0, 0, 250, 64);
     var x = 12;
     ['samantha_idle', 'samantha_run', 'samantha_act', 'signet_idle', 'signet_run', 'signet_act', 'signet_spirit'].forEach(function (n) {
       var inf = A.info(n);
-      for (var f = 0; f < inf.frames; f++) { spr(g, n, x, 28, { frame: f }); spr(g, n, x, 58, { frame: f, flip: true }); x += inf.w + 3; }
+      for (var f = 0; f < inf.frames; f++) { spr(g, n, x, 30, { frame: f }); spr(g, n, x, 62, { frame: f, flip: true }); x += inf.w + 3; }
       x += 3;
     });
   })();
@@ -97,7 +97,7 @@
       if (c === 'mongo') {
         spr(g, 'egg', x - 9, 64, { frame: 0 }); spr(g, 'egg', x + 9, 64, { frame: 1 });
       } else {
-        spr(g, c + '_idle', x, 64, { frame: 0 }); spr(g, 'cage', x, 64, { frame: (i & 1) });
+        spr(g, c + '_idle', x, 62, { frame: 0, flip: true }); spr(g, 'cage', x, 64, { frame: (i & 1) });
       }
       label(g, c.slice(0, 6).toUpperCase(), x, 68, '#fff', { align: 'center' });
       if (c === 'mongo') { spr(g, 'egg_broken', x - 8, 128, {}); spr(g, 'mongo_idle', x + 10, 128, {}); }
@@ -108,6 +108,29 @@
     spr(g, 'egg', 250, 170, { frame: 0 }); spr(g, 'egg', 270, 170, { frame: 1 }); spr(g, 'egg_broken', 292, 170, {});
     g.fillStyle = '#000'; g.fillRect(0, 140, 150, 40);
     spr(g, 'cage', 20, 176, { frame: 0 }); spr(g, 'cage_broken', 50, 176, {}); spr(g, 'egg', 80, 176, {}); spr(g, 'egg_broken', 104, 176, {}); spr(g, 'lever', 128, 176, { frame: 0 }); spr(g, 'lever', 144, 176, { frame: 1 });
+  })();
+
+  // 3b. close-up detail of the objects
+  (function () {
+    var g = section('detail', 'DETAIL (6x)', 210, 44, 6);
+    g.fillStyle = '#28283c'; g.fillRect(0, 0, 210, 44);
+    spr(g, 'donut_idle', 14, 38, { flip: true }); spr(g, 'cage', 14, 40, { frame: 0 });
+    spr(g, 'samantha_idle', 40, 38, { flip: true }); spr(g, 'cage', 40, 40, { frame: 1 });
+    spr(g, 'cage_broken', 68, 40, {});
+    spr(g, 'egg', 92, 40, { frame: 0 }); spr(g, 'egg', 110, 40, { frame: 1 }); spr(g, 'egg_broken', 131, 40, {});
+    spr(g, 'lever', 152, 40, { frame: 0 }); spr(g, 'lever', 168, 40, { frame: 1 });
+    spr(g, 'ow_lock', 186, 40, {}); A.icon(g, 'quest', 198, 32);
+    spr(g, 'signet_spirit', 186, 16, { frame: 0 }); spr(g, 'signet_spirit', 199, 16, { frame: 1 });
+  })();
+
+  // 3c. quest items close-up, both frames, on dark and on a light backdrop
+  (function () {
+    var QI = ['key', 'valve', 'ticket', 'gear', 'shell', 'horn', 'mask', 'crown', 'badge', 'map', 'lens', 'bolt'];
+    var g = section('qi_zoom', 'QUEST ITEMS (5x) f0 / f1, dark + light bg', QI.length * 18 + 2, 74, 5);
+    g.fillStyle = '#1c1c2c'; g.fillRect(0, 0, 400, 37); g.fillStyle = '#7c9cbc'; g.fillRect(0, 37, 400, 37);
+    QI.forEach(function (q, i) {
+      for (var f = 0; f < 2; f++) { spr(g, 'qi_' + q, 10 + i * 18, 18 + f * 18, { frame: f }); spr(g, 'qi_' + q, 10 + i * 18, 55 + f * 18, { frame: f }); }
+    });
   })();
 
   // 4. objects: lever, doors, quest items, ow_lock, icons
@@ -131,7 +154,7 @@
     ow.forEach(function (m, i) {
       var x = 14 + i * 24;
       for (var tx = -8; tx < 8; tx += 16) A.owTile(g, 'ow_city', '.', x - 8, 128, {});
-      spr(g, m, x, 145, {}); spr(g, 'ow_lock', x, 145, {});
+      spr(g, m, x, 145, {}); spr(g, 'ow_lock', x - 8 + 12, 145 - 16 + 9, {});
       spr(g, m, x, 170, {});
     });
     spr(g, 'ow_lock', 200, 145, {});
@@ -151,7 +174,7 @@
     '##########'
   ];
   (A.themes || []).forEach(function (theme) {
-    var g = section('gate_' + theme, 'L GATE ' + theme, 160, 128, 2);
+    var g = section('gate_' + theme, 'L GATE ' + theme, 160, 128, 3);
     try {
       A.background(g, theme, 60, 40);
       var m = GATE_LEVEL;

@@ -2536,6 +2536,230 @@
   });
 
   /* ================================================================== *
+   *  UPDATE 2 COMPANIONS: Samantha (cursed doll head), Signet (half-elf
+   *  summoner) + her fae spirit, and their portraits
+   * ================================================================== */
+  (function () {
+    // ---- Samantha: porcelain doll head, curly black hair, cracked, big red lips ----
+    var sp = { h: '#24242c', H: '#6c6c84', f: C.W, F: C.g1, x: C.g0, c: C.r3, r: C.r1, R: C.r2, m: C.r0, e: C.o1, t: C.W };
+    var s0 = [
+      '..h.hH.hH.hh..',
+      '.hHhhhhhhHhhh.',
+      'hhhhhHhhhhhhhh',
+      'hHhhhhhhhhxhhh',
+      'hhhhhffffxffhh',
+      'hhHhfkkffxfkkh',
+      'hhhfffekfkefff',
+      'hHhFffffffffff',
+      '.hhFcffffffcff',
+      'hHhFffffrRRrf.',
+      '.hhhFfffrrrrf.',
+      '..hH.FFffff...'
+    ];
+    // blink + curls bounce
+    var s1 = alt(s0, 0, ['...h.hH.hH.h..', '.hhHhhhhhhHhh.']);
+    s1 = alt(s1, 5, ['hhHhfkkffxfkkh', 'hhhfffkkfkkfff']);
+    // run: squash on the ground / airborne with hair flying (extra rows = hop height)
+    var sq = [
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+      '.h.hH.hH.hh...',
+      'hHhhhhhhHhhhh.',
+      'hhhhhhhhhhxhhh',
+      'hhhhhffffxffhh',
+      'hHhhfkkffxfkkh',
+      'hhhffffkfkefff',
+      'hhhFcffffffcff',
+      'hHhFffffrRRrff',
+      '.hhhFFffrrrrf.',
+      '..h..FFFffff..'
+    ];
+    var air = [
+      'h..h.hH.hH....',
+      '.hhHhhhhhhHhh.',
+      'hhhhhHhhhhhhhh',
+      'hHhhhhhhhhxhhh',
+      'hhhhhffffxffhh',
+      'hhHhfkkffxfkkh',
+      'hhhfffekfkefff',
+      'hHhFffffffffff',
+      'hhhFcffffffcff',
+      '.hhFffffrRRrf.',
+      'h.hhFfffrrrrf.',
+      '...H.FFffff...',
+      '..............',
+      '..............'
+    ];
+    // act: lunging chomp, mouth wide open with tiny fangs
+    var sa = [
+      '...h.hH.hH.h....',
+      '..hHhhhhhhHhhh..',
+      '.hhhhhHhhhhhhhh.',
+      'hhHhhhhhhhhxhhh.',
+      'hhhhhhffffxffhhh',
+      'hHhhhffkkfxfkkh.',
+      'hhhhfffffkfkfff.',
+      '.hhFffffekfeffff',
+      'hhhFcffrrrrrrrr.',
+      '.hHFffrtmtmmtmr.',
+      'hhhFffrmmmmmmmr.',
+      '.hhFfffrmmmmmr..',
+      '..hhFFffrrrrr...',
+      '....FFfff.......'
+    ];
+    spr('samantha_idle', sp, [s0, s1]);
+    spr('samantha_run', sp, [sq, air]);
+    spr('samantha_act', sp, [sa]);
+
+    // ---- Signet: wild-haired half-elf summoner, leafy cloak, carved staff ----
+    var gp = { h: C.c2, H: C.c1, i: C.t3, s: C.n3, S: C.n2, e: C.K, m: C.o0, g: C.G1, G: C.G0, l: C.G2, y: C.y1, Y: C.y0, O: C.b4, w: C.W, b: C.n0, B: C.y0 };
+    var g0 = [
+      '.h..hh.h.h.......',
+      'hhh.hihhhhh..OO..',
+      '.hhhhHhhihhh.OwO.',
+      'hhhHhhhhhhhhh.OO.',
+      'hhhhShhhhhhhh.y..',
+      '.hhhhSshssshh.Y..',
+      'hhhhhhSsswesh.y..',
+      '.hhhHhhssssss.Y..',
+      '.hhhHhhsssmsh.y..',
+      'hhhhhhhgsssh..Y..',
+      '.hhhgggggGggggs..',
+      '..hggGgggGggg.Y..',
+      '...gggGgllgGg.y..',
+      '...ggGggggGgg.Y..',
+      '..gggGgggggGg.y..',
+      '..gGgggGggggGgY..',
+      '..g.g.g.g.g.g.y..',
+      '....bb...bb...Y..',
+      '....bb...bb...y..',
+      '...BBB...BBB..Y..'
+    ];
+    var g1 = alt(g0, 0, ['..h..hh.h.h......', '.hhhhihhhhhh.OO..', 'hhhhhHhhihhh.OwO.', '.hhHhhhhhhhhhOOO.']);
+    g1 = alt(g1, 6, ['hhhhhhSsskesh.y..']);
+    var gr0 = legs(g0, ['.g.g.g.g.g.g.gy..', '...bb.....bb..Y..', '..bb.......bb.y..', '.BBB.......BBBY..']);
+    var gr1 = legs(alt(g0, 0, ['h..h.hh.h.h......', '.hhh.hihhhhh.OO..']), ['..g.g.g.g.g.g.y..', '......bbb.....Y..', '.....bb.bb....y..', '....BBB.BBB...Y..']);
+    gr0 = alt(gr0, 14, ['.ggGggggggGg..y..', 'gGgggGggggGg..Y..']);
+    // act: staff thrust overhead, tip blazing
+    var ga = [
+      '............O.O..',
+      '.............w...',
+      '...........OwwwO.',
+      '..........OwwwwwO',
+      '...........OwwwO.',
+      '.h..hh.h.h..OwO..',
+      'hhh.hihhhhh..y...',
+      '.hhhhHhhihhh.Y...',
+      'hhhHhhhhhhhhhs...',
+      'hhhhShhhhhhhhs...',
+      '.hhhhSshssshgs...',
+      'hhhhhhSssweshg...',
+      '.hhhHhhsssssgg...',
+      '.hhhHhhsssoshg...',
+      'hhhhhhhgsssgg....',
+      '.hhhgggggGggg....',
+      '..hggGgggGggg....',
+      '...gggGgllgGg....',
+      '...ggGggggGgg....',
+      '..gggGgggggGg....',
+      '..gGgggGggggGg...',
+      '..g.g.g.g.g.g....',
+      '....bb...bb......',
+      '....bb...bb......',
+      '...BBB...BBB.....'
+    ];
+    gp.o = C.o0;
+    spr('signet_idle', gp, [g0, g1]);
+    spr('signet_run', gp, [gr0, gr1]);
+    spr('signet_act', gp, [ga]);
+
+    // ---- Signet's fae spirit: glowing cyan wisp with little wings (blue glow outline) ----
+    var fp = { q: C.b3, c: C.c2, C: C.c3, w: C.W, l: C.b6, L: C.b4 };
+    var f0 = [
+      '..........',
+      '.ll....ll.',
+      '.lLl..lLl.',
+      '..lLccLl..',
+      '...cwwC...',
+      '...cwwwC..',
+      '...CwwC...',
+      '....cC....',
+      '...c......',
+      '..........'
+    ];
+    var f1 = [
+      '..........',
+      '....cc....',
+      '.ll.cC.ll.',
+      '.lLcwwCLl.',
+      '..LcwwwCL.',
+      '...CwwC...',
+      '....cC....',
+      '.....c....',
+      '......c...',
+      '..........'
+    ];
+    var spirit = [f0, f1].map(function (f) { return outlined(resize(P(f), 10, 10, 0, 0), 'q'); });
+    def('signet_spirit', fp, spirit);
+  })();
+
+  portrait('p_samantha', { h: '#24242c', H: '#6c6c84', f: C.W, F: C.g1, x: C.g0, c: C.r3, r: C.r1, R: C.r2, m: C.r0, e: C.o1, w: C.W, K: C.K, y: C.y2 }, BG_HERO, function (g) {
+    // big curly hair mass behind the head
+    oval(g, 15, 14, 14, 12, 'h');
+    [[3, 20], [5, 25], [2, 14], [27, 22], [26, 27], [9, 28], [29, 15]].forEach(function (q) { oval(g, q[0], q[1], 3, 3, 'h'); });
+    // porcelain face (no body: bottom of the head floats)
+    oval(g, 17, 17, 10, 11, 'f');
+    rect(g, 7, 13, 2, 9, 'F'); oval(g, 8, 18, 1, 5, 'F'); rect(g, 12, 27, 10, 1, 'F');
+    // bangs + curls
+    oval(g, 15, 6, 13, 5, 'h'); oval(g, 25, 9, 4, 4, 'h'); oval(g, 7, 9, 4, 5, 'h');
+    // curl highlights: little hooks all over the hair
+    [[5, 4], [11, 2], [17, 2], [23, 4], [27, 9], [3, 11], [4, 19], [3, 25], [26, 24], [10, 28], [28, 16], [8, 7], [21, 6]].forEach(function (q) {
+      px(g, q[0], q[1], 'H'); px(g, q[0] + 1, q[1], 'H'); px(g, q[0] + 2, q[1] + 1, 'H'); px(g, q[0] + 1, q[1] + 2, 'H');
+    });
+    // brows: one arched sky-high (sass), one low and angry
+    line(g, 10, 12, 12, 10, 'K'); px(g, 13, 10, 'K'); line(g, 19, 12, 23, 13, 'K'); px(g, 24, 13, 'K');
+    // eyes: big doll lashes, side-eye to the right, right one half-lidded
+    rect(g, 10, 13, 4, 3, 'w'); rect(g, 12, 13, 2, 3, 'e'); px(g, 13, 14, 'K'); line(g, 9, 13, 14, 13, 'K'); px(g, 9, 12, 'K');
+    rect(g, 19, 15, 5, 2, 'w'); rect(g, 21, 15, 2, 2, 'e'); px(g, 22, 16, 'K'); line(g, 18, 14, 24, 14, 'K'); px(g, 25, 13, 'K');
+    // cheeks
+    rect(g, 9, 18, 2, 1, 'c'); rect(g, 24, 19, 2, 1, 'c');
+    // the crack: down the right temple
+    line(g, 20, 4, 21, 7, 'x'); line(g, 21, 7, 19, 9, 'x'); line(g, 19, 9, 20, 11, 'x'); px(g, 22, 8, 'x');
+    // huge red pouty lips with a smirk
+    oval(g, 17, 23, 5, 2, 'r'); rect(g, 13, 23, 9, 1, 'm'); px(g, 22, 22, 'm'); px(g, 23, 21, 'K');
+    rect(g, 14, 21, 2, 1, 'R'); rect(g, 18, 21, 2, 1, 'R'); rect(g, 15, 24, 4, 1, 'R');
+    // divine sparkle (she insists)
+    px(g, 29, 3, 'y'); px(g, 28, 3, 'w'); px(g, 30, 3, 'w'); px(g, 29, 2, 'w'); px(g, 29, 4, 'w');
+  });
+  portrait('p_signet', { h: C.c2, H: C.c1, i: C.t3, s: C.n3, S: C.n2, e: C.G0, w: C.W, m: C.o0, g: C.G1, G: C.G0, l: C.G2, y: C.y1, Y: C.y0, O: C.b4, K: C.K }, BG_HERO, function (g) {
+    // leafy cloak
+    rect(g, 2, 25, 26, 7, 'g'); rect(g, 2, 25, 26, 1, 'G');
+    for (var x = 3; x < 28; x += 4) { px(g, x, 27, 'l'); px(g, x + 1, 28, 'l'); px(g, x + 2, 29, 'G'); px(g, x, 30, 'l'); }
+    rect(g, 12, 22, 7, 4, 's');
+    // wild hair: spiky mass
+    oval(g, 15, 12, 14, 11, 'h');
+    tri(g, 1, 2, 7, 6, 3, 10, 'h'); tri(g, 9, 0, 13, 3, 9, 6, 'h'); tri(g, 18, 0, 22, 4, 15, 4, 'h'); tri(g, 27, 2, 26, 8, 22, 5, 'h'); tri(g, 0, 18, 3, 12, 5, 22, 'h'); tri(g, 30, 17, 27, 12, 26, 22, 'h');
+    // face
+    oval(g, 16, 15, 7, 8, 's'); rect(g, 9, 14, 2, 6, 'S');
+    // pointed ears sticking out through the hair
+    tri(g, 9, 13, 2, 8, 9, 17, 's'); line(g, 4, 9, 8, 14, 'S'); tri(g, 23, 13, 30, 8, 23, 17, 's'); line(g, 28, 9, 24, 14, 'S');
+    // bangs
+    tri(g, 9, 6, 16, 6, 11, 12, 'h'); tri(g, 14, 6, 23, 6, 19, 11, 'h'); tri(g, 20, 6, 24, 6, 23, 13, 'h');
+    [[6, 6], [12, 3], [20, 2], [25, 7], [4, 16], [27, 15]].forEach(function (q) { px(g, q[0], q[1], 'i'); px(g, q[0] + 1, q[1] + 1, 'i'); px(g, q[0], q[1] + 1, 'H'); });
+    // eyes: bright green, calm and a little wild
+    rect(g, 12, 14, 3, 3, 'w'); rect(g, 13, 14, 2, 3, 'e'); px(g, 14, 15, 'K'); line(g, 11, 13, 14, 12, 'H');
+    rect(g, 18, 14, 3, 3, 'w'); rect(g, 19, 14, 2, 3, 'e'); px(g, 20, 15, 'K'); line(g, 18, 12, 21, 13, 'H');
+    rect(g, 16, 20, 3, 1, 'm'); px(g, 19, 19, 'm');
+    // leaf pinned in the hair
+    rect(g, 23, 3, 3, 2, 'l'); px(g, 26, 2, 'l'); px(g, 22, 5, 'G');
+    // staff with glowing tip at the right edge
+    rect(g, 28, 10, 2, 22, 'y'); for (var y = 12; y < 32; y += 3) px(g, 29, y, 'Y');
+    oval(g, 29, 6, 2, 2, 'O'); px(g, 29, 6, 'w'); px(g, 28, 5, 'w'); px(g, 29, 2, 'O'); px(g, 26, 6, 'O');
+  });
+
+  /* ================================================================== *
    *  more sections appended below
    * ================================================================== */
   DCW.artActorsKit.def = def;
