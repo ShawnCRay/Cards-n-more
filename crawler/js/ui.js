@@ -348,6 +348,14 @@
     if (hasG('inSafeRoom')) return !!G('inSafeRoom');
     return !!(ui.scenes && DCW.scene === ui.scenes.safeRoom);
   }
+  // Mordecai's body for the current floor
+  function mordForm() {
+    var run = getRun() || {}, n = run.floor || 1;
+    var f = (D('mordecaiForms') || {})[n] || {};
+    return { n: n, name: f.name || '', line: f.line || '',
+      sprite: hasArt('mordecai_f' + n) ? 'mordecai_f' + n : 'mordecai',
+      portrait: hasArt('p_mordecai_f' + n) ? 'p_mordecai_f' + n : 'p_mordecai' };
+  }
   function compSprite(id) { var d = compDef(id); return (d && d.sprite) || id || 'donut'; }
   function perkText(p) {
     if (!p) return '';
@@ -2166,20 +2174,25 @@
       else if (o.id === 'wardrobe') { sfx('menu_select'); ui.openWardrobe(); }
       else if (o.id === 'mordecai') {
         sfx('menu_select');
-        var run = getRun() || {};
-        var tip = function () { ui.say([{ who: 'MORDECAI', portrait: 'p_mordecai', text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
-        ui.menu([
+        var run = getRun() || {}, mf = mordForm();
+        var tip = function () { ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
+        var openMenu = function () { ui.menu([
           { label: 'ASK FOR A TIP', action: tip },
           { label: (run.statPoints > 0 ? 'TRAIN (' + run.statPoints + ' STAT POINT' + (run.statPoints > 1 ? 'S' : '') + ')' : 'TRAIN'), disabled: !(run.statPoints > 0), why: 'NO STAT POINTS. GO LEVEL UP.', action: function () { ui.openCharacter(); } },
           { label: 'REST (FULL HEAL)', disabled: !!run.restedHere, why: 'YOU ALREADY RESTED THIS VISIT.', action: function () {
             var r = getRun(); if (r) r.restedHere = true;
             if (hasG('heal')) G('heal', 9999); else if (r) r.hp = pStats().maxHp || r.hp;
             persist(); sfx('heal');
-            ui.say([{ who: 'MORDECAI', portrait: 'p_mordecai', text: 'SLEEP. I\'LL WATCH THE DOOR. NOBODY GETS IN HERE ANYWAY. MOSTLY.' }]);
+            ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: 'SLEEP. I\'LL WATCH THE DOOR. NOBODY GETS IN HERE ANYWAY. MOSTLY.' }]);
             ui.toast('FULLY HEALED', { icon: 'heart', color: C.green });
           } },
           { label: 'NEVERMIND', action: function () {} }
-        ], { title: 'MORDECAI', titleColor: C.green });
+        ], { title: mf.name ? 'MORDECAI THE ' + mf.name : 'MORDECAI', titleColor: C.green }); };
+        run.mordecaiMet = run.mordecaiMet || {};
+        if (mf.line && !run.mordecaiMet[mf.n]) {
+          run.mordecaiMet[mf.n] = true; persist();
+          ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: mf.line }], { onDone: openMenu });
+        } else openMenu();
       } else if (o.id === 'door') {
         sfx('menu_select');
         ui.confirm('LEAVE THE SAFE ROOM?', function () {
@@ -2242,7 +2255,7 @@
       R(26, GROUND - 16, 38, 16, '#000'); R(27, GROUND - 15, 36, 15, '#7c4c24'); R(27, GROUND - 15, 36, 2, '#c87838');
       icon(ctx, 'coin', 31, GROUND - 11); icon(ctx, 'potion', 41, GROUND - 11); icon(ctx, 'bomb', 51, GROUND - 11);
       // mordecai
-      spr(ctx, 'mordecai', 112, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 112 });
+      spr(ctx, mordForm().sprite, 112, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 112 });
       // loot box pile
       var run = getRun() || {}, bx = run.boxes || [];
       if (!bx.length) spr(ctx, 'box_bronze', 174, GROUND, { alpha: 0.3 });

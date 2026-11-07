@@ -2555,3 +2555,80 @@
   });
   A.carl_crouch = { w: src.w, h: src.h, pal: src.pal, frames: [frames[0]], ox: src.ox || 0, oy: src.oy || 0 };
 })();
+
+/* ==================================================================
+ *  MORDECAI'S FLOOR FORMS
+ *  The guide gets a new body every floor. Each form swaps the head
+ *  (rows 0-11 of the 17x28 sprite) and recolours skin, shirt, apron and
+ *  mug. Defs: mordecai_f1..f9 (2 frames, frame 2 blinks) and
+ *  p_mordecai_f2..f9 (32x32 portraits, head upscaled 2x over the base
+ *  portrait's backdrop and shoulders). Floor 1 keeps the original art.
+ * ================================================================== */
+(function () {
+  'use strict';
+  var A = window.DCW && window.DCW.artDefs;
+  if (!A || !A.mordecai || !A.p_mordecai) return;
+  var base = A.mordecai, basePort = A.p_mordecai;
+  var NECK = '....kfFffk.......';
+  var FORMS = {
+    2: { // goblin
+      pal: { f: '#00a800', F: '#005800', e: '#000000', w: '#f8d878', t: '#fcfcfc', r: '#503000', R: '#3c2000', a: '#ac7c00', A: '#7c5800' , l: '#005800' },
+      head: ['.................', '......kkkkk......', '.....kfffffk.....', 'k...kfffffffk....', 'kk.kfffffffffk...', 'kfkfffffwwwffk...',
+        '.kFffffffwewfk...', '..kfffffffffFFk..', '...kffffffffFFk..', '...kffffftftkk...', '....kfffffffk....', NECK] },
+    3: { // frog
+      pal: { f: '#80d010', F: '#007800', e: '#000000', w: '#f8d878', y: '#d8f878', r: '#0058f8', R: '#0000bc', a: '#fcfcfc', A: '#a4e4fc' , l: '#007800' },
+      head: ['.................', '........kkkk.....', '.......kwwwwk....', '......kwwwekk....', '....kkkwweefk....', '...kffffkkkfffk..',
+        '..kfffffffffffk..', '..kffffffffffffk.', '..kFkkkkkkkkkkk..', '...kyyyyyyyyyk...', '....kfyyyyyyk....', NECK] },
+    4: { // clockwork automaton
+      pal: { f: '#bcbcbc', F: '#7c7c7c', e: '#f83800', w: '#fcbcb0', o: '#f8b800', c: '#c84c0c', r: '#503000', R: '#3c2000', a: '#7c7c7c', A: '#3c3c3c' , l: '#7c7c7c' },
+      head: ['........k........', '.......kok.......', '....kkkkkkkkk....', '...kcccccccccck..', '...kcFFFFFFFFck..', '...kcFkkkkkkFck..',
+        '...kcFkeewkkFck..', '...kcFkkkkkkFck..', '...kcFFFFFFFFck..', '...kcFkFkFkFFck..', '....kkkkkkkkkk...', NECK] },
+    5: { // octopus
+      pal: { f: '#d800cc', F: '#881488', e: '#000000', w: '#fcfcfc', s: '#f8b8f8', r: '#00a8a8', R: '#005858', a: '#fcfcfc', A: '#b8f8d8' , l: '#881488' },
+      head: ['.................', '......kkkkk......', '....kkfffffkk....', '...kfffffffffk...', '...kffffffffffk..', '...kfffffwwffk...',
+        '...kffffwwekfk...', '...kffffffffk....', '...kfkfkfkfkk....', '...kfkfkfkfk.....', '...kskfkskfk.....', NECK] },
+    6: { // stag
+      pal: { f: '#ac7c00', F: '#503000', e: '#000000', w: '#fcfcfc', h: '#fcd8a8', n: '#000000', r: '#005800', R: '#003c00', a: '#d8b858', A: '#ac7c00' , l: '#503000' },
+      head: ['.k..k.....k..k...', '.kh.hk...khkhk...', '..khhk....khhk...', '...kkkkkkkkk.....', '...kfffffffk.....', '..kffffwefffk....',
+        '..kfffffffffkk...', '...kfffffffffFk..', '....kffffffFFnk..', '....kfffffkkkk...', '.....kffffk......', NECK] },
+    7: { // vampire
+      pal: { f: '#d8f8f8', F: '#a4e4fc', e: '#f83800', w: '#fcfcfc', h: '#202020', t: '#fcfcfc', c: '#a81000', r: '#202020', R: '#000000', a: '#a81000', A: '#680000' , l: '#202020' },
+      head: ['.................', '.....kkkkkkk.....', '....khhhhhhhk....', '...khhhhhhhhhk...', '...khhfffffhhk...', '...khffffwefk....',
+        '...khfffffffFk...', '...kcffffffFk....', '..kccffkkktkk....', '..kcckffffffk....', '..kcckkffffk.....', NECK] },
+    8: { // cyclops mutant
+      pal: { f: '#fca044', F: '#c84c0c', e: '#000000', w: '#fcfcfc', t: '#f8d878', r: '#7c7c7c', R: '#3c3c3c', a: '#ac7c00', A: '#7c5800' , l: '#c84c0c' },
+      head: ['.................', '......kkkkkk.....', '....kkffffffkk...', '...kffffffffffk..', '...kfffwwwwfffk..', '...kffwwwewwffk..',
+        '...kfffwwwwfffk..', '...kffffffffffk..', '...kfftftftfffk..', '....kffffffffk...', '.....kkffffkk....', NECK] },
+    9: { // minotaur
+      pal: { f: '#a85010', F: '#503000', e: '#f83800', w: '#fcfcfc', h: '#fcfcfc', H: '#bcbcbc', o: '#f8b800', n: '#f8b8a8', r: '#a81000', R: '#680000', a: '#7c7c7c', A: '#3c3c3c' , l: '#503000' },
+      head: ['.hk.........kh...', '.hhk.......khh...', '..khkkkkkkkhk....', '...kffffffffk....', '..kffffffffffk...', '..kfffffwefffk...',
+        '..kffffffffnnnk..', '..kffffffffnnnnk.', '...kffffffffnokk.', '...kfffffffffk...', '....kffffffk.....', NECK] }
+  };
+  function fit(r) { r = String(r); while (r.length < 17) r += '.'; return r.slice(0, 17); }
+  function merge(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
+  function blinkRow(r) { return r.replace(/w(?=e)|e/g, function (c) { return c === 'e' ? 'k' : 'f'; }); }
+  A.mordecai_f1 = { w: base.w, h: base.h, pal: base.pal, frames: base.frames, ox: base.ox || 0, oy: base.oy || 0 };
+  A.p_mordecai_f1 = basePort;
+  Object.keys(FORMS).forEach(function (n) {
+    var F = FORMS[n], head = F.head.map(fit);
+    var pal = merge(base.pal, F.pal);
+    var frames = base.frames.map(function (rows, fi) {
+      var hd = fi === 1 ? head.map(function (r, i) { return i < 10 ? blinkRow(r) : r; }) : head;
+      return hd.concat(rows.slice(12));
+    });
+    A['mordecai_f' + n] = { w: base.w, h: base.h, pal: pal, frames: frames, ox: base.ox || 0, oy: base.oy || 0 };
+    // portrait: head 2x over the base backdrop, base shoulders recoloured
+    var bp = basePort.frames[0], out = [];
+    for (var y = 0; y < 24; y++) {
+      var src = head[y >> 1], row = '';
+      for (var x = 0; x < 32; x++) {
+        var c = src.charAt((x >> 1) + 1);
+        if (c === '.' || c === '') { var b = bp[y].charAt(x); c = (b === 'z' || b === 'Z') ? b : 'z'; }
+        row += c;
+      }
+      out.push(row);
+    }
+    for (var y2 = 24; y2 < 32; y2++) out.push(bp[y2]);
+    A['p_mordecai_f' + n] = { w: 32, h: 32, pal: merge(merge(basePort.pal, pal), { z: '#000000', Z: '#0000bc' }), frames: [out] };
+  });
+})();
