@@ -188,8 +188,9 @@ function reach(id, rows0, starts, breakCrates) {
 }
 
 // Update 3: food truck reachability in a race chunk. The truck (36x18 px) needs 2 free rows,
-// rams crates, cannot climb ladders or 1-tile steps. Plain jump: up <= 3 rows, across <= 6
-// (<= 4 when rising 2+). From a J pad: up <= 5, across <= 9. Supports: # X = (one-way).
+// rams crates, cannot climb ladders or 1-tile steps. Plain (held) jump: up <= 3 rows, across
+// <= 6 (<= 4 when rising 2+). From a J pad: up <= 3, across <= 7 (a pad launch is shortened
+// when jump is not held, so plan for the short arc). Supports: # X = (one-way).
 function raceReach(rows0, starts) {
   const rows = rows0.map(r => r.replace(/b/g, '.'));
   const H = rows.length, W = rows[0].length;
@@ -203,11 +204,12 @@ function raceReach(rows0, starts) {
   while (q.length) {
     const [x, y] = q.shift();
     for (const dx of [-1, 1]) { const nx = x + dx; if (valid(nx, y)) { const ly = fall(nx, y); if (ly >= 0) push(nx, ly); } }
-    const pad = rows[y][x] === 'J', maxUp = pad ? 5 : 3, reachX = pad ? 9 : 6;
+    const pad = rows[y][x] === 'J', maxUp = 3, reachX = pad ? 7 : 6;
     for (let tx = Math.max(0, x - reachX); tx <= Math.min(W - 1, x + reachX); tx++) {
       for (let ty = Math.max(0, y - maxUp); ty <= Math.min(H - 1, y + 4); ty++) {
         const dx = Math.abs(tx - x), up = y - ty;
-        if (dx > (pad ? 9 : (up >= 2 ? 4 : 6))) continue;
+        // climbing 3 rows (onto an overpass) only works close in: the arc peaks ~3 tiles out
+        if (dx > (up >= 3 ? 3 : up === 2 ? 4 : pad ? 7 : 6)) continue;
         if (!valid(tx, ty)) continue;
         const apex = Math.min(y, ty) - (pad ? 1 : 0);
         let ok = true;
@@ -243,18 +245,19 @@ for (const [id, ch] of Object.entries(D.chunks)) {
   if (isRace) {
     rows.forEach((r, y) => r.split('').forEach((c, x) => {
       if (RACE_CHARS.has(c) && !RACE_GROUND.has(cell(rows, x, y + 1) || '')) err(w + ': "' + c + '" at ' + x + ',' + y + ' must sit right above ground (# X =)');
-      if (c === '=' && (y === 7 || y === 8)) warn(w + ': overpass "=" at row ' + y + ' (keep overpasses at row 6 or higher for truck headroom)');
+      if (c === '=' && y !== 7 && y !== 10) err(w + ': overpass "=" at row ' + y + ' (overpasses sit at row 7: a short pad launch reaches it and 2 rows stay free below; bridges at row 10)');
       if ('DKSLRHv<>'.includes(c)) err(w + ': "' + c + '" does not belong in a race chunk');
     }));
-    // gaps in the road: <= 4 plain, 5-6 need a J pad in the 6 tiles before, never wider than 6
+    // gaps in the road: <= 4 plain, 5 needs a J pad right at the edge (2 tiles), never wider than 5
     for (let x = 0; x < W;) {
       if (RACE_GROUND.has(rows[10][x])) { x++; continue; }
       let x1 = x; while (x1 < W && !RACE_GROUND.has(rows[10][x1])) x1++;
       const gw = x1 - x;
-      let pad = false; for (let k = Math.max(0, x - 6); k < x; k++) if (rows[9][k] === 'J') pad = true;
-      if (gw > 6) err(w + ': road gap of ' + gw + ' tiles at col ' + x + ' (max 6)');
-      else if (gw >= 5 && !pad) err(w + ': ' + gw + ' tile road gap at col ' + x + ' needs a J pad in the 6 tiles before it');
-      for (let k = Math.max(0, x - 3); k < x; k++) if (rows[9][k] === 'O') warn(w + ': oil slick right before the gap at col ' + x);
+      let pad = false; for (let k = Math.max(0, x - 2); k < x; k++) if (rows[9][k] === 'J') pad = true;
+      if (gw > 5) err(w + ': road gap of ' + gw + ' tiles at col ' + x + ' (max 5)');
+      else if (gw >= 5 && !pad) err(w + ': ' + gw + ' tile road gap at col ' + x + ' needs a J pad right at its edge (2 tiles before)');
+      // a spin-out lasts 0.8 s (no jumping) and slides ~6-8 tiles: keep oil well clear of gaps
+      for (let k = Math.max(0, x - 9); k < x; k++) if (rows[9][k] === 'O') err(w + ': oil slick at col ' + k + ' is within 9 tiles of the gap at col ' + x + ' (a spin-out cannot jump)');
       x = x1;
     }
   }

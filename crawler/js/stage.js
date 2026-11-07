@@ -753,7 +753,7 @@
   }
   function startPunch(P, idx) {
     P.state = 'punch'; P.st = 0; P.pIdx = idx; P.hitList = []; P.queued = false;
-    if (P.onGround) P.vx += P.face * K.punchStep * (idx === 2 ? 1.4 : 1);
+    if (P.onGround && !(S.parade && P.platform === S.parade.float)) P.vx += P.face * K.punchStep * (idx === 2 ? 1.4 : 1);
     sfx('punch', { pitch: 1 + idx * 0.08 });
   }
   function throwBomb(P) {
@@ -1108,8 +1108,8 @@
       res.place = S.race.playerPlace; res.racers = S.race.rivals.length + 1;
       if (res.place === 1) track('race_win');
       track('race_place:' + res.place);
-      if (S.race.dmgTaken === 0) track('race_flawless');
-      if (S.race.bossRival) res.boss = null;
+      if (S.race.dmgTaken === 0 && res.place === 1) track('race_flawless');
+      if (S.race.bossRival) { res.boss = null; res.raceBoss = S.race.bossRival.id; track('boss:' + S.race.bossRival.id); }
     }
     if (S.parade) track('parade_done');
     getRun().hp = Math.max(1, getRun().hp);
@@ -2827,7 +2827,7 @@
       var o = S.objects[i];
       if ((o.kind !== 'boost' && o.kind !== 'jpad' && o.kind !== 'oil') || !overlap(b, o)) continue;
       if (o.kind === 'boost') { if (!(b.boostT > 0.9)) { b.boostT = 1.3; if (b === S.player) { S.race.boostT = 1.3; sfx('boost'); } } }
-      else if (o.kind === 'jpad' && b.onGround) { b.vy = -430; b.onGround = false; if (b === S.player) sfx('jump', { pitch: 0.7 }); }
+      else if (o.kind === 'jpad' && b.onGround) { b.vy = -430; b.onGround = false; b.padLaunch = true; if (b === S.player) sfx('jump', { pitch: 0.7 }); }
       else if (o.kind === 'oil' && !(b.spin > 0)) {
         if (b === S.player) { S.race.spin = 0.8; b.spin = 0.8; sfx('skid'); numText(cx(b), b.y - 8, 'SPIN OUT!', '#fcfcfc'); }
         else if (Math.random() > b.skill * 0.6) { b.spin = 0.8; }
@@ -2864,16 +2864,29 @@
     if (R.spin > 0) P.vx *= Math.pow(0.4, dt);
     P.face = 1;
     if (I.pressed('jump') && P.onGround && R.spin <= 0) { P.vy = -320; P.onGround = false; sfx('jump', { pitch: 0.8 }); }
-    if (!I.down('jump') && P.vy < -120) P.vy += 900 * dt;
+    if (!I.down('jump') && P.vy < -120 && !P.padLaunch) P.vy += 900 * dt;
     P.vy = Math.min(P.vy + K.gravity * dt, K.fallMax);
-    var wasG = P.onGround;
+    var wasG = P.onGround, preVx = P.vx;
+    if (preVx > 50) { // smash crates before the wall check stops us
+      var rtx = Math.floor((P.x + P.w + preVx * dt + 2) / TS);
+      for (var rty = Math.floor(P.y / TS); rty <= Math.floor((P.y + P.h - 1) / TS); rty++) if (tileAt(rtx, rty) === T_CRATE) { breakCrate(rtx, rty); P.vx *= 0.75; }
+    }
+    // flatten ordinary enemies at speed
+    if (preVx > 90) {
+      for (var ei = 0; ei < S.enemies.length; ei++) {
+        var en = S.enemies[ei];
+        if (en.dead || !en.active || !overlap({ x: P.x, y: P.y, w: P.w + 6, h: P.h }, en)) continue;
+        damageActor(en, Math.max(st2().kickDmg * 3, 12), { kind: 'kick', kb: 200, dir: 1 });
+        P.inv = Math.max(P.inv, 0.25); P.vx *= 0.9;
+        numText(cx(en), en.y - 8, 'ROADKILL!', '#f8d878'); sfx('crash', { vol: 0.6 });
+      }
+    }
     moveBody(P, dt, false);
-    if (P.onGround && !wasG) { dust(cx(P), P.y + P.h, 3); sfx('land'); }
+    if (P.onGround && !wasG) { dust(cx(P), P.y + P.h, 3); sfx('land'); P.padLaunch = false; }
     if (P.onGround && P.vx > 40 && Math.random() < 0.3) dust(P.x, P.y + P.h, 1);
     if (P.hitWall && P.onGround) P.vx *= 0.5;
-    // ram crates in the way
-    var ftx = Math.floor((P.x + P.w + 2) / TS);
-    for (var ty = Math.floor(P.y / TS); ty <= Math.floor((P.y + P.h - 1) / TS); ty++) if (tileAt(ftx, ty) === T_CRATE && P.vx > 50) { breakCrate(ftx, ty); P.vx *= 0.7; }
+    // key items on the track (the truck drives through them)
+    for (var oi = 0; oi < S.objects.length; oi++) { var ob = S.objects[oi]; if (ob.kind === 'qitem' && !ob.taken && overlap(P, ob)) collectItem(ob); }
     if (P.onGround && !P.platform && safeAt(P.x, P.y + P.h + 1) && safeAt(P.x + P.w, P.y + P.h + 1)) P.lastSafe = { x: P.x, y: P.y + P.h };
     if (P.y > S.L.pxH + 8) raceRespawn(P, true);
     var hzt = tileAt(Math.floor(cx(P) / TS), Math.floor((P.y + P.h - 2) / TS));
@@ -2938,6 +2951,7 @@
     if (R.endT > 0) { R.endT -= dt; if (R.endT <= 0) { S.done = true; S.endKind = 'race'; S.endT = 0.01; music(null); } }
   }
   function run2() { return getRun(); }
+  function st2() { return stats(); }
   function ordinal(n) { return n + (n === 1 ? 'ST' : n === 2 ? 'ND' : n === 3 ? 'RD' : 'TH'); }
   function raceTarget(range) {
     var P = S.player, best = null, bd = range;
@@ -3071,7 +3085,7 @@
   }
   function setupParade() {
     var P = S.player, pd = S.def.parade || {};
-    var ground = groundBelow(S.start.x, 0);
+    var ground = groundBelow(S.start.x, S.start.y - 8);
     var fl = { parade: true, x: S.start.x - 24, y: ground - 26, w: 48, h: 6, ox: 0, oy: 0, axis: 'none', dir: 0, range: 0, speed: 0, dx: 0, dy: 0, prevY: ground - 26 };
     S.platforms.push(fl);
     P.x = fl.x + 18; P.y = fl.y - P.h - 1;

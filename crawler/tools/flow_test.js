@@ -88,7 +88,7 @@ require('fs').mkdirSync(SHOTS, { recursive: true });
         await page.evaluate(c => DCW.game.enterEntrance(c), bossCode);
         await advanceTo(['stage']); await step(90); await snap('f' + f + '_boss');
         await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 1, time: 90, damageTaken: 3, maxCombo: 9, views: 900, gold: 50, boss: DCW.data.stages[DCW.game.run.currentStage].boss }));
-        await advanceTo(['overworld']);
+        if ((await advanceTo(['overworld', 'ending'])) === 'ending') { console.log('reached the ending after floor ' + f); break; }
         const stairs = codes.find(c => fd.ents[c] === 'STAIRS');
         await page.evaluate(c => DCW.game.enterEntrance(c), stairs);
         await step(20);

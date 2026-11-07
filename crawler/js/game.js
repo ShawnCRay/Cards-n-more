@@ -169,11 +169,11 @@
     }
     if (result.maxCombo >= 25 && first) { G.giveLootBox('silver', 'COMBO ' + result.maxCombo, true); rewards.push({ kind: 'box', tier: 'silver' }); }
     // boss
-    var bossId = result.boss || st.boss;
-    var isBoss = st.kind === 'boss' || !!result.boss;
+    var bossId = result.boss || st.boss || result.raceBoss;
+    var isBoss = st.kind === 'boss' || !!result.boss || !!result.raceBoss || (f && f.boss === id);
     if (isBoss) {
       r.bossDown = true;
-      var b = (D().bosses || {})[bossId] || {};
+      var b = (D().bosses || {})[bossId] || (D().racers || {})[bossId] || {};
       if (first) {
         G.giveLootBox(b.loot || 'boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: b.loot || 'boss' });
         if (b.loot && b.loot !== 'boss') { G.giveLootBox('boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: 'boss' }); }
@@ -271,9 +271,10 @@
     }
     var st = G.stageDef(target);
     if (!st) return { kind: 'stage', name: '???', stageId: target, locked: true, lockText: 'UNDER CONSTRUCTION' };
-    var out = { kind: st.kind === 'boss' ? 'boss' : 'stage', side: st.kind === 'side', stageId: target, name: st.name || target,
-      cleared: !!(r && r.cleared[target]), locked: false };
-    if (st.kind === 'boss') {
+    var isBossEnt = st.kind === 'boss' || target === f.boss;
+    var out = { kind: isBossEnt ? 'boss' : 'stage', side: st.kind === 'side', stageId: target, name: st.name || target,
+      cleared: !!(r && r.cleared[target]), locked: false, race: !!st.race, parade: !!st.parade };
+    if (isBossEnt) {
       var left = (f.required || []).filter(function (id) { return !(r && r.cleared[id]); }).length;
       if (left > 0) { out.locked = true; out.lockText = 'CLEAR ' + left + ' MORE AREA' + (left > 1 ? 'S' : '') + ' TO OPEN'; }
       if (r && r.bossDown) out.cleared = true;

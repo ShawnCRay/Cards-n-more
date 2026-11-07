@@ -158,9 +158,12 @@
     var st = e.st;
     if (!st) return 'ow_door';
     if (st.kind === 'safe') return 'ow_safe';
+    if (st.parade) return 'ow_float';
     if (st.kind === 'boss') return st.locked ? 'ow_boss_locked' : 'ow_boss';
+    if (st.race) return 'ow_garage';
     if (st.kind === 'stairs') return st.locked ? 'ow_stairs_locked' : 'ow_stairs';
     var sd = stageDef(st.stageId), th = sd && sd.theme;
+    if (sd && sd.owMarker) return sd.owMarker;
     return THEME_MARK[th] || (/[A-F]/.test(e.ch) ? 'ow_manhole' : 'ow_door');
   }
 
@@ -514,7 +517,8 @@
       else if (st.kind === 'safe') line = 'PRESS ' + bn('confirm') + ' TO ENTER THE SAFE ROOM';
       else if (st.kind === 'stairs') line = 'PRESS ' + bn('confirm') + ' TO DESCEND';
       else if (st.kind === 'boss' && st.cleared) { line = '✓ BOSS DEFEATED'; col = '#58d854'; }
-      else if (st.kind === 'boss') { line = 'PRESS ' + bn('confirm') + ' TO FIGHT THE BOSS'; col = blink(3) ? '#fcfcfc' : '#f8d878'; }
+      else if (st.kind === 'boss') { line = 'PRESS ' + bn('confirm') + (st.parade ? ' TO START THE PARADE' : st.race ? ' FOR THE CHAMPIONSHIP' : ' TO FIGHT THE BOSS'); col = blink(3) ? '#fcfcfc' : '#f8d878'; }
+      else if (st.race && !st.cleared) { line = 'PRESS ' + bn('confirm') + ' TO RACE'; col = '#f8d878'; }
       else if (st.cleared) { line = '✓ CLEARED  ' + bn('confirm') + ': REPLAY'; col = '#58d854'; }
       else if (st.note) { line = bn('confirm') + ': ENTER  (' + st.note + ')'; col = '#fca044'; }
       else line = 'PRESS ' + bn('confirm') + ' TO ENTER';
