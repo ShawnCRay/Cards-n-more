@@ -452,6 +452,29 @@
       liq: { k: 'water', d: '#7c5000', m: '#f8b800', l: '#fce0a8', x: '#fcfcfc' },
       lad: { k: 'wood', m: '#ac7c00', l: '#fca044', d: '#503000' },
       crate: { d: '#503000', m: '#ac7c00', l: '#fca044' }
+    },
+    // ---- update 3: floor 10 race track, floor 11 parade street ----
+    raceway: {
+      ol: '#0c0c10', sh: '#24242c',
+      body: { k: 'asphalt', base: '#3c3c44', a: '#4c4c54', h: '#6c6c74', s: '#26262e', d: '#f8f8f8' },
+      top: { k: 'rwcurb', d: '#3c0010', m: '#e40058', l: '#fcfcfc', x: '#a80020' },
+      alt: { k: 'tires', base: '#1c1c20', h: '#4c4c54', s: '#0c0c10', r: '#e40058', w: '#fcfcfc' },
+      plat: { k: 'truss', d: '#3c3c44', m: '#9c9ca8', l: '#e8e8f0', x: '#f8b800' },
+      spike: { l: '#fcfcfc', m: '#bcbcbc', d: '#5c5c5c', b: '#3c3c44' },
+      liq: { k: 'water', d: '#060608', m: '#141218', l: '#3c2c5c', x: '#58f898' },
+      lad: { k: 'metal', m: '#7c7c84', l: '#bcbcc4', d: '#2c2c34' },
+      crate: { d: '#7c2c00', m: '#e45c10', l: '#fca044' }
+    },
+    parade: {
+      ol: '#100c10', sh: '#2c2430',
+      body: { k: 'street', base: '#4c4450', a: '#5c5460', h: '#78707c', s: '#2c2430', d: '#f8d878' },
+      top: { k: 'sidewalk', d: '#4c4448', m: '#c8c0b0', l: '#f0e8d8', x: '#9c9488' },
+      alt: { k: 'barricade', base: '#1c1c3c', h: '#fcfcfc', s: '#0c0c1c', r: '#0058f8', m: '#9c9cac' },
+      plat: { k: 'bunting', d: '#503000', m: '#ac7c00', l: '#fca044', x: '#e40058' },
+      spike: { l: '#fcfcfc', m: '#bcbcbc', d: '#7c7c7c', b: '#2c2430' },
+      liq: { k: 'water', d: '#003c8c', m: '#0068d8', l: '#3cbcfc', x: '#d8f8f8' },
+      lad: { k: 'metal', m: '#9c9cac', l: '#dcdce8', d: '#3c3c4c' },
+      crate: { d: '#880040', m: '#e40058', l: '#f878f8' }
     }
   };
   art.themes = Object.keys(TT);
@@ -732,6 +755,75 @@
       if (!L) R(g, 0, 0, 1, 5, '#000000');
       if (!Rt) R(g, 15, 0, 1, 5, '#000000');
     }
+  };
+
+  /* ---- update 3 painters: raceway + parade ---- */
+  BODY.asphalt = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var i = 0; i < 22; i++) PW(g, (r() * 16) | 0, (r() * 16) | 0, i % 3 === 0 ? c.h : i % 3 === 1 ? c.a : c.s);
+    if (r() < 0.5) { var y = 4 + ((r() * 9) | 0), x = (r() * 8) | 0; R(g, x, y, 6 + ((r() * 6) | 0), 1, c.s); } // skid mark
+  };
+  BODY.street = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var i = 0; i < 14; i++) PW(g, (r() * 16) | 0, (r() * 16) | 0, i & 1 ? c.a : c.s);
+    if (r() < 0.35) { var x = (r() * 12) | 0, y = 3 + ((r() * 10) | 0); P(g, x, y, ['#e40058', '#f8b800', '#3cbcfc', '#58d854'][(r() * 4) | 0]); } // stray confetti
+    if (r() < 0.4) { x = (r() * 12) | 0; y = (r() * 14) | 0; P(g, x, y, c.h); P(g, x + 1, y + 1, c.s); P(g, x + 2, y + 1, c.s); }
+  };
+  TOP.rwcurb = function (g, c) {
+    for (var y = 0; y < 4; y++) for (var x = 0; x < 16; x++) {
+      var red = ((x + 3 - y) >> 2) & 1;
+      P(g, x, y, y === 0 ? (red ? '#f85898' : '#fcfcfc') : y === 3 ? (red ? c.x : '#bcbcbc') : (red ? c.m : c.l));
+    }
+    R(g, 0, 4, 16, 1, c.d); R(g, 0, 6, 16, 1, '#d8d8d8');
+    return 4;
+  };
+  TOP.sidewalk = function (g, c) {
+    R(g, 0, 0, 16, 4, c.m); R(g, 0, 0, 16, 1, c.l); R(g, 0, 3, 16, 1, c.x);
+    R(g, 7, 1, 1, 2, c.x); P(g, 3, 2, c.l); P(g, 12, 1, c.x);
+    R(g, 0, 4, 16, 1, '#7c7468'); R(g, 0, 5, 16, 1, c.d);
+    return 5;
+  };
+  ALT.tires = function (g, c) {
+    R(g, 0, 0, 16, 16, c.s);
+    for (var t = 0; t < 4; t++) {
+      var y = t * 4;
+      R(g, 0, y, 16, 4, c.base); R(g, 1, y, 14, 1, c.h);
+      R(g, 1, y + 1, 14, 2, t & 1 ? c.r : c.w); R(g, 1, y + 2, 14, 1, t & 1 ? '#a80020' : '#bcbcbc');
+      R(g, 0, y + 3, 16, 1, c.s); P(g, 0, y, c.s); P(g, 15, y, c.s);
+      for (var x = 3; x < 15; x += 4) P(g, x + (t & 1) * 2, y + 1, c.base);
+    }
+  };
+  ALT.barricade = function (g, c) {
+    R(g, 0, 0, 16, 16, c.base);
+    R(g, 2, 0, 2, 16, c.m); R(g, 12, 0, 2, 16, c.m); R(g, 3, 0, 1, 16, c.s); R(g, 13, 0, 1, 16, c.s);
+    for (var b = 0; b < 2; b++) {
+      var y0 = 2 + b * 7;
+      R(g, 0, y0 - 1, 16, 1, '#000000'); R(g, 0, y0 + 4, 16, 1, '#000000');
+      for (var y = y0; y < y0 + 4; y++) for (var x = 0; x < 16; x++) P(g, x, y, ((x + y) >> 2) & 1 ? c.r : c.h);
+      P(g, 2, y0 + 1, '#f8b800'); P(g, 13, y0 + 1, '#f8b800');
+    }
+    R(g, 0, 15, 16, 1, c.s);
+  };
+  PLAT.truss = function (g, c, L, Rt) {
+    R(g, 0, 0, 16, 2, c.m); R(g, 0, 0, 16, 1, c.l); R(g, 0, 2, 16, 1, c.d);
+    P(g, 4, 1, c.x); P(g, 12, 1, c.x);
+    R(g, 0, 8, 16, 1, c.m); R(g, 0, 9, 16, 1, '#000000');
+    R(g, 0, 3, 1, 5, c.m); R(g, 8, 3, 1, 5, c.m);
+    line(g, 1, 3, 7, 7, c.d); line(g, 9, 7, 15, 3, c.d);
+    if (!L) R(g, 0, 0, 1, 10, '#000000');
+    if (!Rt) R(g, 15, 0, 1, 10, '#000000');
+  };
+  PLAT.bunting = function (g, c, L, Rt) {
+    R(g, 0, 0, 16, 4, c.m); R(g, 0, 0, 16, 1, c.l); R(g, 0, 3, 16, 1, c.d); R(g, 0, 4, 16, 1, '#000000');
+    P(g, 5, 2, c.d); P(g, 12, 1, c.l);
+    var cols = [c.x, '#fcfcfc', '#0058f8', '#f8b800'];
+    for (var i = 0; i < 3; i++) {
+      var x0 = 1 + i * 5, col = cols[i % 4];
+      for (var y = 0; y < 4; y++) R(g, x0 + (y >> 1), 5 + y, 4 - y, 1, col);
+      P(g, x0, 5, '#000000');
+    }
+    if (!L) R(g, 0, 0, 1, 5, '#000000');
+    if (!Rt) R(g, 15, 0, 1, 5, '#000000');
   };
 
   function paintSpikes(g, c) {
@@ -1502,6 +1594,155 @@
     }
   };
 
+  // ---- update 3: race track grandstands ----
+  var CROWD_SKIN = ['#c89c7c', '#9c7058', '#e8c0a0', '#7c5440', '#b8a0c8'];
+  var CROWD_SHIRT = ['#8c3c4c', '#3c5c8c', '#8c7c3c', '#3c7c5c', '#7c4c8c', '#9c9cac', '#9c5c2c'];
+  function crowdRows(g, x0, x1, y0, y1, r, dense) {
+    for (var y = y0; y < y1; y += 6) {
+      R(g, x0, y, x1 - x0, 6, '#3c4256'); R(g, x0, y + 5, x1 - x0, 1, '#2c3040');
+      for (var x = x0 + 1; x < x1 - 2; x += 3) {
+        if (r() > dense) continue;
+        var up = r() < 0.12;
+        R(g, x, y + 3, 2, 2, CROWD_SHIRT[(r() * CROWD_SHIRT.length) | 0]);
+        R(g, x, y + 1, 2, 2, CROWD_SKIN[(r() * CROWD_SKIN.length) | 0]);
+        if (up) { P(g, x - 1, y, '#c89c7c'); P(g, x - 1, y + 1, '#c89c7c'); }
+      }
+    }
+  }
+  BG.raceway = {
+    sky: function (g) {
+      bands(g, 320, 0, 112, ['#1c3870', '#244484', '#2c5094', '#365ea2', '#406cae', '#4c7ab8']);
+      R(g, 0, 112, 320, BGH - 112, '#4c7ab8');
+      blob(g, 262, 26, 9, 9, '#a8b8d8'); blob(g, 262, 26, 7, 7, '#d8e0f0');
+    },
+    layers: [
+      layer(480, 0.06, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(201);
+          for (var i = 0; i < 7; i++) { var cx = (r() * w) | 0, cy = 18 + ((r() * 40) | 0), cw = 14 + ((r() * 18) | 0); blob(g, cx, cy, cw, 4, '#6c88c0'); blob(g, cx - 4, cy - 3, (cw * 0.6) | 0, 4, '#7c98cc'); blob(g, cx + 6, cy - 2, (cw * 0.4) | 0, 3, '#8ca4d4'); }
+          for (var x = 0; x < w; x++) { var y = 104 + Math.round(Math.sin(x / 40) * 5 + Math.sin(x / 13) * 2); R(g, x, y, 1, BGH - y, '#34508a'); }
+        });
+      }, { speed: 4 }),
+      layer(384, 0.35, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(203);
+          var segs = [[0, 176], [192, 384]];
+          for (var s = 0; s < segs.length; s++) {
+            var x0 = segs[s][0], x1 = segs[s][1];
+            // roof canopy + flags
+            for (var fx = x0 + 6; fx < x1 - 4; fx += 22) {
+              R(g, fx, 44, 1, 18, '#5c6478');
+              var fc = ['#a83c4c', '#c8a040', '#4c6cb0', '#4c9c6c'][((fx / 22) | 0) % 4];
+              for (var j = 0; j < 4; j++) R(g, fx + 1, 45 + j, 7 - j * 2 + 1, 1, fc);
+            }
+            R(g, x0 - 4, 60, x1 - x0 + 8, 4, '#6c7488'); R(g, x0 - 4, 60, x1 - x0 + 8, 1, '#8c94a8'); R(g, x0 - 2, 64, x1 - x0 + 4, 3, '#2c3040');
+            crowdRows(g, x0, x1, 68, 134, r, 0.88);
+            for (var cx = x0; cx <= x1; cx += 44) R(g, cx, 64, 2, 76, '#2c3040');
+            R(g, x0, 134, x1 - x0, 16, '#343a4c'); R(g, x0, 134, x1 - x0, 1, '#5c6478');
+            for (var bx = x0 + 8; bx < x1 - 20; bx += 40) { R(g, bx, 138, 24, 7, '#4c5468'); R(g, bx + 3, 140, 18, 1, '#8c94a8'); R(g, bx + 3, 142, 10, 1, '#8c94a8'); }
+          }
+          // light towers in the gaps
+          [184, 380].forEach(function (lx) {
+            R(g, lx - 1, 26, 3, 124, '#3c4256');
+            R(g, lx - 8, 18, 17, 9, '#4c5468'); for (var q = 0; q < 4; q++) R(g, lx - 7 + q * 4, 20, 3, 2, '#e8e0b8'); for (q = 0; q < 4; q++) R(g, lx - 7 + q * 4, 23, 3, 2, '#c8c098');
+          });
+          R(g, 0, 150, w, BGH - 150, '#262a38');
+        });
+      }),
+      layer(256, 0.9, function (g, w) {
+        rep(g, w, function () {
+          // catch fence: posts, cables, sparse mesh
+          for (var x = 0; x < w; x += 32) R(g, x, 96, 2, 40, '#30343e');
+          R(g, 0, 96, w, 1, '#3c404c'); R(g, 0, 112, w, 1, '#30343e');
+          for (x = 0; x < w; x += 4) for (var y = 98; y < 132; y += 4) P(g, x + ((y >> 2) & 1) * 2, y, '#3c4252');
+          // sponsor boards
+          var cols = ['#7c2c40', '#2c4c84', '#a07c2c', '#2c6c48'];
+          for (x = 0; x < w; x += 64) {
+            var c = cols[(x / 64) % 4];
+            R(g, x, 132, 64, 22, '#1c1e28'); R(g, x + 1, 133, 62, 18, c); R(g, x + 1, 133, 62, 1, mix(c, '#fcfcfc', 0.3));
+            var k = (x / 64) % 4;
+            if (k === 0) { for (var j = 0; j < 3; j++) { line(g, x + 14 + j * 10, 137, x + 20 + j * 10, 142, '#d8d8d8'); line(g, x + 20 + j * 10, 142, x + 14 + j * 10, 147, '#d8d8d8'); } }
+            else if (k === 1) { blob(g, x + 18, 142, 6, 6, '#d8d8d8'); blob(g, x + 18, 142, 3, 3, c); R(g, x + 30, 139, 24, 3, '#d8d8d8'); R(g, x + 30, 144, 16, 3, '#d8d8d8'); }
+            else if (k === 2) { for (j = 0; j < 6; j++) R(g, x + 8 + j * 8, 137 + (j & 1) * 5, 6, 5, '#1c1e28'); }
+            else { tri(g, x + 16, 136, 14, 12, '#d8d8d8'); R(g, x + 30, 140, 26, 4, '#d8d8d8'); }
+          }
+          R(g, 0, 154, w, BGH - 154, '#1c1e28');
+        });
+      })
+    ],
+    anim: function (ctx, camX, camY, t, oy) {
+      // camera flashes in the stands
+      var r = rng(((t * 6) | 0) * 7 + 3);
+      ctx.fillStyle = '#fcfcfc';
+      for (var i = 0; i < 4; i++) { var x = (r() * 320) | 0, y = 70 + ((r() * 60) | 0); if (r() < 0.45) { ctx.fillRect(x, Math.round(y + oy * 0.4), 1, 1); ctx.globalAlpha = 0.35; ctx.fillRect(x - 1, Math.round(y + oy * 0.4) - 1, 3, 3); ctx.globalAlpha = 1; } }
+    }
+  };
+
+  // ---- update 3: parade street ----
+  BG.parade = {
+    sky: function (g) {
+      bands(g, 320, 0, 120, ['#2c1c48', '#3c2454', '#542c5c', '#6c3460', '#844060', '#9c5060']);
+      R(g, 0, 120, 320, BGH - 120, '#9c5060');
+      stars(g, 320, 40, 18, 31, ['#6c4c7c', '#8c6c9c']);
+    },
+    layers: [
+      layer(400, 0.1, function (g, w) {
+        rep(g, w, function () { skyline(g, w, 112, 211, { minW: 14, maxW: 34, minH: 30, maxH: 74, col: '#3a2446', win: '#7c5c50', winP: 0.25, gap: 6, antenna: true }); });
+      }),
+      layer(384, 0.4, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(213), x = 0, tops = [];
+          var cols = [['#6c3c40', '#844c4c'], ['#4c4468', '#5c5480'], ['#6c5838', '#84704c'], ['#3c5858', '#4c6c6c']];
+          while (x < w) {
+            var bw = 44 + ((r() * 28) | 0); if (x + bw > w - 30) bw = w - x;
+            var top = 60 + ((r() * 26) | 0), c = cols[(r() * 4) | 0];
+            R(g, x, top, bw, BGH - top, c[0]); R(g, x, top, bw, 3, c[1]); R(g, x, top + 3, bw, 1, '#24141c'); R(g, x, top, 1, BGH - top, '#24141c');
+            for (var wy = top + 9; wy < 140; wy += 13) for (var wx = x + 6; wx < x + bw - 8; wx += 12) { R(g, wx, wy, 6, 8, '#24141c'); R(g, wx + 1, wy + 1, 4, 6, r() < 0.4 ? '#c8a050' : '#3c2c3c'); R(g, wx - 1, wy + 8, 8, 1, c[1]); }
+            if (r() < 0.6) { var vx = x + (bw >> 1) - 3; var vc = ['#9c3040', '#3c5ca0', '#a08030'][(r() * 3) | 0]; R(g, vx, top + 6, 7, 28, vc); tri(g, vx + 3, top + 34, 7, 4, vc, true); R(g, vx, top + 6, 7, 1, '#c8a050'); }
+            tops.push([x, top, bw]);
+            x += bw;
+          }
+          // bunting strung between rooftops
+          var bc = ['#a83048', '#d0b050', '#4870b8', '#58a068', '#e0e0e0'];
+          for (var i = 0; i < tops.length; i++) {
+            var a = tops[i], b = tops[(i + 1) % tops.length], xa = a[0] + 4, xb = (i + 1 < tops.length ? b[0] : w) + Math.min(24, b[2] >> 1), ya = a[1] + 6, yb = b[1] + 6;
+            for (var s = 0; s <= xb - xa; s++) {
+              var u = s / (xb - xa), yy = Math.round(ya + (yb - ya) * u + Math.sin(u * Math.PI) * 10);
+              P(g, xa + s, yy, '#2c1c24');
+              if (s % 6 === 3) { var fc = bc[((s / 6) | 0) % bc.length]; R(g, xa + s - 1, yy + 1, 3, 1, fc); P(g, xa + s, yy + 2, fc); }
+            }
+          }
+          R(g, 0, 148, w, BGH - 148, '#2c1c28');
+        });
+      }),
+      layer(256, 0.85, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(217);
+          for (var x = -4; x < w + 4; x += 7) {
+            var h = 18 + ((r() * 12) | 0), cx = x + ((r() * 3) | 0), col = r() < 0.5 ? '#1c1024' : '#26152e';
+            blob(g, cx, 170 - h, 4, 4, col); R(g, cx - 5, 174 - h, 11, BGH, col);
+            if (r() < 0.22) { // raised arm with a pennant or balloon
+              R(g, cx + 4, 160 - h, 2, 10, col);
+              if (r() < 0.5) { var pc = ['#7c3048', '#3c5488', '#8c7838'][(r() * 3) | 0]; R(g, cx + 6, 158 - h, 5, 3, pc); }
+              else { blob(g, cx + 5, 148 - h, 3, 4, ['#8c3c58', '#3c6c8c', '#8c6c3c'][(r() * 3) | 0]); P(g, cx + 5, 153 - h, col); }
+            }
+          }
+        });
+      })
+    ],
+    anim: function (ctx, camX, camY, t, oy) {
+      // confetti drifting down over the street
+      var r = rng(57), cols = ['#f85898', '#f8d878', '#3cbcfc', '#58d854', '#fcfcfc', '#f87858'];
+      for (var i = 0; i < 44; i++) {
+        var bx = r() * 340, by = r() * 200, sp = 14 + r() * 22, ph = r() * 6, c = cols[i % cols.length];
+        var x = ((bx - camX * 0.6 + Math.sin(t * 1.3 + ph) * 8) % 340 + 340) % 340 - 10;
+        var y = ((by + t * sp) % 200) - 10;
+        ctx.fillStyle = c;
+        if (Math.sin(t * 6 + ph) > 0) ctx.fillRect(Math.round(x), Math.round(y), 2, 1); else ctx.fillRect(Math.round(x), Math.round(y), 1, 2);
+      }
+    }
+  };
+
   var bgCache = {};
   function buildBg(theme) {
     var spec = BG[theme];
@@ -1594,6 +1835,23 @@
       block: { k: 'bunker', roof: '#b89868', rh: '#e8d0a0', rs: '#6c5030', front: '#5c5c58', fh: '#8c8c84', fs: '#2c2c28', win: '#0c0c0c', lit: '#f8b800' },
       water: { k: 'chasm', d: '#0c0404', m: '#1c0808', l: '#c83800', x: '#f8b800', shore: '#3c2c1c' },
       tree: { k: 'hedgehog', d: '#2c2c2c', m: '#5c5c5c', l: '#9c9c9c', t: '#3c2c1c' }
+    },
+    // ---- update 3: floor 10 cul-de-sac, floor 11 parade staging grounds ----
+    ow_suburb: {
+      ground: { k: 'pave', base: '#bcb8b0', a: '#d4d0c8', s: '#9c988c' },
+      decor: { k: 'lawn', base: '#3c9c2c', a: '#4cb038', s: '#2c7c20', x: '#f8f8f8' },
+      road: { k: 'asphalt', base: '#4c4c54', a: '#5c5c64', s: '#3c3c44', line: '#f8f8f8', edge: '#a8a49c' },
+      block: { k: 'house', roof: '#a83c28', rh: '#d0603c', rs: '#702418', front: '#e8dcc0', fh: '#fcf4e0', fs: '#b8ac90', win: '#3c6ca0', lit: '#a4e4fc' },
+      water: { k: 'water', d: '#0038a0', m: '#0068d8', l: '#3cbcfc', x: '#d8f8f8', shore: '#3c9c2c' },
+      tree: { k: 'hedge', d: '#1c6c1c', m: '#30a030', l: '#78d058', t: '#6c4018' }
+    },
+    ow_parade: {
+      ground: { k: 'pave', base: '#a8988c', a: '#c0b0a0', s: '#887868' },
+      decor: { k: 'confetti', base: '#4ca034', a: '#5cb840', s: '#38802a', x: '#f8f8f8' },
+      road: { k: 'route', base: '#4c4454', a: '#5c5464', s: '#3c3444', line: '#f8b800', edge: '#fcfcfc' },
+      block: { k: 'tent', roof: '#e40058', rh: '#fcfcfc', rs: '#a80020', front: '#f0e0c8', fh: '#fcfcfc', fs: '#c0a888', win: '#3c2c2c', lit: '#f8b800' },
+      water: { k: 'water', d: '#0048b0', m: '#0078f8', l: '#6cc8fc', x: '#fcfcfc', shore: '#d8d0c0' },
+      tree: { k: 'balloons', d: '#5c5c5c', m: '#bcbcbc', l: '#fcfcfc', t: '#7c7c7c' }
     }
   };
   art.owThemes = Object.keys(OW);
@@ -1650,6 +1908,19 @@
     }
   };
 
+  OWD.lawn = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) if (((x + 16 - y) >> 3) & 1) P(g, x, y, c.a);
+    for (var i = 0; i < 6; i++) { x = (r() * 15) | 0; y = 1 + ((r() * 14) | 0); P(g, x, y, c.s); P(g, x + 1, y - 1, c.s); }
+    if (r() < 0.3) { x = 3 + ((r() * 10) | 0); y = 3 + ((r() * 10) | 0); P(g, x, y, c.x); P(g, x + 1, y, '#f8d878'); }
+  };
+  OWD.confetti = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var i = 0; i < 8; i++) { var x = (r() * 15) | 0, y = 1 + ((r() * 14) | 0); P(g, x, y, c.a); P(g, x + 1, y - 1, c.a); P(g, x + 1, y, c.s); }
+    var cols = ['#f85898', '#f8d878', '#3cbcfc', '#fcfcfc', '#f87858', '#9878f8'];
+    for (i = 0; i < 5; i++) { x = (r() * 15) | 0; y = (r() * 15) | 0; var cc = cols[(r() * cols.length) | 0]; P(g, x, y, cc); if (i & 1) P(g, x + 1, y, cc); }
+  };
+
   function owRoad(g, c, mask, r) {
     var up = mask & 1, dn = mask & 2, L = mask & 4, Rt = mask & 8;
     var horiz = (L || Rt) && !(up || dn), vert = (up || dn) && !(L || Rt);
@@ -1689,6 +1960,18 @@
       if (!horiz) { for (y = 0; y < 16; y += 2) { P(g, 4, y, c.line); P(g, 5, y + 1, c.line); P(g, 10, y, c.line); P(g, 11, y + 1, c.line); } }
       return;
     }
+    if (k === 'route') { // parade route: painted double centre line, white/red kerb, confetti
+      for (i = 0; i < 8; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, i & 1 ? c.a : c.s);
+      var cc = ['#f85898', '#f8d878', '#3cbcfc', '#58d854'];
+      for (i = 0; i < 3; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, cc[(r() * 4) | 0]);
+      if (!vert) { R(g, 0, 6, 16, 1, c.line); R(g, 0, 9, 16, 1, c.line); }
+      if (!horiz) { R(g, 6, 0, 1, 16, c.line); R(g, 9, 0, 1, 16, c.line); }
+      if (!vert && !horiz) { R(g, 6, 6, 4, 4, c.base); }
+      function kerb(x, y, w, h, along) { for (var q = 0; q < along; q++) { var col = (q >> 1) & 1 ? '#e40058' : c.edge; if (w > h) R(g, x + q, y, 1, h, col); else R(g, x, y + q, w, 1, col); } }
+      if (!up) kerb(0, 0, 16, 2, 16); if (!dn) kerb(0, 14, 16, 2, 16);
+      if (!L) kerb(0, 0, 2, 16, 16); if (!Rt) kerb(14, 0, 2, 16, 16);
+      return;
+    }
     // asphalt / highway
     for (i = 0; i < 8; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, i & 1 ? c.a : c.s);
     if (horiz) { R(g, 2, 7, 5, 1, c.line); R(g, 10, 7, 5, 1, c.line); }
@@ -1710,6 +1993,16 @@
       else if (k === 'manor') { for (var y = 0; y < 16; y += 4) for (x = (y & 4) ? 2 : 0; x < 16; x += 4) { R(g, x, y, 3, 3, c.rh); R(g, x, y + 2, 3, 1, c.rs); } }
       else if (k === 'ruin') { for (i = 0; i < 6; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, c.rs); if (v & 1) { blob(g, 8, 8, 3, 2, '#1c1410'); P(g, 6, 6, '#a84c20'); P(g, 10, 7, '#a84c20'); } }
       else if (k === 'bunker') { for (y = 0; y < 16; y += 4) for (x = (y & 4) ? -4 : 0; x < 16; x += 8) { R(g, x + 1, y, 6, 3, c.roof); R(g, x + 1, y, 6, 1, c.rh); R(g, x, y + 3, 8, 1, c.rs); P(g, x, y + 1, c.rs); } }
+      else if (k === 'house') {
+        for (y = 0; y < 16; y += 3) { R(g, 0, y + 2, 16, 1, c.rs); for (x = (y % 6) ? 1 : 3; x < 16; x += 4) P(g, x, y + 1, c.rs); P(g, (y * 5) % 16, y, c.rh); }
+        if (v === 1) { R(g, 9, 3, 4, 5, '#7c3c2c'); R(g, 9, 3, 4, 1, '#3c1c14'); R(g, 10, 4, 2, 1, '#202020'); R(g, 9, 7, 4, 1, c.rs); }
+        if (v === 2) { R(g, 3, 5, 5, 4, '#3c6ca0'); R(g, 3, 5, 5, 1, '#a4e4fc'); R(g, 3, 9, 5, 1, c.rs); }
+      }
+      else if (k === 'tent') {
+        for (x = 0; x < 16; x++) { var sc = (x >> 2) & 1 ? c.rh : c.roof; R(g, x, 0, 1, 16, sc); }
+        for (x = 0; x < 16; x += 4) { R(g, x + 3, 0, 1, 16, (x >> 2) & 1 ? '#bcbcbc' : c.rs); }
+        if (v === 1) { R(g, 7, 6, 2, 2, '#f8b800'); P(g, 7, 6, '#fcfcfc'); }
+      }
       if (!up) { R(g, 0, 0, 16, 2, c.rh); R(g, 0, 0, 16, 1, K); }
       if (!L) { R(g, 0, 0, 1, 16, K); R(g, 1, 0, 1, 16, c.rh); }
       if (!Rt) { R(g, 15, 0, 1, 16, K); R(g, 14, 0, 1, 16, c.rs); }
@@ -1734,6 +2027,17 @@
     } else if (k === 'ruin') {
       R(g, 0, rt, 16, 1, c.fh); R(g, 3, rt + 3, 4, 5, c.win); R(g, 10, rt + 3, 3, 6, c.win); P(g, 3, rt + 3, c.front); P(g, 6, rt + 7, c.front); P(g, 12, rt + 3, c.front);
       for (i = 0; i < 4; i++) P(g, (r() * 16) | 0, rt + 2 + ((r() * (13 - rt)) | 0), c.fs);
+    } else if (k === 'house') {
+      for (y = rt + 1; y < 16; y += 2) R(g, 0, y, 16, 1, c.fs);
+      R(g, 0, rt, 16, 1, c.fh);
+      if (v === 2) { R(g, 2, rt + 3, 12, 13 - rt, '#5c5c5c'); R(g, 3, rt + 4, 10, 12 - rt, '#fcfcfc'); for (y = rt + 6; y < 16; y += 2) R(g, 3, y, 10, 1, '#bcbcbc'); }
+      else if (v === 3) { R(g, 9, rt + 4, 5, 12 - rt, '#3c1c10'); R(g, 10, rt + 5, 3, 11 - rt, '#a83c28'); P(g, 12, rt + 9, '#f8b800'); R(g, 2, rt + 4, 5, 4, K); R(g, 3, rt + 5, 3, 2, c.win); }
+      else { R(g, 4, rt + 3, 8, 6, K); R(g, 5, rt + 4, 6, 4, (v & 1) ? c.lit : c.win); R(g, 7, rt + 4, 2, 4, K); R(g, 2, rt + 3, 2, 6, '#3c6c3c'); R(g, 12, rt + 3, 2, 6, '#3c6c3c'); R(g, 4, rt + 9, 8, 2, '#c84c78'); P(g, 5, rt + 9, '#f8d878'); P(g, 9, rt + 9, '#f8d878'); }
+    } else if (k === 'tent') {
+      for (x = 3; x < 16; x += 5) R(g, x, rt, 1, 16 - rt, c.fs);
+      for (x = 0; x < 16; x++) { var vc = (x >> 2) & 1 ? c.rh : c.roof; var dd = 2 + ((x & 3) === 1 || (x & 3) === 2 ? 1 : 0); R(g, x, rt, 1, dd, vc); }
+      if (v & 1) { for (var q = 0; q < 10; q++) R(g, 8 - (q >> 1), rt + 4 + q, (q >> 1) * 2 + 1, 1, c.win); R(g, 7, rt + 4, 1, 1, c.win); }
+      else { R(g, 2, 12, 12, 3, '#7c7c7c'); R(g, 2, 12, 12, 1, '#bcbcbc'); for (x = 3; x < 13; x += 2) P(g, x, 11, ['#e40058', '#3cbcfc', '#f8b800', '#58d854'][(x >> 1) & 3]); }
     } else if (k === 'bunker') {
       R(g, 0, rt, 16, 1, c.fh); R(g, 2, rt + 4, 12, 3, K); R(g, 3, rt + 5, 10, 1, '#3c3c3c');
       for (y = 13; y < 16; y++) for (x = 0; x < 16; x++) P(g, x, y, ((x + y) & 4) ? c.lit : '#202020');
@@ -1785,6 +2089,14 @@
       P(g, 7, 7, c.l); P(g, 7, 10, c.l);
     } else if (k === 'boulder') {
       blob(g, 8, 10, 6, 4, c.m); blob(g, 7, 9, 4, 3, c.l); blob(g, 10, 12, 3, 1, c.d); P(g, 5, 8, '#c8bcb0');
+    } else if (k === 'hedge') {
+      R(g, 7, 12, 2, 3, c.t); blob(g, 8, 8, 6, 5, c.d); R(g, 2, 8, 13, 5, c.d); blob(g, 8, 7, 5, 4, c.m); R(g, 3, 7, 11, 5, c.m);
+      R(g, 3, 6, 11, 1, c.l); P(g, 5, 8, c.l); P(g, 10, 9, c.l); P(g, 4, 10, '#f85898'); P(g, 9, 7, '#f85898'); P(g, 12, 10, '#f8d878');
+    } else if (k === 'balloons') {
+      R(g, 5, 14, 6, 1, c.d); R(g, 7, 7, 1, 8, c.m); P(g, 7, 7, c.l);
+      line(g, 7, 7, 4, 5, c.m); line(g, 7, 7, 11, 5, c.m);
+      blob(g, 4, 4, 2, 3, '#e40058'); blob(g, 11, 4, 2, 3, '#3cbcfc'); blob(g, 8, 2, 2, 2, '#f8b800');
+      P(g, 3, 2, '#fcfcfc'); P(g, 10, 2, '#fcfcfc'); P(g, 7, 1, '#fcfcfc');
     } else if (k === 'hedgehog') {
       line(g, 2, 14, 13, 3, c.m); line(g, 3, 14, 14, 3, c.d); line(g, 2, 3, 13, 14, c.m); line(g, 3, 3, 14, 14, c.l); R(g, 7, 2, 2, 12, c.m); P(g, 7, 2, c.l);
     }
@@ -2377,6 +2689,70 @@
     '..p........',
     '.bbb.......',
     '...........']]);
+
+  /* =====================================================================
+     UPDATE 3: race + parade objects and overworld markers
+     ===================================================================== */
+  proc('ow_garage', 16, 16, 1, function (g) {
+    tri(g, 8, 1, 14, 5, '#a83c28'); R(g, 1, 5, 14, 1, '#702418'); P(g, 8, 1, '#d0603c'); P(g, 7, 2, '#d0603c');
+    R(g, 2, 6, 12, 9, '#e8dcc0'); R(g, 2, 6, 12, 1, '#fcf4e0');
+    for (var x = 3; x < 13; x++) { P(g, x, 7, (x & 1) ? '#000000' : '#fcfcfc'); P(g, x, 8, (x & 1) ? '#fcfcfc' : '#000000'); }
+    R(g, 3, 9, 10, 6, '#bcbcbc'); for (var y = 10; y < 15; y += 2) R(g, 3, y, 10, 1, '#7c7c7c');
+    R(g, 7, 13, 2, 1, '#3c3c3c'); R(g, 1, 15, 14, 1, '#5c5c5c');
+  });
+  proc('ow_float', 16, 16, 1, function (g) {
+    line(g, 8, 6, 8, 9, '#bcbcbc'); disc(g, 8, 4, 2, '#e40058'); P(g, 7, 3, '#fcfcfc'); disc(g, 12, 5, 1, '#3cbcfc'); line(g, 12, 6, 10, 9, '#bcbcbc');
+    R(g, 3, 7, 3, 3, '#f8b800'); P(g, 4, 6, '#f8b800'); P(g, 4, 8, '#fcfcfc');
+    R(g, 1, 9, 14, 2, '#f8b800'); R(g, 1, 9, 14, 1, '#f8d878');
+    R(g, 1, 11, 14, 2, '#6844fc');
+    var cols = ['#e40058', '#fcfcfc', '#3cbcfc', '#f8b800'];
+    for (var x = 1; x < 15; x += 3) { R(g, x, 12, 3, 1, cols[((x / 3) | 0) % 4]); P(g, x + 1, 13, cols[((x / 3) | 0) % 4]); }
+    R(g, 3, 14, 2, 1, '#202020'); R(g, 11, 14, 2, 1, '#202020');
+  });
+  // boost pad (16x6): glowing chevrons that run forward
+  proc('boost_pad', 16, 6, 2, function (g, f) {
+    R(g, 0, 0, 16, 6, '#000000'); R(g, 1, 1, 14, 4, '#1c1c2c'); R(g, 1, 1, 14, 1, '#3c3c5c');
+    var cols = f ? ['#004058', '#00e8d8', '#a4fcf0'] : ['#a4fcf0', '#004058', '#00e8d8'];
+    for (var i = 0; i < 3; i++) { var x = 2 + i * 4, c = cols[i]; R(g, x, 1, 2, 1, c); R(g, x + 1, 2, 2, 2, c); R(g, x, 4, 2, 1, c); }
+    P(g, 15, 2, f ? '#fcfcfc' : '#00e8d8'); P(g, 15, 3, f ? '#fcfcfc' : '#00e8d8');
+  }, false);
+  // jump pad (16x8): striped ramp on a spring (frame 1 = sprung)
+  proc('jump_pad', 16, 8, 2, function (g, f) {
+    // hazard-striped ramp plate hinged at the left on a red spring (frame 1 = sprung up)
+    R(g, 0, 6, 16, 2, '#000000'); R(g, 1, 6, 14, 1, '#7c7c84');
+    var top = f ? 0 : 2;
+    for (var x = 0; x < 16; x++) {
+      var yy = Math.round(4 - (x / 15) * (4 - top));
+      for (var y = yy + 2; y < 6; y++) {
+        if (x >= 8 && x <= 13) P(g, x, y, (((y + x) >> 1) & 1) ? '#e40058' : '#f85898');
+        else P(g, x, y, x < 8 ? '#3c3c44' : '#000000');
+      }
+      P(g, x, yy, ((x + 16 - yy) >> 1) & 1 ? '#f8b800' : '#202020'); P(g, x, yy + 1, '#000000');
+    }
+    R(g, 14, top + 1, 2, 5 - top, '#000000'); P(g, 15, top, '#fcfcfc');
+  }, false);
+  proc('oil_slick', 16, 4, 1, function (g) {
+    R(g, 4, 0, 8, 1, '#141218'); R(g, 1, 1, 14, 1, '#141218'); R(g, 0, 2, 16, 1, '#141218'); R(g, 2, 3, 12, 1, '#141218');
+    R(g, 5, 1, 3, 1, '#3c2c5c'); P(g, 8, 1, '#58f898'); P(g, 9, 1, '#f878f8'); R(g, 3, 2, 2, 1, '#2c2c48'); P(g, 11, 2, '#3c7cf8'); P(g, 6, 0, '#5c4c7c');
+  }, false);
+  // finish line (32x48): checkered banner between two posts, pennants on top
+  proc('finish_line', 32, 48, 2, function (g, f) {
+    [1, 28].forEach(function (x) {
+      R(g, x - 1, 0, 5, 48, '#000000'); R(g, x, 1, 3, 47, '#bcbcbc'); R(g, x, 1, 1, 47, '#fcfcfc');
+      for (var y = 22; y < 44; y += 6) R(g, x, y, 3, 3, '#e40058');
+      R(g, x - 2, 44, 7, 4, '#000000'); R(g, x - 1, 45, 5, 2, '#5c5c5c');
+      // pennant pointing inward, tip flutters
+      var dir = x < 16 ? 1 : -1, x0 = x < 16 ? x + 4 : x - 2;
+      for (var j = 0; j < 5; j++) { var len = 7 - Math.abs(j - 2) * 3; for (var q = 0; q < len; q++) P(g, x0 + dir * q, 1 + j + (q > 3 ? f : 0), q === len - 1 || j === 0 || j === 4 ? '#000000' : (x < 16 ? '#f8b800' : '#3cbcfc')); }
+    });
+    R(g, 0, 7, 32, 12, '#000000');
+    for (var cy = 0; cy < 3; cy++) for (var cx = 0; cx < 10; cx++) R(g, 1 + cx * 3, 8 + cy * 3, 3, 3, ((cx + cy) & 1) ? '#000000' : '#fcfcfc');
+    for (var bx = 2; bx < 31; bx += 4) P(g, bx, 18, ((bx >> 2) + f) & 1 ? '#f8d878' : '#ac7c00');
+  }, false);
+  pix('mine', { k: '#000000', g: '#5c5c64', G: '#9c9ca8', r: '#880000', w: '#fcfcfc', R: '#f83800', y: '#f8b800' }, [
+    ['...kk...', '..krrk..', '.kgGGgk.', 'kgGGggGk', 'kyykkyyk', 'kkkkkkkk'],
+    ['..wRRw..', '..kRRk..', '.kgGGgk.', 'kgGGggGk', 'kkyykkyk', 'kkkkkkkk']
+  ], false);
 
   /* =====================================================================
      UPDATE 2: rescue cage, dino egg, lever, padlocked door, quest items,

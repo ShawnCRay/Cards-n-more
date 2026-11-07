@@ -1,0 +1,274 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCW art gallery - update 3</title>
+<style>
+  body { background: #111; color: #ccc; font: 12px monospace; margin: 8px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; margin: 0 0 8px 0; }
+  .sec { margin-bottom: 16px; display: inline-block; vertical-align: top; margin-right: 12px; }
+  h2 { font-size: 13px; margin: 6px 0; color: #fc8; }
+  #wrap { position: absolute; left: -2000px; top: 0; width: 320px; height: 180px; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="out"></div>
+<script src="../js/engine.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script>
+/* Update-3 art gallery: food truck + float overlays, racers, Grand Marshal, raceway/parade
+   themes, ow_suburb/ow_parade maps + markers, race objects, portraits, Mordecai forms 10/11.
+   Params: ?scale=3&t=0.5&cam=120 */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var SCALE = +(qs.get('scale') || 3), CAM = +(qs.get('cam') || 120);
+  DCW.boot();
+  DCW.t = +(qs.get('t') || 0.5);
+  var A = DCW.art, out = document.getElementById('out');
+  var report = window.ART_REPORT = { errors: [], missing: [], info: {} };
+  var RACERS = ['goblin_bike', 'skull_chariot', 'beetle_mount', 'steam_buggy', 'champion'];
+  var FLOATS = ['float_base', 'float_banner', 'float_balloons', 'float_spotlight', 'float_confetti'];
+  var NEW = ['truck', 'truck_hurt'].concat(FLOATS)
+    .concat(RACERS.map(function (r) { return 'racer_' + r; })).concat(RACERS.map(function (r) { return 'p_racer_' + r; })).concat(['p_champion'])
+    .concat(['grand_marshal_idle', 'grand_marshal_walk', 'grand_marshal_attack', 'grand_marshal_hurt', 'grand_marshal_special', 'p_grand_marshal'])
+    .concat(['boost_pad', 'jump_pad', 'oil_slick', 'finish_line', 'mine', 'ow_garage', 'ow_float'])
+    .concat(['mordecai_f10', 'mordecai_f11', 'p_mordecai_f10', 'p_mordecai_f11']);
+  NEW.forEach(function (n) { if (!A.has(n)) report.missing.push(n); else report.info[n] = A.info(n); });
+  ['raceway', 'parade'].forEach(function (t) { if ((A.themes || []).indexOf(t) < 0) report.missing.push('theme ' + t); });
+  ['ow_suburb', 'ow_parade'].forEach(function (t) { if ((A.owThemes || []).indexOf(t) < 0) report.missing.push('owTheme ' + t); });
+
+  function section(id, title, w, h, scale) {
+    var d = document.createElement('div'); d.className = 'sec'; d.id = 'sec_' + id;
+    var hh = document.createElement('h2'); hh.textContent = title; d.appendChild(hh);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = (w * (scale || SCALE)) + 'px'; c.style.height = (h * (scale || SCALE)) + 'px';
+    d.appendChild(c); out.appendChild(d);
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    return g;
+  }
+  function label(g, s, x, y, col, o) { var old = DCW.ctx; DCW.ctx = g; try { DCW.text(s, x, y, col || '#fff', o || {}); } finally { DCW.ctx = old; } }
+  function spr(g, name, x, y, o) { try { A.sprite(g, name, x, y, o); } catch (e) { report.errors.push(name + ': ' + e.message); } }
+  function cell(m, x, y) { return (m[y] && m[y].charAt(x)) || ''; }
+  var SOLID = { '#': 1, 'X': 1 };
+  function drawLevel(g, theme, L, camX, opens) {
+    for (var y = 0; y < L.length; y++) for (var x = 0; x < L[y].length; x++) {
+      var ch = cell(L, x, y), info;
+      if ('#X=^~HbL'.indexOf(ch) < 0) continue;
+      if (ch === '#' || ch === 'X') info = { up: !!SOLID[cell(L, x, y - 1)], down: !!SOLID[cell(L, x, y + 1)] || y === L.length - 1, left: !!SOLID[cell(L, x - 1, y)] || x === 0, right: !!SOLID[cell(L, x + 1, y)] || x === L[y].length - 1, tx: x, ty: y, t: DCW.t };
+      else info = { up: cell(L, x, y - 1) === ch, down: cell(L, x, y + 1) === ch, left: cell(L, x - 1, y) === ch, right: cell(L, x + 1, y) === ch, tx: x, ty: y, t: DCW.t, open: ch === 'L' && opens && x > 10 ? 0.5 : 0 };
+      try { A.tile(g, theme, ch, x * 16 - camX, y * 16, info); } catch (e) { report.errors.push('tile ' + theme + ch + ': ' + e.message); }
+    }
+  }
+  function ground(g, theme, y, w) { for (var x = 0; x < w; x += 16) A.tile(g, theme, '#', x, y, { up: false, down: true, left: x > 0, right: x < w - 16, tx: x / 16, ty: 9 }); }
+
+  // 1. the food truck + every overlay
+  (function () {
+    var g = section('truck', 'TRUCK f0/f1, HURT f0/f1, + each float overlay, ALL stacked (raceway)', 400, 150);
+    A.background(g, 'raceway', CAM, 0);
+    ground(g, 'raceway', 66, 400); ground(g, 'raceway', 134, 400);
+    spr(g, 'truck', 30, 66, { frame: 0 }); spr(g, 'truck', 84, 66, { frame: 1 });
+    spr(g, 'truck_hurt', 138, 66, { frame: 0 }); spr(g, 'truck_hurt', 192, 66, { frame: 1 });
+    spr(g, 'truck', 246, 66, { frame: 0, flip: true });
+    spr(g, 'carl_idle', 290, 66, {}); spr(g, 'donut_idle', 306, 66, {});
+    FLOATS.forEach(function (o, i) {
+      var x = 30 + i * 54;
+      spr(g, 'truck', x, 134, { frame: 0 }); spr(g, o, x, 134, { frame: 0 });
+      label(g, o.slice(6).toUpperCase(), x, 138, '#fff', { align: 'center' });
+    });
+    var sx = 330 + 30;
+    spr(g, 'truck', sx, 134, { frame: 1 }); FLOATS.forEach(function (o) { spr(g, o, sx, 134, { frame: 1 }); });
+    label(g, 'ALL', sx, 138, '#ff8', { align: 'center' });
+  })();
+  (function () {
+    var g = section('truck_zoom', 'TRUCK / HURT / ALL FLOATS f0+f1 (5x)', 210, 46, 5);
+    g.fillStyle = '#3c5488'; g.fillRect(0, 0, 210, 46);
+    spr(g, 'truck', 26, 44, { frame: 0 }); spr(g, 'truck_hurt', 78, 44, { frame: 1 });
+    spr(g, 'truck', 130, 44, { frame: 0 }); FLOATS.forEach(function (o) { spr(g, o, 130, 44, { frame: 0 }); });
+    spr(g, 'truck', 182, 44, { frame: 1 }); FLOATS.forEach(function (o) { spr(g, o, 182, 44, { frame: 1 }); });
+  })();
+
+  // 2. racers: real size and 2x
+  (function () {
+    var g = section('racers', 'RACERS f0/f1 real size (+truck, carl for scale)', 400, 150);
+    A.background(g, 'raceway', CAM + 60, 0);
+    ground(g, 'raceway', 70, 400); ground(g, 'raceway', 140, 400);
+    var x = 4;
+    RACERS.forEach(function (r) {
+      var inf = A.info('racer_' + r);
+      for (var f = 0; f < 2; f++) { spr(g, 'racer_' + r, x + (inf.w >> 1), f ? 140 : 70, { frame: f }); }
+      x += inf.w + 6;
+    });
+    spr(g, 'truck', 370, 70, {}); spr(g, 'carl_idle', 380, 140, {});
+  })();
+  (function () {
+    var g = section('racers2x', 'RACERS 2x (f0 | f1 | flipped)', 210, 236, 4);
+    g.fillStyle = '#3c5488'; g.fillRect(0, 0, 210, 236);
+    var y = 4;
+    RACERS.forEach(function (r) {
+      var inf = A.info('racer_' + r);
+      y += inf.h;
+      spr(g, 'racer_' + r, 2 + (inf.w >> 1), y, { frame: 0 }); spr(g, 'racer_' + r, 4 + inf.w + (inf.w >> 1), y, { frame: 1 }); spr(g, 'racer_' + r, 6 + inf.w * 2 + (inf.w >> 1), y, { frame: 0, flip: true });
+      y += 4;
+    });
+  })();
+
+  // 3. side-scroll themes as sample mini levels
+  var RACE_LV = [
+    '..........................',
+    '..........................',
+    '..............b...........',
+    '.........=====b...........',
+    '..........................',
+    '.....XX......H.......L....',
+    '.....XX......H.......L....',
+    '..===........H....######..',
+    '.............H...#######..',
+    '#####.......######...#####',
+    '#####~~~~######^^^########',
+    '##########################'
+  ];
+  (function () {
+    var g = section('theme_raceway', 'THEME raceway (bg + every tile char) + objects + racers', 320, 180);
+    A.background(g, 'raceway', CAM, 0);
+    drawLevel(g, 'raceway', RACE_LV, 8, true);
+    spr(g, 'boost_pad', 30, 144, { frame: 0 }); spr(g, 'boost_pad', 48, 144, { frame: 1 });
+    spr(g, 'jump_pad', 64, 144, { frame: 0 }); spr(g, 'jump_pad', 64, 160 - 16 * 6 + 0, { frame: 1 });
+    spr(g, 'oil_slick', 196, 144, {}); spr(g, 'mine', 214, 144, { frame: 0 }); spr(g, 'mine', 224, 144, { frame: 1 });
+    spr(g, 'finish_line', 296, 112, { frame: 0 });
+    spr(g, 'truck', 120, 144, {}); spr(g, 'racer_goblin_bike', 270, 112, { frame: 1 });
+    spr(g, 'racer_skull_chariot', 60, 112 + 0, { frame: 0 });
+    spr(g, 'racer_champion', 168, 96, { frame: 0 });
+  })();
+  var PARADE_LV = [
+    '..........................',
+    '..........................',
+    '..........................',
+    '..........................',
+    '..............b.......H...',
+    '...====.......b.....==H...',
+    '......................H...',
+    '..........XX..........H...',
+    '......L...XX..............',
+    '#####.L...XX.....^^^.#####',
+    '#####~~~~#######.####~####',
+    '##########################'
+  ];
+  (function () {
+    var g = section('theme_parade', 'THEME parade (bg + every tile char) + float + marshal', 320, 180);
+    A.background(g, 'parade', CAM, 0);
+    drawLevel(g, 'parade', PARADE_LV, 8, false);
+    spr(g, 'truck', 118, 144, { frame: 0 }); FLOATS.forEach(function (o) { spr(g, o, 118, 144, { frame: 0 }); });
+    spr(g, 'carl_idle', 118, 116, {});
+    spr(g, 'grand_marshal_idle', 256, 144 + 0, { frame: 0, flip: true });
+  })();
+  (function () {
+    var g = section('tiles', 'TILES raceway / parade: # masks, X masks, = run, ^ ~ H b L', 330, 120, 3);
+    g.fillStyle = '#28283c'; g.fillRect(0, 0, 330, 120);
+    ['raceway', 'parade'].forEach(function (theme, i) {
+      var y = 4 + i * 58;
+      for (var m = 0; m < 8; m++) A.tile(g, theme, '#', 2 + m * 17, y, { up: m & 1, left: m & 2, right: m & 4, down: true, tx: m, ty: i });
+      for (m = 0; m < 8; m++) A.tile(g, theme, 'X', 2 + m * 17, y + 18, { up: m & 1, left: m & 2, right: m & 4, down: m & 1 });
+      var x = 142;
+      A.tile(g, theme, '=', x, y, { right: true }); A.tile(g, theme, '=', x + 16, y, { left: true, right: true }); A.tile(g, theme, '=', x + 32, y, { left: true });
+      A.tile(g, theme, '=', x + 52, y, {});
+      A.tile(g, theme, '^', x + 72, y, {}); A.tile(g, theme, '~', x + 90, y, { t: 0 }); A.tile(g, theme, '~', x + 90, y + 16, { up: true, t: 0 });
+      A.tile(g, theme, 'H', x + 108, y, {}); A.tile(g, theme, 'b', x + 126, y, {}); A.tile(g, theme, 'L', x + 144, y, {}); A.tile(g, theme, 'L', x + 144, y + 16, { up: true });
+      A.tile(g, theme, '#', 2, y + 36, { tx: 1, ty: 1 }); A.tile(g, theme, '#', 18, y + 36, { up: true, down: true, left: true, right: true, tx: 2, ty: 2 });
+    });
+  })();
+
+  // 4. overworld themes with markers
+  var OWS = {
+    ow_suburb: [
+      'TTTTTTTTTTTTTTTTTTTT',
+      'T,,###,,,,,,,###,,,T',
+      'T,,###,,,~~,,###,,,T',
+      'T,,###,,,~~,,###,,,T',
+      'T,,,=,,,,,,,,,=,,,TT',
+      'T...=..........=...T',
+      'T====================',
+      'T...=.....=........T',
+      'T,,,=,,T,,=,,,,T,,,T',
+      'T,,###,,,###,,,,,,,T',
+      'T,,###,,,###,,,,,,,T',
+      'TTTTTTTTTTTTTTTTTTTT'
+    ],
+    ow_parade: [
+      'TTTTTTTTTTTTTTTTTTTT',
+      'T....,,,,,,,,....,,T',
+      'T.###,,,,~~~,,###.,T',
+      'T.###,,T,~~~,,###.,T',
+      'T....,,,,,,,,.....,T',
+      'T==================.T',
+      'T....,,,......=...,T',
+      'T,####,,,T,,,.=.,,,T',
+      'T,####,,,,,,,.=.##,T',
+      'T,,,,,,,,,,,,.=.##,T',
+      'T,,,T,,,,,T,,....,,T',
+      'TTTTTTTTTTTTTTTTTTTT'
+    ]
+  };
+  Object.keys(OWS).forEach(function (theme) {
+    var M = OWS[theme];
+    var g = section(theme, 'OVERWORLD ' + theme + ' + markers', 320, 192);
+    for (var y = 0; y < M.length; y++) for (var x = 0; x < 20; x++) {
+      var ch = cell(M, x, y) || 'T';
+      try { A.owTile(g, theme, ch, x * 16, y * 16, { up: cell(M, x, y - 1) === ch, down: cell(M, x, y + 1) === ch, left: cell(M, x - 1, y) === ch, right: cell(M, x + 1, y) === ch, tx: x, ty: y, t: DCW.t }); } catch (e) { report.errors.push('owTile ' + theme + ch + ': ' + e.message); }
+    }
+    var mk = ['ow_garage', 'ow_float', 'ow_garage', 'ow_float', 'ow_safe', 'ow_boss', 'ow_boss_locked', 'ow_stairs', 'ow_flag', 'ow_lock'];
+    for (var i = 0; i < mk.length; i++) { A.owTile(g, theme, '.', 32 + i * 16, 176, {}); spr(g, mk[i], 40 + i * 16, 192, {}); }
+    spr(g, 'carl_ow_down', 6 * 16 + 8, 6 * 16 + 16, {});
+    spr(g, 'ow_garage', 3 * 16 + 8, 4 * 16 + 16, {}); spr(g, 'ow_float', 15 * 16 + 8, 4 * 16 + 16, {});
+    spr(g, 'rat_walk', 11 * 16 + 8, 7 * 16 + 14, {});
+  });
+
+  // 5. the Grand Marshal
+  (function () {
+    var g = section('marshal', 'GRAND MARSHAL idle0 idle1 walk0 walk1 attack hurt special (2x)', 470, 70, 2.5);
+    A.background(g, 'parade', CAM, 0);
+    var poses = [['idle', 0], ['idle', 1], ['walk', 0], ['walk', 1], ['attack', 0], ['hurt', 0], ['special', 0]];
+    poses.forEach(function (p, i) { spr(g, 'grand_marshal_' + p[0], 34 + i * 66, 68, { frame: p[1] }); });
+    spr(g, 'carl_idle', 462, 68, { flip: true });
+  })();
+
+  // 6. portraits
+  (function () {
+    var ps = RACERS.map(function (r) { return 'p_racer_' + r; }).concat(['p_champion', 'p_grand_marshal', 'p_carl', 'p_donut']);
+    var g = section('portraits', 'PORTRAITS: racers, p_champion, p_grand_marshal (+carl/donut)', ps.length * 36 + 4, 40, 4);
+    g.fillStyle = '#000'; g.fillRect(0, 0, 400, 40);
+    ps.forEach(function (p, i) { try { A.portrait(g, p, 4 + i * 36, 4); } catch (e) { report.errors.push(p + ' ' + e.message); } });
+  })();
+
+  // 7. Mordecai forms 1-11 + portraits
+  (function () {
+    var g = section('mordecai', 'MORDECAI forms f1..f11 (f0 | blink) + portraits', 11 * 36 + 4, 110, 3);
+    g.fillStyle = '#28283c'; g.fillRect(0, 0, 11 * 36 + 4, 110);
+    for (var n = 1; n <= 11; n++) {
+      var x = 4 + (n - 1) * 36;
+      spr(g, 'mordecai_f' + n, x + 8, 32, { frame: 0 }); spr(g, 'mordecai_f' + n, x + 24, 32, { frame: 1 });
+      label(g, 'F' + n, x + 16, 36, n >= 10 ? '#ff8' : '#fff', { align: 'center' });
+      try { A.portrait(g, 'p_mordecai_f' + n, x, 50); } catch (e) { report.errors.push('p_mordecai_f' + n + ' ' + e.message); }
+    }
+    spr(g, 'mordecai_f10', 30, 106, { frame: 0, flip: true }); spr(g, 'mordecai_f11', 60, 106, { frame: 0, flip: true });
+  })();
+  (function () {
+    var g = section('mordecai_zoom', 'MORDECAI f10 / f11 (6x)', 60, 32, 6);
+    g.fillStyle = '#3c4c6c'; g.fillRect(0, 0, 60, 32);
+    spr(g, 'mordecai_f9', 10, 30, {}); spr(g, 'mordecai_f10', 30, 30, {}); spr(g, 'mordecai_f11', 50, 30, {});
+  })();
+  (function () {
+    var g = section('objects', 'OBJECTS boost_pad f0/f1, jump_pad f0/f1, oil_slick, mine f0/f1, finish_line f0/f1 (5x)', 150, 54, 5);
+    g.fillStyle = '#4c7ab8'; g.fillRect(0, 0, 150, 54);
+    ground(g, 'raceway', 50, 150);
+    spr(g, 'boost_pad', 10, 50, { frame: 0 }); spr(g, 'boost_pad', 28, 50, { frame: 1 });
+    spr(g, 'jump_pad', 10, 38, { frame: 0 }); spr(g, 'jump_pad', 28, 38, { frame: 1 });
+    spr(g, 'oil_slick', 48, 50, {}); spr(g, 'mine', 64, 50, { frame: 0 }); spr(g, 'mine', 74, 50, { frame: 1 });
+    spr(g, 'finish_line', 98, 50, { frame: 0 }); spr(g, 'finish_line', 132, 50, { frame: 1 });
+  })();
+})();
+</script>
+</body>
+</html>

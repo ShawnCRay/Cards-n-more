@@ -2762,6 +2762,455 @@
   /* ================================================================== *
    *  more sections appended below
    * ================================================================== */
+  /* ================================================================== *
+   *  UPDATE 3: FLOOR 10 (THE RACES) + FLOOR 11 (THE PARADE)
+   *  Food truck + float overlays, rival racers, the Grand Marshal.
+   *  All vehicles face right; anchor is bottom-centre like every sprite.
+   * ================================================================== */
+  // spoked wheel: tread marks + spokes rotate between frames
+  function wheelP(g, cx, cy, r, f, c) {
+    oval(g, cx, cy, r, r, c.t);
+    for (var k = 0; k < 8; k++) { var an = (k + (f & 1) * 0.5) * Math.PI / 4; px(g, Math.round(cx + Math.cos(an) * (r - 0.4)), Math.round(cy + Math.sin(an) * (r - 0.4)), c.T); }
+    var ri = Math.max(1, r - 2);
+    oval(g, cx, cy, ri, ri, c.h);
+    if (f & 1) { line(g, cx - ri + 1, cy - ri + 1, cx + ri - 1, cy + ri - 1, c.H); line(g, cx - ri + 1, cy + ri - 1, cx + ri - 1, cy - ri + 1, c.H); }
+    else { line(g, cx - ri, cy, cx + ri, cy, c.H); line(g, cx, cy - ri, cx, cy + ri, c.H); }
+    px(g, cx, cy, c.c || c.T);
+  }
+  function sparkle(g, x, y, c, c2) { px(g, x, y, c2 || c); px(g, x - 1, y, c); px(g, x + 1, y, c); px(g, x, y - 1, c); px(g, x, y + 1, c); }
+
+  // ---------------- THE FOOD TRUCK (48x40: 28px truck + 12px headroom for float decor) ----------------
+  var TRUCK_W = 48, TRUCK_H = 40;
+  var TRUCK_PAL = {
+    b: '#a4e4fc', B: '#3cbcfc', D: '#0078f8', r: '#f85898', R: '#e40058', w: C.W, g: C.g1, G: C.g0, q: '#0058f8', d: '#3c1c08',
+    o: C.n2, O: C.n1, c: C.n3, e: C.G1, p: C.m2, y: C.y2, u: C.n3, U: C.n2, x: C.o0, t: '#3c3c3c', T: '#1c1c1c', h: C.g1, H: C.g0, K: C.K,
+    s: C.g0, S: C.g1, f: C.o1
+  };
+  var TRUCK_WHEEL = { t: 't', T: 'T', h: 'h', H: 'H', c: 'G' };
+  function truckPaint(g, f, hurt) {
+    var i, x;
+    // roof sign: a giant hot dog on a post
+    rect(g, 8, 8, 2, 4, 'G');
+    rect(g, 2, 4, 15, 2, 'x'); px(g, 1, 5, 'x'); px(g, 17, 4, 'x');
+    for (i = 4; i < 15; i += 2) { px(g, i, 4, 'y'); px(g, i + 1, 5, 'y'); }
+    rect(g, 3, 6, 13, 2, 'u'); rect(g, 4, 8, 11, 1, 'U'); px(g, 3, 5, 'u'); px(g, 15, 5, 'u'); px(g, 15, 7, 'U');
+    // box body + cab
+    rect(g, 1, 12, 33, 22, 'b');
+    rect(g, 0, 11, 35, 1, 'g'); rect(g, 1, 12, 33, 1, 'w');
+    rect(g, 34, 18, 10, 16, 'b'); tri(g, 43, 17, 43, 25, 46, 25, 'b'); rect(g, 44, 25, 3, 9, 'b');
+    rect(g, 34, 17, 9, 1, 'g');
+    tri(g, 44, 19, 44, 24, 46, 24, 'q'); px(g, 44, 20, 'w');
+    rect(g, 36, 20, 6, 5, 'q'); px(g, 37, 21, 'w'); px(g, 38, 21, 'w'); px(g, 37, 22, 'w');
+    rect(g, 34, 19, 1, 9, 'B'); px(g, 40, 26, 'G'); px(g, 41, 26, 'G');
+    rect(g, 1, 31, 46, 2, 'B');
+    // stripe
+    rect(g, 1, 28, 46, 2, 'r'); rect(g, 1, 30, 46, 1, 'R');
+    // front: headlight, grille, bumpers
+    rect(g, 46, 26, 1, 2, 'y'); rect(g, 45, 29, 2, 3, 'G');
+    rect(g, 43, 32, 5, 2, 'g'); rect(g, 0, 32, 3, 2, 'g'); rect(g, 0, 30, 1, 2, 'G');
+    // wheel wells + wheels
+    oval(g, 10, 35, 5.5, 5, 'K'); oval(g, 37, 35, 5.5, 5, 'K');
+    rect(g, 3, 33, 41, 1, 'K');
+    wheelP(g, 10, 35, 4, f, TRUCK_WHEEL); wheelP(g, 37, 35, 4, f, TRUCK_WHEEL);
+    // serving window
+    rect(g, 5, 15, 22, 12, 'g'); rect(g, 6, 16, 20, 10, 'd');
+    rect(g, 21, 17, 4, 5, 'w'); rect(g, 22, 18, 2, 1, 'G'); rect(g, 22, 20, 2, 1, 'G');
+    // counter
+    rect(g, 4, 26, 24, 1, 'g'); rect(g, 4, 27, 24, 1, 'G');
+    rect(g, 23, 24, 2, 2, 'w'); px(g, 24, 23, 'R');
+    // Princess Donut, leaning on the counter
+    oval(g, 13, 21, 4.5, 3.5, 'o');
+    tri(g, 9, 19, 10, 16, 12, 18, 'o'); tri(g, 14, 18, 16, 16, 17, 19, 'o');
+    px(g, 10, 18, 'p'); px(g, 16, 18, 'p');
+    px(g, 8, 22, 'o'); px(g, 18, 22, 'o'); px(g, 8, 23, 'O'); px(g, 18, 23, 'O');
+    rect(g, 11, 17, 5, 1, 'y'); px(g, 11, 16, 'y'); px(g, 13, 16, 'y'); px(g, 15, 16, 'y'); px(g, 13, 17, 'R');
+    rect(g, 10, 20, 2, 2, 'e'); rect(g, 15, 20, 2, 2, 'e'); px(g, 11, 21, 'K'); px(g, 16, 21, 'K');
+    rect(g, 10, 19, 2, 1, hurt ? 'K' : 'O'); rect(g, 15, 19, 2, 1, hurt ? 'K' : 'O');
+    rect(g, 12, 22, 3, 2, 'c'); px(g, 13, 22, 'p'); px(g, 13, 23, 'K');
+    rect(g, 11, 24, 5, 1, 'c');
+    rect(g, 9, 25, 2, 1, 'o'); rect(g, 16, 25, 2, 1, 'o');
+    // striped awning
+    for (x = 4; x < 28; x++) { var st = ((x - 4) >> 1) & 1; rect(g, x, 13, 1, 2, st ? 'w' : 'r'); if (!st) px(g, x, 15, 'r'); }
+    // rear ladder + vent
+    rect(g, 2, 14, 1, 12, 'G'); rect(g, 26, 10, 4, 1, 'G'); rect(g, 27, 9, 2, 1, 'g');
+    if (hurt) {
+      // dents, scorch, cracked glass, torn awning, smoke
+      line(g, 29, 13, 33, 18, 'K'); px(g, 30, 15, 'B'); px(g, 31, 16, 'D'); rect(g, 30, 19, 3, 2, 'D');
+      oval(g, 40, 30, 2, 1, 'D'); px(g, 39, 29, 'K'); px(g, 42, 31, 'K');
+      line(g, 37, 20, 41, 24, 'w'); px(g, 39, 21, 'w');
+      px(g, 7, 15, 'd'); px(g, 8, 15, 'd'); px(g, 19, 15, 'd'); rect(g, 19, 13, 2, 2, 'd');
+      rect(g, 3, 20, 2, 3, 'G'); px(g, 1, 24, 'K');
+      oval(g, 44 - f, 12 - f, 2.5, 2, 'S'); oval(g, 41 + f, 6 - f, 3, 2.5, 's'); oval(g, 36, 2 + f, 2, 1.5, 'S');
+      px(g, 45, 23, 'f'); px(g, 46, 22, 'y'); px(g, 44, 22 - f, 'f');
+    }
+  }
+  [false, true].forEach(function (hurt) {
+    var frames = [0, 1].map(function (f) { var g = blank(TRUCK_W, TRUCK_H); truckPaint(g, f, hurt); return outlined(g); });
+    def(hurt ? 'truck_hurt' : 'truck', withK(TRUCK_PAL), frames);
+  });
+
+  // float overlays: same 48x40 canvas + anchor as the truck, transparent except their decoration
+  var FLOAT_PAL = {
+    p: C.p2, P: C.p0, y: C.y2, Y: C.y3, r: C.r2, R: C.r1, w: C.W, b: C.b4, B: C.b2, n: C.G2, N: C.G1,
+    g: C.g1, G: C.g0, K: C.K, o: C.n2, O: C.n1, q: C.m2
+  };
+  function floatDef(name, frames, paint) {
+    var fr = [];
+    for (var f = 0; f < frames; f++) { var g = blank(TRUCK_W, TRUCK_H); paint(g, f); fr.push(outlined(g)); }
+    def(name, withK(FLOAT_PAL), fr);
+  }
+  var CONF = ['r', 'y', 'b', 'n', 'w', 'q', 'o'];
+  floatDef('float_confetti', 2, function (g, f) {
+    // drum base on the roof + angled cannon barrel
+    rect(g, 18, 7, 10, 4, 'P'); rect(g, 18, 7, 10, 1, 'y'); rect(g, 18, 10, 10, 1, 'y'); px(g, 21, 8, 'Y'); px(g, 25, 9, 'Y');
+    line(g, 23, 7, 30, 2, 'G', 3); line(g, 23, 6, 29, 2, 'g');
+    rect(g, 29, 0, 4, 3, 'R'); rect(g, 30, 1, 2, 1, 'K');
+    px(g, 19, 6, 'G'); px(g, 18, 5, 'y');
+    var bits = f ? [[34, 0], [37, 2], [33, 4], [40, 1], [36, 5], [42, 3], [39, 6], [44, 0]] : [[33, 1], [35, 0], [34, 3], [37, 1], [36, 4], [38, 2]];
+    bits.forEach(function (q, i) { px(g, q[0], q[1], CONF[(i + f * 3) % CONF.length]); if (i & 1) px(g, q[0] + 1, q[1], CONF[(i + f * 3) % CONF.length]); });
+  });
+  floatDef('float_spotlight', 2, function (g, f) {
+    // truss tower on the cab roof with two swivel lamps
+    rect(g, 36, 10, 1, 7, 'G'); rect(g, 42, 10, 1, 7, 'G');
+    line(g, 37, 11, 41, 13, 'g'); line(g, 41, 13, 37, 15, 'g');
+    rect(g, 34, 9, 11, 1, 'g'); rect(g, 35, 16, 9, 1, 'G');
+    [[34, 5], [40, 5]].forEach(function (L, i) {
+      rect(g, L[0], L[1], 4, 3, 'P'); rect(g, L[0] + 1, L[1] + 3, 2, 1, 'G');
+      var lit = (i + f) & 1;
+      rect(g, L[0] + 4, L[1], 1, 3, lit ? 'w' : 'Y');
+      if (lit) { px(g, L[0] + 5, L[1] - 1, 'Y'); px(g, L[0] + 6, L[1] - 1, 'Y'); px(g, L[0] + 5, L[1] + 1, 'Y'); }
+    });
+  });
+  floatDef('float_balloons', 2, function (g, f) {
+    // balloon arch over the whole truck
+    line(g, 45, 15, 45, 17, 'G'); line(g, 3, 13, 3, 11, 'G');
+    var N = 13;
+    for (var i = 0; i < N; i++) {
+      var a = Math.PI - i * Math.PI / (N - 1);
+      var x = Math.round(24 + Math.cos(a) * 21), y = Math.round(14 - Math.sin(a) * 11) + ((i + f) & 1 ? 0 : -1) + 1;
+      var c = ['R', 'y', 'b', 'n', 'p', 'o'][i % 6];
+      oval(g, x, y, 2, 2, c); px(g, x - 1, y - 1, 'w');
+    }
+  });
+  floatDef('float_banner', 2, function (g, f) {
+    // big banner hung along the side of the box
+    px(g, 4, 26, 'y'); px(g, 31, 26, 'y');
+    rect(g, 3, 27, 30, 5, 'P'); rect(g, 4, 28, 28, 3, 'p'); rect(g, 3, 27, 30, 1, 'y');
+    for (var x = 6; x < 31; x += 5) sparkle(g, x, 29, 'Y', 'w');
+    for (x = 3; x < 33; x++) if (((x + f) & 1) === 0) px(g, x, 32, 'y');
+    // pennant pole at the rear
+    rect(g, 0, 15, 1, 12, 'G'); tri(g, 1, 15, 1, 19, 5 + f, 17, 'R');
+  });
+  floatDef('float_base', 2, function (g, f) {
+    // bunting skirt around the wheels
+    rect(g, 0, 31, 48, 1, 'y');
+    rect(g, 1, 32, 46, 2, 'P');
+    var cols = ['R', 'w', 'b', 'y'];
+    for (var x = 0; x < 48; x += 4) tri(g, x, 34, x + 3, 34, x + 1 + f, 37, cols[((x >> 2) + f) % cols.length]);
+    for (x = 2; x < 47; x += 6) px(g, x, 32, 'Y');
+  });
+
+  // ---------------- RIVAL RACERS (2 frames, face right) ----------------
+  function racer(id, pal, W, H, paint, cropL) {
+    // painted on W x H (minus cropL columns trimmed on the left), then given a 1px margin so the outline closes on every edge
+    cropL = cropL || 0;
+    var frames = [0, 1].map(function (f) { var g = blank(W, H); paint(g, f); return outlined(resize(g, W - cropL + 2, H + 2, 1 - cropL, 1)); });
+    def('racer_' + id, withK(pal), frames);
+  }
+  // goblin on a junk motorbike
+  racer('goblin_bike', { g: C.G1, G: C.t0, v: C.n0, V: C.y0, m: C.g1, M: C.g0, t: '#3c3c3c', T: '#1c1c1c', r: C.n1, R: C.o0, y: C.y2, w: C.W, e: C.b4, s: C.g0, S: C.g1, K: C.K, n: C.y1, p: C.c1, a: C.o1 }, 46, 32, function (g, f) {
+    // exhaust smoke behind
+    oval(g, 3 - f, 17 - f, 2, 2, f ? 'S' : 's'); oval(g, 6 + f, 21 - f, 1.5, 1.5, 'S');
+    // wheels: rear spoked, front mismatched rusty rim
+    wheelP(g, 10, 25, 5, f, { t: 't', T: 'T', h: 'm', H: 'M' });
+    wheelP(g, 37, 25, 5, f, { t: 't', T: 'T', h: 'r', H: 'R', c: 'y' });
+    // frame, fork, exhaust pipe
+    line(g, 10, 25, 16, 19, 'M', 2); line(g, 16, 19, 31, 16, 'M', 2); line(g, 32, 12, 37, 25, 'm', 2);
+    line(g, 16, 23, 6, 21, 'n', 2); rect(g, 5, 20, 2, 3, 'M');
+    // engine block with fins
+    rect(g, 15, 19, 11, 6, 'M'); for (var i = 16; i < 25; i += 2) rect(g, i, 20, 1, 4, 'm');
+    // dented barrel tank with a patch
+    rect(g, 19, 13, 11, 5, 'r'); rect(g, 19, 13, 11, 1, 'y'); px(g, 22, 15, 'R'); px(g, 23, 16, 'R'); rect(g, 26, 14, 3, 2, 'p'); px(g, 27, 14, 'K');
+    // seat, handlebars, tin-can headlight
+    rect(g, 11, 15, 8, 2, 'V');
+    line(g, 32, 13, 33, 8, 'M'); rect(g, 31, 7, 4, 1, 'M');
+    rect(g, 36, 10, 4, 4, 'm'); rect(g, 40, 10, 1, 4, 'y'); px(g, 37, 11, 'w');
+    // goblin rider: hunched over the bars, big head, swept-back ear, goggles, grin
+    line(g, 13, 14, 19, 20, 'G', 2); rect(g, 18, 20, 4, 2, 'V');
+    rect(g, 10, 9, 8, 6, 'v'); rect(g, 10, 9, 8, 1, 'V'); px(g, 13, 11, 'y'); px(g, 13, 13, 'y');
+    tri(g, 18, 3, 8, 0 + f, 18, 6, 'g'); line(g, 17, 4, 11, 1 + f, 'G');
+    oval(g, 21, 5, 4.5, 4, 'g'); rect(g, 25, 4, 2, 3, 'g'); px(g, 27, 5, 'g'); px(g, 26, 6, 'G');
+    rect(g, 16, 2, 10, 1, 'V'); oval(g, 23, 3, 1.5, 1.5, 'e'); px(g, 22, 2, 'w'); px(g, 24, 4, 'K');
+    rect(g, 20, 7, 6, 1, 'K'); px(g, 21, 7, 'w'); px(g, 23, 7, 'w'); px(g, 25, 7, 'w'); rect(g, 21, 8, 3, 1, 'G');
+    line(g, 17, 11, 29, 8, 'v', 2); rect(g, 30, 7, 2, 2, 'g');
+    // scarf flapping
+    rect(g, 13, 9, 4, 1, 'a'); line(g, 12, 9, 6 - f, 7 + f, 'a'); px(g, 5 - f, 8 + f, 'a');
+  });
+  // skeleton charioteer + skeletal horse
+  racer('skull_chariot', { w: C.g2, W: C.g1, d: C.g0, e: C.t2, f: C.c2, F: C.c1, p: C.p0, P: C.p1, y: C.y2, Y: C.y1, t: '#3c3c3c', T: '#1c1c1c', K: C.K, r: C.r1 }, 56, 34, function (g, f) {
+    // ghost-flame trail behind the chariot
+    tri(g, 0, 16 + f, 6, 12, 6, 22, 'F'); tri(g, 1, 18 - f, 7, 15, 7, 21, 'f');
+    // bone shaft to the horse
+    line(g, 20, 22, 36, 19, 'W', 2);
+    // chariot wheel (bone spokes)
+    wheelP(g, 12, 26, 7, f, { t: 't', T: 'T', h: 'w', H: 'd', c: 'y' });
+    // chariot shell: curved purple tub with a skull emblem and bone trim
+    rect(g, 6, 13, 16, 11, 'p'); oval(g, 20, 18, 3, 6, 'p'); rect(g, 6, 13, 16, 1, 'w'); rect(g, 6, 23, 16, 1, 'W');
+    rect(g, 7, 14, 13, 1, 'P');
+    oval(g, 15, 18, 2.5, 2, 'w'); px(g, 14, 18, 'K'); px(g, 16, 18, 'K'); px(g, 15, 20, 'W');
+    for (var x = 7; x < 22; x += 3) px(g, x, 23, 'd');
+    // skeleton driver
+    rect(g, 10, 6, 6, 7, 'W'); for (var y = 7; y < 12; y += 2) rect(g, 11, y, 4, 1, 'd');
+    oval(g, 13, 3, 3.5, 3, 'w'); rect(g, 13, 5, 3, 2, 'w'); px(g, 14, 2, 'K'); px(g, 15, 3, 'e'); px(g, 14, 6, 'K'); px(g, 16, 6, 'K');
+    rect(g, 10, 0, 6, 1, 'y'); px(g, 9, 1, 'r'); px(g, 8, 1, 'r'); px(g, 7, 2, 'r');
+    line(g, 15, 9, 22, 11, 'W'); line(g, 22, 11, 41, 7, 'Y');
+    // skeletal horse: spine, ribs, skull, legs
+    var hb = f ? 1 : 0;
+    line(g, 32, 13 + hb, 46, 12 + hb, 'w', 2);
+    for (x = 35; x < 45; x += 2) line(g, x, 13 + hb, x - 1, 18 + hb, 'W');
+    line(g, 46, 12 + hb, 48, 6 + hb, 'w', 2);
+    oval(g, 50, 6 + hb, 3, 2.5, 'w'); rect(g, 51, 6 + hb, 4, 3, 'w'); px(g, 54, 8 + hb, 'K'); px(g, 50, 5 + hb, 'e'); px(g, 49, 5 + hb, 'K');
+    tri(g, 48, 4 + hb, 49, 0 + hb, 50, 4 + hb, 'W');
+    // flaming mane + tail
+    for (var k = 0; k < 4; k++) px(g, 46 - k * 2, 9 + hb - (k & 1), k & 1 ? 'f' : 'F');
+    line(g, 32, 13 + hb, 28, 9 + hb - f, 'f'); px(g, 27, 8 + hb - f, 'F');
+    // legs: gallop alternates
+    var Lg = f ? [[34, 33, 30], [38, 41, 30], [43, 40, 30], [46, 50, 29]] : [[34, 30, 29], [38, 37, 30], [43, 46, 30], [46, 47, 30]];
+    Lg.forEach(function (L) { line(g, L[0], 15 + hb, L[1], L[2] - 4, 'w'); line(g, L[1], L[2] - 4, L[1] + (L[1] > L[0] ? 1 : -1), L[2], 'W'); px(g, L[1] + (L[1] > L[0] ? 1 : -1), L[2], 'd'); });
+  }, 2);
+  // rider on a giant armored beetle (a mount)
+  racer('beetle_mount', { b: C.p1, B: C.b5, d: C.p0, D: '#24184c', h: C.c2, l: '#2c2c3c', L: '#4c4c5c', s: C.n3, S: C.n2, a: C.o1, A: C.o0, n: C.y1, N: C.y0, e: C.K, w: C.W, y: C.y2, g: C.g1, K: C.K }, 52, 36, function (g, f) {
+    // six legs (three visible pairs), alternating stride
+    var off = f ? 2 : -2;
+    [[12, 1], [24, -1], [36, 1]].forEach(function (L) {
+      var s = L[1] * off;
+      line(g, L[0], 26, L[0] - 3 + s, 31, 'L', 2); line(g, L[0] - 3 + s, 31, L[0] - 1 + s, 35, 'l', 2);
+    });
+    // shell dome with ridges + iridescent highlight
+    oval(g, 24, 22, 19, 9, 'b'); rect(g, 6, 24, 37, 4, 'd');
+    oval(g, 22, 19, 13, 5, 'B'); oval(g, 20, 18, 7, 2, 'h');
+    line(g, 24, 13, 24, 27, 'd'); line(g, 12, 16, 10, 26, 'D'); line(g, 36, 16, 38, 26, 'D');
+    for (var x = 8; x < 42; x += 4) px(g, x, 27, 'D');
+    // head + big curved horn
+    oval(g, 44, 24, 5, 4, 'd'); rect(g, 44, 26, 5, 2, 'D');
+    line(g, 46, 21, 48, 14, 'L', 3); line(g, 48, 14, 50, 9, 'L', 2); px(g, 50, 8, 'g'); px(g, 49, 10, 'g');
+    rect(g, 46, 23, 2, 2, 'y'); px(g, 47, 23, 'e');
+    line(g, 48, 27, 51, 29, 'L'); px(g, 51, 30, 'l');
+    // saddle + reins
+    rect(g, 17, 11, 12, 3, 'n'); rect(g, 17, 13, 12, 1, 'N'); rect(g, 15, 12, 2, 5, 'n');
+    line(g, 29, 6, 47, 17, 'N');
+    // rider: hooded nomad with goggles and a long scarf
+    rect(g, 21, 5, 7, 7, 'a'); rect(g, 21, 5, 7, 1, 'A'); rect(g, 24, 11, 3, 3, 'l');
+    line(g, 26, 7, 30, 6, 'S', 2);
+    oval(g, 25, 2, 3.5, 2.5, 'A'); rect(g, 25, 2, 4, 2, 's'); rect(g, 26, 1, 3, 1, 'g'); px(g, 28, 1, 'w');
+    rect(g, 22, 4, 2, 1, 'a'); line(g, 21, 5, 14, 3 + f, 'a', 2); px(g, 13, 2 + f * 2, 'A');
+  });
+  // steam-punk dune buggy with a bot driver
+  racer('steam_buggy', { y: C.y2, Y: C.y1, o: C.n1, O: C.n0, c: '#a85010', m: C.g1, M: C.g0, r: C.o1, w: C.W, s: C.g0, S: C.g1, t: '#3c3c3c', T: '#1c1c1c', K: C.K, e: C.b4, g: C.G1 }, 50, 32, function (g, f) {
+    // smoke puffs from the stack
+    oval(g, 4 + f, 2 + f, 2.5, 2, 'S'); oval(g, 9 - f, 4 - f, 2, 1.5, 's');
+    // boiler tank on the back + stack
+    rect(g, 3, 11, 10, 10, 'o'); rect(g, 3, 11, 10, 1, 'y'); rect(g, 3, 15, 10, 1, 'Y'); rect(g, 3, 19, 10, 1, 'Y'); px(g, 5, 13, 'y'); px(g, 10, 17, 'O');
+    rect(g, 7, 5, 3, 6, 'M'); rect(g, 6, 5, 5, 1, 'm');
+    // chassis
+    rect(g, 6, 20, 38, 3, 'Y'); rect(g, 6, 20, 38, 1, 'y');
+    tri(g, 36, 15, 36, 20, 46, 20, 'Y'); line(g, 36, 15, 46, 20, 'y');
+    // roll cage
+    line(g, 16, 20, 19, 7, 'M', 2); line(g, 19, 7, 31, 7, 'M', 2); line(g, 31, 7, 35, 20, 'M', 2); line(g, 19, 7, 26, 20, 'm');
+    // big brass gear on the side
+    oval(g, 30, 22, 3, 3, 'y'); for (var k = 0; k < 6; k++) { var a = (k + f * 0.5) * Math.PI / 3; px(g, Math.round(30 + Math.cos(a) * 4), Math.round(22 + Math.sin(a) * 4), 'y'); } px(g, 30, 22, 'O');
+    // wheels: fat rear, small front
+    wheelP(g, 11, 25, 6, f, { t: 't', T: 'T', h: 'y', H: 'O' });
+    wheelP(g, 41, 27, 4, f, { t: 't', T: 'T', h: 'y', H: 'O' });
+    // bot driver: boxy tin head, one big eye, antenna
+    rect(g, 20, 13, 7, 7, 'm'); rect(g, 20, 13, 7, 1, 'w'); px(g, 21, 16, 's'); px(g, 25, 16, 's');
+    rect(g, 21, 6, 8, 7, 'm'); rect(g, 21, 6, 8, 1, 'w'); rect(g, 21, 12, 8, 1, 'M');
+    oval(g, 26, 9, 1.5, 1.5, 'r'); px(g, 26, 9, 'w'); px(g, 22, 8, 'M'); px(g, 22, 10, 'M');
+    rect(g, 24, 3, 1, 3, 'M'); px(g, 24, 2, f ? 'r' : 'g');
+    line(g, 27, 15, 33, 14, 'M', 2); oval(g, 33, 15, 1.5, 1.5, 'K');
+  });
+  // the champion: huge spiked armoured war-rig, hulking alien driver
+  racer('champion', { a: C.g0, A: '#3c3c3c', D: '#24242c', r: C.r0, R: C.r1, w: C.W, W: C.g1, t: '#2c2c2c', T: '#141414', s: C.m1, S: C.m0, e: C.y2, K: C.K, f: C.o1, F: C.y2, y: C.y2, h: C.g2 }, 64, 40, function (g, f) {
+    // exhaust stacks with flame
+    rect(g, 6, 4, 3, 12, 'A'); rect(g, 11, 6, 3, 10, 'A'); rect(g, 6, 4, 3, 1, 'W'); rect(g, 11, 6, 3, 1, 'W');
+    tri(g, 5, 3, 9, 3, 7 - f, 0, 'f'); tri(g, 10, 5, 14, 5, 12 + f, 1, 'f'); px(g, 7, 2, 'F'); px(g, 12, 4, 'F');
+    // armoured hull
+    rect(g, 2, 15, 56, 15, 'a'); rect(g, 2, 15, 56, 1, 'W'); rect(g, 2, 27, 56, 3, 'A');
+    rect(g, 2, 20, 56, 3, 'r'); for (var x = 4; x < 56; x += 6) tri(g, x, 23, x + 3, 23, x + 3, 20, 'R');
+    for (x = 5; x < 56; x += 8) { px(g, x, 17, 'W'); px(g, x, 25, 'W'); }
+    // spikes along the roof line
+    for (x = 18; x < 30; x += 4) tri(g, x, 15, x + 2, 15, x + 1, 11, 'W');
+    // front ram plow with spikes
+    tri(g, 56, 14, 56, 31, 62, 31, 'A'); rect(g, 56, 14, 3, 17, 'A');
+    for (var y = 15; y < 30; y += 5) { tri(g, 59, y, 59, y + 3, 63, y + 2, 'W'); line(g, 59, y, 62, y + 2, 'h'); }
+    // cockpit: open cab with roll bar
+    rect(g, 30, 9, 2, 7, 'A'); rect(g, 30, 9, 16, 2, 'A'); rect(g, 44, 9, 2, 7, 'A');
+    // hulking alien driver
+    rect(g, 33, 9, 10, 7, 's'); rect(g, 33, 13, 10, 2, 'S');
+    tri(g, 31, 9, 34, 9, 32, 6, 'W'); tri(g, 42, 9, 45, 9, 44, 6, 'W'); // spiked shoulder pads
+    rect(g, 31, 9, 4, 3, 'A'); rect(g, 41, 9, 4, 3, 'A');
+    oval(g, 39, 4, 5, 4, 's'); rect(g, 40, 6, 6, 3, 's');
+    tri(g, 35, 2, 36, 0, 38, 2, 'h'); tri(g, 41, 1, 43, 0, 43, 3, 'h'); // horns
+    px(g, 39, 3, 'e'); px(g, 41, 3, 'e'); px(g, 40, 5, 'e'); px(g, 43, 4, 'e'); px(g, 41, 4, 'K'); px(g, 43, 5, 'K');
+    rect(g, 41, 7, 5, 1, 'K'); px(g, 42, 6, 'w'); px(g, 45, 6, 'w');
+    line(g, 43, 11, 48, 13, 's', 2); rect(g, 47, 11, 2, 4, 'A');
+    // huge treaded wheels with spiked hubs
+    [[14, 31], [48, 31]].forEach(function (c) {
+      oval(g, c[0], c[1], 8, 8, 't');
+      for (var k = 0; k < 12; k++) { var an = (k + f * 0.5) * Math.PI / 6; px(g, Math.round(c[0] + Math.cos(an) * 7.6), Math.round(c[1] + Math.sin(an) * 7.6), 'T'); }
+      oval(g, c[0], c[1], 4, 4, 'r'); oval(g, c[0], c[1], 2, 2, 'A');
+      for (k = 0; k < 4; k++) { var a2 = (k + f * 0.5) * Math.PI / 2; px(g, Math.round(c[0] + Math.cos(a2) * 3), Math.round(c[1] + Math.sin(a2) * 3), 'h'); }
+      px(g, c[0], c[1], 'h');
+    });
+  });
+
+  // ---------------- THE GRAND MARSHAL (final boss, 64x64) ----------------
+  boss('grand_marshal', {
+    c: C.p1, C: C.p0, s: C.c2, S: C.c1, r: C.r1, R: C.r0, y: C.y2, Y: C.y3, o: C.y1, w: C.W, W: C.g1, e: C.K, K: C.K,
+    v: C.m0, V: '#580050', t: '#3c3c3c', T: '#1c1c1c', b: C.b4, B: C.b2, n: C.G2, p: C.m2, q: C.n2, h: C.g1
+  }, 64, 64, function (g, p) {
+    var a = p.a, i = p.i, b = a === 'idle' ? i : a === 'walk' ? (i ? 1 : 0) : 0;
+    var atk = a === 'attack', sp = a === 'special', hurt = a === 'hurt';
+    var lean = hurt ? -2 : atk ? 2 : 0;
+    var cx = 30 + lean, x;
+    // throne back (velvet, gold trim, finials)
+    oval(g, 30, 28, 15, 15, 'y'); oval(g, 30, 28, 13, 13, 'v'); rect(g, 15, 28, 31, 22, 'y'); rect(g, 17, 28, 27, 22, 'v');
+    for (x = 19; x < 43; x += 4) rect(g, x, 19, 1, 30, 'V');
+    sparkle(g, 15, 22, 'y', 'Y'); sparkle(g, 45, 22, 'y', 'Y');
+    // float platform: gold deck, bunting skirt, little wheels
+    var ww = a === 'walk' ? i : 0;
+    rect(g, 1, 50, 62, 3, 'y'); rect(g, 1, 50, 62, 1, 'Y'); rect(g, 1, 52, 62, 1, 'o');
+    rect(g, 2, 53, 60, 5, 'C');
+    var bc = ['r', 'w', 'b', 'y'];
+    for (x = 2; x < 61; x += 6) tri(g, x, 53, x + 5, 53, x + 2 + ww, 57, bc[((x / 6) | 0) % 4]);
+    [9, 23, 41, 55].forEach(function (wx) { wheelP(g, wx, 59, 4, ww, { t: 't', T: 'T', h: 'h', H: 'W', c: 'y' }); });
+    // legs (boots on the deck)
+    rect(g, cx - 6, 42 + b, 4, 8 - b, 'C'); rect(g, cx + 2, 42 + b, 4, 8 - b, 'C');
+    rect(g, cx - 7, 48, 6, 2, 'K'); rect(g, cx + 1, 48, 7, 2, 'K'); px(g, cx - 6, 48, 'W'); px(g, cx + 2, 48, 'W');
+    // long coat
+    var ty = 26 + b;
+    rect(g, cx - 8, ty, 17, 18, 'c'); rect(g, cx - 9, ty + 12, 19, 6, 'c'); rect(g, cx - 9, ty + 16, 19, 2, 'C');
+    for (var yy = ty + 2; yy < ty + 16; yy += 3) { px(g, cx + 4, yy, 'y'); px(g, cx - 3, yy, 'y'); }
+    // sash: diagonal from the back shoulder to the front hip, with medals
+    for (var k = 0; k < 16; k++) { rect(g, cx - 7 + k, ty + k, 3, 1, 'r'); }
+    px(g, cx - 4, ty + 3, 'y'); px(g, cx - 1, ty + 6, 'Y'); px(g, cx + 2, ty + 9, 'y'); rect(g, cx + 6, ty + 14, 3, 3, 'R'); px(g, cx + 7, ty + 15, 'y');
+    // epaulettes with fringe
+    [cx - 11, cx + 6].forEach(function (ex) { rect(g, ex, ty - 1, 6, 3, 'y'); rect(g, ex, ty - 1, 6, 1, 'Y'); for (var q = 0; q < 6; q += 2) rect(g, ex + q, ty + 2, 1, 2, 'o'); });
+    // long neck + alien head with three eyes and drooping whisker-tendrils
+    rect(g, cx - 2, ty - 5, 5, 6, 's'); rect(g, cx + 1, ty - 5, 2, 6, 'S');
+    var hy = ty - 10;
+    oval(g, cx + 1, hy, 6.5, 6, 's'); oval(g, cx + 4, hy + 2, 4, 3, 's');
+    [[-3, -1], [1, -2], [5, -1]].forEach(function (E) { rect(g, cx + E[0], hy + E[1], 2, 2, 'w'); px(g, cx + E[0] + 1, hy + E[1] + (sp ? 0 : 1), sp ? 'r' : 'e'); });
+    if (a === 'idle' && i) rect(g, cx + 1, hy - 2, 2, 2, 's'); // blink
+    if (hurt) { line(g, cx - 3, hy - 2, cx + 7, hy - 2, 'S'); }
+    rect(g, cx + 3, hy + 3, 5, 1, 'K'); if (sp || atk) { rect(g, cx + 3, hy + 3, 5, 2, 'K'); px(g, cx + 4, hy + 3, 'w'); px(g, cx + 6, hy + 3, 'w'); }
+    line(g, cx + 2, hy + 4, cx - 1, hy + 9, 'S'); line(g, cx + 8, hy + 4, cx + 10, hy + 9, 'S'); px(g, cx - 2, hy + 10, 'S'); px(g, cx + 10, hy + 10, 'S');
+    // tall shako hat: gold crown band, visor, plume
+    var hh = hy - 5;
+    var plx = cx - 6 - (a === 'idle' ? i : 0);
+    oval(g, plx, hh - 9, 2, 4, 'r'); oval(g, plx - 1, hh - 12, 1.5, 2, 'p'); px(g, plx + 1, hh - 6, 'R');
+    rect(g, cx - 5, hh - 8, 12, 8, 'w'); rect(g, cx - 5, hh - 8, 12, 1, 'W'); rect(g, cx + 5, hh - 7, 2, 5, 'W');
+    rect(g, cx - 6, hh - 2, 14, 3, 'y'); for (x = cx - 6; x < cx + 8; x += 3) px(g, x, hh - 3, 'y');
+    px(g, cx, hh - 1, 'R'); px(g, cx + 4, hh - 1, 'b');
+    rect(g, cx + 4, hh + 1, 6, 1, 'K');
+    // arms + giant baton
+    var sy = ty + 2;
+    function baton(x0, y0, x1, y1) {
+      line(g, x0, y0, x1, y1, 'y', 3); line(g, x0, y0, x1, y1, 'Y');
+      oval(g, x1, y1, 3, 3, 'w'); px(g, x1 - 1, y1 - 1, 'b'); oval(g, x0, y0, 2, 2, 'y'); px(g, x0, y0, 'R');
+    }
+    if (atk) {
+      line(g, cx + 7, sy + 1, cx + 16, sy + 6, 'c', 4); rect(g, cx + 16, sy + 4, 4, 4, 'w');
+      baton(cx + 16, sy + 8, cx + 31, sy + 16);
+      line(g, cx - 8, sy + 1, cx - 12, sy + 10, 'c', 4); rect(g, cx - 14, sy + 10, 4, 3, 'w');
+    } else if (sp) {
+      line(g, cx + 6, sy, cx + 13, sy - 12, 'c', 4); rect(g, cx + 12, sy - 16, 4, 4, 'w');
+      line(g, cx - 7, sy, cx - 13, sy - 12, 'c', 4); rect(g, cx - 16, sy - 16, 4, 4, 'w');
+      baton(cx - 14, sy - 17, cx + 18, sy - 22);
+      // confetti burst everywhere
+      var CB = ['r', 'y', 'b', 'n', 'p', 'q', 'w'];
+      for (k = 0; k < 90; k++) {
+        var ang = k * 2.39996, rad = 9 + (k * 7) % 26;
+        var qx = Math.round(32 + Math.cos(ang) * rad * 1.25), qy = Math.round(22 + Math.sin(ang) * rad * 0.9);
+        if (qx < 1 || qx > 62 || qy < 1 || qy > 46) continue;
+        if (g[qy] && g[qy][qx] === '.') { px(g, qx, qy, CB[k % CB.length]); if (k % 3 === 0) px(g, qx + 1, qy, CB[k % CB.length]); }
+      }
+    } else {
+      var tw = a === 'idle' && i ? 2 : 0;
+      line(g, cx + 7, sy + 1, cx + 13, sy + 9, 'c', 4); rect(g, cx + 12, sy + 9, 4, 4, 'w');
+      baton(cx + 14 - tw, sy + 22, cx + 16 + tw * 2, sy - 8 + tw);
+      line(g, cx - 8, sy + 1, cx - 11, sy + 11, 'c', 4); rect(g, cx - 13, sy + 11, 4, 3, 'w');
+    }
+  });
+
+  // ---------------- UPDATE 3 PORTRAITS ----------------
+  portrait('p_racer_goblin_bike', { g: C.G1, G: C.t0, l: C.l2, v: C.n0, V: C.y0, e: C.b4, E: C.b2, w: C.W, K: C.K, a: C.o1, A: C.o0, m: C.g1, r: C.o0 }, BG_FOE, function (g) {
+    rect(g, 4, 26, 24, 6, 'v'); rect(g, 4, 26, 24, 1, 'V'); rect(g, 9, 24, 14, 3, 'a'); tri(g, 4, 25, 10, 24, 2, 31, 'a');
+    tri(g, 9, 14, 0, 7, 9, 21, 'g'); tri(g, 23, 14, 31, 6, 23, 20, 'g'); line(g, 3, 9, 8, 15, 'G'); line(g, 29, 8, 24, 14, 'G');
+    oval(g, 16, 16, 9, 9, 'g'); oval(g, 16, 21, 7, 4, 'g');
+    // leather helmet + goggles
+    oval(g, 16, 8, 9, 5, 'V'); rect(g, 7, 8, 18, 3, 'V'); line(g, 9, 6, 22, 6, 'v');
+    rect(g, 8, 11, 17, 2, 'V'); oval(g, 12, 13, 3, 2.5, 'm'); oval(g, 20, 13, 3, 2.5, 'm'); oval(g, 12, 13, 2, 1.5, 'e'); oval(g, 20, 13, 2, 1.5, 'e');
+    px(g, 11, 12, 'w'); px(g, 19, 12, 'w');
+    rect(g, 18, 18, 3, 2, 'G');
+    // big snaggle grin
+    rect(g, 10, 21, 13, 3, 'K'); for (var x = 10; x < 23; x += 2) px(g, x, 21, 'w'); px(g, 12, 23, 'w'); px(g, 20, 23, 'w'); rect(g, 13, 23, 5, 1, 'r');
+  });
+  portrait('p_racer_skull_chariot', { w: C.g2, W: C.g1, d: C.g0, e: C.t2, E: C.c2, K: C.K, y: C.y2, Y: C.y1, r: C.r1, R: C.r0, p: C.p0, P: C.p1 }, BG_FOE, function (g) {
+    rect(g, 3, 26, 26, 6, 'p'); rect(g, 3, 26, 26, 1, 'P'); for (var x = 8; x < 26; x += 3) rect(g, x, 27, 1, 5, 'W');
+    rect(g, 13, 22, 6, 5, 'W'); for (var y = 23; y < 27; y += 2) rect(g, 13, y, 6, 1, 'd');
+    // crested helmet with a red plume
+    tri(g, 4, 9, 16, 0, 16, 9, 'r'); tri(g, 16, 0, 28, 9, 16, 9, 'R');
+    oval(g, 16, 14, 9, 8, 'w'); oval(g, 16, 10, 10, 5, 'y'); rect(g, 6, 11, 21, 2, 'Y');
+    // skull face
+    oval(g, 12, 15, 2.5, 2.5, 'K'); oval(g, 20, 15, 2.5, 2.5, 'K'); px(g, 12, 15, 'E'); px(g, 20, 15, 'E'); px(g, 11, 14, 'e'); px(g, 19, 14, 'e');
+    tri(g, 15, 18, 17, 18, 16, 20, 'K');
+    rect(g, 11, 21, 11, 3, 'w'); for (x = 11; x < 22; x += 2) rect(g, x, 21, 1, 3, 'd'); rect(g, 11, 22, 11, 1, 'K');
+  });
+  portrait('p_racer_beetle_mount', { s: C.n3, S: C.n2, a: C.o1, A: C.o0, g: C.g1, e: C.b4, w: C.W, K: C.K, b: C.p1, B: C.b5, l: '#4c4c5c', y: C.y2 }, BG_FOE, function (g) {
+    // beetle horn + shell behind
+    oval(g, 26, 30, 8, 6, 'b'); oval(g, 25, 28, 4, 2, 'B');
+    line(g, 29, 26, 30, 4, 'l', 3); px(g, 30, 3, 'g'); line(g, 28, 12, 26, 9, 'l', 2);
+    // hood + scarf
+    oval(g, 14, 16, 11, 11, 'a'); rect(g, 3, 24, 22, 8, 'A'); rect(g, 5, 22, 20, 4, 'a');
+    oval(g, 15, 16, 7, 7, 's'); rect(g, 8, 18, 15, 7, 'a'); line(g, 8, 20, 22, 20, 'A');
+    // goggles
+    rect(g, 7, 12, 17, 2, 'K'); oval(g, 11, 14, 2.5, 2, 'g'); oval(g, 19, 14, 2.5, 2, 'g'); oval(g, 11, 14, 1.5, 1, 'e'); oval(g, 19, 14, 1.5, 1, 'e'); px(g, 10, 13, 'w'); px(g, 18, 13, 'w');
+    rect(g, 13, 17, 5, 1, 'S');
+  });
+  portrait('p_racer_steam_buggy', { m: C.g1, M: C.g0, w: C.W, r: C.o1, R: C.o0, y: C.y2, Y: C.y1, K: C.K, s: C.g0, S: C.g1, o: C.n1 }, BG_FOE, function (g) {
+    oval(g, 5, 5, 3, 2, 'S'); oval(g, 26, 3, 3, 2, 'S'); oval(g, 28, 7, 2, 1.5, 's');
+    rect(g, 3, 27, 26, 5, 'o'); rect(g, 3, 27, 26, 1, 'y'); rect(g, 12, 23, 8, 4, 'M');
+    rect(g, 5, 7, 22, 17, 'm'); rect(g, 5, 7, 22, 1, 'w'); rect(g, 5, 23, 22, 1, 'M'); rect(g, 26, 8, 1, 15, 'M');
+    [[7, 9], [24, 9], [7, 21], [24, 21]].forEach(function (q) { px(g, q[0], q[1], 'M'); });
+    oval(g, 16, 14, 5, 5, 'K'); oval(g, 16, 14, 4, 4, 'r'); oval(g, 16, 14, 2, 2, 'y'); px(g, 15, 13, 'w'); px(g, 14, 12, 'w');
+    rect(g, 9, 20, 14, 2, 'K'); for (var x = 10; x < 23; x += 3) px(g, x, 20, 'M');
+    rect(g, 15, 2, 2, 5, 'M'); oval(g, 16, 2, 1.5, 1.5, 'r'); px(g, 3, 13, 'Y'); rect(g, 2, 12, 3, 4, 'Y'); rect(g, 27, 12, 3, 4, 'Y');
+  });
+  portrait('p_racer_champion', { s: C.m1, S: C.m0, h: C.g2, H: C.g1, e: C.y2, K: C.K, w: C.W, a: C.g0, A: '#3c3c3c', r: C.r0 }, BG_FOE, function (g) {
+    rect(g, 1, 24, 30, 8, 'a'); for (var x = 2; x < 30; x += 5) tri(g, x, 24, x + 4, 24, x + 2, 19, 'H'); rect(g, 1, 27, 30, 2, 'r');
+    oval(g, 16, 14, 11, 10, 's'); rect(g, 6, 16, 21, 8, 's'); oval(g, 16, 22, 9, 3, 'S');
+    tri(g, 4, 9, 7, 6, 1, 0, 'h'); tri(g, 28, 9, 25, 6, 31, 0, 'h');
+    rect(g, 7, 9, 18, 2, 'S');
+    [[9, 12], [21, 12], [12, 16], [18, 16]].forEach(function (E) { rect(g, E[0], E[1], 3, 2, 'e'); px(g, E[0] + 1, E[1] + 1, 'K'); });
+    rect(g, 8, 20, 16, 3, 'K'); rect(g, 10, 21, 12, 1, 'S');
+    tri(g, 9, 21, 11, 21, 9, 16, 'w'); tri(g, 21, 21, 23, 21, 23, 16, 'w');
+  });
+  portrait('p_grand_marshal', { s: C.c2, S: C.c1, c: C.p1, C: C.p0, r: C.r1, R: C.r0, y: C.y2, Y: C.y3, o: C.y1, w: C.W, W: C.g1, K: C.K, e: C.K, b: C.b4, p: C.m2 }, BG_FOE, function (g) {
+    rect(g, 2, 26, 28, 6, 'c'); rect(g, 1, 25, 8, 3, 'y'); rect(g, 23, 25, 8, 3, 'y'); for (var x = 1; x < 9; x += 2) rect(g, x, 28, 1, 2, 'o'); for (x = 23; x < 31; x += 2) rect(g, x, 28, 1, 2, 'o');
+    for (var k = 0; k < 8; k++) rect(g, 9 + k * 2, 25 + (k >> 1), 3, 2, 'r');
+    rect(g, 13, 21, 6, 5, 's');
+    oval(g, 16, 17, 9, 7, 's'); oval(g, 18, 20, 6, 3, 's');
+    [[9, 15], [15, 14], [21, 15]].forEach(function (E) { rect(g, E[0], E[1], 3, 3, 'w'); px(g, E[0] + 1, E[1] + 1, 'e'); px(g, E[0] + 2, E[1] + 2, 'e'); });
+    rect(g, 13, 21, 7, 1, 'K');
+    line(g, 13, 22, 9, 27, 'S'); line(g, 19, 22, 23, 27, 'S'); line(g, 12, 22, 7, 25, 'S'); line(g, 20, 22, 25, 25, 'S');
+    // shako
+    rect(g, 8, 1, 16, 9, 'w'); rect(g, 8, 1, 16, 1, 'W'); rect(g, 7, 8, 18, 3, 'y'); for (x = 7; x < 25; x += 3) px(g, x, 7, 'y');
+    rect(g, 14, 8, 3, 2, 'R'); px(g, 15, 8, 'b'); rect(g, 7, 11, 18, 1, 'K');
+    oval(g, 6, 3, 2, 3, 'r'); oval(g, 5, 1, 1.5, 1.5, 'p');
+  });
+  defs.p_champion = defs.p_racer_champion;
+
   DCW.artActorsKit.def = def;
 })();
 
@@ -2784,8 +3233,8 @@
  *  MORDECAI'S FLOOR FORMS
  *  The guide gets a new body every floor. Each form swaps the head
  *  (rows 0-11 of the 17x28 sprite) and recolours skin, shirt, apron and
- *  mug. Defs: mordecai_f1..f9 (2 frames, frame 2 blinks) and
- *  p_mordecai_f2..f9 (32x32 portraits, head upscaled 2x over the base
+ *  mug. Defs: mordecai_f1..f11 (2 frames, frame 2 blinks) and
+ *  p_mordecai_f2..f11 (32x32 portraits, head upscaled 2x over the base
  *  portrait's backdrop and shoulders). Floor 1 keeps the original art.
  * ================================================================== */
 (function () {
@@ -2826,7 +3275,17 @@
     9: { // minotaur
       pal: { f: '#a85010', F: '#503000', e: '#f83800', w: '#fcfcfc', h: '#fcfcfc', H: '#bcbcbc', o: '#f8b800', n: '#f8b8a8', r: '#a81000', R: '#680000', a: '#7c7c7c', A: '#3c3c3c' , l: '#503000' },
       head: ['.hk.........kh...', '.hhk.......khh...', '..khkkkkkkkhk....', '...kffffffffk....', '..kffffffffffk...', '..kfffffwefffk...',
-        '..kffffffffnnnk..', '..kffffffffnnnnk.', '...kffffffffnokk.', '...kfffffffffk...', '....kffffffk.....', NECK] }
+        '..kffffffffnnnk..', '..kffffffffnnnnk.', '...kffffffffnokk.', '...kfffffffffk...', '....kffffffk.....', NECK] },
+    10: { // hot-rod gearhead lizard: flame pompadour, welding goggles up, toothpick; grease-blue coveralls
+      pal: { f: '#58d854', F: '#00a800', e: '#000000', w: '#f8d878', h: '#f83800', H: '#f8b800', g: '#503000', o: '#3cbcfc', n: '#005800', t: '#fce0a8',
+        r: '#0058f8', R: '#0000bc', a: '#7c7c7c', A: '#3c3c3c', l: '#00a800' },
+      head: ['......kkk........', '....kkhHhk.......', '...khhhHHhk......', '..khhHhhhhhk.....', '..kgggggggggk....', '..kgoogggoogk....',
+        '..kfffffffffkkk..', '..kffffffwefffnk.', '..kfFffffffffffk.', '...kFfffkkkkkkkt.', '....kfffffffk..t.', NECK] },
+    11: { // plush parade-mascot costume: giant grinning head; his own grumpy eye glares through the mouth mesh
+      pal: { f: '#f8d878', F: '#f8b800', y: '#f8b800', Y: '#e45c10', c: '#f87858', K: '#000000', q: '#a80020', d: '#3c0c14', e: '#000000', w: '#fcfcfc', p: '#3cbcfc', P: '#f878f8',
+        r: '#f85898', R: '#a80020', a: '#fcfcfc', A: '#bcbcbc', l: '#f8b800' },
+      head: ['.kkk.....kkk.....', 'kyYyk.k.kyYyk....', 'kyykkkPkkkyyk....', '.kkffffpffffkkk..', '.kfwwfffffwwffk..', 'kffwKffffwKfffk..',
+        'kfcffffffffffcfk.', 'kffqqqqqqqqqqqfk.', 'kffqdkkddddddqfk.', 'kffqdWedddddqffk.', '.kkfqqqqqqqqqfkk.', '....kffffffk.....'] }
   };
   function fit(r) { r = String(r); while (r.length < 17) r += '.'; return r.slice(0, 17); }
   function merge(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
