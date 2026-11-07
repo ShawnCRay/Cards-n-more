@@ -49,6 +49,29 @@
    areas done, ~2 ambushes per floor): enter F2 at ~L3, F4 ~L8, F9 ~L19, finish
    ~L21. Regular enemies take 2-4 punches at that level; bosses ~40-55 punches.
    Spawned adds (boss spawn:, cultist) are extra xp on top.
+   UPDATE 3 (floor 10 races, floor 11 parade; binding spec in DESIGN.md):
+   - D.racers[id] = {name, title, vehicle, sprite:'racer_<id>', portrait:'p_racer_<id>',
+     speed, accel, hp, aggression 0..1, weapon: projectile id|null, skill 0..1,
+     lines: [trash talk], boss?: true}. ids: goblin_bike skull_chariot
+     beetle_mount steam_buggy champion (champion = the boss racer).
+   - D.truck = {name, sprite:'truck', speed:170, accel:140, hp:30}. Truck upgrades
+     are quest items with a `truck` field ({hp}|{speed}|{mines:true}); float parts
+     are quest items with a `float` field ('confetti'|'spotlight'|'balloons'|'banner').
+   - stages kind 'race': theme 'raceway', race:{rivals:[ids], place:N[, boss:id]}.
+     Race chunks are named race_*; only they use r Z J O F. Rivals take the start
+     chunk's r spots in reading order (left to right). One F in race_finish.
+     Design rules (truck ~170 px/s, jump ~6-7 tiles, J pad ~9-10 tiles): plain gaps
+     <= 4 tiles, 5-6 tile gaps always have a J pad just before them, overpasses '='
+     at row 6 are entered from a J pad and leave 3 rows of headroom under them,
+     crates 'b' are rammed through, no oil within 3 tiles before a gap.
+     race_q_billboard holds a Q on its overpass (heat 2 truck upgrade).
+   - stages kind 'parade': theme 'parade', boss, parade:{speed, waves:[[enemy,w]]};
+     parade_* street chunks then arena_marshal (K). Floor 9's showrunner is no
+     longer final: bosses.grand_marshal.final = true (ending + gold skin there).
+   - floor.locks[ch] = {needs:'id'} | {needs:['id',...]} (all required) |
+     {afterCleared:'stageId'}. floor.overworld.npcs = [{racer, x, y, lines}].
+     Floor 11 has no stairs X. owMarker 'ow_garage' (race) / 'ow_float' (parade).
+   - floorScale has 11 entries; enemyFor clamps to its length.
    ========================================================================== */
 (function () {
   'use strict';
@@ -57,8 +80,8 @@
 
   D.version = 1;
 
-  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe'];
-  D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_war'];
+  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'raceway', 'parade'];
+  D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_war', 'ow_suburb', 'ow_parade'];
 
   /* ---------------- enemy scaling (optional helper) ----------------
      Index = floor-1. hp tracks expected punch damage at that floor's natural
@@ -72,13 +95,16 @@
     { hp: 5.4, dmg: 3.1, xp: 3.7, gold: 3.0 },
     { hp: 6.3, dmg: 3.5, xp: 5.1, gold: 3.4 },
     { hp: 7.0, dmg: 3.9, xp: 5.5, gold: 3.8 },
-    { hp: 8.2, dmg: 4.4, xp: 5.8, gold: 4.2 }
+    { hp: 8.2, dmg: 4.4, xp: 5.8, gold: 4.2 },
+    { hp: 9.0, dmg: 4.8, xp: 6.2, gold: 4.6 },
+    { hp: 9.8, dmg: 5.2, xp: 6.6, gold: 5.0 }
   ];
   D.enemyFor = function (id, floor) {
     var e = D.enemies && D.enemies[id];
     if (!e) return null;
-    var t = Math.max(1, Math.min(9, e.tier || 1));
-    var f = Math.max(1, Math.min(9, floor || t));
+    var top = D.floorScale.length;
+    var t = Math.max(1, Math.min(top, e.tier || 1));
+    var f = Math.max(1, Math.min(top, floor || t));
     var out = {}, k;
     for (k in e) if (Object.prototype.hasOwnProperty.call(e, k)) out[k] = e[k];
     if (f <= t) return out;
@@ -324,7 +350,8 @@
       defeat: "THE OVERSEER HAS STOPPED WATCHING! FIRST TIME IN A THOUSAND YEARS! IT LOOKS SO PEACEFUL!",
       loot: 'boss', unlock: { skin: 'carl_kilt' } },
 
-    showrunner: { name: 'THE SHOWRUNNER', title: 'PRODUCER OF THE APOCALYPSE', final: true,
+    // Floor 9's big boss. Since Update 3 he is NOT the end of the game (see grand_marshal).
+    showrunner: { name: 'THE SHOWRUNNER', title: 'PRODUCER OF THE APOCALYPSE',
       hp: 950, dmg: 6, w: 48, h: 56, sprite: 'showrunner', xp: 600, gold: [500, 700], flying: false,
       phases: [
         { below: 1.0, speed: 48, pattern: ['walk:1.5', 'spread:note:6', 'teleport', 'spawn:soldier:2', 'shoot:laser_orb:4', 'idle:1', 'laser', 'idle:1'] },
@@ -333,9 +360,27 @@
       ],
       intro: ["WELL, WELL, WELL. THE BAREFOOT BOY AND HIS CAT. YOU WERE SUPPOSED TO BE A FUNNY EPISODE ONE DEATH.",
         "I GREENLIT THIS PLANET. I CAN CANCEL IT. ROLL CAMERA, KILL THE LIGHTS, AND KILL THE CRAWLER.",
-        "THIS IS THE SERIES FINALE, CRAWLER! THE RATINGS HAVE NEVER BEEN HIGHER! I AM NOT EVEN MAD ABOUT IT!"],
-      defeat: "THE SHOWRUNNER HAS BEEN CANCELLED! THE NETWORK IS SPEECHLESS! I AM... HONESTLY A LITTLE PROUD?",
-      loot: 'boss', unlock: { skin: 'carl_gold' } }
+        "THIS IS THE MIDSEASON FINALE, CRAWLER! THE RATINGS HAVE NEVER BEEN HIGHER! I AM NOT EVEN MAD ABOUT IT!"],
+      defeat: "THE SHOWRUNNER HAS BEEN CANCELLED! THE NETWORK IS SPEECHLESS! THEY JUST ORDERED TWO MORE FLOORS. IMMEDIATELY.",
+      loot: 'boss', unlock: null },
+
+    // Floor 11 finale: a towering alien grand marshal on a throne float, with a sash,
+    // a giant baton and a confetti habit. Beating him wins the game (gold skin via G.win).
+    grand_marshal: { name: 'THE GRAND MARSHAL', title: 'HIGH POOBAH OF THE PROCESSION', final: true,
+      hp: 1250, dmg: 7, w: 56, h: 64, sprite: 'grand_marshal', xp: 700, gold: [650, 900], flying: false,
+      phases: [
+        // baton and brass: marching band blasts, baton lunges, balloon minions, confetti balloons
+        { below: 1.0, speed: 44, pattern: ['walk:1.5', 'spread:note:6', 'idle:0.9', 'spawn:jelly:2', 'charge', 'idle:1', 'rain:bubble:8', 'jump_slam', 'idle:1'] },
+        // the throne float rolls: spotlight beam, clown honor guard, fireworks, drum stomp
+        { below: 0.66, speed: 58, pattern: ['teleport', 'laser', 'spawn:clown:2', 'rain:fireball:10', 'shockwave', 'spread:note:9', 'charge', 'idle:0.8'] },
+        // grand finale: everything at once, plus a big balloon release
+        { below: 0.33, speed: 74, pattern: ['laser', 'spawn:jelly:3', 'summon_spikes', 'rain:laser_orb:12', 'charge', 'shockwave', 'spread:bolt:11', 'jump_slam', 'idle:0.6'] }
+      ],
+      intro: ["MAKE WAY! MAKE WAY! THE GRAND MARSHAL APPROACHES! BOW, WAVE, OR BE FLATTENED. THOSE ARE YOUR ONLY THREE OPTIONS.",
+        "I HAVE LED TEN THOUSAND PARADES ON NINE HUNDRED WORLDS. NOT ONE OF THEM HAD A FOOD TRUCK. THIS IS AN OUTRAGE.",
+        "BAND! A MARCH! BALLOONS! INFLATE! CRAWLER, YOU ARE OUT OF STEP, AND I WILL BE CORRECTING YOUR POSTURE. WITH THIS BATON."],
+      defeat: "THE GRAND MARSHAL HAS BEEN DETHRONED! THE BAND IS STILL PLAYING! NOBODY KNOWS HOW TO MAKE THE BAND STOP!",
+      loot: 'boss', unlock: null }
   };
 })();
 
@@ -2155,6 +2200,447 @@
     '..e......H.....bb..^^...L.....X....e....',
     '########################################',
     '########################################'] };
+
+  /* ==========================================================================
+     UPDATE 3 CHUNKS
+     ========================================================================== */
+
+  /* ---------- floor 10 on foot (scrapyard / auto parts store) ---------- */
+  // scrapyard: armor plating in the crusher shed; lever on the shed roof, reached by ladder + hops
+  C.q_ruin_crusher = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '..............ooo.......................',
+    '..............................S.........',
+    '..........H...===..====...XXXXXXXXXXX...',
+    '..........H...............X.........X...',
+    '..........H...............L.........X...',
+    '..........H...............L....Q....X...',
+    '..e.......H.......e.......L.........X.e.',
+    '########################################',
+    '########################################'] };
+
+  // auto parts store: the turbo sits on the top shelf; lever on the stock pallets
+  C.q_city_lift = { rows: [
+    '........................................',
+    '...XXXXXXXXXX...........................',
+    '...X....Q...L...........................',
+    '...X........L...........................',
+    '...XXXXXXXXXXXX=====....................',
+    '........................................',
+    '...............................S........',
+    '.....................=====..XXXXXX......',
+    '........................................',
+    '..e.......b.....e.........e........e....',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 11 on foot (festival town) ---------- */
+  // confetti alley: cannon in a rooftop shed (ladder on the right); lever in an alley nook behind crates
+  C.q_city_cannon = { rows: [
+    '........................................',
+    '........................................',
+    '...............XXXXXXXXXXX..............',
+    '...............X....Q....L..............',
+    '...............X.........L..............',
+    '...............XXXXXXXXXXXXXH...........',
+    '............................H...........',
+    '......XXXXX.................H...........',
+    '......b...X.................H...........',
+    '..e...b.S.X.......e.........H.....e.....',
+    '########################################',
+    '########################################'] };
+
+  // balloon barn: helium kit up in the rigging; lever on a perch, ride the prop cart up
+  C.q_circus_balloons = { rows: [
+    '........................................',
+    '........................................',
+    '..........................XXXXXXXX......',
+    '..........................L..Q...X......',
+    '..........................L......X......',
+    '.........S...........XXXXXXXXXXXXX......',
+    '........XXX.............................',
+    '........................................',
+    '.....===..........>.....................',
+    '..e.........e..........e.........e......',
+    '########################################',
+    '########################################'] };
+
+  // gilded hall: the banner hangs in a high gallery (gate on its right side); lever atop the bell tower
+  C.q_castle_banner = { rows: [
+    '........................................',
+    '...............S........................',
+    '............HXXXXX......................',
+    '............H...........................',
+    '............H..........XXXXXXXXXXXXX....',
+    '............H..........X...Q.......L....',
+    '............H..........X...........L....',
+    '............H..........XXXXXXXXXXXXX==..',
+    '.....===....H...........................',
+    '..e.........H.......e..........e.....e..',
+    '########################################',
+    '########################################'] };
+
+  // lantern park: spotlight in a treehouse up the branches; lever on a stump to the west
+  C.q_forest_lantern = { rows: [
+    '........................................',
+    '.......................XXXXXXXX.........',
+    '.......................L..Q...X.........',
+    '.......................L......X.........',
+    '......S..........====XXXXXXXXXX.........',
+    '.....XXX................................',
+    '.............===........................',
+    '..........==............................',
+    '......===...............................',
+    '..e.............e...........e.......e...',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 10: race chunks (theme raceway) ----------
+     r rival start, Z boost pad, J jump pad, O oil slick (each in the empty cell
+     right above ground), F finish line. Truck drives on row 9. */
+  // heat 1 grid: the player on pole, rivals lined up behind
+  C.race_start = { rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.......................o.o.o....',
+    '................................',
+    '.r...r...r...r.....P............',
+    '################################',
+    '################################'] };
+
+  // heats 2-3 grid: two rivals behind, two ahead
+  C.race_grid = { rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.........................o.o.o..',
+    '................................',
+    '..r...r....P....r...r...........',
+    '################################',
+    '################################'] };
+
+  // championship grid: the champion starts right in front of you
+  C.race_pole = { rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..........................o.o...',
+    '................................',
+    '...P.....r...r...r...r..........',
+    '################################',
+    '################################'] };
+
+  C.race_finish = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '..o.o.o.o...............................',
+    '........................................',
+    '..........F.............................',
+    '########################################',
+    '########################################'] };
+
+  // the straightaway: boost pads and a couple of crate stacks to ram
+  C.race_a = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '.......................f................',
+    '........................................',
+    '.....ooo..............ooo...............',
+    '...............b........................',
+    '...Z...........b....e..........Z....b...',
+    '########################################',
+    '########################################'] };
+
+  // hop the ditch: two short gaps
+  C.race_b = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '...........ooo..............ooo.........',
+    '........................................',
+    '.....e..............O..........e........',
+    '###########...#############...##########',
+    '###########...#############...##########'] };
+
+  // oil change: slicks and pit crews on the road
+  C.race_c = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '...........f.................f..........',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '....OO.......e.....O.O.........e...OO...',
+    '########################################',
+    '########################################'] };
+
+  // the overpass: jump pad up to a clean, coin-lined shortcut over the mess below
+  C.race_d = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '...........o.o.o.Z..o.o.o...............',
+    '..........=================.............',
+    '........................................',
+    '........................................',
+    '......J.......O.....e...^^.....e........',
+    '########################################',
+    '########################################'] };
+
+  // crate alley: stacks of crates to smash through
+  C.race_e = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '.........................f..............',
+    '........................................',
+    '.......ooo.........ooo........ooo.......',
+    '..........b.........b...........b.......',
+    '...e......b.....e...b......Z....b...e...',
+    '########################################',
+    '########################################'] };
+
+  // big air: a jump pad over a six tile gap, then a plain four tile hop
+  C.race_f = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '.............oooo.......................',
+    '...........o......o.....................',
+    '.............................oooo.......',
+    '........................................',
+    '.........J..............e...............',
+    '###########......###########....########',
+    '###########......###########....########'] };
+
+  // shredder row: tire shredder strips; the overpass skips most of them
+  C.race_g = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '..................f.....................',
+    '...........o.o.o.o.o.o..................',
+    '..........============..................',
+    '........................................',
+    '........................................',
+    '......J....^^^.......^^^......O...e.....',
+    '########################################',
+    '########################################'] };
+
+  // double decker: a long overpass with a snack on top, a gap and oil underneath
+  C.race_h = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '.........o.o.o.o.h.o.o.o.o..............',
+    '........====================............',
+    '........................................',
+    '........................................',
+    '....J................e.....O....e.......',
+    '################....####################',
+    '################....####################'] };
+
+  // pit stop: three gaps in a row (the six tile one has a pad)
+  C.race_i = { rows: [
+    '............................................',
+    '............................................',
+    '............................................',
+    '..............................f.............',
+    '............................................',
+    '............oooo............................',
+    '............................................',
+    '.....................ooo..............ooo...',
+    '............................................',
+    '...e....J....................e..............',
+    '###########......####....#########...#######',
+    '###########......####....#########...#######'] };
+
+  // bridge out: a broken plank bridge over a bottomless drop
+  C.race_j = { rows: [
+    '............................................',
+    '............................................',
+    '............................................',
+    '............................................',
+    '.................f..........................',
+    '............................................',
+    '............................................',
+    '..............ooo......ooo.......oo.........',
+    '............................................',
+    '...O......e.........e...................Z...',
+    '######========...======...=======..#########',
+    '######.............................#########'] };
+
+  // the gauntlet: a broken overpass up top, crates and a brute down below
+  C.race_k = { rows: [
+    '............................................',
+    '............................................',
+    '............................................',
+    '...........................f................',
+    '............................................',
+    '............o.o.o.......o.o.o.Z.............',
+    '..........=========...==========............',
+    '............................................',
+    '............................................',
+    '......J........b....E......b.....O.....e....',
+    '############################################',
+    '############################################'] };
+
+  // the widowmaker (championship): pad over a six tile gap, straight onto a second pad,
+  // up onto a long overpass that carries you over the next drop
+  C.race_l = { rows: [
+    '................................................',
+    '................................................',
+    '................................................',
+    '.........................f..........f...........',
+    '...........oooo.................................',
+    '...........................o.o.o.o.o.o.o.Z......',
+    '..........................================......',
+    '................................................',
+    '................................................',
+    '.........J............J..........e..............',
+    '###########......########......######....#######',
+    '###########......########......######....#######'] };
+
+  // heat 2 insert: a billboard overpass with the mine hopper sitting on top (Q)
+  C.race_q_billboard = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '..............o.o.Q.o.o.................',
+    '..........=================.............',
+    '........................................',
+    '........................................',
+    '......J........O.....e......^^..........',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- floor 11: the parade route (theme parade) ----------
+     Carl rides the float along row 7-8; hecklers stand on balconies '='. */
+  C.parade_start = { rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.................o.o.o.o........',
+    '................................',
+    '....P...........................',
+    '################################',
+    '################################'] };
+
+  C.parade_a = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '......e...................e.............',
+    '....=====...............=====...........',
+    '........................................',
+    '...........o.o.o..............h.........',
+    '........................................',
+    '..................e.....................',
+    '########################################',
+    '########################################'] };
+
+  C.parade_b = { rows: [
+    '........................................',
+    '........................................',
+    '..........f.................f...........',
+    '........................................',
+    '..................e.....................',
+    '................=====...................',
+    '........................................',
+    '....o.o.o...................o.o.o.......',
+    '........................................',
+    '...........e.....................e......',
+    '########################################',
+    '########################################'] };
+
+  C.parade_c = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '...e............................e.......',
+    '..====.........................====.....',
+    '........................................',
+    '.............ooooo......................',
+    '........................................',
+    '.......e...........E...........e........',
+    '########################################',
+    '########################################'] };
+
+  C.parade_d = { rows: [
+    '........................................',
+    '........................................',
+    '........................................',
+    '.................f......................',
+    '........................................',
+    '........................................',
+    '......o.o.o.o.o.......o.o.o.o.o.........',
+    '........................................',
+    '........................................',
+    '....................h...................',
+    '########################################',
+    '########################################'] };
+
+  // the reviewing stand at the end of the route
+  C.arena_marshal = { rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X..........................................X',
+    'X..........................................X',
+    'X..........................................X',
+    'X.........====..............====...........X',
+    '...........................................X',
+    '...........................................X',
+    '.....====..........======..........====....X',
+    '...........................................X',
+    '..c.....h.........................K........X',
+    '############################################',
+    '############################################'] };
 })();
 
 /* ==========================================================================
@@ -2182,7 +2668,15 @@
     castle7: { enemies: [['ghoul', 4], ['skeleton', 3]], elite: [['masked_noble', 1], ['gargoyle', 1]], flyers: [['gargoyle', 2], ['bat', 1]] },
     ruin8:   { enemies: [['mutant', 4], ['drone', 1]], elite: [['golem', 1]], flyers: [['drone', 1]] },
     city8:   { enemies: [['mutant', 3], ['steam_goblin', 1], ['rail_rat', 1]], elite: [['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
-    war9:    { enemies: [['soldier', 5], ['sniper', 1], ['cultist', 1], ['mutant', 1]], elite: [['war_beast', 2], ['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] }
+    war9:    { enemies: [['soldier', 5], ['sniper', 1], ['cultist', 1], ['mutant', 1]], elite: [['war_beast', 2], ['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
+    // Update 3. track10 = pit crews and pests standing on the race track (the truck rams them)
+    track10: { enemies: [['rail_rat', 3], ['goblin', 3], ['steam_goblin', 1]], elite: [['goblin_brute', 1]], flyers: [['drone', 2], ['skyfowl', 1]] },
+    crew10:  { enemies: [['steam_goblin', 3], ['rail_rat', 3], ['juicer_minion', 2], ['goblin', 1]], elite: [['goblin_brute', 2], ['conductor', 1]], flyers: [['drone', 2], ['bat', 1]] },
+    junk10:  { enemies: [['mutant', 3], ['rail_rat', 2], ['steam_goblin', 2]], elite: [['golem', 1]], flyers: [['drone', 1]] },
+    city11:  { enemies: [['clown', 3], ['soldier', 2], ['cultist', 1]], elite: [['clown_brute', 2], ['masked_noble', 1]], flyers: [['skyfowl', 1], ['jelly', 1]] },
+    circus11:{ enemies: [['clown', 5], ['juicer_minion', 1]], elite: [['clown_brute', 1]], flyers: [['jelly', 2], ['skyfowl', 1]] },
+    castle11:{ enemies: [['ghoul', 2], ['skeleton', 2], ['clown', 1]], elite: [['masked_noble', 1], ['gargoyle', 1]], flyers: [['gargoyle', 1], ['jelly', 1]] },
+    forest11:{ enemies: [['hound', 2], ['hunter', 2], ['clown', 1]], elite: [['swamp_troll', 1]], flyers: [['skyfowl', 2], ['jelly', 1]] }
   };
   function mix(name, o) { var m = MIX[name]; o.enemies = o.enemies || m.enemies; o.elite = o.elite || m.elite; o.flyers = o.flyers || m.flyers; return o; }
 
@@ -2418,11 +2912,73 @@
   st('f9_ambush', mix('war9', { name: 'CROSSFIRE', floor: 9, theme: 'warzone', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
     intro: "AMBUSH! A PATROL FROM BOTH FACTIONS. THEY AGREE ON ONE THING. YOU." }));
-  st('f9_boss', { name: 'THE SOUNDSTAGE', floor: 9, theme: 'warzone', kind: 'boss', music: 'boss_final',
+  st('f9_boss', { name: 'THE SOUNDSTAGE', floor: 9, theme: 'warzone', kind: 'boss', music: 'boss',
     chunks: { start: 'f9_start', pool: ['f9_a', 'f9_d'], count: 2, end: 'arena_showrunner' },
     enemies: [['soldier', 2], ['cultist', 1]], elite: [['war_beast', 1]], flyers: [['drone', 1]],
     boss: 'showrunner', reward: { box: 'boss', xp: 200 },
-    intro: "THE BROADCAST TOWER. THE STUDIO AUDIENCE IS SEATED. THE APPLAUSE SIGN IS ON. THIS IS IT, CRAWLER." });
+    intro: "THE BROADCAST TOWER. THE STUDIO AUDIENCE IS SEATED. THE APPLAUSE SIGN IS ON. THE BIGGEST BOSS YET, CRAWLER." });
+
+  /* ---------------- floor 10: the races (Update 3) ----------------
+     Heats 1-3 unlock in order (floor.locks afterCleared). Finish top `place` to clear.
+     Side areas A and C are on foot and hold truck upgrades; heat 2 hides a third one
+     on the billboard overpass. */
+  var RACE_EASY = ['race_a', 'race_b', 'race_c', 'race_d', 'race_e'];
+  st('f10_r1', mix('track10', { name: 'HEAT 1: MAPLE DRIVE', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
+    race: { rivals: ['goblin_bike', 'beetle_mount', 'steam_buggy'], place: 3 },
+    chunks: { start: 'race_start', pool: RACE_EASY, count: 6, end: 'race_finish' }, reward: { box: 'gold', xp: 90 },
+    intro: "HEAT ONE! THREE NEIGHBORS, ONE FOOD TRUCK, AND A ROAD FULL OF THINGS THAT WANT TO BE HIT. FINISH TOP THREE!" }));
+  st('f10_r2', mix('track10', { name: 'HEAT 2: THE BYPASS', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
+    questItem: 'meatball_mines',
+    race: { rivals: ['skull_chariot', 'goblin_bike', 'steam_buggy'], place: 3 },
+    chunks: { start: 'race_grid', pool: ['race_a', 'race_c', 'race_d', 'race_f', 'race_g', 'race_h'], count: 6, end: 'race_finish', insert: ['race_q_billboard'] },
+    reward: { box: 'gold', xp: 100 },
+    intro: "HEAT TWO! OVERPASSES, JUMP PADS, AND A BILLBOARD WITH SOMETHING SHINY ON TOP. TAKE THE HIGH ROAD. TOP THREE OR BUST!" }));
+  st('f10_r3', mix('track10', { name: "HEAT 3: DEAD MAN'S CURVE", floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
+    race: { rivals: ['skull_chariot', 'beetle_mount', 'steam_buggy', 'goblin_bike'], place: 3 },
+    chunks: { start: 'race_grid', pool: ['race_d', 'race_f', 'race_g', 'race_h', 'race_i', 'race_j', 'race_k'], count: 7, end: 'race_finish' },
+    reward: { box: 'platinum', xp: 110 },
+    elite: [['goblin_brute', 2], ['conductor', 1]],
+    intro: "HEAT THREE! DEAD MAN'S CURVE IS NAMED AFTER A MAN. HE IS STILL HERE. HE IS THE CURVE NOW. ALL FOUR RIVALS. TOP THREE!" }));
+  st('f10_x1', mix('junk10', { name: 'THE SCRAPYARD', floor: 10, theme: 'ruin', kind: 'side', questItem: 'scrap_plating', owMarker: 'ow_door',
+    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_c', 'f8_f', 'sx_a', 'lv_crates'], count: 4, end: 'end_door', insert: ['q_ruin_crusher'] }, reward: { box: 'platinum', xp: 130 },
+    intro: "A SCRAPYARD BEHIND THE WEST FENCE. CARS GO IN, CUBES COME OUT. SOMEWHERE IN HERE IS A VERY GOOD SLAB OF ARMOR." }));
+  st('f10_x2', mix('crew10', { name: 'AUTO PARTS SUPERSTORE', floor: 10, theme: 'city', kind: 'side', questItem: 'turbo_kit', owMarker: 'ow_door',
+    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_e', 'sx_c', 'f8_d', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['q_city_lift'] }, reward: { box: 'platinum', xp: 130 },
+    intro: "AN AUTO PARTS SUPERSTORE! EVERYTHING IS ON SALE! THE STAFF ARE GOBLINS ON STRIKE. THEY ARE STRIKING YOU." }));
+  st('f10_ambush', mix('crew10', { name: 'PIT CREW BRAWL', floor: 10, theme: 'city', kind: 'ambush',
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
+    intro: "AMBUSH! A RIVAL PIT CREW WANTS TO CHANGE YOUR TIRES. YOU DO NOT HAVE TIRES. THEY WILL IMPROVISE." }));
+  st('f10_boss', mix('track10', { name: 'THE CUL-DE-SAC CUP', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
+    race: { rivals: ['champion'], place: 1, boss: 'champion' },
+    chunks: { start: 'race_pole', pool: ['race_e', 'race_f', 'race_g', 'race_h', 'race_i', 'race_j', 'race_k', 'race_l'], count: 8, end: 'race_finish' },
+    elite: [['goblin_brute', 2], ['conductor', 1]], flyers: [['drone', 3], ['skyfowl', 1]],
+    reward: { box: 'boss', xp: 240 },
+    intro: "THE CUL-DE-SAC CUP! ONE RACE, ONE RIVAL, ONE TROPHY. VORN DREADAXLE HAS NEVER LOST. THERE IS A FIRST TIME FOR EVERYTHING!" }));
+
+  /* ---------------- floor 11: the parade (Update 3) ----------------
+     Four areas on foot, each with one float part behind a lever puzzle. The parade (B)
+     needs all four parts. Beating the grand marshal ends the game. */
+  st('f11_s1', mix('city11', { name: 'CONFETTI ALLEY', floor: 11, theme: 'city', kind: 'main', questItem: 'confetti_cannon', owMarker: 'ow_door',
+    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f8_g', 'f4_e', 'lv_cache'], count: 6, end: 'end_door', insert: ['q_city_cannon'] }, reward: { box: 'gold', xp: 100 },
+    intro: "CONFETTI ALLEY! THE SHOPS SELL STREAMERS, PARTY HATS AND RIOT GEAR. THE PARADE CROWD IS ALREADY ROWDY." }));
+  st('f11_s2', mix('circus11', { name: 'THE BALLOON BARN', floor: 11, theme: 'circus', kind: 'main', questItem: 'balloon_rig', owMarker: 'ow_tent',
+    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'sx_b', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_circus_balloons'] }, reward: { box: 'gold', xp: 100 },
+    intro: "THE BALLOON BARN! WHERE BALLOONS ARE BORN. SOME OF THEM HAVE TEETH. DO NOT POP THE ONES WITH TEETH. OK, POP THEM." }));
+  st('f11_s3', mix('castle11', { name: 'THE GILDED HALL', floor: 11, theme: 'castle', kind: 'main', questItem: 'gala_banner', owMarker: 'ow_door',
+    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_b', 'f7_f', 'f7_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_castle_banner'] }, reward: { box: 'gold', xp: 100 },
+    intro: "THE GILDED HALL! VIP SEATING FOR THE PARADE. THE VIPS HAVE KNIVES. SO DO SOME OF THE CHANDELIERS." }));
+  st('f11_s4', mix('forest11', { name: 'LANTERN PARK', floor: 11, theme: 'forest', kind: 'main', questItem: 'spotlight_rig', owMarker: 'ow_cave',
+    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_e', 'f6_g', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_forest_lantern'] }, reward: { box: 'gold', xp: 100 },
+    intro: "LANTERN PARK! A QUIET GROVE STRUNG WITH LIGHTS. QUIET UNTIL YOU SHOWED UP. THE TREES ARE TAKING NOTES." }));
+  st('f11_ambush', mix('city11', { name: 'HECKLER MOB', floor: 11, theme: 'city', kind: 'ambush',
+    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 35 },
+    intro: "AMBUSH! A MOB OF HECKLERS. THEY HAVE OPINIONS ABOUT YOUR FLOAT. THEY ARE EXPRESSING THEM WITH FISTS." }));
+  st('f11_boss', { name: 'THE GRAND PARADE', floor: 11, theme: 'parade', kind: 'parade', music: 'boss_final', owMarker: 'ow_float',
+    chunks: { start: 'parade_start', pool: ['parade_a', 'parade_b', 'parade_c', 'parade_d'], count: 5, end: 'arena_marshal' },
+    enemies: [['clown', 3], ['soldier', 1]], elite: [['clown_brute', 1]], flyers: [['jelly', 2], ['skyfowl', 1]],
+    parade: { speed: 34, waves: [['clown', 4], ['jelly', 3], ['skyfowl', 2], ['soldier', 1], ['rail_rat', 1]] },
+    boss: 'grand_marshal', reward: { box: 'boss', xp: 300 },
+    intro: "THE GRAND PARADE! RIDE YOUR FLOAT DOWN THE ROUTE, PUNCH THE HECKLERS AND WAVE. ALWAYS WAVE. THE MARSHAL WAITS AT THE END." });
 
   /* ---------------- quest items (Update 2) ----------------
      Each sits in exactly one stage (stages[id].questItem, a 'Q' in an insert
@@ -2494,7 +3050,81 @@
       hint: "THE GUN CREWS ON ARTILLERY HILL KEEP CHARGES IN A HIGH GUN NEST. LEVER ON THE SNIPER LEDGE, THEN TAKE THE LIFT." },
     backstage_pass: { name: 'BACKSTAGE PASS', floor: 9, sprite: 'qi_badge',
       desc: "ALL ACCESS. LAMINATED. SOUNDSTAGE SECURITY WILL WAVE YOU STRAIGHT THROUGH TO THE SHOWRUNNER.",
-      hint: "THE PASS IS IN THE CARGO BAY OF THE CRASHED DROPSHIP. YOU NEED A BLASTING CHARGE TO GET INTO THE WRECK." }
+      hint: "THE PASS IS IN THE CARGO BAY OF THE CRASHED DROPSHIP. YOU NEED A BLASTING CHARGE TO GET INTO THE WRECK." },
+
+    /* Update 3, floor 10: truck upgrades (the `truck` field is added to D.truck while held) */
+    scrap_plating: { name: 'SCRAP ARMOR PLATING', floor: 10, sprite: 'qi_gear', truck: { hp: 15 },
+      desc: "A SLAB OF STEEL CUT FROM A SCHOOL BUS. BOLT IT ON AND THE FOOD TRUCK TAKES A LOT MORE PUNISHMENT.",
+      hint: "THE SCRAPYARD BEHIND THE WEST FENCE KEEPS ITS GOOD PLATE IN THE CRUSHER SHED. THE LEVER IS UP ON THE SHED ROOF." },
+    turbo_kit: { name: 'TURBOCHARGER', floor: 10, sprite: 'qi_bolt', truck: { speed: 25 },
+      desc: "A TURBO STILL IN THE BOX. THE FOOD TRUCK GOES FASTER. THE FRYER ALSO GOES FASTER. DO NOT THINK ABOUT IT.",
+      hint: "THE AUTO PARTS SUPERSTORE ON THE EAST SIDE HAS ONE TURBO LEFT, ON THE TOP SHELF BEHIND A GATE. CLIMB THE PALLETS." },
+    meatball_mines: { name: 'MEATBALL MINE HOPPER', floor: 10, sprite: 'qi_shell', truck: { mines: true },
+      desc: "A HOPPER OF EXPLOSIVE MEATBALLS. DROP THEM BEHIND THE TRUCK FOR FREE. NO BOMBS NEEDED. DO NOT EAT THEM.",
+      hint: "SOMEBODY LEFT A MINE HOPPER ON TOP OF A BILLBOARD IN HEAT TWO. HIT THE JUMP PAD AND TAKE THE HIGH ROAD." },
+
+    /* Update 3, floor 11: float parts (the `float` field picks the float decoration and parade perk) */
+    confetti_cannon: { name: 'CONFETTI CANNON', floor: 11, sprite: 'qi_horn', float: 'confetti',
+      desc: "A CANNON THAT FIRES CONFETTI HARD ENOUGH TO HURT. ON THE FLOAT IT BLASTS ANY HECKLER WHO GETS CLOSE.",
+      hint: "CONFETTI ALLEY KEEPS ITS CANNON IN A ROOFTOP SHED. THE SHED LEVER IS IN AN ALLEY NOOK, BEHIND A STACK OF CRATES." },
+    spotlight_rig: { name: 'SPOTLIGHT RIG', floor: 11, sprite: 'qi_lens', float: 'spotlight',
+      desc: "A STAGE SPOTLIGHT THE SIZE OF A BATHTUB. ON THE FLOAT IT DAZZLES ANYTHING THAT FLIES.",
+      hint: "LANTERN PARK HIDES A SPOTLIGHT IN A TREEHOUSE. CLIMB THE BRANCHES. THE GATE LEVER IS ON A STUMP TO THE WEST." },
+    balloon_rig: { name: 'HELIUM BALLOON KIT', floor: 11, sprite: 'qi_valve', float: 'balloons',
+      desc: "A HELIUM TANK AND A HUNDRED BALLOONS. TIED TO THE FLOAT THEY MAKE YOU LIGHT ENOUGH TO JUMP TWICE.",
+      hint: "THE BALLOON BARN KEEPS ITS HELIUM UP IN THE RIGGING. PULL THE LEVER ON THE LOW PERCH, THEN RIDE THE PROP CART UP." },
+    gala_banner: { name: 'SEQUIN BANNER', floor: 11, sprite: 'qi_map', float: 'banner',
+      desc: "A GIANT SEQUIN BANNER THAT SAYS CARL. THE CROWD LOVES IT. THE CROWD LOVES YOU. IT HEALS YOU, SOMEHOW.",
+      hint: "THE GILDED HALL BANNER HANGS IN A HIGH GALLERY. THE LEVER IS AT THE TOP OF THE BELL TOWER LADDER. ENTER FROM THE RIGHT." }
+  };
+
+  /* ---------------- racers + the food truck (Update 3, floor 10) ----------------
+     Original rivals. speed/accel in px/s like D.truck; hp is how much ramming and
+     missile fire they soak; aggression = how often they ram/shoot; skill = how well
+     they take pads, jumps and oil. weapon = projectile id they fire, or null.
+     The truck's base hp/speed get the `truck` bonuses of held quest items. */
+  D.truck = { name: 'THE FOOD TRUCK', sprite: 'truck', speed: 170, accel: 140, hp: 30 };
+  D.racers = {
+    goblin_bike: { name: 'SKARV SPOKEGNAW', title: 'GOBLIN SPEED FREAK', vehicle: 'THE RUSTBUCKET',
+      desc: "A GOBLIN ON A DIRT BIKE BUILT FROM THREE BIKES AND A LAWNMOWER. THE SIDECAR IS FULL OF BOTTLES.",
+      sprite: 'racer_goblin_bike', portrait: 'p_racer_goblin_bike',
+      speed: 158, accel: 155, hp: 18, aggression: 0.7, weapon: 'bottle', skill: 0.45,
+      lines: ["NICE TRUCK, MEAT. SHAME ABOUT THE DRIVER. AND THE CAT. AND THE TRUCK.",
+        "WHEN I PASS YOU, AND I WILL, I AM THROWING A BOTTLE. IT IS NOT PERSONAL. IT IS A LITTLE PERSONAL.",
+        "SKARV SPOKEGNAW DOES NOT BRAKE. SKARV SPOKEGNAW DOES NOT KNOW WHERE THE BRAKES ARE.",
+        "EAT MY DUST, TACO MAN! IT IS GOBLIN DUST. IT IS EXTRA DUSTY."] },
+    skull_chariot: { name: 'LADY OSSIA VANE', title: 'THE BONE DUCHESS', vehicle: 'THE OSSUARY EXPRESS',
+      desc: "A SKELETAL NOBLEWOMAN IN A GILDED CHARIOT PULLED BY TWO SKELETON HORSES. FLINGS SHARPENED BONES.",
+      sprite: 'racer_skull_chariot', portrait: 'p_racer_skull_chariot',
+      speed: 165, accel: 125, hp: 26, aggression: 0.45, weapon: 'knife', skill: 0.65,
+      lines: ["DARLING, I HAVE BEEN DEAD FOR THREE HUNDRED YEARS AND I STILL HAVE BETTER POSTURE THAN YOU.",
+        "MY HORSES HAVE NO MUSCLES, NO LUNGS AND NO MERCY. YOUR TRUCK HAS A MENU BOARD.",
+        "DO TRY TO KEEP UP. WINNING BY MORE THAN A MILE IS SO TERRIBLY VULGAR.",
+        "A BONE FOR YOU, PEASANT! NO, NOT TO KEEP. TO DODGE."] },
+    beetle_mount: { name: 'PIP THORNWHISTLE', title: 'JOCKEY OF THE CHITIN DERBY', vehicle: 'BIG MARGARET',
+      desc: "A TINY GNOME JOCKEY RIDING A RHINOCEROS BEETLE THE SIZE OF A MINIVAN. SHE SPITS SPORES WHEN ANNOYED.",
+      sprite: 'racer_beetle_mount', portrait: 'p_racer_beetle_mount',
+      speed: 150, accel: 175, hp: 34, aggression: 0.3, weapon: 'spore', skill: 0.7,
+      lines: ["BIG MARGARET HAS SIX LEGS AND ONE HORN AND SHE HAS NEVER LOST A RACE SHE WAS AWAKE FOR.",
+        "DO NOT LOOK HER IN THE EYES. ANY OF THEM. SHE TAKES IT AS A CHALLENGE.",
+        "I AM SMALL BUT WIRY, FRIEND. MARGARET IS NEITHER. SHE IS A TANK WITH FEELINGS.",
+        "HOLD ON, MARGARET! THE TACO MAN IS RIGHT BEHIND US! HE SMELLS LIKE ONIONS AND FEAR!"] },
+    steam_buggy: { name: 'GRANNY GASKET', title: 'THE BOILER QUEEN', vehicle: 'THE KETTLE',
+      desc: "A CACKLING OLD STEAM GOBLIN IN A LEAKY BRASS BUGGY. LOBS HOT RIVETS OVER HER SHOULDER WITHOUT LOOKING.",
+      sprite: 'racer_steam_buggy', portrait: 'p_racer_steam_buggy',
+      speed: 168, accel: 110, hp: 30, aggression: 0.55, weapon: 'rock', skill: 0.6,
+      lines: ["IN MY DAY WE RACED UPHILL BOTH WAYS. ON FIRE. AND WE LIKED IT, SONNY.",
+        "THE KETTLE HAS FOUR HUNDRED RIVETS. I WILL BE THROWING MOST OF THEM AT YOUR FACE.",
+        "OH, A FOOD TRUCK! HOW SWEET. I WILL HAVE ONE TACO AND YOUR SPOT ON THE PODIUM.",
+        "FULL STEAM AHEAD! AND A LITTLE STEAM BEHIND. THAT ONE IS FOR YOU, DEARIE."] },
+    champion: { name: 'VORN DREADAXLE', title: 'SIX TIME DEATH DERBY CHAMPION', vehicle: 'THE MAULER', boss: true,
+      desc: "A HULKING ARMORED OGRE DRIVING A SPIKED BIG RIG WITH A GRILLE FULL OF TEETH. THE RIG SPITS FIRE. SO DOES VORN.",
+      sprite: 'racer_champion', portrait: 'p_racer_champion',
+      speed: 182, accel: 130, hp: 140, aggression: 0.9, weapon: 'fireball', skill: 0.85,
+      lines: ["SIX CHAMPIONSHIPS. SIX HUNDRED CRASHES. YOU WANT TO BE NUMBER SIX HUNDRED AND ONE, TACO BOY?",
+        "THE MAULER EATS LITTLE TRUCKS. I AM NOT BEING POETIC. IT HAS A MOUTH. IT IS HUNGRY.",
+        "SECOND PLACE IS JUST THE FIRST CRASH VICTIM. REMEMBER THAT WHEN YOU SEE MY TAILLIGHTS.",
+        "NOBODY PASSES VORN DREADAXLE! NOBODY! ...WHO DID THAT? WHO JUST PASSED ME?"] }
   };
 
   /* ---------------- floors ---------------- */
@@ -2799,9 +3429,10 @@
         "THE SCRAPWORKS FREIGHT LIFT NEEDS A POWER CELL. LINE ZERO HAS AN OLD SUBSTATION. BRING YOUR NERVE.",
         "THE WATCHTOWER SCANS EYES. THERE IS A SPARE LENS AT THE VERY TOP OF THE DEAD AIR TOWER MAST."],
       required: ['f8_s1', 'f8_s2', 'f8_s3', 'f8_s4'], boss: 'f8_boss', par: 1800 },
-    { n: 9, name: 'FACTION WARS', tagline: 'THE SERIES FINALE. LIVE.', theme: 'warzone', music: 'floor9',
-      intro: ["FLOOR NINE! THE FINALE! TWO ARMIES, ONE PLANET, AND YOU IN THE MIDDLE IN YOUR UNDERWEAR.",
-        "CROSS THE FRONT LINES, TAKE THE FOUR OBJECTIVES, AND STORM THE BROADCAST TOWER. THE WHOLE GALAXY IS TUNED IN."],
+    { n: 9, name: 'FACTION WARS', tagline: 'THE MIDSEASON FINALE. LIVE.', theme: 'warzone', music: 'floor9',
+      intro: ["FLOOR NINE! THE MIDSEASON FINALE! TWO ARMIES, ONE PLANET, AND YOU IN THE MIDDLE IN YOUR UNDERWEAR.",
+        "CROSS THE FRONT LINES, TAKE THE FOUR OBJECTIVES, AND STORM THE BROADCAST TOWER. THE SHOWRUNNER HIMSELF IS WAITING.",
+        "SURVIVE HIM AND THE SEASON KEEPS GOING. THE NETWORK HAS TWO MORE FLOORS READY. THEY ARE VERY EXCITED. YOU SHOULD BE TOO."],
       overworld: { theme: 'ow_war', music: 'ow9',
         map: [
       '##########################################################',
@@ -2846,8 +3477,127 @@
       hints: [
         "ARTILLERY HILL IS MINED. BUNKER ROW HAS THE MAP. YOU WILL NOT GET FAR WITHOUT IT.",
         "THE GUN CREWS ON THE HILL KEEP BLASTING CHARGES. ONE OPENS THE TRENCH BARRICADE. ONE OPENS THE DROPSHIP.",
-        "THE BACKSTAGE PASS IS IN THE DROPSHIP WRECK. NO PASS, NO SHOWRUNNER. GO FINISH THIS, KID."],
-      required: ['f9_s1', 'f9_s2', 'f9_s3', 'f9_s4'], boss: 'f9_boss', par: 2000 }
+        "THE BACKSTAGE PASS IS IN THE DROPSHIP WRECK. NO PASS, NO SHOWRUNNER. HE IS THE BIGGEST THING YOU HAVE FACED, KID."],
+      required: ['f9_s1', 'f9_s2', 'f9_s3', 'f9_s4'], boss: 'f9_boss', bossMusic: 'boss', par: 2000 },
+    { n: 10, name: 'THE CUL-DE-SAC CUP', tagline: 'NICE NEIGHBORHOOD. TERRIBLE DRIVERS.', theme: 'raceway', music: 'floor10',
+      intro: ["FLOOR TEN! WELCOME TO THE CUL-DE-SAC CUP! ONE WAY IN, NO WAY OUT, AND A NEIGHBORHOOD WATCH THAT WATCHES YOU CRASH.",
+        "YOUR RIDE: A GENUINE FOOD TRUCK! CARL DRIVES. PRINCESS DONUT RIDES SHOTGUN, FIRES MISSILES AND CRITIQUES YOUR STEERING.",
+        "FINISH TOP THREE IN EACH HEAT TO UNLOCK THE NEXT GARAGE. WIN THE CHAMPIONSHIP TO LEAVE. SECOND PLACE IS A NICE WORD FOR LUNCH.",
+        "YOUR RIVALS LIVE ON THE BLOCK. WALK UP TO THEIR DRIVEWAYS AND SAY HELLO. THEY WILL SAY SOMETHING RUDE BACK. IT IS TRADITION."],
+      overworld: { theme: 'ow_suburb', music: 'ow10',
+        map: [
+      '####################################################',
+      '#TTTTTTTTTTTTTTTT##################TTTTTTTTTTTTTTTT#',
+      '#,,,,,,,,,,,,,,,,##################,,,,,,,,,,,,,,,,#',
+      '#,#######,,,,,T,,########B#####X###,,T,,,,,#######,#',
+      '#,#######,,,,,,,,..................,,,,,,,,#######,#',
+      '#,#######,,,,,,,,,,,,==========,,,,,,,,,,,,#######,#',
+      '#,######2.......,,================,,.......3######,#',
+      '#,#######,,,,,,,======,,,,,,,,======,,,,,,,#######,#',
+      '#,,,,,,,,,,,,,,=====,,,T,,,,,,,,=====,,,,,,,,,,,,,,#',
+      '#,T,T,,,,,,,,,====,,,,........,,,,====,,,,,,,,,,,,,#',
+      '#TTTTTTTTT,,,====,,,T,.,,,,,,.,T,,,====,,,TTTTTTTTT#',
+      '#,,,,T,,,,,,,====,,,,,.,,~~,,.,,,,,====,,,,,,,T,,,,#',
+      '#,,,,,,,,,,,,====,,,,,.,,~~,,.,,,,,====,,,,,,,,,,,,#',
+      '#,#######,,,,====,,,T,.,,,,,,.,T,,,====,,,,#######,#',
+      '#,#######,,,,,====,,,,........,,,,====,,,,,#######,#',
+      '#,######1......=====,,,,,,,,T,,,=====......#######,#',
+      '#,#######,,,,,,,======,,,,,,,,======,,,,,,,#######,#',
+      '#,#######,,T,,,,,,================,,,,,,T,,#######,#',
+      '#,,,,,,,,,,,,,,,,,,,,==========,,,,,,,,,,,,,,,,,,,,#',
+      '#TTTTTTTTTT,,,,,,,,,,,,,,==,,,,,,,,,,,,,,TTTTTTTTTT#',
+      '#,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,,,,,,,,,,#',
+      '#TTTTTTTTT,,T,#######,,,,==,,,,######,,T,,TTTTTTTTT#',
+      '#T#######T,,,,###S###,,,,==,,,,######,,,,,T#######T#',
+      '#T#######T,,,,,,,.,,,,,,,==,,,,,,.,,,,,,,,T#######T#',
+      '#T######A................==................C######T#',
+      '#T#######T,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,T#######T#',
+      '#T#######T,,T,,,,,,,,,,,,==,,,,,,,,,,,T,,,T#######T#',
+      '#TTTTTTTTT,,,,,,,,,,T,,,,P=,,,,,,T,,,,,,,,TTTTTTTTT#',
+      '#,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,,,,,,,,,,#',
+      '####################################################'
+        ],
+        entrances: { '1': 'f10_r1', '2': 'f10_r2', '3': 'f10_r3', 'A': 'f10_x1', 'C': 'f10_x2', 'S': 'SAFE', 'B': 'f10_boss', 'X': 'STAIRS' },
+        // rival racers hang out in front of their garages (press A next to them)
+        npcs: [
+          { racer: 'goblin_bike', x: 9, y: 14, lines: ["OI, TACO TRUCK! THAT HEAT ONE GARAGE IS MY GARAGE. I JUST LET THE RACE USE IT.",
+            "MY BIKE IS HELD TOGETHER WITH SPITE AND ONE ZIP TIE. IT IS STILL FASTER THAN YOUR KITCHEN."] },
+          { racer: 'skull_chariot', x: 9, y: 7, lines: ["OH. A COMMONER. ON MY DRIVEWAY. IN HIS UNDERWEAR. HOW TERRIBLY MODERN.",
+            "MY HORSES HAVE BEEN DEAD FOR CENTURIES. THEY ARE STILL BETTER GROOMED THAN YOU, DARLING.",
+            "DO NOT TOUCH THE CHARIOT. THE BONES ARE ORIGINAL."] },
+          { racer: 'beetle_mount', x: 42, y: 7, lines: ["SHH! BIG MARGARET IS NAPPING. SHE IS GRUMPY WHEN SHE WAKES UP. SHE IS GRUMPY ON THE TRACK, TOO.",
+            "SIX LEGS, ONE HORN, ZERO BRAKES. MARGARET IS THE FINEST ATHLETE ON THIS STREET."] },
+          { racer: 'steam_buggy', x: 42, y: 14, lines: ["COME IN, SONNY! HAVE A COOKIE! IT IS MOSTLY RIVETS. LIKE MY DRIVING STRATEGY.",
+            "I HAVE BEEN RACING SINCE BEFORE WHEELS WERE ROUND. HEXAGONS, SONNY. VERY BUMPY TIMES.",
+            "THE KETTLE IS NOT LEAKING. THE KETTLE IS CRYING. IT KNOWS WHAT IT IS ABOUT TO DO TO YOU."] },
+          { racer: 'champion', x: 23, y: 4, lines: ["YOU ARE STANDING ON MY LAWN, TACO BOY. PEOPLE WHO STAND ON MY LAWN END UP IN MY GRILLE.",
+            "QUALIFY IN ALL THREE HEATS. THEN COME KNOCK ON THE BIG GARAGE. THE MAULER IS HUNGRY.",
+            "SIX CUPS ON MY MANTEL. ROOM FOR ONE MORE. IT IS SHAPED LIKE YOUR TRUCK."] }
+        ],
+        roamers: [{ enemy: 'steam_goblin', x: 12, y: 12 }, { enemy: 'rail_rat', x: 39, y: 12 }, { enemy: 'juicer_minion', x: 22, y: 20 }, { enemy: 'goblin_brute', x: 36, y: 24 }],
+        ambush: 'f10_ambush' },
+      locks: {
+        '2': { afterCleared: 'f10_r1', text: "THE HEAT TWO GARAGE IS SHUT. A SIGN SAYS QUALIFIERS ONLY. FINISH TOP THREE IN HEAT ONE." },
+        '3': { afterCleared: 'f10_r2', text: "HEAT THREE IS FOR SURVIVORS OF HEAT TWO. FINISH TOP THREE THERE AND THE DOOR GOES UP." },
+        'B': { afterCleared: 'f10_r3', text: "THE BIG GARAGE ONLY OPENS FOR DRIVERS WHO QUALIFIED IN ALL THREE HEATS. VORN IS WAITING." } },
+      companion: null,
+      hints: [
+        "THE HEATS GO IN ORDER, KID. FINISH TOP THREE IN ONE AND THE NEXT GARAGE OPENS. THE CHAMPIONSHIP NEEDS ALL THREE.",
+        "IN THE TRUCK: ATTACK MAKES DONUT SHOOT, BOMB DROPS A MINE OUT THE BACK, POTION PATCHES THE TRUCK, SPECIAL IS TURBO.",
+        "THE SCRAPYARD BEHIND THE WEST FENCE HAS ARMOR PLATING. THE AUTO PARTS STORE ON THE EAST SIDE STILL HAS A TURBO.",
+        "WORD IS SOMEONE STASHED A MINE HOPPER ON A BILLBOARD IN HEAT TWO. HIT THE JUMP PAD AND TAKE THE HIGH ROAD.",
+        "JUMP PADS FLING YOU HIGH, OVERPASSES ARE SAFER, OIL SPINS YOU OUT, CRATES BREAK IF YOU ARE FAST. DO NOT BRAKE. EVER."],
+      required: ['f10_r1', 'f10_r2', 'f10_r3'], boss: 'f10_boss', par: 1500 },
+    { n: 11, name: 'THE GRAND PARADE', tagline: 'SMILE. WAVE. PUNCH. REPEAT.', theme: 'parade', music: 'floor11',
+      intro: ["FLOOR ELEVEN! THE GRAND PARADE! EVERY RACER FROM LAST FLOOR IS TURNING THEIR RIDE INTO A FLOAT. THEY ARE THRILLED. NOT REALLY.",
+        "YOUR FOOD TRUCK NEEDS A CONFETTI CANNON, A SPOTLIGHT, BALLOONS AND A BANNER. ONE IS HIDDEN IN EACH CORNER OF THE STAGING GROUNDS.",
+        "BUILD THE FLOAT, JOIN THE PARADE, SURVIVE THE GRAND MARSHAL. THIS IS THE LAST FLOOR WE HAVE BUILT, CRAWLER. MAKE IT COUNT."],
+      overworld: { theme: 'ow_parade', music: 'ow11',
+        map: [
+      '######################################################',
+      '######################################################',
+      '######################################################',
+      '#.=================================================###',
+      '#.=================================================B##',
+      '#.........#...............................#..........#',
+      '#.........#.##########..##########.######.#..........#',
+      '#...........##########..##########.######......#####.#',
+      '#.########................==...................#####.#',
+      '#.########..,,,,,,,,,,,...==...................#####.#',
+      '#.########..,T,,,,,,,T,...==..####...#####.....3####.#',
+      '#.########..,,,,,,,,,,,...==..####...#####.....#####.#',
+      '#.####1###..,,T,,,,,T,,...==...................#####.#',
+      '#...........,,,,,,,,,,,...==.........................#',
+      '#.........................==.........................#',
+      '#.==================================================.#',
+      '#.........................==.........................#',
+      '#.............#####.......==......#####..............#',
+      '#..########...#####.......==......#####..............#',
+      '#..########...............==.........................#',
+      '#..#######2..........~~...==............,,,,,,,,,,,,.#',
+      '#..########..........~~...==............,TTTTTTTTTTT.#',
+      '#..########...............==...###......,,,,,,,,,,,T.#',
+      '#..............#####......==...###......,,,T,,,,,T,T.#',
+      '#..............####S......==............,..........4.#',
+      '#..T...........#####......==............,,,,,,T,,,,T.#',
+      '#...........T.............==........T...,,,,T,,,T,,T.#',
+      '#.......T.................P=..T.........,,,,,,,,,,,T.#',
+      '#....................................................#',
+      '######################################################'
+        ],
+        entrances: { '1': 'f11_s1', '2': 'f11_s2', '3': 'f11_s3', '4': 'f11_s4', 'S': 'SAFE', 'B': 'f11_boss' },
+        roamers: [{ enemy: 'clown', x: 20, y: 14 }, { enemy: 'jelly', x: 36, y: 8 }, { enemy: 'clown_brute', x: 45, y: 16 }, { enemy: 'skyfowl', x: 8, y: 6 }],
+        ambush: 'f11_ambush' },
+      locks: { 'B': { needs: ['confetti_cannon', 'spotlight_rig', 'balloon_rig', 'gala_banner'],
+        text: "YOUR TRUCK IS NOT A FLOAT YET. THE MARSHAL WANTS CONFETTI, A SPOTLIGHT, BALLOONS AND A BANNER." } },
+      companion: null,
+      hints: [
+        "THE MARSHAL WILL NOT LET A PLAIN TRUCK INTO HIS PARADE. YOU NEED ALL FOUR FLOAT PARTS. EACH AREA HAS ONE.",
+        "CONFETTI ALLEY KEEPS A CANNON IN A ROOFTOP SHED. THE LEVER IS IN AN ALLEY NOOK, BEHIND SOME CRATES. SMASH THEM.",
+        "THE BALLOON BARN KEEPS ITS HELIUM UP IN THE RIGGING. PULL THE LOW LEVER FIRST, THEN RIDE THE PROP CART UP.",
+        "THE GILDED HALL BANNER HANGS IN A HIGH GALLERY. THE LEVER IS AT THE TOP OF THE BELL TOWER. GO IN FROM THE RIGHT SIDE.",
+        "LANTERN PARK HIDES A SPOTLIGHT IN A TREEHOUSE. CLIMB THE BRANCHES. THE GATE LEVER IS ON A STUMP TO THE WEST."],
+      required: ['f11_s1', 'f11_s2', 'f11_s3', 'f11_s4'], boss: 'f11_boss', bossMusic: 'boss_final', par: 1600 }
   ];
 })();
 
@@ -2969,7 +3719,7 @@
     carl_toga: { name: 'THE SENATOR', desc: 'A BEDSHEET TOGA AND A LAUREL WREATH. ROME WAS NOT BUILT IN A DAY. NEITHER WAS THIS LOOK.',
       perk: { speed: 0.1 }, how: 'RANDOM DROP FROM LOOT BOXES, OR LAND A 25 HIT COMBO.' },
     carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD BOXERS, GOLD JACKET, GOLD TOENAILS. YOU WON. NOW EVERYONE HAS TO LOOK AT IT.',
-      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'BEAT THE SHOWRUNNER ON FLOOR 9.' }
+      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'FINISH THE GRAND PARADE ON FLOOR 11.' }
   };
 
   /* Update 2: every companion except Donut is FOUND and RESCUED, one per floor
@@ -3056,7 +3806,8 @@
     floor_3:      { name: 'TOURIST', desc: 'REACHED FLOOR 3 AND ITS BIG BEAUTIFUL MAP. PLEASE DO NOT FEED THE CLOWNS.', event: 'floor:3', count: 1, box: 'silver' },
     floor_5:      { name: 'HALFWAY HOUSE', desc: 'REACHED FLOOR 5. HALFWAY THERE. HALFWAY DEAD. STATISTICALLY.', event: 'floor:5', count: 1, box: 'silver' },
     floor_7:      { name: 'DEEP CUTS', desc: 'REACHED FLOOR 7. VERY FEW CRAWLERS GET HERE. EVEN FEWER WEAR PANTS. YOU ARE BOTH.', event: 'floor:7', count: 1, box: 'gold' },
-    floor_9:      { name: 'SERIES FINALE', desc: 'REACHED FLOOR 9. THE PRODUCERS DID NOT PLAN FOR THIS. THEY ARE WRITING FURIOUSLY.', event: 'floor:9', count: 1, box: 'platinum' },
+    floor_9:      { name: 'MIDSEASON FINALE', desc: 'REACHED FLOOR 9. THE PRODUCERS DID NOT PLAN FOR THIS. THEY ARE WRITING TWO MORE FLOORS FURIOUSLY.', event: 'floor:9', count: 1, box: 'platinum' },
+    floor_10:     { name: 'START YOUR ENGINES', desc: 'REACHED FLOOR 10. SOMEBODY GAVE YOU A DRIVING LICENSE. THAT SOMEBODY HAS BEEN FIRED.', event: 'floor:10', count: 1, box: 'platinum' },
     boss_hoarder:   { name: 'SPRING CLEANING', desc: 'BEAT THE HOARDER. HER STUFF IS NOW YOUR STUFF. MOST OF IT IS NAPKINS.', event: 'boss:hoarder', count: 1, box: 'silver' },
     boss_juicer:    { name: 'NO PAIN, NO GAIN', desc: 'BEAT THE JUICER. HE SKIPPED HIS LAST LEG DAY. PERMANENTLY.', event: 'boss:juicer', count: 1, box: 'silver' },
     boss_ringmaster:{ name: 'CLOSING NIGHT', desc: 'BEAT THE RINGMASTER. THE CLOWNS ARE FREE. NOBODY ASKED FOR THIS.', event: 'boss:ringmaster', count: 1, box: 'gold' },
@@ -3065,7 +3816,17 @@
     boss_butcher:   { name: 'CUT FROM THE TEAM', desc: 'BEAT THE BUTCHER. THE HUNTING GROUNDS ARE CLOSED FOR RENOVATION.', event: 'boss:butcher', count: 1, box: 'gold' },
     boss_bride:     { name: 'OBJECTION!', desc: 'BEAT THE BRIDE. YOU STOPPED THE WEDDING. THE GUESTS WERE ALREADY DEAD, SO NO HARM DONE.', event: 'boss:bride', count: 1, box: 'platinum' },
     boss_overseer:  { name: 'EYE CANDY', desc: 'BEAT THE OVERSEER. IT FINALLY BLINKED. FOREVER.', event: 'boss:overseer', count: 1, box: 'platinum' },
-    boss_showrunner:{ name: 'CANCELLED', desc: 'BEAT THE SHOWRUNNER. THE SHOW IS OVER. THE RERUNS WILL BE EVERYWHERE.', event: 'boss:showrunner', count: 1, box: 'legendary' },
+    boss_showrunner:{ name: 'CANCELLED', desc: 'BEAT THE SHOWRUNNER. THE SHOW IS OVER! JUST KIDDING. THE NETWORK RENEWED IT ON THE SPOT.', event: 'boss:showrunner', count: 1, box: 'legendary' },
+    /* Update 3: races (stage.js emits race_win, race_place:<n>, race_flawless) and the parade */
+    race_place_3: { name: 'PODIUM PEASANT', desc: 'FINISHED A RACE IN THIRD. BRONZE IS JUST GOLD THAT GAVE UP. STILL COUNTS!', event: 'race_place:3', count: 1, box: 'bronze' },
+    race_win:     { name: 'CHECKERED PAST', desc: 'WON A RACE IN A FOOD TRUCK. THE OTHER DRIVERS DEMAND A DRUG TEST. FOR THE TACOS.', event: 'race_win', count: 1, box: 'silver' },
+    race_win_3:   { name: 'TRIPLE CROWN', desc: 'WON THREE RACES. THE SPONSORS WANT A DECAL ON YOUR FOREHEAD. WE SAID ASK THE CAT.', event: 'race_win', count: 3, box: 'gold' },
+    race_flawless:{ name: 'NOT A SCRATCH', desc: 'WON A RACE WITHOUT A SINGLE DENT. THE INSURANCE COMPANY SENT FLOWERS.', event: 'race_flawless', count: 1, box: 'platinum' },
+    race_champion:{ name: 'KING OF THE CUL-DE-SAC', desc: 'WON THE CUL-DE-SAC CUP AND ROLLED ONTO FLOOR 11. THE MAULER IS IN THERAPY. IT HAS SO MANY TEETH TO TALK ABOUT.', event: 'floor:11', count: 1, box: 'legendary' },
+    float_part:   { name: 'ARTS AND CRAFTS', desc: 'FOUND YOUR FIRST FLOAT PART. GLITTER HAS ENTERED YOUR BLOODSTREAM. THERE IS NO CURE.', event: 'float_part', count: 1, box: 'silver' },
+    float_full:   { name: 'SOME ASSEMBLY REQUIRED', desc: 'FOUND FOUR FLOAT PARTS. YOUR FOOD TRUCK IS NOW LEGALLY A PARADE. CONGRATULATIONS?', event: 'float_part', count: 4, box: 'gold' },
+    parade_done:  { name: 'GRAND FINALE', desc: 'FINISHED THE PARADE. THE STREETS ARE COVERED IN CONFETTI AND HECKLERS. MOSTLY HECKLERS.', event: 'parade_done', count: 1, box: 'platinum' },
+    boss_grand_marshal: { name: 'MARSHAL LAW', desc: 'DETHRONED THE GRAND MARSHAL. HIS BATON IS NOW A VERY EXPENSIVE BACK SCRATCHER.', event: 'boss:grand_marshal', count: 1, box: 'legendary' },
     win:          { name: 'THAT IS A WRAP', desc: 'YOU BEAT THE WHOLE GAME. IN YOUR UNDERWEAR. WITH A CAT. WE HAVE NO FURTHER NOTES.', event: 'win', count: 1, box: 'legendary' }
   };
 })();
@@ -3194,7 +3955,9 @@
     6: { name: 'STAG', line: "ANTLERS. I KEEP HITTING THE DOOR FRAME. THE HUNTERS OUT THERE KEEP LOOKING AT ME FUNNY. WATCH YOURSELF, KID." },
     7: { name: 'VAMPIRE', line: "THE TEETH ARE NEW. NO, I'M NOT GOING TO BITE YOU. I CAN'T EVEN EAT GARLIC BREAD ANYMORE. THAT'S THE REAL TRAGEDY." },
     8: { name: 'CYCLOPS', line: "ONE EYE. NO DEPTH PERCEPTION. I'VE MISSED THE BAR TWICE TODAY. IF YOU WANT A DRINK, POUR IT YOURSELF THIS FLOOR." },
-    9: { name: 'MINOTAUR', line: "LAST FLOOR, LAST BODY. HORNS, HOOVES AND A TEMPER. HONESTLY? FITS THE MOOD. GO WIN THIS THING, KID. I MEAN IT." }
+    9: { name: 'MINOTAUR', line: "HORNS, HOOVES AND A TEMPER. FITS THE MOOD. THE SHOWRUNNER IS UP THERE, KID. BEAT HIM AND THE SEASON STILL ISN'T OVER." },
+    10: { name: 'CRASH DUMMY', line: "A CRASH TEST DUMMY. YELLOW, JOINTED, AND THERE IS A TARGET PAINTED ON MY FACE. THE PRODUCERS THINK THEY'RE HILARIOUS." },
+    11: { name: 'PARADE MASCOT', line: "NOT. ONE. WORD. IT'S A PINK PLUSH MASCOT SUIT. IT SQUEAKS WHEN I WALK. THE HEAD DOESN'T COME OFF. I HAVE TRIED, CARL." }
   };
   D.mordecai = [
     "BOXES AND STAT POINTS WAIT FOR A SAFE ROOM. THE SPONSORS WANT THE UNBOXING ON CAMERA. TALK TO ME TO TRAIN.",
@@ -3222,7 +3985,9 @@
     "ENEMIES WITH SHELLS OR ARMOR SHRUG OFF WEAK HITS. KICKS AND BOMBS GET THROUGH.",
     "DO NOT FIGHT EVERYTHING ON THE GROUND. GET UP ON A PLATFORM AND MAKE THEM COME TO YOU.",
     "YOU CAN DROP THROUGH THIN PLATFORMS. HOLD DOWN AND PRESS JUMP.",
-    "I HAVE BEEN DOWN HERE A LONG TIME, KID. MOST CRAWLERS DIE BEING GREEDY. DO NOT BE MOST CRAWLERS."
+    "I HAVE BEEN DOWN HERE A LONG TIME, KID. MOST CRAWLERS DIE BEING GREEDY. DO NOT BE MOST CRAWLERS.",
+    "IN A RACE, HOLD RIGHT AND NEVER LET GO. JUMP THE GAPS, HIT THE PADS, AND LET THE CAT DO THE SHOOTING.",
+    "ON THE PARADE FLOAT, STAY ON THE FLOAT. EVERY FLOAT PART YOU BOLT ON DOES SOMETHING. BRING ALL FOUR."
   ];
 
   D.shopkeeper = { name: 'BOPCA THE SHOPKEEPER', lines: [
@@ -3245,18 +4010,19 @@
       { text: "NOT DESTROYED. GONE. CITIES, TOWNS, HOUSES. EVERYONE INSIDE WITH THEM. YOU WERE OUTSIDE. THAT WAS YOUR LUCKY BREAK.", portrait: null },
       { text: "THEN THE VOICE CAME. FROM EVERYWHERE. LOUD, CHEERFUL, AND DELIGHTED TO MEET YOU.", portrait: 'p_ai' },
       { text: "HELLO, EARTH! YOUR PLANET HAS BEEN SELECTED FOR THE GALAXY'S MOST POPULAR ENTERTAINMENT PROGRAM!", portrait: 'p_ai' },
-      { text: "THE SURFACE IS CLOSED! THE DUNGEON IS OPEN! EIGHTEEN FLOORS OF FUN, AND NINE OF THEM ARE READY TODAY!", portrait: 'p_ai' },
+      { text: "THE SURFACE IS CLOSED! THE DUNGEON IS OPEN! EIGHTEEN FLOORS OF FUN, AND ELEVEN OF THEM ARE READY TODAY!", portrait: 'p_ai' },
       { text: "GO DOWN THE STAIRS. FIGHT MONSTERS. OPEN BOXES. ENTERTAIN BILLIONS. STAY ON THE SURFACE AND, WELL. DO NOT DO THAT.", portrait: 'p_ai' },
       { text: "THE CAT LOOKED AT YOU. YOU LOOKED AT THE CAT. SHE CLIMBED ONTO YOUR SHOULDER LIKE SHE OWNED IT. SHE DID NOW.", portrait: 'p_donut' },
       { text: "WELCOME TO THE SHOW, CRAWLER. TRY TO LOOK GOOD DYING. OR BETTER YET, DO NOT DIE. THE RATINGS ARE BETTER THAT WAY.", portrait: 'p_ai' }
     ],
     ending: [
-      { text: "THE SHOWRUNNER FELL. THE STUDIO LIGHTS FLICKERED. FOR ONE SECOND, NOBODY IN THE GALAXY SAID A WORD.", portrait: null },
+      { text: "THE GRAND MARSHAL TOPPLED OFF HIS THRONE FLOAT. HIS BATON ROLLED INTO THE GUTTER. THE MARCHING BAND, FOR ONCE, MISSED A BEAT.", portrait: null },
+      { text: "CONFETTI KEPT FALLING. NOBODY HAD TOLD THE CANNON TO STOP. PRINCESS DONUT WAVED FROM THE TRUCK WINDOW LIKE SHE PLANNED IT ALL.", portrait: 'p_donut' },
       { text: "THEN THE CROWD ERUPTED. BILLIONS OF VIEWERS, SCREAMING ONE NAME. IT WAS YOURS. THE CAT ASSUMED IT WAS HERS.", portrait: 'p_donut' },
-      { text: "WELL! THAT WAS NOT IN THE SCRIPT. CRAWLER, YOU HAVE BROKEN THE SHOW. YOU HAVE BROKEN IT SO BADLY IT IS A HIT.", portrait: 'p_ai' },
-      { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE STAIRS GO UP NOW. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
-      { text: "YOU CLIMBED. FLOOR AFTER FLOOR. PAST THE RUINS, THE MANOR, THE WOODS, THE SEA, THE RAILS, THE CITY, THE WARRENS, THE SEWERS.", portrait: 'p_carl' },
-      { text: "AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT. YOU WERE NOT THE ONLY ONE WHO MADE IT.", portrait: null },
+      { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACING CUP AND A PARADE. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
+      { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE PARADE ROUTE ENDS AT A STAIRCASE GOING UP. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
+      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE RUIN, THE MANOR, THE WOODS, THE SEA, THE RAILS AND THE CITY.", portrait: 'p_carl' },
+      { text: "PAST THE WARRENS AND THE SEWERS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
       { text: "PRINCESS DONUT STRETCHED, YAWNED, AND ANNOUNCED THAT SHE WAS HUNGRY. SOME THINGS SURVIVE EVERYTHING.", portrait: 'p_donut' },
       { text: "SEASON ONE: COMPLETE. THANK YOU FOR WATCHING. STAY TUNED, CRAWLER. THE GALAXY IS ALREADY ASKING FOR SEASON TWO.", portrait: 'p_ai' }
     ],
@@ -3268,7 +4034,9 @@
       "BY MATT DINNIMAN. GO READ THE BOOKS.",
       "THEY ARE BETTER THAN THIS. THE CAT SAYS SO.",
       "STARRING CARL AND PRINCESS DONUT",
-      "WITH MONGO, KATIA, ZEV AND SIR SQUEAKS",
+      "WITH MONGO, SAMANTHA, KATIA, ZEV, SIGNET",
+      "AND SIR SQUEAKS, OF COURSE",
+      "AND THE RIVALS OF THE CUL-DE-SAC CUP",
       "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
       "AND TO BOPCA FOR THE TERRIBLE PRICES",
       "NO TUTORIAL RATS WERE HARMED. OK, SEVERAL WERE.",

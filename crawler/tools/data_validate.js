@@ -19,12 +19,17 @@ const warn = (m) => warns.push(m);
 if (!D) { console.log('DCW.data missing'); process.exit(1); }
 
 /* ---------------- fixed lists from DESIGN.md ---------------- */
-const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe'.split(' ');
-const OW_THEMES = 'ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war'.split(' ');
+const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe raceway parade'.split(' ');
+const OW_THEMES = 'ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war ow_suburb ow_parade'.split(' ');
+const NFLOORS = 11;   // Update 3: floor 10 = the races, floor 11 = the parade (the finale)
 const ENEMY_IDS = ('rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute ' +
   'skyfowl swamp_troll gator steam_goblin conductor rail_rat fishman jelly crab hunter hound masked_noble ghoul ' +
   'gargoyle skeleton mutant drone golem soldier sniper war_beast cultist').split(' ');
-const BOSS_IDS = 'hoarder juicer ringmaster engineer tidemother butcher bride overseer showrunner'.split(' ');
+const BOSS_IDS = 'hoarder juicer ringmaster engineer tidemother butcher bride overseer showrunner grand_marshal'.split(' ');
+// Update 3: racer ids are fixed (art draws racer_<id> + p_racer_<id>); champion is the boss racer
+const RACER_IDS = 'goblin_bike skull_chariot beetle_mount steam_buggy champion'.split(' ');
+const FLOAT_PARTS = 'confetti spotlight balloons banner'.split(' ');
+const TRUCK_KEYS = 'hp speed accel mines'.split(' ');
 const PROJ_SPRITES = 'arrow rock fireball bubble bolt bottle laser_orb knife spore note missile'.split(' ');
 const REQ_PROJ = 'arrow rock fireball bubble bolt bottle laser_orb knife spore note'.split(' ');
 const SKINS = 'carl_boxers carl_jacket carl_bodyguard carl_kilt carl_hazmat carl_pajamas carl_clown carl_toga carl_gold'.split(' ');
@@ -35,16 +40,21 @@ const COMP_FLOOR = { squeaks: 2, mongo: 3, samantha: 4, katia: 5, zev: 6, signet
 const QI_SPRITES = 'qi_key qi_valve qi_ticket qi_gear qi_shell qi_horn qi_mask qi_crown qi_badge qi_map qi_lens qi_bolt'.split(' ');
 const AI_TYPES = 'walker chaser jumper flyer shooter charger turret spawner bomber hopper'.split(' ');
 const TIERS = 'bronze silver gold platinum legendary fan boss'.split(' ');
-const MUSIC = ('title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 ow3 ow4 ow5 ow6 ow7 ow8 ow9 ' +
-  'boss boss_final safe results gameover ending lootbox').split(' ');
-const MARKERS = 'ow_door ow_manhole ow_tent ow_cave'.split(' ');
-const PORTRAITS = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_samantha', 'p_signet', 'p_ai', 'p_mordecai', 'p_bopca'].concat(BOSS_IDS.map(b => 'p_' + b));
+const MUSIC = ('title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 floor10 floor11 ' +
+  'ow3 ow4 ow5 ow6 ow7 ow8 ow9 ow10 ow11 boss boss_final safe results gameover ending lootbox').split(' ');
+const MARKERS = 'ow_door ow_manhole ow_tent ow_cave ow_garage ow_float'.split(' ');
+const PORTRAITS = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_samantha', 'p_signet', 'p_ai', 'p_mordecai', 'p_bopca']
+  .concat(BOSS_IDS.map(b => 'p_' + b)).concat(RACER_IDS.map(r => 'p_racer_' + r));
 const EVENTS = ('kill stomp kick bomb_kill multi_bomb potion crate coin fall death revive box_open combo10 combo25 ' +
-  'no_damage_stage skin_equip companion_equip shop flee secret win pet_donut').split(' ');
+  'no_damage_stage skin_equip companion_equip shop flee secret win pet_donut quest_item ' +
+  'race_win race_flawless float_part parade_done').split(' ');
 const STATS = 'str con dex int'.split(' ');
 const PERKS = 'dmg def hp speed gold views bombs doubleJump'.split(' ');
 
-const CHUNK_CHARS = new Set('. #X=^~Hbohm?eEfPDK<>vcn$QRSL'.split(''));
+const CHUNK_CHARS = new Set('. #X=^~Hbohm?eEfPDK<>vcn$QRSLrZJOF'.split(''));
+// Update 3 race legend: only in race_* chunks. r rival start, Z boost, J jump pad, O oil, F finish
+const RACE_CHARS = new Set('rZJOF'.split(''));
+const RACE_GROUND = new Set(['#', 'X', '=']);
 const SOLID = new Set(['#', 'X', 'b']);
 const SUPPORT = new Set(['#', 'X', 'b', '=', 'H']);
 const HAZARD = new Set(['^', '~']);
@@ -177,6 +187,42 @@ function reach(id, rows0, starts, breakCrates) {
   return seen;
 }
 
+// Update 3: food truck reachability in a race chunk. The truck (36x18 px) needs 2 free rows,
+// rams crates, cannot climb ladders or 1-tile steps. Plain jump: up <= 3 rows, across <= 6
+// (<= 4 when rising 2+). From a J pad: up <= 5, across <= 9. Supports: # X = (one-way).
+function raceReach(rows0, starts) {
+  const rows = rows0.map(r => r.replace(/b/g, '.'));
+  const H = rows.length, W = rows[0].length;
+  const free = (x, y) => { const c = cell(rows, x, y); return c !== null && !isSolid(c); };
+  const valid = (x, y) => x >= 0 && x < W && y >= 0 && y < H && free(x, y) && free(x, y - 1);
+  const supported = (x, y) => y + 1 < H && RACE_GROUND.has(rows[y + 1][x]);
+  function fall(x, y) { while (y < H) { if (!valid(x, y)) return -2; if (supported(x, y)) return y; y++; } return -1; }
+  const seen = new Set(), q = [];
+  const push = (x, y) => { const k = x + ',' + y; if (!seen.has(k)) { seen.add(k); q.push([x, y]); } };
+  starts.forEach(s => { const y = fall(s[0], s[1]); if (y >= 0) push(s[0], y); });
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const dx of [-1, 1]) { const nx = x + dx; if (valid(nx, y)) { const ly = fall(nx, y); if (ly >= 0) push(nx, ly); } }
+    const pad = rows[y][x] === 'J', maxUp = pad ? 5 : 3, reachX = pad ? 9 : 6;
+    for (let tx = Math.max(0, x - reachX); tx <= Math.min(W - 1, x + reachX); tx++) {
+      for (let ty = Math.max(0, y - maxUp); ty <= Math.min(H - 1, y + 4); ty++) {
+        const dx = Math.abs(tx - x), up = y - ty;
+        if (dx > (pad ? 9 : (up >= 2 ? 4 : 6))) continue;
+        if (!valid(tx, ty)) continue;
+        const apex = Math.min(y, ty) - (pad ? 1 : 0);
+        let ok = true;
+        for (let yy = apex - 1; yy <= y && ok; yy++) if (!free(x, yy)) ok = false;
+        const sg = Math.sign(tx - x);
+        for (let xx = x; xx !== tx + sg && ok; xx += (sg || 1)) { if (!free(xx, apex) || !free(xx, apex - 1)) ok = false; if (!sg) break; }
+        for (let yy = apex - 1; yy <= ty && ok; yy++) if (!free(tx, yy)) ok = false;
+        if (!ok) continue;
+        const ly = fall(tx, ty); if (ly >= 0) push(tx, ly);
+      }
+    }
+  }
+  return seen;
+}
+
 for (const [id, ch] of Object.entries(D.chunks)) {
   const w = 'chunks.' + id, rows = ch.rows;
   chunkUse[id] = 0;
@@ -190,6 +236,28 @@ for (const [id, ch] of Object.entries(D.chunks)) {
   });
   if (bad) continue;
   const isArena = rows.some(r => r.includes('K'));
+  // Update 3: race chunks (race_*) are the only ones with r Z J O F
+  const isRace = ch._race = /^race_/.test(id);
+  ch._parade = /^parade_/.test(id);
+  if (!isRace) rows.forEach((r, y) => { for (const c of r) if (RACE_CHARS.has(c)) err(w + ': race char "' + c + '" outside a race_ chunk (row ' + y + ')'); });
+  if (isRace) {
+    rows.forEach((r, y) => r.split('').forEach((c, x) => {
+      if (RACE_CHARS.has(c) && !RACE_GROUND.has(cell(rows, x, y + 1) || '')) err(w + ': "' + c + '" at ' + x + ',' + y + ' must sit right above ground (# X =)');
+      if (c === '=' && (y === 7 || y === 8)) warn(w + ': overpass "=" at row ' + y + ' (keep overpasses at row 6 or higher for truck headroom)');
+      if ('DKSLRHv<>'.includes(c)) err(w + ': "' + c + '" does not belong in a race chunk');
+    }));
+    // gaps in the road: <= 4 plain, 5-6 need a J pad in the 6 tiles before, never wider than 6
+    for (let x = 0; x < W;) {
+      if (RACE_GROUND.has(rows[10][x])) { x++; continue; }
+      let x1 = x; while (x1 < W && !RACE_GROUND.has(rows[10][x1])) x1++;
+      const gw = x1 - x;
+      let pad = false; for (let k = Math.max(0, x - 6); k < x; k++) if (rows[9][k] === 'J') pad = true;
+      if (gw > 6) err(w + ': road gap of ' + gw + ' tiles at col ' + x + ' (max 6)');
+      else if (gw >= 5 && !pad) err(w + ': ' + gw + ' tile road gap at col ' + x + ' needs a J pad in the 6 tiles before it');
+      for (let k = Math.max(0, x - 3); k < x; k++) if (rows[9][k] === 'O') warn(w + ': oil slick right before the gap at col ' + x);
+      x = x1;
+    }
+  }
   for (const x of [0, W - 1]) {
     if (rows[10][x] !== '#' || rows[11][x] !== '#') err(w + ': edge col ' + x + ' rows 10-11 must be #');
     if (isArena && x === W - 1) continue;
@@ -215,11 +283,13 @@ for (const [id, ch] of Object.entries(D.chunks)) {
   const count = (c) => rows.join('').split(c).length - 1;
   ch._P = count('P'); ch._D = count('D'); ch._K = count('K'); ch._n = count('n'); ch._q = count('?');
   ch._e = count('e') + count('E'); ch._Q = count('Q'); ch._R = count('R'); ch._S = count('S'); ch._L = count('L');
+  ch._r = count('r'); ch._F = count('F');
   // reachability: from left edge (or P) to right edge, plus targets
   const starts = ch._P ? [] : [[0, 9], [1, 9]];
   rows.forEach((r, y) => { const x = r.indexOf('P'); if (x >= 0) starts.push([x, y]); });
   // pass 1: as built; pass 2: crates broken (punch/kick/bomb) - targets may need that. Gates open (lever pulled).
-  const seen0 = reach(id, openRows, starts, false), seen = reach(id, openRows, starts, true);
+  const seen0 = isRace ? raceReach(openRows, starts) : reach(id, openRows, starts, false);
+  const seen = isRace ? seen0 : reach(id, openRows, starts, true);
   const near = (S, x, y, up) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= (up || 1); dy++) if (S.has((x + dx) + ',' + (y + dy))) return true; return false; };
   const right = (S) => [...S].some(k => +k.split(',')[0] === W - 1);
   if (!isArena && !right(seen)) err(w + ': right edge not reachable from left edge');
@@ -247,7 +317,7 @@ for (const [id, ch] of Object.entries(D.chunks)) {
 }
 
 /* ---------------- stages ---------------- */
-const KINDS = ['main', 'side', 'boss', 'ambush'];
+const KINDS = ['main', 'side', 'boss', 'ambush', 'race', 'parade'];
 function weighted(w, list, what) {
   if (!Array.isArray(list) || !list.length) { err(w + ': ' + what + ' empty'); return; }
   list.forEach(e => { if (!Array.isArray(e) || !D.enemies[e[0]] || !(e[1] > 0)) err(w + ': bad ' + what + ' entry ' + JSON.stringify(e)); });
@@ -258,7 +328,36 @@ for (const [id, s] of Object.entries(D.stages)) {
   text(w + '.name', s.name, 24);
   if (!THEMES.includes(s.theme) || s.theme === 'safe') err(w + ': bad theme ' + s.theme);
   if (!KINDS.includes(s.kind)) err(w + ': bad kind');
-  if (!(s.floor >= 1 && s.floor <= 9)) err(w + ': bad floor');
+  if (!(s.floor >= 1 && s.floor <= NFLOORS)) err(w + ': bad floor');
+  const isRaceSt = s.kind === 'race', isParade = s.kind === 'parade';
+  if ((s.theme === 'raceway') !== isRaceSt) err(w + ': theme raceway is for race stages only (and race stages use it)');
+  if ((s.theme === 'parade') !== isParade) err(w + ': theme parade is for the parade stage only (and it uses it)');
+  if (isRaceSt && s.floor !== 10) err(w + ': race stages belong on floor 10');
+  if (isParade && s.floor !== 11) err(w + ': the parade belongs on floor 11');
+  if (isRaceSt) {
+    const rc = s.race;
+    if (!rc || !Array.isArray(rc.rivals) || !rc.rivals.length) err(w + ': race.rivals missing');
+    else {
+      rc.rivals.forEach(r => { if (!(D.racers || {})[r]) err(w + ': race rival ' + r + ' not in racers'); });
+      if (new Set(rc.rivals).size !== rc.rivals.length) err(w + ': duplicate rival');
+      if (rc.boss) {
+        const bd = (D.racers || {})[rc.boss];
+        if (!bd || !bd.boss) err(w + ': race.boss ' + rc.boss + ' must be a racer with boss:true');
+        if (!rc.rivals.includes(rc.boss)) err(w + ': race.boss must be one of the rivals');
+        if (rc.place !== 1) err(w + ': a boss race must be won (place 1)');
+      } else {
+        if (rc.rivals.length < 3 || rc.rivals.length > 4) err(w + ': a heat wants 3-4 rivals');
+        if (rc.rivals.some(r => ((D.racers || {})[r] || {}).boss)) err(w + ': the boss racer only races the championship');
+        if (!(rc.place >= 1 && rc.place <= rc.rivals.length)) err(w + ': race.place must be 1..' + rc.rivals.length);
+      }
+    }
+    if (s.music && s.music !== 'floor10') warn(w + ': race music should be floor10');
+  } else if (s.race) err(w + ': race field on a ' + s.kind + ' stage');
+  if (isParade) {
+    const pd = s.parade;
+    if (!pd || !(pd.speed > 0)) err(w + ': parade.speed missing');
+    else { weighted(w + '.parade', pd.waves, 'waves'); if (pd.speed > 60) warn(w + ': parade speed ' + pd.speed + ' is fast for an autoscroller'); }
+  } else if (s.parade) err(w + ': parade field on a ' + s.kind + ' stage');
   if (s.music && !MUSIC.includes(s.music)) err(w + ': bad music');
   if (s.owMarker && !MARKERS.includes(s.owMarker)) err(w + ': bad owMarker');
   if (s.intro) text(w + '.intro', s.intro);
@@ -273,6 +372,23 @@ for (const [id, s] of Object.entries(D.stages)) {
   if (!end) { err(w + ': end chunk ' + c.end + ' missing'); continue; }
   chunkUse[c.start]++; chunkUse[c.end]++;
   if (start._P !== 1) err(w + ': start chunk must have exactly one P (has ' + start._P + ')');
+  // Update 3: race chunks only in race stages and vice versa; parade street chunks only in the parade
+  const allIds = [c.start, c.end].concat(c.pool || [], c.insert || []);
+  allIds.forEach(cid => {
+    const k = D.chunks[cid]; if (!k) return;
+    if (isRaceSt !== !!k._race) err(w + ': chunk ' + cid + (isRaceSt ? ' is not a race_ chunk' : ' is a race chunk'));
+    if (!isParade && k._parade) err(w + ': parade chunk ' + cid + ' outside the parade');
+  });
+  if (isRaceSt) {
+    const need = ((s.race || {}).rivals || []).length;
+    if (start._r < 3 || start._r > 4) err(w + ': race start chunk wants 3-4 r spots (has ' + start._r + ')');
+    if (start._r < need) err(w + ': ' + need + ' rivals but only ' + start._r + ' r spots');
+    if (end._F !== 1) err(w + ': race end chunk needs exactly one F (has ' + end._F + ')');
+    if (start._F) err(w + ': F in the start chunk');
+    (c.pool || []).concat(c.insert || []).forEach(p => { const k = D.chunks[p]; if (k && (k._F || k._r)) err(w + ': pool/insert chunk ' + p + ' has F or r'); });
+    const n = 2 + (c.count || 0) + (c.insert || []).length;
+    if (n < 6 || n > 11) warn(w + ': race is ' + n + ' chunks (want ~6-9 plus start/end)');
+  } else if (start._r || end._F) err(w + ': r/F outside a race');
   if (!Array.isArray(c.pool)) err(w + ': pool not array');
   (c.pool || []).forEach(p => { if (!D.chunks[p]) err(w + ': pool chunk ' + p + ' missing'); else { chunkUse[p]++; const k = D.chunks[p]; if (k._P || k._D || k._K) err(w + ': pool chunk ' + p + ' has P/D/K'); } });
   if (c.count > 1 && (c.pool || []).length < 2) err(w + ': count>1 needs 2+ pool chunks (no immediate repeats)');
@@ -291,24 +407,32 @@ for (const [id, s] of Object.entries(D.stages)) {
     if (!qi) err(w + ': questItem ' + s.questItem + ' not in questItems');
     else if (qi.floor !== s.floor) err(w + ': questItem ' + s.questItem + ' belongs to floor ' + qi.floor);
     if (nQ !== 1) err(w + ': questItem stage needs exactly one Q in start+insert+end (has ' + nQ + ')');
-    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': questItem on a ' + s.kind + ' stage');
+    if (s.kind === 'boss' || s.kind === 'ambush' || isParade || (s.race && s.race.boss)) err(w + ': questItem on a ' + s.kind + ' stage');
   } else if (nQ) err(w + ': has Q but no questItem');
   if (s.rescue) {
     if (!COMP_FLOOR[s.rescue]) err(w + ': rescue ' + s.rescue + ' is not a rescuable companion');
     else if (COMP_FLOOR[s.rescue] !== s.floor) err(w + ': rescue ' + s.rescue + ' belongs on floor ' + COMP_FLOOR[s.rescue]);
     if (nR !== 1) err(w + ': rescue stage needs exactly one R in start+insert+end (has ' + nR + ')');
-    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': rescue on a ' + s.kind + ' stage');
+    if (s.kind !== 'main' && s.kind !== 'side') err(w + ': rescue on a ' + s.kind + ' stage');
   } else if (nR) err(w + ': has R but no rescue');
   if (s.exitNeeds) {
     const qi = (D.questItems || {})[s.exitNeeds];
     if (!qi) err(w + ': exitNeeds ' + s.exitNeeds + ' not in questItems');
     else if (qi.floor !== s.floor) err(w + ': exitNeeds ' + s.exitNeeds + ' is a floor ' + qi.floor + ' item');
-    if (s.kind === 'boss' || s.kind === 'ambush') err(w + ': exitNeeds on a ' + s.kind + ' stage');
+    if (s.kind !== 'main' && s.kind !== 'side') err(w + ': exitNeeds on a ' + s.kind + ' stage');
   }
-  if (s.kind === 'boss') {
+  if (s.kind === 'boss' || isParade) {
     if (!D.bosses[s.boss]) err(w + ': boss ' + s.boss + ' missing');
     if (end._K !== 1) err(w + ': boss arena must have exactly one K');
-    if (!(c.count >= 0 && c.count <= 2)) err(w + ': boss stage count should be 0-2');
+    if (s.kind === 'boss' && !(c.count >= 0 && c.count <= 2)) err(w + ': boss stage count should be 0-2');
+    if (isParade) {
+      if (!(c.count >= 3 && c.count <= 8)) warn(w + ': parade route is ' + c.count + ' street chunks (want 3-8)');
+      (c.pool || []).forEach(p => { const k = D.chunks[p]; if (k && !k._parade) err(w + ': parade pool chunk ' + p + ' should be a parade_ street chunk'); });
+      (c.pool || []).concat([c.start]).forEach(p => { const k = D.chunks[p]; if (k && k.rows && !k.rows[10].split('').every(ch => ch === '#')) err(w + ': parade street chunk ' + p + ' needs flat ground (row 10 all #) for the float'); });
+    }
+  } else if (isRaceSt) {
+    if (end._K || end._D) err(w + ': race end chunk has K/D');
+    if (s.boss) err(w + ': race stages name their boss in race.boss');
   } else {
     if (end._D < 1) err(w + ': end chunk needs a D');
     if (end._K) err(w + ': non-boss end has K');
@@ -323,7 +447,7 @@ for (const [id, s] of Object.entries(D.stages)) {
 for (const [id, n] of Object.entries(chunkUse)) if (!n) warn('chunk ' + id + ' unused');
 
 /* ---------------- floors / overworld ---------------- */
-if (!Array.isArray(D.floors) || D.floors.length !== 9) err('floors must have 9 entries');
+if (!Array.isArray(D.floors) || D.floors.length !== NFLOORS) err('floors must have ' + NFLOORS + ' entries');
 const stageFloorRef = {};
 D.floors.forEach((f, i) => {
   const w = 'floors[' + i + ']';
@@ -333,8 +457,14 @@ D.floors.forEach((f, i) => {
   if (!MUSIC.includes(f.music)) err(w + ': music');
   if (!(f.par > 0)) err(w + ': par');
   const bossSt = D.stages[f.boss];
-  if (!bossSt || bossSt.kind !== 'boss' || bossSt.floor !== f.n) err(w + ': boss stage ' + f.boss + ' bad');
-  (f.required || []).forEach(r => { const s = D.stages[r]; if (!s || s.floor !== f.n || s.kind !== 'main') err(w + ': required ' + r + ' bad'); });
+  // Update 3: floor 10's boss is the championship race (race.boss), floor 11's is the parade
+  const bossKindOk = bossSt && (f.n === 10 ? (bossSt.kind === 'race' && bossSt.race && bossSt.race.boss) : f.n === NFLOORS ? bossSt.kind === 'parade' : bossSt.kind === 'boss');
+  if (!bossSt || !bossKindOk || bossSt.floor !== f.n) err(w + ': boss stage ' + f.boss + ' bad');
+  const mainKind = f.n === 10 ? 'race' : 'main';
+  (f.required || []).forEach(r => { const s = D.stages[r]; if (!s || s.floor !== f.n || s.kind !== mainKind) err(w + ': required ' + r + ' bad (want a ' + mainKind + ' stage)'); });
+  if (f.bossMusic != null && !MUSIC.includes(f.bossMusic)) err(w + ': bossMusic');
+  if (f.n === NFLOORS && f.bossMusic !== 'boss_final') warn(w + ': the last floor should use boss_final');
+  if (f.n < NFLOORS && f.bossMusic === 'boss_final') err(w + ': boss_final is for the last floor');
   const used = new Set();
   if (f.n <= 2) {
     if (f.overworld) err(w + ': floors 1-2 must be linear');
@@ -372,11 +502,16 @@ D.floors.forEach((f, i) => {
       const s = D.stages[v];
       if (!s) { err(w + ': entrance ' + k + ' -> missing stage ' + v); continue; }
       if (s.floor !== f.n) err(w + ': entrance ' + k + ' stage on wrong floor');
-      if (/[1-9]/.test(k) && s.kind !== 'main') err(w + ': entrance ' + k + ' should be a main stage');
+      if (/[1-9]/.test(k) && s.kind !== mainKind) err(w + ': entrance ' + k + ' should be a ' + mainKind + ' stage');
+      if (s.kind === 'race' && s.owMarker !== 'ow_garage') warn(w + ': race entrance ' + k + ' should use owMarker ow_garage');
+      if (s.kind === 'parade' && s.owMarker !== 'ow_float') warn(w + ': parade entrance ' + k + ' should use owMarker ow_float');
       if (/[ACDEF]/.test(k) && s.kind !== 'side') err(w + ': entrance ' + k + ' should be a side stage');
       used.add(v);
     }
-    ['S', 'B', 'X'].forEach(k => { if (!ents[k]) err(w + ': missing ' + k); });
+    ['S', 'B'].forEach(k => { if (!ents[k]) err(w + ': missing ' + k); });
+    // the last floor (the parade) has no stairwell; every other overworld floor has one
+    if (f.n === NFLOORS) { if (ents.X || found.X) err(w + ': the last floor has no stairs X'); }
+    else if (!ents.X) err(w + ': missing X');
     (f.required || []).forEach(r => { if (!Object.values(ents).includes(r)) err(w + ': required ' + r + ' has no entrance'); });
     // flood fill (entrances are reachable but not passable)
     const seen = new Set([P.join()]), q = [[P[0], P[1], 0]], hit = new Set(), dist = {};
@@ -399,12 +534,32 @@ D.floors.forEach((f, i) => {
     }
     const nMain = Object.keys(found).filter(k => /[1-9]/.test(k)).length, nSide = Object.keys(found).filter(k => /[ACDEF]/.test(k)).length;
     if (nMain < 3 || nMain > 4) warn(w + ': ' + nMain + ' main areas');
-    if (nSide < 1 || nSide > 2) warn(w + ': ' + nSide + ' side areas');
+    // Update 3: overworld NPCs (floor 10 rival racers in their driveways)
+    const npcAt = new Set();
+    if (o.npcs != null && !Array.isArray(o.npcs)) err(w + ': npcs must be an array');
+    (o.npcs || []).forEach((n, i) => {
+      const nw = w + '.npcs[' + i + ']';
+      if (!(D.racers || {})[n.racer]) err(nw + ': racer ' + n.racer + ' not in racers');
+      const c = rows[n.y] && rows[n.y][n.x];
+      if (!c || !OW_WALK.has(c) || c === 'P') err(nw + ': not on a walkable tile (' + c + ')');
+      else if (!seen.has(n.x + ',' + n.y)) err(nw + ': unreachable');
+      let byHouse = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const cc = rows[n.y + dy] && rows[n.y + dy][n.x + dx]; if (cc === '#' || ENT_RE.test(cc || '')) byHouse = true; }
+      if (!byHouse) warn(nw + ': not standing next to a garage/house');
+      for (const [ex, ey] of Object.values(found)) if (Math.abs(ex - n.x) + Math.abs(ey - n.y) === 1 && (rows[ey][ex] !== 'B')) warn(nw + ': stands right in front of entrance ' + rows[ey][ex]);
+      if (npcAt.has(n.x + ',' + n.y)) err(nw + ': two NPCs on one tile'); npcAt.add(n.x + ',' + n.y);
+      if (Math.abs(n.x - P[0]) + Math.abs(n.y - P[1]) < 3) err(nw + ': too close to the player start');
+      if (n.lines != null) texts(nw + '.lines', n.lines, 2);
+      if (n.lines && n.lines.length > 3) warn(nw + ': more than 3 lines');
+    });
+    if (f.n === 10) for (const r of RACER_IDS) if (!(o.npcs || []).some(n => n.racer === r)) warn(w + ': racer ' + r + ' has no driveway NPC');
+    if ((nSide < 1 && f.n !== NFLOORS) || nSide > 2) warn(w + ': ' + nSide + ' side areas');
     if (!(o.roamers && o.roamers.length >= 2 && o.roamers.length <= 4)) warn(w + ': want 2-4 roamers');
     (o.roamers || []).forEach((r, i) => {
       if (!D.enemies[r.enemy]) err(w + ': roamer ' + i + ' enemy ' + r.enemy);
       const c = rows[r.y] && rows[r.y][r.x];
       if (!c || !OW_WALK.has(c) || c === 'P') err(w + ': roamer ' + i + ' not on walkable tile (' + c + ')');
+      if ((o.npcs || []).some(n => Math.abs(n.x - r.x) + Math.abs(n.y - r.y) < 2)) err(w + ': roamer ' + i + ' on top of an NPC');
     });
     const amb = D.stages[o.ambush];
     if (!amb || amb.kind !== 'ambush' || amb.floor !== f.n) err(w + ': ambush stage bad');
@@ -414,8 +569,12 @@ D.floors.forEach((f, i) => {
 });
 for (const id of Object.keys(D.stages)) if (!stageFloorRef[id]) err('stage ' + id + ' is not referenced by any floor');
 // boss unlocks per DESIGN Update 2 (no companion unlocks any more)
+// Update 3: the gold skin comes from winning (G.win after the last floor), not from a boss unlock
 const PLAN = { hoarder: 'carl_jacket', juicer: null, ringmaster: 'carl_clown', engineer: null,
-  tidemother: 'carl_hazmat', butcher: null, bride: 'carl_bodyguard', overseer: 'carl_kilt', showrunner: 'carl_gold' };
+  tidemother: 'carl_hazmat', butcher: null, bride: 'carl_bodyguard', overseer: 'carl_kilt', showrunner: null, grand_marshal: null };
+const finals = Object.keys(D.bosses).filter(b => D.bosses[b].final);
+if (finals.length !== 1 || finals[0] !== 'grand_marshal') err('bosses: exactly one final boss (grand_marshal) wanted, got ' + finals.join(','));
+if (D.floors[NFLOORS - 1] && D.stages[D.floors[NFLOORS - 1].boss] && D.stages[D.floors[NFLOORS - 1].boss].boss !== finals[0]) err('the last floor boss stage must hold the final boss');
 for (const [b, sk] of Object.entries(PLAN)) {
   const u = D.bosses[b] && D.bosses[b].unlock;
   if (u && u.companion) err('boss ' + b + ' unlocks a companion (companions are rescued now)');
@@ -430,15 +589,29 @@ const qiWhere = {};
 for (const [sid, s] of Object.entries(D.stages)) if (s.questItem) (qiWhere[s.questItem] = qiWhere[s.questItem] || []).push(sid);
 const qiUsed = {};
 for (const s of Object.values(D.stages)) if (s.exitNeeds) qiUsed[s.exitNeeds] = true;
-D.floors.forEach(f => Object.values(f.locks || {}).forEach(l => { qiUsed[l.needs] = true; }));
+// locks: {needs:'id'} | {needs:['id',...]} (all of them) | {afterCleared:'stageId'} (Update 3)
+const lockNeeds = (l) => !l || l.needs == null ? [] : Array.isArray(l.needs) ? l.needs : [l.needs];
+D.floors.forEach(f => Object.values(f.locks || {}).forEach(l => lockNeeds(l).forEach(n => { qiUsed[n] = true; })));
 for (const [id, q] of Object.entries(QI)) {
   const w = 'questItems.' + id;
   text(w + '.name', q.name, 22); text(w + '.desc', q.desc, 120); text(w + '.hint', q.hint, 140);
-  if (!(q.floor >= 2 && q.floor <= 9)) err(w + ': floor must be 2-9');
+  if (!(q.floor >= 2 && q.floor <= NFLOORS)) err(w + ': floor must be 2-' + NFLOORS);
+  if (q.truck != null) {
+    if (q.floor !== 10) err(w + ': truck upgrades belong on floor 10');
+    const ks = Object.keys(q.truck);
+    if (!ks.length || ks.some(k => !TRUCK_KEYS.includes(k))) err(w + ': truck must be {hp}|{speed}|{accel}|{mines:true}');
+    if (q.truck.mines != null && q.truck.mines !== true) err(w + ': truck.mines must be true');
+    for (const k of ['hp', 'speed', 'accel']) if (q.truck[k] != null && !(q.truck[k] > 0 && q.truck[k] <= 60)) err(w + ': truck.' + k + ' out of range');
+  }
+  if (q.float != null) {
+    if (q.floor !== NFLOORS) err(w + ': float parts belong on floor ' + NFLOORS);
+    if (!FLOAT_PARTS.includes(q.float)) err(w + ': float must be one of ' + FLOAT_PARTS.join(' '));
+  }
+  if (q.truck != null && q.float != null) err(w + ': both truck and float');
   if (!QI_SPRITES.includes(q.sprite)) err(w + ': sprite ' + q.sprite + ' not in qi_* art list');
   const where = qiWhere[id] || [];
   if (where.length !== 1) err(w + ': placed in ' + where.length + ' stages (want exactly 1): ' + where.join(','));
-  if (!qiUsed[id]) warn(w + ': never needed by a lock or exit');
+  if (!qiUsed[id] && q.truck == null) warn(w + ': never needed by a lock or exit');
 }
 const rescueAt = {};
 for (const [sid, s] of Object.entries(D.stages)) if (s.rescue) (rescueAt[s.rescue] = rescueAt[s.rescue] || []).push(sid);
@@ -463,10 +636,20 @@ D.floors.forEach((f, i) => {
   const has = (it) => !!QI[it] && QI[it].floor === f.n && (qiWhere[it] || []).some(sid => D.stages[sid].floor === f.n);
   const locks = f.locks || {};
   for (const [ch, l] of Object.entries(locks)) {
-    if (!l || !l.needs) { err(w + '.locks.' + ch + ': needs missing'); continue; }
-    if (!QI[l.needs]) err(w + '.locks.' + ch + ': item ' + l.needs + ' not in questItems');
-    else if (!has(l.needs)) err(w + '.locks.' + ch + ': item ' + l.needs + ' not obtainable on this floor');
-    if (l.text != null) text(w + '.locks.' + ch + '.text', l.text, 100);
+    const lw = w + '.locks.' + ch;
+    if (!l || (l.needs == null && l.afterCleared == null)) { err(lw + ': needs or afterCleared missing'); continue; }
+    if (l.needs != null && l.afterCleared != null) err(lw + ': use needs OR afterCleared, not both');
+    if (Array.isArray(l.needs) && (!l.needs.length || new Set(l.needs).size !== l.needs.length)) err(lw + ': needs array empty or has duplicates');
+    for (const n of lockNeeds(l)) {
+      if (!QI[n]) err(lw + ': item ' + n + ' not in questItems');
+      else if (!has(n)) err(lw + ': item ' + n + ' not obtainable on this floor');
+    }
+    if (l.afterCleared != null) {
+      const as = D.stages[l.afterCleared];
+      if (!as || as.floor !== f.n) err(lw + ': afterCleared ' + l.afterCleared + ' is not a stage on this floor');
+      else if (f.overworld && (f.overworld.entrances || {})[ch] === l.afterCleared) err(lw + ': entrance locked behind itself');
+    }
+    if (l.text != null) text(lw + '.text', l.text, 100);
   }
   for (const sid of floorStages) { const s = D.stages[sid]; if (s.exitNeeds && !has(s.exitNeeds)) err('stages.' + sid + ': exitNeeds ' + s.exitNeeds + ' not obtainable on its floor'); }
 
@@ -488,8 +671,8 @@ D.floors.forEach((f, i) => {
   } else {
     const ents = f.overworld.entrances || {};
     for (const ch of Object.keys(locks)) if (!(ch in ents) || ch === 'S' || ch === 'X') err(w + '.locks: ' + ch + ' is not a stage entrance');
-    for (const [ch, l] of Object.entries(locks)) { const sid = ents[ch]; const s = D.stages[sid]; if (s && s.questItem && s.questItem === l.needs) err(w + ': item ' + l.needs + ' sits inside ' + sid + ', which needs it to enter'); }
-    if (f.n >= 3) {
+    for (const [ch, l] of Object.entries(locks)) { const sid = ents[ch]; const s = D.stages[sid]; if (s && s.questItem && lockNeeds(l).includes(s.questItem)) err(w + ': item ' + s.questItem + ' sits inside ' + sid + ', which needs it to enter'); }
+    if (f.n >= 3 && f.n <= 9) {
       if (items.length < 2 || items.length > 3) err(w + ': wants 2-3 quest items (has ' + items.length + ')');
       if (!locks.B) err(w + ': boss entrance B must be locked by the boss key');
       const mainLock = Object.entries(locks).some(([ch, l]) => /[1-9]/.test(ch) && !(qiWhere[l.needs] || []).includes(ents[ch]));
@@ -503,7 +686,9 @@ D.floors.forEach((f, i) => {
       changed = false;
       for (const [ch, sid] of Object.entries(ents)) {
         if (ch === 'S' || ch === 'X' || !D.stages[sid]) continue;
-        if (locks[ch] && !held.has(locks[ch].needs)) continue;
+        const lk = locks[ch];
+        if (lk && !lockNeeds(lk).every(n => held.has(n))) continue;
+        if (lk && lk.afterCleared != null && !cleared.has(lk.afterCleared)) continue;
         if (ch === 'B' && !req.every(r => cleared.has(r))) continue;
         const before = entered.size + held.size + cleared.size + rescued.size;
         visit(sid);
@@ -515,6 +700,30 @@ D.floors.forEach((f, i) => {
     for (const [ch, sid] of Object.entries(ents)) if (D.stages[sid] && !entered.has(sid)) warn(w + ': entrance ' + ch + ' (' + sid + ') never becomes enterable');
   }
   for (const it of items) if (!held.has(it)) err(w + ': item ' + it + ' never obtained by the chain');
+  // Update 3 floor rules
+  if (f.n === 10) {
+    const want = { '2': 'f10_r1', '3': 'f10_r2', 'B': 'f10_r3' };
+    for (const [ch, sid] of Object.entries(want)) if (!locks[ch] || locks[ch].afterCleared !== sid) err(w + ': locks.' + ch + ' should be {afterCleared: ' + sid + '}');
+    if (Object.keys(locks).some(ch => !want[ch])) err(w + ': floor 10 only locks 2, 3 and B');
+    if (f.companion) err(w + ': no companion on floor 10');
+    const ents = (f.overworld || {}).entrances || {};
+    ['A', 'C'].forEach(k => { const st = D.stages[ents[k]]; if (!st || !st.questItem || !(QI[st.questItem] || {}).truck) err(w + ': side area ' + k + ' should hold a truck upgrade'); });
+    if (!items.length || items.some(it => !QI[it].truck)) err(w + ': floor 10 quest items should all be truck upgrades');
+    if (Object.values(ents).filter(v => D.stages[v] && D.stages[v].kind === 'race').length !== 4) err(w + ': want 3 heats + the championship');
+  }
+  if (f.n === NFLOORS) {
+    const need = lockNeeds(locks.B);
+    if (!Array.isArray((locks.B || {}).needs)) err(w + ': locks.B.needs must be an array of the float parts');
+    const parts = items.filter(it => QI[it].float);
+    const kinds = parts.map(it => QI[it].float).sort().join(' ');
+    if (kinds !== FLOAT_PARTS.slice().sort().join(' ')) err(w + ': want exactly one float part of each kind (' + FLOAT_PARTS.join(' ') + '), got ' + kinds);
+    parts.forEach(it => { if (!need.includes(it)) err(w + ': float part ' + it + ' not required by locks.B'); if (!held.has(it)) err(w + ': float part ' + it + ' not obtainable'); });
+    need.forEach(n => { if (!(QI[n] || {}).float) err(w + ': locks.B needs ' + n + ', which is not a float part'); });
+    Object.keys(locks).forEach(ch => { if (ch !== 'B') warn(w + ': extra lock on ' + ch); });
+    if (f.companion) err(w + ': no companion on floor ' + NFLOORS);
+    const ents = (f.overworld || {}).entrances || {};
+    for (const p of parts) { const sid = qiWhere[p][0]; if (!/[1-9]/.test(Object.keys(ents).find(k => ents[k] === sid) || '')) err(w + ': float part ' + p + ' should sit in a numbered area'); }
+  }
   if (f.companion && !rescued.has(f.companion)) err(w + ': companion ' + f.companion + ' never rescued by the chain');
   chainReport.push('  floor ' + f.n + ' chain: ' + order.join(' > '));
 });
@@ -579,19 +788,58 @@ for (const id of Object.keys(D.companions)) if (!COMPANIONS.includes(id)) err('c
 
 /* ---------------- achievements ---------------- */
 const nAch = Object.keys(D.achievements).length;
-if (nAch < 35 || nAch > 50) err('achievements: ' + nAch + ' (want 35-50)');
+if (nAch < 35 || nAch > 65) err('achievements: ' + nAch + ' (want 35-65)');
 for (const [id, a] of Object.entries(D.achievements)) {
   const w = 'achievements.' + id;
   text(w + '.name', a.name, 24); text(w + '.desc', a.desc);
   const ev = a.event || '';
   const ok = EVENTS.includes(ev) || (/^kill:/.test(ev) && D.enemies[ev.slice(5)]) || (/^boss:/.test(ev) && D.bosses[ev.slice(5)]) ||
-    /^floor:[1-9]$/.test(ev) || /^level:\d+$/.test(ev);
+    /^floor:([1-9]|1[01])$/.test(ev) || /^level:\d+$/.test(ev) || /^race_place:[1-5]$/.test(ev);
   if (!ok) err(w + ': bad event ' + ev);
   if (!(a.count >= 1)) err(w + ': count');
   if (!TIERS.includes(a.box)) err(w + ': box tier');
   if (a.unlock) { if (a.unlock.skin && !SKINS.includes(a.unlock.skin)) err(w + ': unlock skin'); if (a.unlock.companion) err(w + ': companion unlocks are not allowed (companions are rescued)'); }
 }
 for (const b of BOSS_IDS) if (!Object.values(D.achievements).some(a => a.event === 'boss:' + b)) warn('no achievement for boss ' + b);
+
+/* ---------------- racers, truck, Mordecai forms (Update 3) ---------------- */
+const RC = D.racers || {};
+if (!D.racers) err('racers missing');
+for (const id of RACER_IDS) if (!RC[id]) err('racer missing: ' + id);
+for (const [id, r] of Object.entries(RC)) {
+  const w = 'racers.' + id;
+  if (!RACER_IDS.includes(id)) err(w + ': id not in the fixed racer list (no art)');
+  if (r.sprite !== 'racer_' + id) err(w + ': sprite should be racer_' + id);
+  if (r.portrait !== 'p_racer_' + id) err(w + ': portrait should be p_racer_' + id);
+  text(w + '.name', r.name, 24); text(w + '.title', r.title, 32);
+  if (r.vehicle != null) text(w + '.vehicle', r.vehicle, 24);
+  if (r.desc != null) text(w + '.desc', r.desc, 120);
+  for (const k of ['speed', 'accel', 'hp']) if (!(typeof r[k] === 'number' && r[k] > 0)) err(w + ': ' + k + ' not a positive number');
+  for (const k of ['aggression', 'skill']) if (!(r[k] >= 0 && r[k] <= 1)) err(w + ': ' + k + ' must be 0..1');
+  if (r.weapon !== null && !(D.projectiles[r.weapon] && !D.projectiles[r.weapon].friendly)) err(w + ': weapon must be an enemy projectile id or null');
+  texts(w + '.lines', r.lines, 3);
+  const boss = id === 'champion';
+  if (!!r.boss !== boss) err(w + ': boss:true is for the champion only');
+  if (!boss && (r.speed < 140 || r.speed > 180)) warn(w + ': rival speed ' + r.speed + ' far from the truck (170)');
+}
+if (RC.champion) {
+  const others = RACER_IDS.filter(i => i !== 'champion' && RC[i]);
+  if (!others.every(i => RC.champion.hp >= RC[i].hp * 3)) err('racers.champion: should be much tougher (hp >= 3x every rival)');
+  if (!others.every(i => RC.champion.speed > RC[i].speed)) err('racers.champion: should be the fastest racer');
+}
+const TK = D.truck;
+if (!TK) err('truck missing');
+else {
+  text('truck.name', TK.name, 24);
+  if (TK.sprite !== 'truck') err('truck.sprite should be truck');
+  if (TK.speed !== 170 || TK.accel !== 140 || TK.hp !== 30) err('truck should be speed 170, accel 140, hp 30 (spec)');
+}
+const MF = D.mordecaiForms || {};
+for (let n = 1; n <= NFLOORS; n++) {
+  const m = MF[n];
+  if (!m) { err('mordecaiForms[' + n + '] missing'); continue; }
+  text('mordecaiForms[' + n + '].name', m.name, 20); text('mordecaiForms[' + n + '].line', m.line);
+}
 
 /* ---------------- text pools ---------------- */
 for (const k of ['floorClear', 'stageClear', 'death', 'levelUp', 'lootbox', 'revive', 'boxEmpty', 'lowHp', 'bigCombo', 'flee']) texts('ai.' + k, D.ai[k], 8);
