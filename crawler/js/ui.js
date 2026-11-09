@@ -103,10 +103,11 @@
   function bn(b) {
     var dev = (DCW.input && DCW.input.lastDevice) || 'keyboard';
     var map = dev === 'keyboard'
-      ? { confirm: kbName('jump', 'Z'), back: kbName('attack', 'X'), start: 'ENTER', select: kbName('select', 'TAB'), special: kbName('special', 'V'), down: '↓', up: '↑' }
+      ? { confirm: kbName('jump', 'Z'), back: kbName('attack', 'X'), start: 'ENTER', select: kbName('select', 'TAB'), special: kbName('special', 'V'), down: '↓', up: '↑',
+          jump: kbName('jump', 'Z'), attack: kbName('attack', 'X'), bomb: kbName('bomb', 'C'), potion: kbName('potion', 'Q'), left: '←', right: '→', move: '← →' }
       : dev === 'touch'
-        ? { confirm: 'A', back: 'B', start: 'START', select: 'MAP', special: 'SPC', down: '↓', up: '↑' }
-        : { confirm: 'A', back: 'B', start: 'START', select: 'SELECT', special: 'Y', down: '↓', up: '↑' };
+        ? { confirm: 'A', back: 'B', start: 'START', select: 'MAP', special: 'SPC', down: '↓', up: '↑', jump: 'JUMP', attack: 'HIT', bomb: 'BOMB', potion: 'POT', left: '←', right: '→', move: '← →' }
+        : { confirm: 'A', back: 'B', start: 'START', select: 'SELECT', special: 'Y', down: '↓', up: '↑', jump: 'A', attack: 'X', bomb: 'B', potion: 'LB', left: '←', right: '→', move: '← →' };
     return map[b] || b.toUpperCase();
   }
   ui.buttonName = bn;
@@ -313,6 +314,7 @@
   }
   // tiny cropped portrait for the HUD (2x downscale of the face area)
   var miniC = {};
+  ui.miniPortrait = function (ctx, name, x, y) { miniPortrait(ctx, name, x, y); };
   function miniPortrait(ctx, name, x, y) {
     var c = miniC[name];
     if (!c) {

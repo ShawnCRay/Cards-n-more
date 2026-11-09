@@ -201,7 +201,8 @@
       kills: 0, damageTaken: 0, maxCombo: 0, views: 0, gold: 0, secrets: 0,
       god: !!run.god, done: false, endT: -1, endKind: null, deathT: -1, diedSent: false, clearedSent: false,
       introPending: def.intro || null, doubleViewsT: 0, lowHpQuipped: false, quipT: 0, dark: !!def.dark,
-      lastSafe: null, checkpoint: null, gates: [], raceSpawns: [], finishX: null
+      lastSafe: null, checkpoint: null, gates: [], raceSpawns: [], finishX: null,
+      teach: def.buttonTeacher ? { seen: {}, learned: 0, pop: null, popN: {}, doneT: -1, tips: [], tipT: 0 } : null
     };
     var start = null;
     spawns.forEach(function (s) {
@@ -807,6 +808,7 @@
     }
 
     var ax = I.axisX(), down = I.down('down'), up = I.down('up');
+    if (S.teach) teachInput(P, dt, down);
     if (I.pressed('jump')) P.buffer = K.buffer;
     if (I.pressed('potion')) usePotion();
     if (I.pressed('special')) trySpecial();
@@ -1069,8 +1071,95 @@
   function readSign(o) {
     var signs = S.def.signs || [];
     var txt = signs[o.idx] || signs[signs.length - 1] || 'THIS SIGN HAS BEEN DEFACED. THE AI APOLOGIZES FOR NOTHING.';
+    txt = String(txt).replace(/\{(\w+)\}/g, function (m, a) { return btnName(a); }); // {jump} -> the player's actual button
     sfx('text_blip');
     if (!say(txt)) toast(txt, { time: 3 });
+  }
+  /* ---------------- button teacher (stage def buttonTeacher: true) ----------------
+     Every press pops a callout over the player naming the button and what it just did.
+     The first time each move is found, the AI explains it (non-blocking) and it ticks off a checklist. */
+  var TEACH = [
+    { id: 'move', name: 'MOVE', once: true, line: 'THAT IS WALKING. YOU WERE BORN FOR THIS. OR AT LEAST, YOU WERE BORN.' },
+    { id: 'jump', name: 'JUMP', line: 'THAT IS JUMP. HOLD IT LONGER TO GO HIGHER. TAP IT FOR A LITTLE HOP.' },
+    { id: 'punch', name: 'PUNCH', line: 'THAT IS PUNCH. MASH IT FOR A THREE-HIT COMBO. NOW TRY HOLDING DOWN WHILE YOU DO IT.' },
+    { id: 'kick', name: 'KICK', line: 'DOWN + ATTACK ON THE GROUND IS A KICK. SLOWER THAN A PUNCH. HITS LIKE A TAX BILL. NOW TRY IT IN THE AIR.' },
+    { id: 'stomp', name: 'STOMP KICK', line: 'DOWN + ATTACK IN THE AIR IS A DIVING STOMP. LAND ON HEADS. BOUNCE. FEEL ALIVE.' },
+    { id: 'bomb', name: 'BOMB', line: 'THAT LOBS A BOMB. IT ARCS. IT BOOMS. HOLD DOWN FOR A SHORT TOSS AT YOUR FEET.' },
+    { id: 'potion', name: 'POTION', line: 'THAT DRINKS A HEALTH POTION. HEALS HALF YOUR HP. ONLY WORKS WHEN YOU ARE HURT, GENIUS.' },
+    { id: 'special', name: 'SPECIAL', line: 'THAT IS PRINCESS DONUT\'S SPECIAL. HIT THINGS TO FILL THE PURPLE METER, THEN PRESS IT.' },
+    { id: 'crouch', name: 'CROUCH', once: true, hidden: true },
+    { id: 'read', name: 'READ SIGN', once: true, hidden: true }
+  ];
+  var TEACH_BY = {}, TEACH_TOTAL = 0;
+  TEACH.forEach(function (d) { TEACH_BY[d.id] = d; if (!d.hidden) TEACH_TOTAL++; });
+  function btnName(a) { var f = UI().buttonName; var n = (typeof f === 'function') ? f(a) : null; return n || String(a).toUpperCase(); }
+  function teach(id, key, nameOverride) {
+    var T = S.teach, d = TEACH_BY[id]; if (!T || !d) return;
+    T.popN[id] = (T.popN[id] || 0) + 1;
+    if (!(d.once && T.popN[id] > 1)) T.pop = { key: key, name: nameOverride || d.name, t: 0 };
+    if (d.hidden || T.seen[id]) return;
+    T.seen[id] = true; T.learned++;
+    sfx('pickup', { pitch: 1.4 });
+    T.tips.push({ text: d.line, color: '#f8d878' });
+    if (T.learned >= TEACH_TOTAL) T.doneT = 2.5;
+  }
+  function teachInput(P, dt, down) {
+    var T = S.teach;
+    if (T.pop) T.pop.t += dt;
+    if (T.doneT > 0) { T.doneT -= dt; if (T.doneT <= 0) { sfx('unlock'); announce('ALL MOVES LEARNED', { color: '#58d854', time: 2 }); T.tips.push({ text: 'EVERY BUTTON ACCOUNTED FOR. YOU ARE NOW LEGALLY A CRAWLER. THE EXIT IS TO THE RIGHT.', color: '#58d854' }); } }
+    // AI tips play one at a time: short while more are queued, longer when it is the last one
+    if (T.tips.length) { T.tipT += dt; if (T.tipT > (T.tips.length > 1 ? 2.2 : 5.5)) { T.tips.shift(); T.tipT = 0; } }
+    if (P.state === 'victory' || P.state === 'dead') return;
+    var dn = btnName('down');
+    if (I.pressed('left') || I.pressed('right')) teach('move', btnName('move'));
+    if (I.pressed('down') && P.onGround && !I.down('attack')) teach('crouch', dn);
+    if (I.pressed('up') && interactAt(P)) teach('read', btnName('up'));
+    if (I.pressed('jump')) teach('jump', btnName('jump'));
+    if (I.pressed('attack')) {
+      if (down && P.onGround) teach('kick', dn + '+' + btnName('attack'));
+      else if (down) teach('stomp', dn + '+' + btnName('attack'));
+      else teach('punch', btnName('attack'));
+    }
+    if (I.pressed('bomb')) teach('bomb', down ? dn + '+' + btnName('bomb') : btnName('bomb'), down ? 'SHORT TOSS' : null);
+    if (I.pressed('potion')) teach('potion', btnName('potion'));
+    if (I.pressed('special')) teach('special', btnName('special'), S.special < 1 ? 'SPECIAL: NOT CHARGED' : null);
+  }
+  function drawTeach(ctx, camX, camY) {
+    var T = S.teach; if (!T) return;
+    var p = T.pop, P = S.player;
+    if (p && p.t < 1.2 && P) {
+      var a = p.t > 0.9 ? 1 - (p.t - 0.9) / 0.3 : 1, rise = Math.min(p.t, 0.12) / 0.12;
+      var kw = DCW.textWidth(p.key) + 6, nw = DCW.textWidth(p.name), w = kw + nw + 7, h = 13;
+      var x = Math.round(U.clamp(cx(P) - camX - w / 2, 2, W - w - 2)), y = Math.round(P.y - camY - 20 - rise * 6);
+      if (y < 18) y = Math.round(P.y + P.h - camY + 6);
+      var pop = p.t < 0.08 ? 1 : 0;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#000'; ctx.fillRect(x - 1 - pop, y - 1 - pop, w + 2 + pop * 2, h + 2 + pop * 2);
+      ctx.fillStyle = '#202040'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#f8b800'; ctx.fillRect(x + 2, y + 2, kw, h - 4);
+      DCW.text(p.key, x + 2 + kw / 2, y + 3, '#000', { align: 'center', shadow: null });
+      DCW.text(p.name, x + kw + 5, y + 3, '#fcfcfc');
+      ctx.globalAlpha = 1;
+    }
+    // AI tip bar (top left, under the HUD)
+    var tip = T.tips[0];
+    if (tip) {
+      var lines = DCW.wrapText(tip.text, 208).slice(0, 3), th = 12 + lines.length * 9, ta = T.tipT < 0.15 ? T.tipT / 0.15 : 1;
+      ctx.globalAlpha = 0.85 * ta; ctx.fillStyle = '#000'; ctx.fillRect(2, 17, 232, th); ctx.globalAlpha = ta;
+      ctx.fillStyle = tip.color; ctx.fillRect(2, 17, 232, 1); ctx.fillRect(2, 17 + th - 1, 232, 1);
+      ctx.fillStyle = '#5c5c7c'; ctx.fillRect(4, 20, 14, 14); call(UI(), 'miniPortrait', ctx, 'p_ai', 5, 21);
+      DCW.text('SYSTEM AI' + (T.tips.length > 1 ? '  +' + (T.tips.length - 1) : ''), 22, 19, tip.color);
+      lines.forEach(function (l, i) { DCW.text(l, 22, 28 + i * 9, '#fcfcfc'); });
+      ctx.globalAlpha = 1;
+    }
+    // checklist (top right, under the HUD)
+    var rows = TEACH.filter(function (d) { return !d.hidden; }), px = W - 80, py = 17, rh = 8;
+    ctx.globalAlpha = 0.72; ctx.fillStyle = '#000'; ctx.fillRect(px, py, 78, 12 + rows.length * rh); ctx.globalAlpha = 1;
+    DCW.text('MOVES ' + T.learned + '/' + TEACH_TOTAL, px + 4, py + 2, T.learned >= TEACH_TOTAL ? '#58d854' : '#f8b800');
+    rows.forEach(function (d, i) {
+      var yy = py + 12 + i * rh, got = !!T.seen[d.id];
+      DCW.text(got ? '★ ' + d.name : '- ???', px + 4, yy, got ? '#fcfcfc' : '#5c5c7c', { shadow: null });
+    });
   }
   function enterDoor(o) {
     var P = S.player;
@@ -2492,6 +2581,7 @@
     if (S.dark) drawDark(ctx, camX, camY);
     if (S.flashT > 0) { ctx.globalAlpha = Math.min(0.7, S.flashT * 4); ctx.fillStyle = S.flashColor; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     drawHud(ctx);
+    drawTeach(ctx, camX, camY);
     if (S.race) drawRaceHud(ctx);
     if (S.god) DCW.text('GOD', 4, H - 10, '#f8d878');
     if (S.fallbackMsg) { DCW.text(S.fallbackMsg, W / 2, 80, '#fcfcfc', { align: 'center', scale: 2 }); }

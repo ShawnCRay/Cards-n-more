@@ -68,6 +68,9 @@ const TEXT_RE = /^[A-Z0-9 .,!?'":;\-+/()%*#$<>=_&@\[\]~|]*$/;
 function text(where, s, max) {
   if (typeof s !== 'string') { err(where + ': not a string'); return; }
   if (!s.length) { err(where + ': empty text'); return; }
+  // sign text may name the player's real buttons: {jump} {attack} {bomb} {potion} {special} {up} {down} {left} {right}
+  const BTN_TOKEN = /\{(jump|attack|bomb|potion|special|up|down|left|right)\}/g;
+  if (/\.signs\[/.test(where)) s = s.replace(BTN_TOKEN, 'X');
   if (!TEXT_RE.test(s)) {
     const bad = [...new Set(s.split('').filter(c => !TEXT_RE.test(c)))].join('');
     err(where + ': illegal chars [' + bad + '] in "' + s.slice(0, 50) + '"');
@@ -363,7 +366,7 @@ for (const [id, s] of Object.entries(D.stages)) {
   } else if (s.parade) err(w + ': parade field on a ' + s.kind + ' stage');
   if (s.music && !MUSIC.includes(s.music)) err(w + ': bad music');
   if (s.owMarker && !MARKERS.includes(s.owMarker)) err(w + ': bad owMarker');
-  if (s.intro) text(w + '.intro', s.intro);
+  if (s.intro) { if (Array.isArray(s.intro)) texts(w + '.intro', s.intro, 1); else text(w + '.intro', s.intro); }
   if (s.signs) texts(w + '.signs', s.signs);
   weighted(w, s.enemies, 'enemies'); weighted(w, s.elite, 'elite'); weighted(w, s.flyers, 'flyers');
   if (!s.reward || typeof s.reward.xp !== 'number') err(w + ': reward.xp missing');
