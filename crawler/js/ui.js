@@ -1881,14 +1881,22 @@
     idle: function (dt) { this.t += dt; },
     draw: function (ctx) {
       var t = this.t || 0;
-      bands(ctx, ['#07021a', '#0b0424', '#12062e', '#1a0838', '#240a40', '#300c46', '#3c1048', '#4c1448'], 0, 172);
-      stars(ctx, t, 3, 100);
-      // alien planet with ring
-      var px = 268, py = 34;
-      pdisc(ctx, px, py, 23, '#000'); pdisc(ctx, px, py, 22, '#881488'); pdiscIn(ctx, px - 8, py - 8, 16, px, py, 22, '#b83cb8'); pdiscIn(ctx, px + 10, py + 6, 6, px, py, 22, '#5c0c5c');
-      R(px - 40, py + 2, 80, 2, '#f8b800'); R(px - 34, py + 4, 68, 1, '#ac7c00');
-      saucer(ctx, 40 + Math.sin(t * 0.7) * 20, 30 + Math.sin(t * 1.3) * 4, 0);
-      skyline(ctx, 168, 99, '#120620', '#5c3c00', t);
+      // background matches the floor the saved crawl is on (like the outfit and companion); fresh saves get the alien sky
+      var run = DCW.save && DCW.save.run, fdT = run && floorDef(run.floor || 1), bgTheme = fdT && fdT.theme, drewBg = false;
+      if (bgTheme && DCW.art && typeof DCW.art.background === 'function') {
+        try { DCW.art.background(ctx, bgTheme, t * 12, 0); drewBg = true; } catch (e) { drewBg = false; }
+        if (drewBg) { ctx.globalAlpha = 0.12; R(0, 0, W, H, '#000'); ctx.globalAlpha = 0.3; R(0, 0, W, 74, '#000'); ctx.globalAlpha = 1; } // light dim keeps the logo readable
+      }
+      if (!drewBg) {
+        bands(ctx, ['#07021a', '#0b0424', '#12062e', '#1a0838', '#240a40', '#300c46', '#3c1048', '#4c1448'], 0, 172);
+        stars(ctx, t, 3, 100);
+        // alien planet with ring
+        var px = 268, py = 34;
+        pdisc(ctx, px, py, 23, '#000'); pdisc(ctx, px, py, 22, '#881488'); pdiscIn(ctx, px - 8, py - 8, 16, px, py, 22, '#b83cb8'); pdiscIn(ctx, px + 10, py + 6, 6, px, py, 22, '#5c0c5c');
+        R(px - 40, py + 2, 80, 2, '#f8b800'); R(px - 34, py + 4, 68, 1, '#ac7c00');
+        saucer(ctx, 40 + Math.sin(t * 0.7) * 20, 30 + Math.sin(t * 1.3) * 4, 0);
+        skyline(ctx, 168, 99, '#120620', '#5c3c00', t);
+      }
       R(0, 168, W, 12, '#000'); R(0, 168, W, 1, '#3c1048');
       // logo
       var bob = Math.round(Math.sin(t * 2) * 1);
