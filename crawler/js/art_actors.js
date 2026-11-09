@@ -1027,11 +1027,11 @@
    *  COMPANIONS (face right)
    * ================================================================== */
   (function () {
-    // ---- Princess Donut: Persian show cat with a tiara ----
-    var dp = { o: C.n2, c: C.n3, O: C.n1, e: C.G1, w: C.W, p: C.m2, y: C.y2, r: C.r1, m: C.m2, x: C.K };
+    // ---- Princess Donut: Persian show cat with a purple-jeweled tiara ----
+    var dp = { o: C.n2, c: C.n3, O: C.n1, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, m: C.m2, x: C.K };
     var d0 = [
-      '........y.y.y.',
-      '........yyryy.',
+      '........j.j.j.',
+      '........yyjyy.',
       'o......OoooooO',
       'oo.....ooOooOo',
       'oo.....oweowe.',
@@ -1047,7 +1047,7 @@
     var dr0 = legs(alt(d0, 2, ['.......OoooooO', 'ooo....ooOooOo']), ['ooocccccoooo..', 'Occccc...ooo..', 'O.........OO..']);
     var dr1 = legs(alt(d0, 2, ['.......OoooooO', '.oo....ooOooOo', 'oo.....oweowe.']), ['.ooccccooo....', '.ccccccoooc...', '...OO.OO......']);
     var dact = alt(d0, 2, ['o......OoooooO', 'oo.....oooooom', 'oo.....omeome.', '.o.....cccpccm', '.ooooooccxxc.m']);
-    dact = alt(dact, 0, ['......m.y.y.y.', '.....m..yyryy.']);
+    dact = alt(dact, 0, ['......m.j.j.j.', '.....m..yyjyy.']);
     spr('donut_idle', dp, [d0, d1]);
     spr('donut_run', dp, [dr0, dr1]);
     spr('donut_act', dp, [dact]);
@@ -2381,7 +2381,7 @@
     for (var x = 9; x < 25; x += 2) { px(g, x, 21, 'S'); px(g, x + 1, 22, 'S'); px(g, x, 23, 'S'); }
     rect(g, 14, 20, 6, 1, 'm'); px(g, 20, 19, 'm');
   });
-  portrait('p_donut', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, r: C.r1, K: C.K }, BG_HERO, function (g) {
+  portrait('p_donut', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
     oval(g, 16, 27, 13, 6, 'o'); oval(g, 16, 28, 7, 4, 'c');
     oval(g, 16, 17, 12, 10, 'o');
     tri(g, 4, 3, 10, 9, 4, 12, 'o'); tri(g, 28, 3, 22, 9, 28, 12, 'o'); tri(g, 5, 6, 8, 9, 5, 10, 'p'); tri(g, 27, 6, 24, 9, 27, 10, 'p');
@@ -2391,7 +2391,7 @@
     rect(g, 8, 13, 5, 2, 'O'); rect(g, 19, 13, 5, 2, 'O'); // haughty lids
     rect(g, 15, 20, 3, 2, 'p'); line(g, 16, 22, 16, 23, 'K'); line(g, 13, 24, 15, 23, 'K'); line(g, 17, 23, 19, 24, 'K');
     line(g, 4, 20, 10, 21, 'c'); line(g, 22, 21, 28, 20, 'c');
-    rect(g, 11, 5, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 3, 'y'); px(g, 11 + k * 3 + 1, 4, 'y'); } px(g, 16, 2, 'y'); px(g, 16, 5, 'r');
+    rect(g, 11, 5, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 3, 'j'); px(g, 11 + k * 3 + 1, 4, 'y'); } px(g, 16, 2, 'j'); px(g, 15, 5, 'j'); px(g, 16, 5, 'J'); px(g, 17, 5, 'j');
   });
   portrait('p_mongo', { g: C.G1, G: C.l2, S: C.G0, w: C.W, e: C.K, m: C.o0 }, BG_HERO, function (g) {
     oval(g, 14, 26, 10, 7, 'g'); oval(g, 16, 28, 5, 4, 'G');
