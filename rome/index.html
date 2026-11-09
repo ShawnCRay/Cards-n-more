@@ -239,8 +239,54 @@
     font-size: 11px;
     opacity: 0.8;
   }
-  #log { flex: 1; min-width: 180px; max-height: 32px; overflow: hidden; }
-  #log div { line-height: 1.55; }
+  /* scrollable history window: newest first, one block per round, one rail per player */
+  #log {
+    flex: 1;
+    min-width: 260px;
+    min-height: 110px;
+    max-height: 300px;
+    max-height: min(300px, 28svh);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    user-select: text;
+    -webkit-user-select: text;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(217,151,63,0.35);
+    border-radius: 8px;
+    padding: 5px 9px 6px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(217,151,63,0.55) rgba(0,0,0,0.25);
+  }
+  #log::-webkit-scrollbar { width: 9px; }
+  #log::-webkit-scrollbar-track { background: rgba(0,0,0,0.25); border-radius: 4px; }
+  #log::-webkit-scrollbar-thumb { background: rgba(217,151,63,0.45); border-radius: 4px; }
+  #log .lg-cap {
+    position: sticky;
+    top: 0;
+    font-size: 9px;
+    letter-spacing: 0.8px;
+    color: rgba(217,151,63,0.75);
+    background: #10150c;
+    border-bottom: 1px solid rgba(217,151,63,0.3);
+    padding: 2px 0 3px;
+    margin: -5px -9px 4px;
+    z-index: 1;
+  }
+  #log .lg-round {
+    border: 1px solid rgba(217,151,63,0.45);
+    border-radius: 7px;
+    background: rgba(217,151,63,0.07);
+    padding: 5px 9px 2px;
+    margin: 0 0 7px;
+  }
+  #log .lg-round-h { font-weight: 700; letter-spacing: 1.2px; color: var(--gold); text-transform: uppercase; margin: -2px 0 4px; }
+  #log .lg-turn { border-left: 2px solid rgba(230,217,184,0.35); padding-left: 6px; margin-bottom: 2px; }
+  #log .lg-turn-h { font-weight: 700; color: #f0d9a0; margin-bottom: 1px; }
+  #log .lg-cut { font-size: 9px; letter-spacing: 1px; color: rgba(217,151,63,0.6); }
   #footer .small-btns button { font-size: 10px; padding: 4px 9px; font-weight: 400; }
   #overlay, #help {
     position: fixed;
@@ -406,7 +452,9 @@
     #opts button { font-size: 10px; padding: 7px 9px; }
     #footer { font-size: 10px; }
     #footer .small-btns button { font-size: 9px; padding: 3px 7px; }
-    #log { max-height: 17px; font-size: 10px; }
+    #log { min-height: 90px; max-height: min(190px, 30svh); min-width: 100%; font-size: 9.5px; }
+    #log .lg-round { padding: 4px 6px 2px; margin: 0 0 5px; }
+    #log .lg-turn { padding-left: 5px; }
   }
 </style>
 </head>
@@ -530,6 +578,12 @@
       every player's <b>Overseer's Safe</b>. Whoever holds the most of a given
       material — out and out, no ties, no second place — scores <b>+3 Caps</b>
       for it. Up to <b>+18</b> across all six materials.</p>
+      <p><b>The log window</b> at the bottom of the screen keeps the whole match:
+      every round gets its own box (labelled with the player who leads it), and
+      inside that box every player gets their own rail, so you can scroll back
+      and read exactly what each dweller did in any round. Newest rounds sit at
+      the top; the oldest rounds are trimmed once the window holds
+      <b>900</b> lines.</p>
       <p>Simplifications vs the tabletop original: a trimmed building list, no
        wasteland sites, and no petitions. Cass and
       Boone play a solid economic game — watch your hand when they lead the
@@ -796,12 +850,107 @@ function showTip(ev, html, borderClass) {
 }
 function hideTip() { const t = $('cardtip'); if (t) t.style.display = 'none'; }
 
-function log(msg) {
-  const el = document.createElement('div');
-  el.textContent = msg;
-  $('log').prepend(el);
-  while ($('log').children.length > 12) $('log').lastChild.remove();
-  if (net.mode === 'host') netBroadcast({ type: 'log', msg });
+/* ---------- log: scrollable window, newest first ----------
+   Structure: one .lg-round block per round (header names the leader), inside it
+   one .lg-turn rail per player, and that player's lines in order under their
+   header. A player keeps a single rail for the whole round, so the lead/follow
+   decision and everything their dwellers do afterwards land in the same place.
+   Everything the host logs is mirrored to the guest with its structure intact. */
+const LOG_CAP = 900; // lines kept before the oldest rounds are trimmed
+const LOG_CAPTION = 'log — newest first · scroll or drag for history';
+let logLines = 0, logKept = 0;
+let logRound = null, logBlock = null, logCap = null;
+const logRails = new Map(); // player name -> their rail in the current round
+let roundNo = 0;
+
+function countLogLines(el) {
+  let n = 1;
+  for (let ch = el.firstChild; ch; ch = ch.nextSibling) n += countLogLines(ch);
+  return n;
+}
+function logTrim() {
+  const box = $('log');
+  if (box.lastChild && box.lastChild.className === 'lg-cut') box.lastChild.remove();
+  while (logKept > LOG_CAP && box.lastChild && box.lastChild !== logCap) {
+    logKept -= countLogLines(box.lastChild);
+    box.lastChild.remove();
+  }
+  if (logLines > logKept) {
+    const el = document.createElement('div');
+    el.className = 'lg-cut';
+    el.textContent = '▲ ' + (logLines - logKept) + ' older lines trimmed';
+    box.appendChild(el);
+    logKept++;
+  }
+}
+function logStruct(k, msg, name, label, remote) {
+  const box = $('log');
+  if (!logCap) {
+    logCap = document.createElement('div');
+    logCap.className = 'lg-cap';
+    logCap.textContent = LOG_CAPTION;
+    box.appendChild(logCap);
+    logLines++;
+    logKept++;
+  }
+  if (box.firstChild !== logCap) box.insertBefore(logCap, box.firstChild);
+  if (k === 'round') {
+    roundNo++;
+    const wrap = document.createElement('div');
+    wrap.className = 'lg-round';
+    const head = document.createElement('div');
+    head.className = 'lg-round-h';
+    head.textContent = 'Round ' + roundNo + ' · ' + msg;
+    wrap.appendChild(head);
+    box.insertBefore(wrap, logCap.nextSibling);
+    logRound = wrap;
+    logBlock = null;
+    logRails.clear();
+    logLines += 2;
+    logKept += 2;
+  } else if (k === 'turn') {
+    let rail = logRails.get(name);
+    if (!rail) {
+      rail = document.createElement('div');
+      rail.className = 'lg-turn';
+      const head = document.createElement('div');
+      head.className = 'lg-turn-h';
+      head.textContent = label ? name + ' — ' + label : name;
+      rail.appendChild(head);
+      if (logRound) logRound.insertBefore(rail, logRound.firstChild.nextSibling);
+      else box.insertBefore(rail, logCap.nextSibling);
+      logRails.set(name, rail);
+      logLines++;
+      logKept++;
+    }
+    logBlock = rail;
+  } else {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    if (k !== 'note' && k !== 'notice' && logBlock) logBlock.appendChild(el); // newest line of this player's rail
+    if (k === 'notice' || !logRound) box.insertBefore(el, logCap.nextSibling); // outside any round, at the window's top
+    else logRound.insertBefore(el, logRound.firstChild.nextSibling);
+    if (k === 'note' || k === 'notice') logBlock = null;
+    logLines++;
+    logKept++;
+  }
+  logTrim();
+  if (!remote && net.mode === 'host') netBroadcast({ type: 'log', k, msg, name, label });
+}
+function log(msg) { logStruct('line', msg, null, null, false); }
+function logRoundStart(label) { logStruct('round', label, null, null, false); }
+function logPlayerTurn(name, label) { logStruct('turn', null, name, label, false); }
+function logRoundNote(msg) { logStruct('note', msg, null, null, false); }
+function logNotice(msg) { logStruct('notice', msg, null, null, false); }
+function logReset() { // rounds renumber, but the previous match stays readable in the window
+  roundNo = 0;
+  logRound = null;
+  logBlock = null;
+  logRails.clear();
+  logKept = 0;
+  const box = $('log');
+  for (let ch = box.firstChild; ch; ch = ch.nextSibling) if (ch.className !== 'lg-cut') logKept += countLogLines(ch);
+  logLines = logKept;
 }
 function setMessage(m) { $('message').textContent = m || ''; }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(stats)); } catch (e) { /* no storage */ } }
@@ -1676,6 +1825,7 @@ function checkPlebian() {
 async function playTurn(gen) {
   raidedThisTurn.clear();
   const leader = players[leaderIdx];
+  logRoundStart('leader: ' + leader.name);
   setMessage(leader.name + ' leads…');
   render();
 
@@ -1698,6 +1848,7 @@ async function playTurn(gen) {
 
   if (pick === 'research') {
     recPush('turn', { leader: leader.name, role: 'research' });
+    logPlayerTurn(leader.name, 'RESEARCH — no one follows');
     await doResearch(leader);
     render();
     return;
@@ -1708,6 +1859,7 @@ async function playTurn(gen) {
     if (rPick) {
       const bi = Number(rPick.split(':')[1]);
       const room = leader.buildings.filter(b => b.done)[bi];
+      logPlayerTurn(leader.name, 'High-Security Archives');
       leader.population--;
       log(leader.name + ' loses 1 population (' + leader.population + ') to activate ' + room.n + ' (High-Security Archives).');
       await onCompletion(leader, room);
@@ -1718,7 +1870,7 @@ async function playTurn(gen) {
 
   const role = playLead(leader, pick);
   recPush('turn', { leader: leader.name, role });
-  log(leader.name + ' leads ' + role + '.');
+  logPlayerTurn(leader.name, 'leads ' + role);
   const participants = [leader];
   const actors = [leader]; // every seat runs its Clients of the led role, even the ones that researched
   render();
@@ -1766,6 +1918,7 @@ async function playTurn(gen) {
       q.hand = q.hand.filter((c, i) => !indices.includes(i));
       q.played = cards;
       q.palaceActs = cards.length - 1;
+      logPlayerTurn(q.name, 'follows ' + role + ' with ' + cards.length + ' cards');
       participants.push(q);
       log(q.name + ' follows with ' + cards.length + ' cards (ZAX Supercomputer).');
     } else if (fp && fp.startsWith('followpair')) {
@@ -1774,15 +1927,18 @@ async function playTurn(gen) {
       q.hand = q.hand.filter((c, i) => !indices.includes(i));
       q.played = cards;
       q.palaceActs = 0;
+      logPlayerTurn(q.name, 'follows ' + role + ' as a Mysterious Stranger');
       participants.push(q);
       log(q.name + ' follows with ' + indices.length + ' matching cards as a Mysterious Stranger.');
     } else if (fp && fp.startsWith('follow')) {
       const c = q.hand.splice(Number(fp.split(':')[1]), 1)[0];
       q.played = [c];
       q.palaceActs = 0;
+      logPlayerTurn(q.name, 'follows ' + role);
       participants.push(q);
       log(q.name + ' follows.');
     } else {
+      logPlayerTurn(q.name, 'researches instead');
       await doResearch(q);
       if (gen !== epoch) return;
     }
@@ -1795,6 +1951,7 @@ async function playTurn(gen) {
   // researched get no base action and no Maximus/Triclinium — only their dwellers act.
   for (const p of actors) {
     if (gameOver) break;
+    logPlayerTurn(p.name, null); // dwellers acting later in the round land on the same rail
     const followed = participants.includes(p);
     const dwellersBefore = [...p.dwellers]; // snapshot before acting: same-turn hires only act via Bath
     if (followed) {
@@ -1844,7 +2001,7 @@ async function playTurn(gen) {
       if (c.stranger) {
         // Detective Agency: opponent's strangers go to your hand instead of the pool
         const sniper = players.find(q => q !== p && has(q, 'senate'));
-        if (sniper) { sniper.hand.push(c); log(sniper.name + ' intercepts a Mysterious Stranger via Detective Agency.'); }
+        if (sniper) { logPlayerTurn(sniper.name, null); sniper.hand.push(c); log(sniper.name + ' intercepts a Mysterious Stranger via Detective Agency.'); }
         else strangers++;
         continue;
       }
@@ -1855,6 +2012,7 @@ async function playTurn(gen) {
   }
   for (const p of players) {
     if (raidedThisTurn.has(players.indexOf(p)) && has(p, 'castra')) {
+      logPlayerTurn(p.name, 'end of round');
       log(p.name + ' lost a card to a Raider — Armored Watchtower grants RESEARCH.');
       await doResearch(p);
     }
@@ -1864,6 +2022,7 @@ async function playTurn(gen) {
       if (!has(p, 'watermill')) continue;
       const overseerCount = p.dwellers.filter(c => MAT_ROLE[c.m] === 'OVERSEER').length;
       if (overseerCount === 0) continue;
+      logPlayerTurn(p.name, 'Hydro-Kinetic Power Grid');
       log(p.name + ' uses ' + overseerCount + ' OVERSEER dweller' + (overseerCount !== 1 ? 's' : '') + ' via Hydro-Kinetic Power Grid.');
       for (let i = 0; i < overseerCount; i++) {
         if (gameOver) break;
@@ -1900,6 +2059,7 @@ async function playMatch() {
   }
   for (const p of players) wasteland.push(draw1()); // prime the wasteland
   leaderIdx = 0;
+  logReset();
   log('— New game: the city rises again. —');
   render();
 
@@ -1927,7 +2087,7 @@ async function playMatch() {
     lastWinnerIdx = players.indexOf(winners[0]);
     if (winners.length > 1) {
       sharedWin = winners.map(p => p.name).join(' & ');
-      log('Tie at ' + best + ' pts, safes even — ' + sharedWin + ' share the win.');
+      logRoundNote('Tie at ' + best + ' pts, safes even — ' + sharedWin + ' share the win.');
     }
     gameOver = true;
   }
@@ -1950,8 +2110,8 @@ async function playMatch() {
   const scores = players.map(scoreLabel).join(' · ');
   const audits = players.filter(p => auditBonus(p).pts > 0)
     .map(p => p.name + ' takes ' + auditBonus(p).mats.join(', '));
-  log('Final: ' + scores);
-  if (audits.length) log('Overseer\'s Audit: ' + audits.join(' · '));
+  logRoundNote('Final: ' + scores);
+  if (audits.length) logRoundNote('Overseer\'s Audit: ' + audits.join(' · '));
   setMessage(sharedWin
     ? '★ Shared win — ' + sharedWin + ' hold the city. ' + scores
     : winP === me && net.mode === 'solo'
@@ -2107,12 +2267,12 @@ function createHostPeer() {
       $('btn-invite').style.display = 'none';
       updateNetBar();
       setMessage('Table ready — send friends the invite link.');
-      log('Table ' + net.roomCode + ' opened. Two friends can take over Cass and Boone.');
+      logNotice('Table ' + net.roomCode + ' opened. Two friends can take over Cass and Boone.');
       keepAwake();
       render();
     } else {
       setMessage('');
-      log('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
+      logNotice('Back in the lobby — table ' + net.roomCode + ' is joinable again.');
     }
   });
   net.peer.on('connection', conn => {
@@ -2126,7 +2286,7 @@ function createHostPeer() {
       setMessage('Reconnecting to the lobby…');
       setTimeout(ensureJoinable, 2000);
     } else if (e.type !== 'peer-unavailable' && e.type !== 'webrtc') {
-      log('Multiplayer error: ' + e.type);
+      logNotice('Multiplayer error: ' + e.type);
     }
   });
 }
@@ -2166,7 +2326,7 @@ function handleGuestMsg(conn, d) {
     seat.name = String(d.name || 'Guest').slice(0, 12).trim() || 'Guest';
     conn._seat = seat;
     conn.send({ type: 'welcome', seat: players.indexOf(seat), hostName: me.name, code: net.roomCode });
-    log(seat.name + ' takes over ' + seat.cpuName + "'s seat.");
+    logNotice(seat.name + ' takes over ' + seat.cpuName + "'s seat.");
     updateNetBar();
     render();
   } else if (d.type === 'pick') {
@@ -2179,7 +2339,7 @@ function dropGuest(conn) {
   if (!seat || seat.remote !== conn) return;
   seat.remote = null;
   seat.ai = true;
-  log(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
+  logNotice(seat.name + ' left — ' + seat.cpuName + ' (CPU) takes the seat back.');
   seat.name = seat.cpuName;
   if (net.picker && net.picker.conn === conn) net.picker.finish(null);
   updateNetBar();
@@ -2283,10 +2443,7 @@ function handleHostMsg(d) {
       setMessage('');
     }
   } else if (d.type === 'log') {
-    const el = document.createElement('div');
-    el.textContent = d.msg;
-    $('log').prepend(el);
-    while ($('log').children.length > 12) $('log').lastChild.remove();
+    logStruct(d.k || 'line', d.msg, d.name, d.label, true);
   } else if (d.type === 'full') {
     $('overlay-status').textContent = 'That table is full (host + 2 friends).';
   }
