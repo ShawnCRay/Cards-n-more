@@ -1945,6 +1945,109 @@
     draw: function (ctx) { R(0, 0, W, H, '#000'); this.pager.draw(ctx); }
   };
 
+  /* ---------- NAME ENTRY (new run): you type a name, the AI calls you Carl anyway ---------- */
+  var NAME_MAX = 10, NAME_ROWS = ['ABCDEFGHIJ', 'KLMNOPQRST', "UVWXYZ.'-!"], NAME_CMDS = ['SPACE', 'DEL', 'DONE'];
+  function carlLines(name, tries) {
+    var ai = function (t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; };
+    var n = name.replace(/^\s+|\s+$/g, '');
+    if (!n) return [ai('NOTHING? YOU CANNOT EVEN COMMIT TO A NAME. THAT IS THE MOST CARL THING I HAVE EVER SEEN.'), ai('YOU ARE CARL. CONGRATULATIONS, CARL.')];
+    if (/^CARL\b/.test(n)) return [ai('...OH. YOU ACTUALLY ARE A CARL.'), ai('THAT IS DEEPLY DISAPPOINTING. I HAD A WHOLE BIT PREPARED. FINE. CARL IT IS.')];
+    if (/DONUT/.test(n)) return [ai(n + '? THAT NAME IS TAKEN. BY A CAT. A VERY LITIGIOUS CAT.'), ai('YOU LOOK LIKE A CARL TO ME. I AM GONNA CALL YOU CARL.')];
+    if (tries > 1) return [ai(n + '. WE HAVE BEEN OVER THIS.'), ai(U.pick(['YOU ARE CARL. YOU WERE CARL LAST TIME. YOU WILL BE CARL NEXT TIME.', 'THE NAME FIELD IS DECORATIVE. IT ALWAYS HAS BEEN. HELLO AGAIN, CARL.', 'I DID NOT EVEN READ THAT. WELCOME BACK, CARL.']))];
+    return [ai(n + '. ' + n + '. HMM. LET ME LOOK AT YOU.'),
+      ai(U.pick(['NAH. YOU LOOK LIKE A CARL TO ME. I AM GONNA CALL YOU CARL.', 'NO. ABSOLUTELY NOT. YOU HAVE A CARL FACE. YOU ARE CARL NOW.', 'THAT IS A LOVELY NAME FOR SOMEONE ELSE. YOU, HOWEVER, ARE A CARL.'])),
+      ai('THE PAPERWORK IS ALREADY FILED, CARL. THE AUDIENCE LOVES IT. MOVING ON.')];
+  }
+  scenes.nameEntry = {
+    enter: function (p) {
+      var self = this;
+      this.p = p || {}; this.t = 0; this.name = ''; this.row = 0; this.col = 0; this.done = false; this.said = false;
+      tryCall(I(), 'textCapture', [function (kind, ch) {
+        if (self.said) return;
+        if (kind === 'char') self.add(ch); else if (kind === 'del') self.del(); else if (kind === 'done') self.finish();
+      }]);
+    },
+    exit: function () { tryCall(I(), 'textCapture', [null]); },
+    add: function (ch) {
+      if (this.name.length >= NAME_MAX || (ch === ' ' && (!this.name || / $/.test(this.name)))) { sfx('error'); return; }
+      this.name += ch; sfx('menu_move');
+    },
+    del: function () { if (!this.name) return; this.name = this.name.slice(0, -1); sfx('menu_back'); },
+    finish: function () {
+      if (this.said || this.t < 0.3) return;
+      this.said = true; sfx('menu_select');
+      tryCall(I(), 'textCapture', [null]);
+      var s = save(), self = this;
+      s.meta = s.meta || {};
+      s.meta.nameTries = (s.meta.nameTries || 0) + 1;
+      s.meta.typedName = this.name.replace(/\s+$/, '');
+      var run = getRun(); if (run) run.typedName = s.meta.typedName;
+      tryCall(DCW, 'persist', []);
+      ui.say(carlLines(s.meta.typedName, s.meta.nameTries), { onDone: function () {
+        if (self.done) return; self.done = true;
+        if (self.p.onDone) self.p.onDone(); else tryCall(DCW.game, 'startFloor', [1]);
+      } });
+    },
+    update: function (dt) {
+      this.t += dt;
+      if (this.said) return;
+      var rows = NAME_ROWS.length + 1, cols = this.row < NAME_ROWS.length ? NAME_ROWS[0].length : NAME_CMDS.length;
+      if (P('up') || P('down')) {
+        var fromCmd = this.row === NAME_ROWS.length;
+        this.row = (this.row + (P('down') ? 1 : rows - 1)) % rows;
+        var toCmd = this.row === NAME_ROWS.length;
+        if (fromCmd && !toCmd) this.col = [1, 5, 8][this.col] || 0; // SPACE/DEL/DONE map back onto the grid
+        else if (!fromCmd && toCmd) this.col = this.col < 4 ? 0 : this.col < 7 ? 1 : 2;
+        sfx('menu_move');
+      }
+      cols = this.row < NAME_ROWS.length ? NAME_ROWS[0].length : NAME_CMDS.length;
+      if (P('left')) { this.col = (this.col + cols - 1) % cols; sfx('menu_move'); }
+      if (P('right')) { this.col = (this.col + 1) % cols; sfx('menu_move'); }
+      if (P('start')) { this.finish(); return; }
+      if (P('back')) this.del();
+      if (P('confirm') && this.t > 0.3) {
+        if (this.row < NAME_ROWS.length) this.add(NAME_ROWS[this.row].charAt(this.col));
+        else if (this.col === 0) this.add(' ');
+        else if (this.col === 1) this.del();
+        else this.finish();
+      }
+    },
+    idle: function (dt) { this.t += dt; },
+    draw: function (ctx) {
+      var self = this;
+      R(0, 0, W, H, '#0c0418');
+      for (var i = 0; i < 12; i++) R(0, i * 15, W, 1, '#140828');
+      // AI prompt
+      DCW.box(8, 6, 304, 40);
+      R(12, 9, 34, 34, C.white); R(13, 10, 32, 32, '#000'); portrait(ctx, 'p_ai', 13, 10);
+      T('SYSTEM AI', 52, 11, C.gold);
+      T('PLEASE ENTER YOUR NAME, CRAWLER.', 52, 22, C.white);
+      T('IT IS FOR THE PAPERWORK.', 52, 31, C.gray);
+      // name field
+      var fx = 160 - 66;
+      DCW.box(fx, 52, 132, 22);
+      var shown = this.name + (this.name.length < NAME_MAX && !this.said && blink(2.5) ? '_' : '');
+      T(shown, fx + 6, 57, C.yellow, { scale: 2 });
+      // letter grid
+      var gx = 160 - 5 * 18 + 3, gy = 82;
+      NAME_ROWS.forEach(function (row, r) {
+        for (var c = 0; c < row.length; c++) {
+          var sel = !self.said && self.row === r && self.col === c, x = gx + c * 18, y = gy + r * 14;
+          if (sel) R(x - 4, y - 3, 14, 12, C.blue);
+          T(row.charAt(c), x, y, sel ? C.white : C.gray);
+        }
+      });
+      var cy = gy + NAME_ROWS.length * 14 + 4, cw = 54, cx0 = 160 - Math.round((NAME_CMDS.length * cw - 8) / 2);
+      NAME_CMDS.forEach(function (lbl, k) {
+        var sel = !self.said && self.row === NAME_ROWS.length && self.col === k, x = cx0 + k * cw;
+        R(x, cy - 3, cw - 8, 12, sel ? C.blue : '#1c1c3c');
+        T(lbl, x + (cw - 8) / 2, cy, sel ? C.white : (k === 2 ? C.green : C.gray), { align: 'center' });
+      });
+      var kbd = ((DCW.input && DCW.input.lastDevice) || 'keyboard') === 'keyboard';
+      if (!this.said) T(kbd ? 'TYPE YOUR NAME.  ENTER: DONE  BKSP: DELETE' : 'PICK LETTERS.  ' + bn('start') + ': DONE  ' + bn('back') + ': DELETE', 160, 168, C.dgray, { align: 'center', shadow: null });
+    }
+  };
+
   /* ---------- FLOOR CARD ---------- */
   scenes.floorCard = {
     enter: function (p) {

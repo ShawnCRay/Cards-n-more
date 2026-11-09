@@ -329,12 +329,22 @@
       rebuildKeymap();
     },
     captureNext: function (cb) { captureCb = cb; },
+    // text entry: printable keys go to cb('char', CH), Backspace -> cb('del'), Enter -> cb('done').
+    // Letter keys stop driving actions while this is on; arrows and the gamepad still navigate.
+    textCapture: function (cb) { textCb = cb || null; },
     cancelCapture: function () { captureCb = null; },
     capturing: function () { return !!captureCb; }
   };
-  var heldKeys = {};
+  var heldKeys = {}, textCb = null;
   window.addEventListener('keydown', function (e) {
     unlockAudio();
+    if (textCb && !captureCb && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      var tk = e.key || '';
+      if (tk.length === 1 && /[A-Za-z0-9 .'\-]/.test(tk)) { e.preventDefault(); input.lastDevice = 'keyboard'; textCb('char', tk.toUpperCase()); return; }
+      if (e.code === 'Backspace' || e.code === 'Delete') { e.preventDefault(); textCb('del'); return; }
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); if (!e.repeat) textCb('done'); return; }
+      if (e.code === 'Escape') { e.preventDefault(); return; }
+    }
     if (captureCb) {
       e.preventDefault();
       if (e.repeat) return;

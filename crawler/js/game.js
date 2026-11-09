@@ -76,8 +76,10 @@
     s.equipped.companion = 'donut';   // companions are found again every crawl
     s.meta.runs = (s.meta.runs || 0) + 1;
     persist();
+    // intro, then the name gag (you type a name, the AI calls you Carl), then floor 1
+    var naming = function () { if (S().nameEntry) go(S().nameEntry, { onDone: function () { G.startFloor(1); } }); else G.startFloor(1); };
     if (S().intro && !DCW.params.has('skipintro')) {
-      go(S().intro, { onDone: function () { s.meta.seenIntro = true; persist(); G.startFloor(1); } });
+      go(S().intro, { onDone: function () { s.meta.seenIntro = true; persist(); naming(); } });
     } else G.startFloor(1);
   };
 
