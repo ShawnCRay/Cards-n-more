@@ -2540,7 +2540,7 @@
    *  summoner) + her fae spirit, and their portraits
    * ================================================================== */
   (function () {
-    // ---- Samantha: porcelain doll head, curly black hair, cracked, big red lips ----
+    // ---- Samantha: porcelain doll head, curly hair (recolored blonde in LOOK TWEAKS), cracked, big red lips ----
     var sp = { h: '#24242c', H: '#6c6c84', f: C.W, F: C.g1, x: C.g0, c: C.r3, r: C.r1, R: C.r2, m: C.r0, e: C.o1, t: C.W };
     var s0 = [
       '..h.hH.hH.hh..',

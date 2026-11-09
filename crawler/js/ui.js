@@ -384,7 +384,7 @@
     if (typeof r === 'string') return { text: r, icon: 'star', color: C.white };
     var n;
     switch (r.kind) {
-      case 'gold': return { text: '+' + (r.amount || 0) + ' GOLD' + (r.converted ? ' (DUPE)' : ''), icon: 'coin', color: C.gold };
+      case 'gold': return { text: (r.converted === 'skin' ? 'SKIN OWNED: +' : '+') + (r.amount || 0) + ' GOLD', icon: 'coin', color: C.gold };
       case 'item':
         n = r.count || 1;
         var nm = r.id === 'bomb' ? 'BOMB' : r.id === 'potion' ? 'POTION' : String(r.id || 'ITEM').toUpperCase();
@@ -395,7 +395,7 @@
       case 'xp': return { text: '+' + (r.amount || 0) + ' XP', icon: 'star', color: C.green };
       case 'hp': return { text: '+' + (r.amount || 1) + ' MAX HP', icon: 'heart', color: C.red };
       case 'box': return { text: tierName(r.tier), icon: 'box', color: boxColor(r.tier) };
-      case 'views': return { text: '+' + fmtNum(r.amount) + ' VIEWS' + (r.note ? ' (' + r.note + ')' : ''), icon: 'eye', color: C.pink };
+      case 'views': return { text: '+' + fmtNum(r.amount) + (r.note ? ' ' + r.note : '') + ' VIEWS', icon: 'eye', color: C.pink }; // fits the 21-char results column
       case 'place': return { text: (r.place === 1 ? '1ST' : r.place === 2 ? '2ND' : r.place === 3 ? '3RD' : r.place + 'TH') + ' PLACE' + (r.of ? ' OF ' + r.of : ''), icon: 'star', color: r.place === 1 ? C.gold : C.white };
       case 'revival': n = r.count || 1; return { text: '+' + n + ' SPONSOR REVIVAL' + (n > 1 ? 'S' : ''), icon: 'heart', color: C.pink };
       default: return { text: r.text || String(r.kind || '?').toUpperCase(), icon: r.icon || 'star', color: C.white };
@@ -664,8 +664,9 @@
       var full = h.special >= 1;
       DCW.bar(bx, 9, bw, 2, h.special, full ? (blink(6) ? C.white : C.yellow) : C.purple, '#200828');
     }
-    T(Math.ceil(hp) + '/' + mx, 77, 3, low ? C.red : C.white);
-    var x = 113;
+    var hpStr = Math.ceil(hp) + '/' + mx;
+    T(hpStr, 77, 3, low ? C.red : C.white);
+    var x = Math.max(113, 77 + tw(hpStr) + 4); // 3-digit HP pushes the row right instead of overlapping
     icon(ctx, 'bomb', x, 2); T(h.bombs === undefined ? '-' : h.bombs, x + 9, 3, C.white); x += 22;
     icon(ctx, 'potion', x, 2); T(h.potions === undefined ? '-' : h.potions, x + 9, 3, C.white); x += 22;
     icon(ctx, 'coin', x, 2); T(fitText(h.gold || 0, 30), x + 9, 3, C.gold); x += 44;

@@ -490,9 +490,10 @@
     var st = (DCW.ui && DCW.ui._h && DCW.ui._h.pStats) ? DCW.ui._h.pStats() : {};
     var mx = st.maxHp || run.hp || 1, hp = Math.max(0, run.hp || 0), low = hp <= mx * 0.25;
     icon(ctx, 'heart', 154, 2);
-    T(Math.ceil(hp) + '/' + mx, 164, 3, low && blink(4) ? '#fcfcfc' : low ? '#f83800' : '#fcfcfc');
-    icon(ctx, 'coin', 204, 2);
-    T(fit(run.gold || 0, 32), 214, 3, '#f8b800');
+    var hpStr = Math.ceil(hp) + '/' + mx, cx0 = Math.max(204, 164 + tw(hpStr) + 4); // 3-digit HP pushes gold right
+    T(hpStr, 164, 3, low && blink(4) ? '#fcfcfc' : low ? '#f83800' : '#fcfcfc');
+    icon(ctx, 'coin', cx0, 2);
+    T(fit(run.gold || 0, 32), cx0 + 10, 3, '#f8b800');
     var time = run.floorTime || 0, par = fd.par, over = par && time > par;
     var ts = DCW.U && DCW.U.fmtTime ? DCW.U.fmtTime(time) : String(Math.floor(time));
     var ps = par ? '/' + (DCW.U && DCW.U.fmtTime ? DCW.U.fmtTime(par) : par) : '';

@@ -27,6 +27,7 @@ const J = [
   { n: 'ow_roam', s: 'overworld', steps: [['eval', 'DCW.save.run.owPos={x:19,y:9}; DCW.setScene(DCW.overworld.scene,{floor:3}); 1'], ['frames', 30], ['shot', 'ow_roam_a'], ['hold', 'down', 30], ['frames', 120], ['shot', 'ow_roam_b'], ['frames', 120], ['shot', 'ow_roam_c'], ['eval', 'window.__calls.join(" ")']] },
   { n: 'ow_boss', s: 'overworld', steps: [['eval', 'DCW.save.run.owPos={x:23,y:3}; DCW.setScene(DCW.overworld.scene,{floor:3}); 1'], ['frames', 20], ['shot', 'ow_boss_locked'], ...tap('confirm', 4), ['shot', 'ow_boss_shake'], ['eval', 'DCW.save.run.owPos={x:28,y:1}; DCW.setScene(DCW.overworld.scene,{floor:3}); 1'], ['frames', 20], ['shot', 'ow_stairs']] },
   { n: 'hud', s: 'hud', steps: [['frames', 30], ['shot', 'hud']] },
+  { n: 'hud3', s: 'hud3', steps: [['frames', 30], ['shot', 'hud3']] },
   { n: 'hud2', s: 'hud2', steps: [['frames', 30], ['shot', 'hud2']] },
   { n: 'pause', s: 'pause', steps: [['frames', 10], ['shot', 'pause'], ...tap('up'), ...tap('confirm', 5), ['shot', 'pause_quit_confirm'], ...tap('back', 5), ...tap('up'), ...tap('confirm', 5), ['shot', 'pause_flee_confirm']] },
   { n: 'character', s: 'character', steps: [['frames', 10], ['shot', 'character'], ...tap('confirm', 5), ['shot', 'character_spent'], ...tap('confirm'), ...tap('confirm', 5), ['shot', 'character_nopoints']] },

@@ -513,7 +513,7 @@
       }
       case 'companion': { // companions are rescued, never boxed
         var cg = Math.round(60 * floorScale()); r.gold += cg;
-        return { kind: 'gold', amount: cg, converted: true };
+        return { kind: 'gold', amount: cg, converted: 'companion' };
       }
       case 'skin': {
         var id = rw.id;
@@ -521,7 +521,7 @@
         if (rw.any || !id) { var pool = lockedOf(rw.kind); id = pool.length ? U.pick(pool) : null; }
         if (!id || owned.indexOf(id) >= 0) {
           var conv = Math.round(60 * floorScale()); r.gold += conv;
-          return { kind: 'gold', amount: conv, converted: true };
+          return { kind: 'gold', amount: conv, converted: 'skin' };
         }
         if (rw.kind === 'skin') G.unlockSkin(id, true); else G.unlockCompanion(id, true);
         return { kind: rw.kind, id: id, isNew: true };
