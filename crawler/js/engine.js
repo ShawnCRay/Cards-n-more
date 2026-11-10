@@ -496,14 +496,67 @@
     });
     return base;
   }
+  // Save slots: each slot is a whole profile (run, unlocks, achievements, stats). Settings and
+  // controls are shared across slots. Slot 1 keeps the original key so older saves load as slot 1.
+  var SLOT_KEY = 'dcw_slot', SETTINGS_KEY = 'dcw_settings';
+  DCW.SLOTS = 3; DCW.slot = 1;
+  function slotKey(n) { return n <= 1 ? SAVE_KEY : SAVE_KEY + '_s' + n; }
+  function readSlot(n) {
+    var s = defaultSave(), raw = null;
+    try { raw = localStorage.getItem(slotKey(n)); if (raw) s = merge(s, JSON.parse(raw)); } catch (e) { raw = null; }
+    return { save: s, stored: !!raw };
+  }
+  var PER_SLOT_SETTINGS = { easy: true }; // difficulty belongs to the play style, so each slot keeps its own
+  function sharedSettings(s) {
+    try {
+      var raw = localStorage.getItem(SETTINGS_KEY); if (!raw) return;
+      var g = JSON.parse(raw); Object.keys(PER_SLOT_SETTINGS).forEach(function (k) { delete g[k]; });
+      merge(s.settings, g);
+    } catch (e) { /* ignore */ }
+  }
   DCW.loadSave = function () {
-    var s = defaultSave();
-    try { var raw = localStorage.getItem(SAVE_KEY); if (raw) s = merge(s, JSON.parse(raw)); } catch (e) { /* storage blocked: play without saving */ }
+    try { var n = parseInt(localStorage.getItem(SLOT_KEY), 10); if (n >= 1 && n <= DCW.SLOTS) DCW.slot = n; } catch (e) { /* storage blocked: play without saving */ }
+    var s = readSlot(DCW.slot).save;
+    sharedSettings(s);
     DCW.save = s;
     return s;
   };
-  DCW.persist = function () { try { localStorage.setItem(SAVE_KEY, JSON.stringify(DCW.save)); } catch (e) { /* ignore */ } };
-  DCW.resetSave = function () { DCW.save = defaultSave(); DCW.persist(); if (DCW.input && DCW.input.rebuild) DCW.input.rebuild(); };
+  DCW.persist = function () {
+    try {
+      if (DCW.save && DCW.save.meta) DCW.save.meta.lastPlayed = Date.now();
+      localStorage.setItem(slotKey(DCW.slot), JSON.stringify(DCW.save));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(DCW.save.settings));
+      localStorage.setItem(SLOT_KEY, String(DCW.slot));
+    } catch (e) { /* ignore */ }
+  };
+  // summary for the slot picker, read without switching
+  DCW.slotInfo = function (n) {
+    var rs = n === DCW.slot ? { save: DCW.save, stored: true } : readSlot(n), s = rs.save, m = s.meta || {}, r = s.run;
+    var empty = !rs.stored || (!r && !(m.runs > 0));
+    return { n: n, empty: empty, current: n === DCW.slot, floor: r ? r.floor || 1 : 0, level: r ? r.level || 1 : 0, won: !!(r && r.won),
+      runs: m.runs || 0, bestFloor: m.bestFloor || 0, wins: m.wins || 0, deaths: m.deaths || 0, name: m.typedName || '',
+      achievements: Object.keys(m.achievements || {}).length, skin: (s.equipped && s.equipped.skin) || 'carl_boxers', lastPlayed: m.lastPlayed || 0 };
+  };
+  DCW.useSlot = function (n) {
+    if (!(n >= 1 && n <= DCW.SLOTS)) return;
+    if (n !== DCW.slot && DCW.save) DCW.persist();
+    var settings = DCW.save ? DCW.save.settings : null;
+    DCW.slot = n;
+    var s = readSlot(n).save;
+    if (settings) Object.keys(settings).forEach(function (k) { if (!PER_SLOT_SETTINGS[k]) s.settings[k] = settings[k]; });
+    DCW.save = s;
+    try { localStorage.setItem(SLOT_KEY, String(n)); } catch (e) { /* ignore */ }
+    if (DCW.input && DCW.input.rebuild) DCW.input.rebuild();
+  };
+  DCW.eraseSlot = function (n) {
+    try { localStorage.removeItem(slotKey(n)); } catch (e) { /* ignore */ }
+    if (n === DCW.slot) {
+      var settings = DCW.save && DCW.save.settings; DCW.save = defaultSave();
+      if (settings) Object.keys(settings).forEach(function (k) { if (!PER_SLOT_SETTINGS[k]) DCW.save.settings[k] = settings[k]; });
+    }
+  };
+  // erases the current slot's progress (settings and controls are kept)
+  DCW.resetSave = function () { DCW.eraseSlot(DCW.slot); DCW.persist(); if (DCW.input && DCW.input.rebuild) DCW.input.rebuild(); };
 
   /* ---------------- scenes, fade, shake, hitstop ---------------- */
   DCW.scene = null;

@@ -1248,7 +1248,7 @@
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
         { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
         { label: 'KEYBOARD CONTROLS', type: 'controls' },
-        { label: 'RESET SAVE', type: 'reset' },
+        { label: 'ERASE THIS SAVE SLOT', type: 'reset' },
         { label: 'BACK', type: 'back' }
       ];
     }
@@ -1272,13 +1272,13 @@
         else if (r.type === 'controls') { sfx('menu_select'); ui.openControls(); }
         else if (r.type === 'reset') {
           sfx('menu_select');
-          ui.confirm('ERASE ALL PROGRESS, UNLOCKS AND ACHIEVEMENTS?', function () {
+          ui.confirm('ERASE SLOT ' + (DCW.slot || 1) + '? ITS CRAWL, UNLOCKS AND ACHIEVEMENTS ALL GO. OTHER SLOTS ARE SAFE.', function () {
             ui.confirm('REALLY? THE AI WILL REMEMBER THIS. FOREVER.', function () {
               if (typeof DCW.resetSave === 'function') DCW.resetSave();
               applySettings();
               closeAll();
               DCW.fade(function () { DCW.setScene(ui.scenes.title, {}); });
-              setTimeout(function () { ui.toast('SAVE ERASED. FRESH MEAT!', { icon: 'skull', color: C.red }); }, 400);
+              setTimeout(function () { ui.toast('SLOT ' + (DCW.slot || 1) + ' ERASED. FRESH MEAT!', { icon: 'skull', color: C.red }); }, 400);
             }, { yes: 'ERASE IT', no: 'NO WAIT', color: C.red, border: C.red });
           }, { color: C.red });
         } else if (r.type !== 'vol') change(r, 1);
@@ -1862,9 +1862,10 @@
       return [
         hasRun ? { label: 'CONTINUE', action: function () { start('continueRun'); } } : null,
         { label: 'NEW CRAWL', action: function () {
-          if (DCW.save && DCW.save.run) ui.confirm('START OVER? YOUR CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
+          if (DCW.save && DCW.save.run) ui.confirm('START OVER IN SLOT ' + (DCW.slot || 1) + '? THIS SLOT\'S CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
           else start('newRun');
         } },
+        { label: 'SAVE SLOT ' + (DCW.slot || 1), action: function () { ui.openSlots(); } },
         { label: 'WARDROBE', action: ui.openWardrobe },
         { label: 'ACHIEVEMENTS', action: ui.openAchievements },
         { label: 'SETTINGS', action: ui.openSettings },
@@ -1918,11 +1919,11 @@
       spr(ctx, 'carl_idle', 40, 169, { frame: Math.floor(t * 2), skin: equipped('skin') });
       spr(ctx, compSprite(equipped('companion')) + '_idle', 62, 169, { frame: Math.floor(t * 2), flip: true });
       // menu
-      var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh;
+      var its = this.items(), rowH = its.length > 6 ? 11 : 12, mh = its.length * rowH + 10, my = 166 - mh;
       DCW.box(104, my, 112, mh);
       var self = this;
       its.forEach(function (it, k) {
-        var yy = my + 6 + k * 12;
+        var yy = my + 6 + k * rowH;
         if (k === self.sel) cursor(110, yy);
         T(it.label, 120, yy, k === self.sel ? C.white : C.gray);
       });
@@ -2054,6 +2055,49 @@
       var kbd = ((DCW.input && DCW.input.lastDevice) || 'keyboard') === 'keyboard';
       if (!this.said) T(kbd ? 'TYPE YOUR NAME.  ENTER: DONE  BKSP: DELETE' : 'PICK LETTERS.  ' + bn('start') + ': DONE  ' + bn('back') + ': DELETE', 160, 168, C.dgray, { align: 'center', shadow: null });
     }
+  };
+
+  /* ---------- SAVE SLOTS (title menu): each slot is its own profile ---------- */
+  function agoText(ms) {
+    if (!ms) return '';
+    var m = Math.floor((Date.now() - ms) / 60000);
+    return m < 1 ? 'PLAYED JUST NOW' : m < 60 ? 'PLAYED ' + m + 'M AGO' : m < 1440 ? 'PLAYED ' + Math.floor(m / 60) + 'H AGO' : 'PLAYED ' + Math.floor(m / 1440) + 'D AGO';
+  }
+  function slotSummary(i) {
+    if (i.empty) return { right: 'EMPTY', color: C.dgray, hint: 'A FRESH START. NEW UNLOCKS, NEW ACHIEVEMENTS, SAME CONTROLS.' };
+    var right = i.won ? 'CLEARED' : i.floor ? 'FLOOR ' + i.floor + ' LV' + i.level : 'NO CRAWL';
+    var bits = ['RUNS ' + i.runs, 'BEST FLOOR ' + i.bestFloor];
+    if (i.wins) bits.push('WINS ' + i.wins);
+    if (i.achievements) bits.push(i.achievements + ' ACHIEVEMENTS');
+    var ago = agoText(i.lastPlayed);
+    return { right: right, color: i.won ? C.gold : C.white, hint: bits.join('. ') + '.' + (ago ? ' ' + ago + '.' : '') };
+  }
+  function switchSlot(n, erased) {
+    if (n !== DCW.slot) DCW.useSlot(n);
+    applySettings();
+    closeAll();
+    DCW.fade(function () { DCW.setScene(ui.scenes.title, {}); });
+    setTimeout(function () { ui.toast(erased ? 'SLOT ' + n + ' ERASED. FRESH MEAT!' : 'SLOT ' + n + ' LOADED', { icon: erased ? 'skull' : 'star', color: erased ? C.red : C.gold }); }, 400);
+  }
+  ui.openSlots = function (sel) {
+    var items = [];
+    for (var n = 1; n <= (DCW.SLOTS || 3); n++) (function (n) {
+      var i = DCW.slotInfo ? DCW.slotInfo(n) : { n: n, empty: true }, sm = slotSummary(i);
+      items.push({ label: (i.current ? '★ ' : '') + 'SLOT ' + n, right: sm.right, rightColor: i.current ? C.gold : sm.color, color: i.current ? C.gold : null, hint: sm.hint,
+        action: function () {
+          ui.menu([
+            { label: i.current ? 'PLAYING THIS SLOT' : i.empty ? 'START IN THIS SLOT' : 'LOAD THIS SLOT', disabled: i.current, why: 'ALREADY LOADED', action: function () { switchSlot(n); } },
+            { label: 'ERASE THIS SLOT', disabled: i.empty, why: 'NOTHING TO ERASE', color: C.red, action: function () {
+              ui.confirm('ERASE SLOT ' + n + '? ITS CRAWL, UNLOCKS AND ACHIEVEMENTS ALL GO. OTHER SLOTS ARE SAFE.', function () {
+                DCW.eraseSlot(n);
+                if (n === DCW.slot) { DCW.persist(); switchSlot(n, true); } else ui.openSlots(n - 1);
+              }, { yes: 'ERASE IT', no: 'NO WAIT', color: C.red, border: C.red, onNo: function () { ui.openSlots(n - 1); } });
+            } },
+            { label: 'BACK', action: function () { ui.openSlots(n - 1); } }
+          ], { title: 'SLOT ' + n + (i.empty ? '' : ': ' + sm.right), onBack: function () { ui.openSlots(n - 1); } });
+        } });
+    })(n);
+    return ui.menu(items, { title: 'SAVE SLOTS', sel: sel !== undefined ? sel : (DCW.slot || 1) - 1, w: 230 });
   };
 
   /* ---------- FLOOR 7 COLD OPEN: THE GREAT RACE (it does not survive the countdown) ----------
