@@ -153,7 +153,7 @@
     S.entT = 0.5;
   }
   var THEME_MARK = { sewer: 'ow_manhole', city: 'ow_door', circus: 'ow_tent', swamp: 'ow_cave', cave: 'ow_cave', train: 'ow_door',
-    bubble: 'ow_manhole', forest: 'ow_tent', castle: 'ow_door', ruin: 'ow_cave', warzone: 'ow_tent' };
+    bubble: 'ow_manhole', forest: 'ow_tent', castle: 'ow_door', ruin: 'ow_cave', warzone: 'ow_tent', tunnels: 'ow_cave', cinder: 'ow_door' };
   function markerFor(e) {
     var st = e.st;
     if (!st) return 'ow_door';

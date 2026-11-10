@@ -475,6 +475,30 @@
       liq: { k: 'water', d: '#003c8c', m: '#0068d8', l: '#3cbcfc', x: '#d8f8f8' },
       lad: { k: 'metal', m: '#9c9cac', l: '#dcdce8', d: '#3c3c4c' },
       crate: { d: '#880040', m: '#e40058', l: '#f878f8' }
+    },
+    // ---- floor 1 (books): torch-lit, lichen-lit hewn stone tunnels ----
+    tunnels: {
+      ol: '#0c0a08', sh: '#2a241e',
+      body: { k: 'hewn', m: '#2a2420', a: '#6c6458', b: '#786a56', h: '#9c9484', s: '#4c443a', c: '#5c5448' },
+      top: { k: 'lichen', d: '#3c342c', m: '#8c8272', l: '#c4bca8', x: '#58f8c8', g: '#00a88c', n: '#005c50' },
+      alt: { k: 'crib', d: '#2c1c0c', m: '#7c5428', l: '#ac7c40', x: '#d8b070', i: '#4c4c54' },
+      plat: { k: 'beam', d: '#3c2410', m: '#8c5c2c', l: '#c88c4c', x: '#4c4c54' },
+      spike: { l: '#e4dccc', m: '#9c9080', d: '#4c4438', b: '#2a2420' },
+      liq: { k: 'water', d: '#00242a', m: '#00646c', l: '#00b0a4', x: '#a4f8e8' },
+      lad: { k: 'wood', m: '#8c5c2c', l: '#c88c4c', d: '#3c2410' },
+      crate: { d: '#503000', m: '#ac7c00', l: '#fca044' }
+    },
+    // ---- floor 2 (books): grid maze of cinderblock passages ----
+    cinder: {
+      ol: '#101012', sh: '#38383a',
+      body: { k: 'cinder', m: '#34343a', a: '#6c6a62', b: '#737067', h: '#8c8a80', s: '#545249', x: '#564a38' },
+      top: { k: 'slab', d: '#4c4c4c', m: '#a8a8a0', l: '#e0e0d8', x: '#d8a800', s: '#7c7c76' },
+      alt: { k: 'painted', m: '#20342c', a: '#4c7c6c', b: '#48766a', h: '#6c9c88', s: '#345448', x: '#7c7c74' },
+      plat: { k: 'catwalk', d: '#34343c', m: '#8c8c94', l: '#d0d0d8', x: '#f8b800', p: '#5c5c64' },
+      spike: { k: 'rebar', l: '#e48c4c', m: '#a4501c', d: '#5c2c10', b: '#6c6a62' },
+      liq: { k: 'water', d: '#1c2418', m: '#4c5c34', l: '#7c8c4c', x: '#c8d088' },
+      lad: { k: 'metal', m: '#8c8c94', l: '#c8c8d0', d: '#3c3c44' },
+      crate: { d: '#503000', m: '#ac7c00', l: '#fca044' }
     }
   };
   art.themes = Object.keys(TT);
@@ -826,7 +850,127 @@
     if (!Rt) R(g, 15, 0, 1, 5, '#000000');
   };
 
+  /* ---- floor 1 tunnels + floor 2 cinderblock painters ---- */
+  // rough-hewn stone: three courses of irregular blocks, chipped corners, chisel marks
+  BODY.hewn = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.m);
+    var ys = [0, 6, 11, 16];
+    for (var row = 0; row < 3; row++) {
+      var y0 = ys[row], h = ys[row + 1] - y0 - 1, s0 = (r() * 8) | 0, x = s0;
+      while (x < s0 + 16) {
+        var bw = 5 + ((r() * 6) | 0); if (x + bw > s0 + 16 || s0 + 16 - (x + bw) < 4) bw = s0 + 16 - x;
+        var col = r() < 0.4 ? c.b : r() < 0.3 ? c.c : c.a, i, j;
+        for (j = 0; j < h; j++) for (i = 0; i < bw - 1; i++) PW(g, x + i, y0 + j, col);
+        for (i = 0; i < bw - 1; i++) { PW(g, x + i, y0, c.h); PW(g, x + i, y0 + h - 1, c.s); }
+        for (j = 1; j < h - 1; j++) { PW(g, x, y0 + j, c.h); PW(g, x + bw - 2, y0 + j, c.s); }
+        // knock out corners so blocks read rough, not machined
+        if (r() < 0.7) PW(g, x, y0, c.m);
+        if (r() < 0.6) PW(g, x + bw - 2, y0 + h - 1, c.m);
+        if (r() < 0.4) PW(g, x + bw - 2, y0, c.m);
+        // chisel marks
+        if (bw > 5 && h > 3) { var cx = x + 1 + ((r() * (bw - 4)) | 0), cy = y0 + 1 + ((r() * (h - 2)) | 0); PW(g, cx, cy, c.s); PW(g, cx + 1, cy + 1, c.s); PW(g, cx + 1, cy, c.h); }
+        x += bw;
+      }
+    }
+    for (var k = 0; k < 3; k++) PW(g, (r() * 16) | 0, (r() * 16) | 0, c.s);
+  };
+  // worn floor lip with glowing lichen tufts that creep over the edge
+  TOP.lichen = function (g, c, r) {
+    R(g, 0, 0, 16, 4, c.m); R(g, 0, 0, 16, 1, c.l);
+    for (var x = 0; x < 16; x++) { if (r() < 0.25) P(g, x, 1, c.l); if (r() < 0.2) P(g, x, 2, c.d); if (r() < 0.4) P(g, x, 4, c.m); }
+    R(g, 0, 5, 16, 1, c.d);
+    var n = r() < 0.3 ? 1 : 0;
+    for (var p = 0; p < n; p++) {
+      var x0 = 1 + ((r() * 10) | 0), w = 3 + ((r() * 4) | 0);
+      for (var i = 0; i < w; i++) {
+        var xx = x0 + i; if (xx > 15) break;
+        P(g, xx, 0, i === 0 || i === w - 1 ? c.n : c.g); P(g, xx, 1, (i & 1) ? c.x : c.g);
+        if (r() < 0.6) P(g, xx, 2, c.n);
+        if (i > 0 && i < w - 1 && r() < 0.3) { var dl = 1 + ((r() * 3) | 0); R(g, xx, 3, 1, dl, c.n); P(g, xx, 3 + dl, c.g); }
+      }
+      P(g, x0 + (w >> 1), 0, c.x);
+    }
+    return 5;
+  };
+  // timber cribbing: stacked squared timbers, staggered butt joints, iron strap
+  ALT.crib = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.d);
+    for (var row = 0; row < 2; row++) {
+      var y = row * 8, j = row ? 10 : 15;
+      R(g, 0, y, 16, 7, c.m); R(g, 0, y, 16, 1, c.l); R(g, 0, y + 5, 16, 2, c.d); R(g, 0, y + 7, 16, 1, '#1a1006');
+      // grain
+      var gx = (r() * 8) | 0; R(g, gx, y + 2, 4 + ((r() * 4) | 0), 1, c.d); R(g, (gx + 8) % 12, y + 4, 3 + ((r() * 3) | 0), 1, c.d);
+      P(g, (gx + 5) % 16, y + 3, c.x);
+      // butt joint between timbers
+      R(g, j, y, 1, 7, '#1a1006'); if (j < 15) P(g, j + 1, y + 1, c.l);
+    }
+    // iron strap with rivets
+    R(g, 4, 0, 2, 16, c.i); R(g, 5, 0, 1, 16, '#2c2c34'); P(g, 4, 2, '#9c9ca4'); P(g, 4, 10, '#9c9ca4');
+  };
+  // heavy wooden beam on iron straps, knee braces at the free ends
+  PLAT.beam = function (g, c, L, Rt) {
+    R(g, 0, 0, 16, 6, c.m); R(g, 0, 0, 16, 1, c.l); R(g, 0, 4, 16, 2, c.d); R(g, 0, 6, 16, 1, '#000000');
+    R(g, 2, 2, 5, 1, c.d); R(g, 9, 3, 3, 1, c.d); P(g, 6, 1, c.l);
+    R(g, 12, 0, 2, 6, c.x); P(g, 12, 1, '#9c9ca4'); P(g, 12, 4, '#9c9ca4'); R(g, 13, 0, 1, 6, '#24242c');
+    if (!L) { R(g, 0, 0, 1, 7, '#000000'); line(g, 1, 7, 5, 11, '#000000'); line(g, 2, 7, 6, 11, c.d); line(g, 3, 7, 6, 10, c.m); }
+    if (!Rt) { R(g, 15, 0, 1, 7, '#000000'); line(g, 14, 7, 10, 11, '#000000'); line(g, 13, 7, 9, 11, c.d); line(g, 12, 7, 9, 10, c.m); }
+  };
+  // cinderblock: 16x8 blocks, running bond, recessed mortar, pores, the odd water stain
+  BODY.cinder = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.m);
+    for (var row = 0; row < 2; row++) {
+      var y = row * 8, off = row ? 8 : 0;
+      for (var bx = -16; bx < 16; bx += 16) {
+        var x = bx + off, col = r() < 0.5 ? c.a : c.b;
+        R(g, x, y, 15, 7, col); R(g, x, y, 15, 1, c.h); R(g, x, y + 6, 15, 1, c.s);
+        R(g, x + 14, y + 1, 1, 5, c.s);
+      }
+    }
+    for (var i = 0; i < 9; i++) { var px = (r() * 16) | 0, py = (r() * 16) | 0; if (py % 8 > 0 && py % 8 < 6) PW(g, px, py, c.s); }
+    for (i = 0; i < 3; i++) { px = (r() * 16) | 0; py = (r() * 16) | 0; if (py % 8 > 0 && py % 8 < 6) PW(g, px, py, c.h); }
+    if (r() < 0.3) { // rusty water stain running down from a joint
+      var sx = 2 + ((r() * 12) | 0), sl = 4 + ((r() * 8) | 0);
+      for (i = 0; i < sl; i++) { var yy = i; if (yy % 8 === 7) continue; PW(g, sx, yy, c.x); if (i < sl - 3 && (i & 1)) PW(g, sx + 1, yy, c.x); }
+    }
+  };
+  // poured concrete slab edge: hard-lit lip, worn yellow floor line, expansion joint
+  TOP.slab = function (g, c, r) {
+    R(g, 0, 0, 16, 5, c.m); R(g, 0, 0, 16, 1, c.l);
+    for (var x = 0; x < 16; x++) { if (r() < 0.2) P(g, x, 1, c.l); if (r() < 0.25) P(g, x, 4, c.s); }
+    for (x = 0; x < 16; x++) if (r() < 0.85) P(g, x, 2, c.x);
+    R(g, 15, 1, 1, 4, c.s);
+    if (r() < 0.4) { var sx = (r() * 12) | 0; P(g, sx, 3, c.s); P(g, sx + 1, 3, c.s); P(g, sx + 2, 4, c.s); }
+    R(g, 0, 5, 16, 1, c.d); R(g, 0, 6, 16, 1, '#2c2c2c');
+    return 6;
+  };
+  // painted institutional green block, scuffed back to grey here and there
+  ALT.painted = function (g, c, r) {
+    BODY.cinder(g, { m: c.m, a: c.a, b: c.b, h: c.h, s: c.s, x: c.s }, r);
+    for (var i = 0; i < 3; i++) { var x = (r() * 14) | 0, y = (r() * 16) | 0; if (y % 8 < 6) { PW(g, x, y, c.x); PW(g, x + 1, y, c.x); if (r() < 0.5) PW(g, x + 1, y + 1, c.x); } }
+  };
+  // steel catwalk: safety-yellow nosing, perforated tread, conduit hanging below
+  PLAT.catwalk = function (g, c, L, Rt) {
+    R(g, 0, 0, 16, 4, c.m); R(g, 0, 0, 16, 1, c.x); R(g, 0, 1, 16, 1, c.l);
+    for (var x = 1; x < 16; x += 2) P(g, x, 2, c.d);
+    R(g, 0, 3, 16, 1, c.d); R(g, 0, 4, 16, 1, '#000000');
+    R(g, 0, 6, 16, 2, c.p); R(g, 0, 6, 16, 1, c.l); R(g, 0, 8, 16, 1, '#000000');
+    R(g, 3, 5, 1, 4, c.d); R(g, 11, 5, 1, 4, c.d);
+    if (!L) { R(g, 0, 0, 1, 5, '#000000'); R(g, 1, 5, 2, 5, c.d); R(g, 1, 5, 1, 5, c.m); R(g, 0, 6, 1, 3, '#000000'); }
+    if (!Rt) { R(g, 15, 0, 1, 5, '#000000'); R(g, 13, 5, 2, 5, c.d); R(g, 13, 5, 1, 5, c.m); R(g, 15, 6, 1, 3, '#000000'); }
+  };
+  function paintRebar(g, c) {
+    var bars = [[1, 3], [5, 1], [9, 4], [13, 2]];
+    for (var i = 0; i < bars.length; i++) {
+      var x = bars[i][0], top = bars[i][1];
+      R(g, x, top + 1, 2, 13 - top, c.m); R(g, x, top + 1, 1, 13 - top, c.l);
+      for (var y = top + 3; y < 13; y += 3) P(g, x + 1, y, c.d); // ribs
+      P(g, x, top, c.l); P(g, x + 1, top + 1, c.d); // cut, sharpened tip
+    }
+    R(g, 0, 13, 16, 3, c.b); R(g, 0, 13, 16, 1, mix(c.b, '#fcfcfc', 0.3)); P(g, 4, 14, '#4c4a44'); P(g, 11, 15, '#4c4a44');
+  }
+
   function paintSpikes(g, c) {
+    if (c.k === 'rebar') return paintRebar(g, c);
     for (var i = 0; i < 2; i++) {
       var cx = i * 8 + 4;
       for (var y = 2; y < 13; y++) {
@@ -1740,6 +1884,290 @@
         ctx.fillStyle = c;
         if (Math.sin(t * 6 + ph) > 0) ctx.fillRect(Math.round(x), Math.round(y), 2, 1); else ctx.fillRect(Math.round(x), Math.round(y), 1, 2);
       }
+    }
+  };
+
+  /* ---- floor 1 tunnels + floor 2 cinderblock maze backgrounds ---- */
+  function bgOy(camY, rate) { var cy = camY < 0 ? 0 : camY > 160 ? 160 : camY; return -Math.round(Math.min(BGH - 180, cy * rate * 0.5)); }
+  function wrapX(pos, camX, rate, w) { return ((pos - camX * rate) % w + w) % w; }
+  // irregular stone courses (rough-hewn wall), seamless across w
+  function hewnWall(g, w, y0, y1, seed, c1, c2, mortar, hi) {
+    var r = rng(seed), y = y0;
+    R(g, 0, y0, w, y1 - y0, mortar);
+    while (y < y1) {
+      var h = 8 + ((r() * 5) | 0), x = (r() * 12) | 0, s0 = x;
+      while (x < s0 + w) {
+        var bw = 12 + ((r() * 14) | 0); if (s0 + w - (x + bw) < 8) bw = s0 + w - x;
+        var c = r() < 0.5 ? c1 : c2, xx = x % w;
+        R(g, xx, y, bw - 1, h - 1, c); R(g, xx, y, bw - 1, 1, hi);
+        if (xx + bw > w) { R(g, xx - w, y, bw - 1, h - 1, c); R(g, xx - w, y, bw - 1, 1, hi); }
+        if (r() < 0.5) P(g, xx, y, mortar);
+        x += bw;
+      }
+      y += h;
+    }
+  }
+  function torchFlame(ctx, x, y, t, ph, glow) {
+    var f = (Math.sin(t * 13 + ph) + Math.sin(t * 29 + ph * 2)) > 0.3 ? 1 : 0, s = Math.sin(t * 7 + ph) > 0 ? 1 : 0;
+    if (glow) {
+      ctx.fillStyle = '#fca044';
+      ctx.globalAlpha = 0.06; ctx.beginPath(); ctx.arc(x + 1, y - 2, glow + f * 2, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = 0.09; ctx.beginPath(); ctx.arc(x + 1, y - 2, glow * 0.55 + f, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = '#f83800'; ctx.fillRect(x - 1, y - 3 - f, 4, 4 + f);
+    ctx.fillStyle = '#fca044'; ctx.fillRect(x, y - 4 - f, 2, 4 + f); ctx.fillRect(x + s, y - 6 - f, 1, 2);
+    ctx.fillStyle = '#f8d878'; ctx.fillRect(x, y - 2, 2, 2);
+  }
+
+  BG.tunnels = {
+    sky: function (g) {
+      R(g, 0, 0, 320, BGH, '#0c0a08');
+      hewnWall(g, 320, 0, BGH, 301, '#15120e', '#17140f', '#0c0a08', '#1b1712');
+    },
+    layers: [
+      // far: rough tunnel wall, a side tunnel receding into the dark, a Tutorial Guild Hall portal
+      layer(384, 0.2, function (g, w) {
+        rep(g, w, function () {
+          hewnWall(g, w, 0, BGH, 302, '#1f1b16', '#231e18', '#110e0b', '#2a241d');
+          var r = rng(303), x, i;
+          // ragged ceiling rock
+          R(g, 0, 0, w, 10, '#120f0c');
+          for (x = 0; x < w; x += 3 + ((r() * 5) | 0)) R(g, x, 10, 3 + ((r() * 4) | 0), 1 + ((r() * 6) | 0), '#120f0c');
+          // side tunnel mouth
+          var cx = 96, hw = 40, top = 52;
+          blob(g, cx, top + 6, hw + 6, 30, '#2e281f'); R(g, cx - hw - 6, top + 6, (hw + 6) * 2 + 1, 150 - top, '#2e281f');
+          blob(g, cx, top + 6, hw, 26, '#070605'); R(g, cx - hw, top + 6, hw * 2 + 1, 150 - top, '#070605');
+          for (i = -5; i <= 5; i++) { var a = Math.PI / 2 + i * 0.28; R(g, Math.round(cx + Math.cos(a) * (hw + 3)) - 2, Math.round(top + 6 - Math.sin(a) * 28) - 2, 5, 4, i & 1 ? '#3a3328' : '#342d23'); }
+          // receding timber sets inside
+          var sets = [[30, 58, '#1a120a'], [20, 76, '#120c07'], [12, 92, '#0d0905']];
+          for (i = 0; i < sets.length; i++) {
+            var s = sets[i], sw = s[0], sy = s[1];
+            R(g, cx - sw, sy, 3, 150 - sy, s[2]); R(g, cx + sw - 2, sy, 3, 150 - sy, s[2]); R(g, cx - sw - 2, sy, sw * 2 + 4, 3, s[2]);
+          }
+          for (i = 0; i < 16; i++) R(g, cx - 40 + i * 5, 140 - (i % 3), 3, 10, '#0e0b08');
+          P(g, cx - 1, 108, '#5c2c08'); P(g, cx, 108, '#7c3c08'); P(g, cx, 107, '#ac5c10');
+          // guild hall portal: dressed stone, arched, heavy double door, banner
+          var gx = 288, gw = 30, gt = 48;
+          for (var row = 0; row * 9 + gt + 18 < 150; row++) {
+            var yy = gt + 18 + row * 9, off = row & 1 ? 6 : 0;
+            for (var bx = -gw - 6 + off; bx < gw + 6; bx += 12) { var x0 = Math.max(gx - gw - 6, gx + bx), x1 = Math.min(gx + gw + 6, gx + bx + 11); R(g, x0, yy, x1 - x0, 8, '#3a3329'); R(g, x0, yy, x1 - x0, 1, '#4c4436'); }
+          }
+          blob(g, gx, gt + 18, gw + 6, 24, '#3a3329');
+          for (i = -6; i <= 6; i++) { a = Math.PI / 2 + i * 0.24; R(g, Math.round(gx + Math.cos(a) * (gw + 2)) - 2, Math.round(gt + 18 - Math.sin(a) * 21) - 2, 4, 4, i & 1 ? '#4c4436' : '#443c30'); }
+          blob(g, gx, gt + 26, 17, 15, '#0c0907'); R(g, gx - 17, gt + 26, 35, 150 - gt - 26, '#0c0907');
+          blob(g, gx, gt + 28, 15, 13, '#3c2410'); R(g, gx - 15, gt + 28, 31, 150 - gt - 28, '#3c2410');
+          for (x = gx - 13; x < gx + 15; x += 4) R(g, x, gt + 18, 1, 150 - gt - 18, '#2a180a');
+          R(g, gx, gt + 16, 1, 150 - gt - 16, '#0c0907');
+          R(g, gx - 15, gt + 48, 31, 3, '#2c2c34'); R(g, gx - 15, gt + 78, 31, 3, '#2c2c34');
+          R(g, gx - 4, gt + 62, 2, 3, '#6c5c2c'); R(g, gx + 3, gt + 62, 2, 3, '#6c5c2c');
+          R(g, gx - 20, 146, 41, 4, '#2e281f');
+          // guild banner over the arch: crossed swords on a shield
+          R(g, gx - 9, 22, 19, 22, '#4c1018'); tri(g, gx, 44, 19, 6, '#4c1018', true); R(g, gx - 10, 21, 21, 2, '#6c5c2c');
+          R(g, gx - 9, 23, 1, 21, '#6c1c24'); line(g, gx - 5, 28, gx + 5, 38, '#8c7c4c'); line(g, gx + 5, 28, gx - 5, 38, '#8c7c4c'); R(g, gx - 2, 32, 5, 2, '#6c5c2c');
+          // sconce brackets beside the portal
+          R(g, gx - gw - 14, 92, 5, 2, '#2c2c34'); R(g, gx - gw - 13, 86, 3, 6, '#3c2410');
+          R(g, gx + gw + 10, 92, 5, 2, '#2c2c34'); R(g, gx + gw + 11, 86, 3, 6, '#3c2410');
+          // dim lichen on the far wall
+          var lich = [[30, 60], [170, 120], [200, 40], [350, 100]];
+          for (i = 0; i < lich.length; i++) for (var k = 0; k < 5; k++) { var lx = lich[i][0] + ((r() * 16) | 0), ly = lich[i][1] + ((r() * 8) | 0); blob(g, lx, ly, 2, 1, '#0c3a32'); P(g, lx, ly, '#145244'); }
+          R(g, 0, 150, w, BGH - 150, '#1a1612'); R(g, 0, 150, w, 1, '#2c261e');
+        });
+      }),
+      // near: timber support sets with wall torches, glowing lichen patches
+      layer(320, 0.45, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(311), i, x;
+          // cap beam along the roof
+          R(g, 0, 4, w, 9, '#2c1c0e'); R(g, 0, 4, w, 1, '#46301a'); R(g, 0, 12, w, 1, '#160e06');
+          for (x = 6; x < w; x += 22) { P(g, x, 8, '#5c5048'); R(g, x + 9, 6, 6, 1, '#1e1408'); }
+          var posts = [40, 200];
+          for (i = 0; i < posts.length; i++) {
+            var px = posts[i];
+            R(g, px, 13, 8, BGH - 13, '#33220f'); R(g, px, 13, 1, BGH - 13, '#4a3219'); R(g, px + 7, 13, 1, BGH - 13, '#1a1006');
+            for (var y = 30; y < 160; y += 26) { R(g, px + 2, y, 3, 1, '#20150a'); P(g, px + 5, y + 9, '#20150a'); }
+            // knee braces
+            for (var k = 0; k < 14; k++) { R(g, px - 2 - k, 13 + k, 3, 2, '#2c1c0e'); R(g, px + 7 + k, 13 + k, 3, 2, '#2c1c0e'); }
+            line(g, px - 2, 13, px - 15, 26, '#46301a'); line(g, px + 9, 13, px + 22, 26, '#46301a');
+            R(g, px + 1, 14, 6, 3, '#3c3c44'); P(g, px + 2, 15, '#7c7c84'); P(g, px + 5, 15, '#7c7c84');
+            // torch bracket (flame drawn live in anim)
+            R(g, px + 8, 84, 6, 2, '#3c3c44'); R(g, px + 12, 76, 2, 10, '#3c3c44');
+            R(g, px + 11, 72, 4, 6, '#4c2c10'); R(g, px + 11, 72, 1, 6, '#6c4418'); R(g, px + 10, 71, 6, 2, '#2c2c34');
+            // soot stain above the flame
+            for (k = 0; k < 18; k++) P(g, px + 11 + ((r() * 5) | 0), 46 + ((r() * 22) | 0), '#120d09');
+          }
+          // lichen patches on the near wall (glow added live)
+          var lich = [[104, 34, 18], [128, 118, 12], [270, 52, 14], [292, 126, 16]];
+          for (i = 0; i < lich.length; i++) {
+            var lx = lich[i][0], ly = lich[i][1], lw = lich[i][2];
+            // a crust of small rosettes spreading along the stone, brightest at the heart
+            var spots = [];
+            for (k = 0; k < 7; k++) spots.push([lx - (lw >> 1) + ((r() * lw) | 0), ly - 4 + ((r() * 9) | 0), 1 + ((r() * 2.6) | 0)]);
+            for (k = 0; k < spots.length; k++) blob(g, spots[k][0], spots[k][1], spots[k][2] + 1, spots[k][2], '#0c3a32');
+            for (k = 0; k < spots.length; k++) blob(g, spots[k][0], spots[k][1], spots[k][2], Math.max(0, spots[k][2] - 1), '#17705e');
+            for (k = 0; k < spots.length; k++) { P(g, spots[k][0], spots[k][1], '#3cc8a8'); if (spots[k][2] > 1) P(g, spots[k][0] + 1, spots[k][1], '#2c9c84'); }
+            for (k = 0; k < 8; k++) P(g, lx - lw + ((r() * lw * 2) | 0), ly - 6 + ((r() * 13) | 0), '#145244');
+          }
+          // loose rubble along the foot of the wall
+          for (x = 0; x < w; x += 6 + ((r() * 18) | 0)) { var rw = 3 + ((r() * 6) | 0); R(g, x, 156 - (rw >> 1), rw, rw >> 1, '#241f19'); R(g, x, 156 - (rw >> 1), rw, 1, '#342d24'); }
+        });
+      })
+    ],
+    anim: function (ctx, camX, camY, t, oy) {
+      var oyA = bgOy(camY, 0.2), i, x, k;
+      // guild portal sconces (far layer)
+      var sc = [288 - 30 - 13, 288 + 30 + 12];
+      for (i = 0; i < 2; i++) {
+        x = Math.round(wrapX(sc[i], camX, 0.2, 384));
+        for (k = -1; k <= 1; k++) { var xx = x + k * 384; if (xx > -20 && xx < 340) torchFlame(ctx, xx, oyA + 85, t, i * 2.1, 12); }
+      }
+      // wall torches on the timber posts (near layer)
+      var posts = [40, 200];
+      for (i = 0; i < posts.length; i++) {
+        x = Math.round(wrapX(posts[i] + 12, camX, 0.45, 320));
+        for (k = -1; k <= 1; k++) { xx = x + k * 320; if (xx > -40 && xx < 360) torchFlame(ctx, xx, oy + 71, t, i * 3.7 + 1, 24); }
+      }
+      // lichen breathing glow
+      var lich = [[104, 34, 18], [128, 118, 12], [270, 52, 14], [292, 126, 16]];
+      ctx.fillStyle = '#3cf8c8';
+      for (i = 0; i < lich.length; i++) {
+        x = Math.round(wrapX(lich[i][0], camX, 0.45, 320));
+        var a = 0.05 + 0.03 * Math.sin(t * 1.7 + i * 1.9);
+        for (k = -1; k <= 1; k++) {
+          xx = x + k * 320; if (xx < -30 || xx > 350) continue;
+          ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(xx, oy + lich[i][1], lich[i][2] * 0.9, 0, 6.283); ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+      var r = rng(19);
+      for (i = 0; i < 12; i++) {
+        var li = lich[i % 4], sx = li[0] - (li[2] >> 1) + r() * li[2], sy = li[1] - 3 + r() * 6, ph = r() * 6;
+        if (Math.sin(t * 2.3 + ph) > 0.6) { ctx.fillStyle = '#a4f8e8'; ctx.fillRect(Math.round(wrapX(sx, camX, 0.45, 320)), Math.round(oy + sy), 1, 1); }
+      }
+    }
+  };
+
+  // perspective corridor seen through an opening (grid maze passage), scanline filled
+  function corridor(g, x0, y0, w, h, c) {
+    var x1 = x0 + w, y1 = y0 + h, fw = Math.round(w * 0.42), fh = Math.round(h * 0.42);
+    var fx0 = x0 + ((w - fw) >> 1), fx1 = fx0 + fw, fy0 = y0 + Math.round(h * 0.3), fy1 = fy0 + fh;
+    for (var y = y0; y < y1; y++) {
+      var xl, xr, mid;
+      if (y < fy0) { var s = (y - y0) / (fy0 - y0); xl = Math.round(x0 + s * (fx0 - x0)); xr = Math.round(x1 + s * (fx1 - x1)); mid = c.ceil; }
+      else if (y >= fy1) { s = (y1 - 1 - y) / (y1 - 1 - fy1); xl = Math.round(x0 + s * (fx0 - x0)); xr = Math.round(x1 + s * (fx1 - x1)); mid = c.floor; }
+      else { xl = fx0; xr = fx1; mid = c.far; }
+      R(g, x0, y, xl - x0, 1, c.wallL); R(g, xr, y, x1 - xr, 1, c.wallR); R(g, xl, y, xr - xl, 1, mid);
+    }
+    // block courses on the side walls
+    for (var q = 1; q < 3; q++) {
+      var t = q / 3, lx = Math.round(x0 + t * (fx0 - x0)), rx = Math.round(x1 + t * (fx1 - x1));
+      var ty = Math.round(y0 + t * (fy0 - y0)), by = Math.round(y1 - 1 + t * (fy1 - y1 + 1));
+      R(g, lx, ty, 1, by - ty, c.line); R(g, rx, ty, 1, by - ty, c.line);
+    }
+    R(g, fx0, fy0, fw, 1, c.line);
+    // a lit intersection far away
+    R(g, fx0 + (fw >> 1) - 3, fy0 + 1, 6, 1, c.tube);
+    R(g, x0 - 1, y0 - 1, w + 2, 1, c.edge); R(g, x0 - 1, y0, 1, h, c.edge); R(g, x1, y0, 1, h, c.edge);
+  }
+  function blockWall(g, x0, y0, w, h, c1, c2, mortar, hi, seed) {
+    var r = rng(seed);
+    R(g, x0, y0, w, h, mortar);
+    for (var row = 0; row * 8 < h; row++) {
+      var y = y0 + row * 8, off = row & 1 ? 8 : 0;
+      for (var bx = -16 + off; bx < w; bx += 16) {
+        var a = Math.max(0, bx), b = Math.min(w, bx + 15), hh = Math.min(7, h - row * 8);
+        if (b > a && hh > 0) { R(g, x0 + a, y, b - a, hh, r() < 0.5 ? c1 : c2); R(g, x0 + a, y, b - a, 1, hi); }
+      }
+    }
+  }
+
+  BG.cinder = {
+    sky: function (g) {
+      blockWall(g, 0, 0, 320, BGH, '#15181d', '#16191e', '#0e1014', '#191c22', 401);
+    },
+    layers: [
+      // far: endless cinderblock wall with passages branching off into the grid
+      layer(384, 0.2, function (g, w) {
+        rep(g, w, function () {
+          blockWall(g, 0, 0, w, BGH, '#1c2026', '#1e2228', '#111317', '#242930', 402);
+          R(g, 0, 0, w, 18, '#16181c'); R(g, 0, 17, w, 1, '#0c0d10');
+          R(g, 0, 5, w, 3, '#262a30'); R(g, 0, 5, w, 1, '#30353c'); R(g, 0, 11, w, 2, '#2a2620'); R(g, 0, 11, w, 1, '#3a342a');
+          for (var x = 10; x < w; x += 32) { R(g, x, 4, 2, 5, '#0c0d10'); R(g, x + 16, 10, 2, 4, '#0c0d10'); }
+          // institutional two-tone: painted lower wall with a trim stripe
+          blockWall(g, 0, 112, w, 38, '#18241f', '#1a2621', '#0f1513', '#1f2c27', 403);
+          R(g, 0, 110, w, 2, '#26302c'); R(g, 0, 110, w, 1, '#2f3a35');
+          var cols = { wallL: '#14171b', wallR: '#101216', ceil: '#0b0c0f', floor: '#191c21', far: '#262c33', line: '#0a0b0e', tube: '#7c8c94', edge: '#2c3138' };
+          corridor(g, 40, 50, 46, 100, cols);
+          corridor(g, 172, 64, 34, 86, cols);
+          corridor(g, 286, 46, 54, 104, cols);
+          // water stains under the ceiling
+          var r = rng(404);
+          for (var i = 0; i < 9; i++) { var sx = (r() * w) | 0, sl = 20 + ((r() * 60) | 0); if ((sx > 36 && sx < 90) || (sx > 168 && sx < 210) || (sx > 282 && sx < 344)) continue; R(g, sx, 18, 2, sl, '#17191c'); R(g, sx + 1, 18 + sl, 1, 4, '#17191c'); }
+          R(g, 0, 150, w, BGH - 150, '#17191d'); R(g, 0, 150, w, 1, '#262a30');
+        });
+      }),
+      // near: block pillars, ceiling beam, pipes and conduit, hanging fluorescent fixtures
+      layer(320, 0.45, function (g, w) {
+        rep(g, w, function () {
+          var r = rng(411), i, x;
+          R(g, 0, 0, w, 10, '#202328'); R(g, 0, 9, w, 1, '#121418'); R(g, 0, 0, w, 1, '#2c3036');
+          // pipe run under the beam
+          R(g, 0, 12, w, 5, '#3a302a'); R(g, 0, 12, w, 1, '#5c4c3c'); R(g, 0, 16, w, 1, '#1c1814');
+          for (x = 14; x < w; x += 40) { R(g, x, 10, 3, 8, '#24262a'); R(g, x, 10, 1, 8, '#3c4048'); }
+          R(g, 0, 19, w, 2, '#2c3036'); R(g, 0, 19, w, 1, '#3c4048');
+          var pil = [0, 160];
+          for (i = 0; i < pil.length; i++) {
+            var px = pil[i], pw = 28;
+            blockWall(g, px, 21, pw, BGH - 21, '#2a2e34', '#2e3238', '#181b20', '#383d44', 412 + i);
+            R(g, px, 21, 1, BGH - 21, '#40464e'); R(g, px + pw - 1, 21, 1, BGH - 21, '#15171b');
+            // rusty stain streaking down from the pipe
+            var sx = px + 6 + ((r() * 10) | 0);
+            for (var y = 21; y < 21 + 40 + ((r() * 40) | 0); y++) { if (r() < 0.8) P(g, sx, y, '#2e2a24'); if (y < 50 && r() < 0.5) P(g, sx + 1, y, '#2e2a24'); }
+            // hazard corner guard
+            for (y = 122; y < 130; y++) for (x = 0; x < pw; x++) P(g, px + x, y, ((x + y) & 7) < 4 ? '#403614' : '#18181a');
+            // conduit and junction box
+            R(g, px + pw - 7, 21, 3, 130, '#3c4048'); R(g, px + pw - 7, 21, 1, 130, '#565c64');
+            R(g, px + pw - 10, 84, 9, 11, '#3c4048'); R(g, px + pw - 10, 84, 9, 1, '#5c626c'); R(g, px + pw - 8, 87, 5, 4, '#2c3036'); P(g, px + pw - 6, 88, '#7c6c10');
+          }
+          // fluorescent fixtures (tubes lit live in anim)
+          var fx = [64, 236];
+          for (i = 0; i < fx.length; i++) {
+            var cx = fx[i];
+            R(g, cx + 4, 21, 1, 8, '#2c3036'); R(g, cx + 30, 21, 1, 8, '#2c3036');
+            R(g, cx, 29, 35, 4, '#3c4048'); R(g, cx, 29, 35, 1, '#565c64'); R(g, cx + 2, 33, 31, 2, '#5c6870');
+          }
+          // floor debris at the base
+          for (x = 0; x < w; x += 10 + ((r() * 24) | 0)) { R(g, x, 154, 4 + ((r() * 4) | 0), 2, '#22252a'); }
+        });
+      })
+    ],
+    anim: function (ctx, camX, camY, t, oy) {
+      var fx = [64, 236], i, k;
+      for (i = 0; i < fx.length; i++) {
+        // the second tube is on its last legs
+        var on = i === 0 ? true : !(Math.sin(t * 1.3) > 0.82 && Math.sin(t * 31) > -0.2);
+        var x = Math.round(wrapX(fx[i], camX, 0.45, 320));
+        for (k = -1; k <= 1; k++) {
+          var xx = x + k * 320; if (xx < -100 || xx > 380) continue;
+          ctx.fillStyle = on ? '#f0fcfc' : '#4c5860'; ctx.fillRect(xx + 2, oy + 33, 31, 2);
+          if (!on) continue;
+          ctx.fillStyle = '#d8f0ff';
+          for (var y = 35; y < 160; y += 5) {
+            var s = (y - 35) / 125, half = Math.round(16 + s * 30);
+            ctx.globalAlpha = 0.07 * (1 - s * 0.6); ctx.fillRect(xx + 17 - half, oy + y, half * 2 + 1, 5);
+          }
+          ctx.globalAlpha = 0.16; ctx.fillRect(xx - 2, oy + 32, 39, 6); ctx.globalAlpha = 1;
+        }
+      }
+      // far intersections hum
+      var far = [[62, 81], [189, 91], [312, 78]], oyA = bgOy(camY, 0.2);
+      ctx.fillStyle = '#c8dce4';
+      for (i = 0; i < far.length; i++) {
+        if (Math.sin(t * (2 + i) + i * 4) < -0.9) continue;
+        var fxx = Math.round(wrapX(far[i][0], camX, 0.2, 384));
+        for (k = -1; k <= 1; k++) { var x2 = fxx + k * 384; if (x2 > -10 && x2 < 330) { ctx.globalAlpha = 0.5; ctx.fillRect(x2 - 3, oyA + far[i][1], 6, 1); ctx.globalAlpha = 0.08; ctx.fillRect(x2 - 8, oyA + far[i][1] + 1, 16, 14); } }
+      }
+      ctx.globalAlpha = 1;
     }
   };
 

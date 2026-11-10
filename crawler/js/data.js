@@ -83,7 +83,7 @@
 
   D.version = 1;
 
-  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'raceway', 'parade'];
+  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'raceway', 'parade', 'tunnels', 'cinder'];
   D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_war', 'ow_suburb', 'ow_parade'];
 
   /* ---------------- enemy scaling (optional helper) ----------------
@@ -2687,7 +2687,7 @@
   var SIDE = ['sx_a', 'sx_b', 'sx_c'];
 
   /* ---------------- floor 1 ---------------- */
-  st('f1_s1', mix('f1', { name: 'THE DRAINAGE TUTORIAL', floor: 1, theme: 'sewer', kind: 'main',
+  st('f1_s1', mix('f1', { name: 'THE DRAINAGE TUTORIAL', floor: 1, theme: 'tunnels', kind: 'main',
     chunks: { start: 'f1_tut_start', pool: ['f1_tut_mid', 'f1_a'], count: 2, end: 'f1_tut_end' },
     reward: { box: 'bronze', xp: 5 },
     intro: "TUTORIAL TIME! READ THE SIGNS, CRAWLER. THEY ARE THE ONLY THINGS DOWN HERE THAT WANT YOU TO LIVE.",
@@ -2701,11 +2701,11 @@
       "PRINCESS DONUT FIGHTS ON HER OWN. HITTING THINGS FILLS THE SPECIAL METER. WHEN FULL, PRESS SPECIAL!",
       "SEE THE LEVER? PUNCH IT. LEVERS OPEN IRON GATES NEARBY. LATER FLOORS HIDE THEIR LEVERS. THE SHOW IS PETTY LIKE THAT."
     ] }));
-  st('f1_s2', mix('f1', { name: 'THE BIG STINK', floor: 1, theme: 'sewer', kind: 'main',
+  st('f1_s2', mix('f1', { name: 'THE BIG STINK', floor: 1, theme: 'tunnels', kind: 'main',
     chunks: { start: 'f1_start', pool: ['f1_a', 'f1_b', 'f1_c', 'f1_d', 'f1_e', 'f1_f', 'f1_g'], count: 5, end: 'end_door' },
     reward: { box: 'bronze', xp: 10 },
     intro: "THE SEWERS BENEATH YOUR FORMER CITY! YES, THE SMELL IS PART OF THE EXPERIENCE. NO, YOU CANNOT OPT OUT." }));
-  st('f1_boss', { name: 'THE HOARD', floor: 1, theme: 'sewer', kind: 'boss', music: 'boss',
+  st('f1_boss', { name: 'THE HOARD', floor: 1, theme: 'tunnels', kind: 'boss', music: 'boss',
     chunks: { start: 'f1_start', pool: ['f1_b', 'f1_d'], count: 1, end: 'arena_hoarder' },
     enemies: [['roach', 3], ['rat', 1]], elite: [['goblin', 1]], flyers: [['bat', 1]],
     boss: 'hoarder', reward: { box: 'boss', xp: 20 },
@@ -2713,18 +2713,18 @@
 
   /* ---------------- floor 2 ---------------- */
   var P2 = ['f2_a', 'f2_b', 'f2_c', 'f2_d', 'f2_e', 'f2_f', 'f2_g', 'f2_h'];
-  st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cave', kind: 'main',
+  st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cinder', kind: 'main',
     chunks: { start: 'f2_start', pool: P2.concat(['lv_crates']), count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
     intro: "GOBLIN COUNTRY! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
-  st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main', rescue: 'squeaks',
+  st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cinder', kind: 'main', rescue: 'squeaks',
     chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door', insert: ['r_cave_target'] }, reward: { box: 'bronze', xp: 20 },
     enemies: [['goblin_archer', 4], ['goblin', 3], ['shaman', 2]],
     intro: "THE GOBLINS PRACTICE THEIR AIM HERE. GUESS WHO VOLUNTEERED TO BE THE TARGET? YOU DID. JUST NOW." }));
-  st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cave', kind: 'main', questItem: 'goblin_key', exitNeeds: 'goblin_key', dark: true,
+  st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cinder', kind: 'main', questItem: 'goblin_key', exitNeeds: 'goblin_key', dark: true,
     chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_cave_branch'] }, reward: { box: 'silver', xp: 20 },
     enemies: [['grub', 4], ['goblin', 2], ['juicer_minion', 2], ['shaman', 1]],
     intro: "IT IS DARK. IT IS DAMP. SOMETHING IS CHEWING. STAY CLOSE TO THE CAT, SHE GLOWS WHEN SHE IS SMUG." }));
-  st('f2_boss', { name: 'THE IRON GYM', floor: 2, theme: 'cave', kind: 'boss', music: 'boss',
+  st('f2_boss', { name: 'THE IRON GYM', floor: 2, theme: 'cinder', kind: 'boss', music: 'boss',
     chunks: { start: 'f2_start', pool: ['f2_c', 'f2_g'], count: 1, end: 'arena_juicer' },
     enemies: [['goblin', 3], ['juicer_minion', 1]], elite: [['goblin_brute', 1]], flyers: [['bat', 1]],
     boss: 'juicer', reward: { box: 'boss', xp: 35 },
@@ -3132,12 +3132,12 @@
 
   /* ---------------- floors ---------------- */
   D.floors = [
-    { n: 1, name: 'THE FIRST FLOOR', tagline: 'FIVE DAYS TO FIND THE STAIRS. MIND THE RATS.', theme: 'sewer', music: 'floor1',
+    { n: 1, name: 'THE FIRST FLOOR', tagline: 'FIVE DAYS TO FIND THE STAIRS. MIND THE RATS.', theme: 'tunnels', music: 'floor1',
       intro: ["WELCOME, CRAWLER. WELCOME TO THE FIRST FLOOR. TORCHLIT TUNNELS, A TUTORIAL, AND RATS. SO MANY RATS.",
         "CLEAR THE STAGES, FIND THE SAFE ROOM, KILL THE BOSS. NOBODY IS WATCHING LIVE YET. THAT CHANGES ON THE SECOND FLOOR. PRACTICE YOUR SMILE."],
       sequence: ['f1_s1', 'f1_s2', 'SAFE', 'f1_boss'], overworld: null,
       required: ['f1_s1', 'f1_s2'], boss: 'f1_boss', par: 600 },
-    { n: 2, name: 'THE SECOND FLOOR', tagline: 'LAST TRAINING LEVEL. NO PEEING IN THE HALLS.', theme: 'cave', music: 'floor2',
+    { n: 2, name: 'THE SECOND FLOOR', tagline: 'LAST TRAINING LEVEL. NO PEEING IN THE HALLS.', theme: 'cinder', music: 'floor2',
       intro: ["WELCOME TO THE SECOND FLOOR! THE LAST TRAINING LEVEL. THE VIEWERS ARE ON NOW, SO TRY TO DIE INTERESTINGLY.",
         "THREE STAGES, A SAFE ROOM, AND A BOSS WHO HAS NEVER SKIPPED A WORKOUT. LET'S GET PHYSICAL!"],
       sequence: ['f2_s1', 'f2_s2', 'f2_s3', 'SAFE', 'f2_boss'], overworld: null,

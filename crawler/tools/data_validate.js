@@ -19,7 +19,7 @@ const warn = (m) => warns.push(m);
 if (!D) { console.log('DCW.data missing'); process.exit(1); }
 
 /* ---------------- fixed lists from DESIGN.md ---------------- */
-const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe raceway parade'.split(' ');
+const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe raceway parade tunnels cinder'.split(' ');
 const OW_THEMES = 'ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war ow_suburb ow_parade'.split(' ');
 const NFLOORS = 11;   // Update 3: floor 10 = the races, floor 11 = the parade (the finale)
 const ENEMY_IDS = ('rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute ' +
