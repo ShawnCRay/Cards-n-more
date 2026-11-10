@@ -2604,10 +2604,25 @@
     spr(ctx, name, x, y, frame, B.face < 0, { flash: B.flash > 0, alpha: B.alpha }, B.w, B.h, '#a81000');
     if (B.stun > 0 && Math.floor(S.t * 6) % 2) DCW.text('* * *', Math.round(x), Math.round(B.y - camY - 10), '#3cbcfc', { align: 'center' });
   }
+  // [frame, seconds] timelines for the long idle cycles (60fps game time)
+  var COMP_IDLE_SEQ = [[0, 0.6], [1, 0.6], [0, 0.5], [1, 0.6], [2, 0.25], [3, 0.2], [2, 0.2], [0, 0.6], [1, 0.6],
+    [4, 0.12], [0, 0.1], [4, 0.12], [0, 0.5], [1, 0.6], [5, 0.15], [0, 0.6], [1, 0.6], [3, 0.18], [2, 0.18]];
+  var CARL_IDLE_SEQ = [[0, 0.45], [1, 0.5], [0, 0.35], [2, 0.5], [0, 0.3], [3, 0.08], [0, 0.07], [1, 0.5], [0, 0.35], [2, 0.5],
+    [0, 0.45], [1, 0.5], [0, 0.35], [2, 0.5], [4, 0.9], [3, 0.08], [4, 0.6], [0, 0.1], [1, 0.5], [0, 0.35], [2, 0.5]];
+  function seqFrame(seq, t) {
+    var total = seq.total;
+    if (!total) { total = 0; for (var i = 0; i < seq.length; i++) total += seq[i][1]; seq.total = total; }
+    t = t % total;
+    for (var j = 0; j < seq.length; j++) { if (t < seq[j][1]) return seq[j][0]; t -= seq[j][1]; }
+    return seq[0][0];
+  }
   function drawComp(ctx, C, camX, camY) {
     var name = C.sprite + (C.actT > 0 ? '_act' : (Math.abs(C.vx) > 12 || !C.onGround) ? '_run' : '_idle');
     if (!hasArt(name)) name = C.sprite + '_idle';
-    var frame = Math.floor(C.t * (name.indexOf('_run') > 0 ? 8 : 2));
+    var inf = artInfo(name), nf = (inf && inf.frames) || 2, frame;
+    if (name.indexOf('_run') > 0) frame = Math.floor(C.t * (nf >= 6 ? 13 : 8)); // 6-frame gallop: ~0.46s per bound
+    else if (name.indexOf('_idle') > 0 && nf >= 6) frame = seqFrame(COMP_IDLE_SEQ, C.t);
+    else frame = Math.floor(C.t * 2);
     spr(ctx, name, cx(C) - camX, C.y + C.h - camY, frame, C.face < 0, null, C.w, C.h, C.color);
   }
   function drawAllies(ctx, camX, camY) {
@@ -2634,18 +2649,46 @@
     }
   }
   function playerSprite(P) {
+    var sp = playerPose(P);
+    if (sp[0] !== 'carl_idle') P.idleAt = -1;
+    if (sp[0] !== 'carl_run') P.runPh = -1;
+    P.animPrev = P.animT;
+    return sp;
+  }
+  function playerPose(P) {
+    var st = P.st || 0;
     if (P.state === 'dead') return ['carl_dead', 0];
     if (P.state === 'victory') return ['carl_victory', 0];
     if (P.state === 'climb') return ['carl_climb', Math.floor(P.animT * 8)];
     if (P.state === 'hurt') return ['carl_hurt', 0];
-    if (P.state === 'punch') return ['carl_punch', P.pIdx % 2];
-    if (P.state === 'kick') return ['carl_kick', P.st > 0.09 ? 1 : 0];
+    if (P.state === 'punch') { // 0 chamber, 1 jab, 2 cross, 3 haymaker windup, 4 haymaker
+      if (P.pIdx === 2) return ['carl_punch', st < 0.07 ? 3 : st < 0.2 ? 4 : 0];
+      return ['carl_punch', st < 0.035 || st >= 0.15 ? 0 : P.pIdx === 1 ? 2 : 1];
+    }
+    if (P.state === 'kick') return ['carl_kick', st < 0.05 ? 2 : st < 0.1 ? 0 : st < 0.24 ? 1 : 0];
     if (P.state === 'airkick') return ['carl_airkick', 0];
     if (P.throwT > 0) return ['carl_throw', 0];
-    if (!P.onGround) return [P.vy < 0 ? 'carl_jump' : 'carl_fall', 0];
+    if (!P.onGround) {
+      if (P.vy < -110) return ['carl_jump', 0];                   // takeoff / rise
+      if (P.vy < 70) return ['carl_jump', 1];                     // apex hang
+      return ['carl_fall', P.vy > 250 ? Math.floor(P.animT * 8) : 0]; // long drop: arms flail
+    }
     if (P.crouch) return [hasArt('carl_crouch') ? 'carl_crouch' : 'carl_idle', 0];
-    if (Math.abs(P.vx) > 8) return ['carl_run', Math.floor(P.animT * 11)];
-    return ['carl_idle', Math.floor(P.animT * 2)];
+    var spd = Math.abs(P.vx);
+    // skid: facing the new direction while momentum still carries him the old way. Held briefly
+    // so the 3-frame physical turn reads on screen.
+    if (P.state === 'normal' && P.vx * P.face < -30) { P.skidT = P.animT + 0.1; P.skidFace = P.face; }
+    if (P.skidT > P.animT && P.skidFace === P.face && hasArt('carl_skid')) return ['carl_skid', 0];
+    if (P.landT > 0 && hasArt('carl_land') && (spd < 40 || P.landT > 0.05)) return ['carl_land', P.landT > 0.05 ? 0 : 1];
+    if (spd > 8) {
+      // 8-frame cycle; cadence follows speed (7fps creeping up to 18fps at full run)
+      var dA = P.runPh >= 0 ? Math.max(0, P.animT - (P.animPrev || P.animT)) : 0;
+      if (!(P.runPh >= 0)) P.runPh = 0;
+      P.runPh += dA * (7 + 11 * Math.min(1, spd / K.runMax));
+      return ['carl_run', Math.floor(P.runPh)];
+    }
+    if (!(P.idleAt >= 0)) P.idleAt = P.animT;
+    return ['carl_idle', seqFrame(CARL_IDLE_SEQ, P.animT - P.idleAt)];
   }
   var skinOpt = { skin: 'carl_boxers', flash: false, alpha: 1 };
   function drawPlayer(ctx, P, camX, camY) {

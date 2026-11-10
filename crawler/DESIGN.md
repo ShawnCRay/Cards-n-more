@@ -362,11 +362,15 @@ DCW.art.boxColor(tier) -> css color
 ```
 
 Required sprite names (all face right):
-- Player (16x24-ish): `carl_idle`(2) `carl_run`(4) `carl_jump` `carl_fall` `carl_punch`(2)
-  `carl_kick`(2) `carl_airkick` (diving stomp kick) `carl_throw` `carl_hurt` `carl_dead`
+- Player (16x24-ish): `carl_idle`(5: rest, inhale, exhale, blink, glance back) `carl_run`(8: contact,
+  down, pass, up, then the far leg leading) `carl_jump`(2: rise, apex) `carl_fall`(2: drop, flail)
+  `carl_land`(2: squash, recover) `carl_skid` (turning at speed, faces the new direction) `carl_crouch`
+  `carl_punch`(5: chamber, jab, cross, haymaker windup, haymaker) `carl_kick`(3: chamber, extended,
+  anticipation) `carl_airkick` (diving stomp kick) `carl_throw` `carl_hurt` `carl_dead`
   `carl_climb`(2) `carl_victory`; overworld: `carl_ow_down`(2) `carl_ow_up`(2) `carl_ow_side`(2).
   All support `skin`.
-- Companions (~16x14): `donut_idle`(2) `donut_run`(2) `donut_act`; same for `mongo_*`,
+- Companions (~16x14): `donut_idle`(6: rest, breath, tail curl, tail flick, ear twitch, blink) `donut_run`(6, bounding
+  gallop, 18x13) `donut_act`; frame order is a contract with stage.js timelines; same for `mongo_*`,
   `katia_*`, `zev_*`, `squeaks_*`.
 - Enemies (12-24 px): `<id>_walk`(2) `<id>_attack` `<id>_hurt` for ids:
   `rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute
