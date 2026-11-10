@@ -307,7 +307,7 @@
       defeat: "THE ENGINEER HAS BEEN DERAILED! DELAYS EXPECTED ON ALL LINES! FOREVER!",
       loot: 'boss', unlock: null },
 
-    tidemother: { name: 'THE TIDEMOTHER', title: 'QUEEN OF THE BUBBLE SEA',
+    tidemother: { name: 'THE TIDEMOTHER', title: 'QUEEN OF THE SEA QUADRANT',
       hp: 440, dmg: 4, w: 56, h: 48, sprite: 'tidemother', xp: 195, gold: [180, 260], flying: false,
       phases: [
         { below: 1.0, speed: 36, pattern: ['walk:1.5', 'spread:bubble:5', 'idle:1', 'spawn:jelly:2', 'summon_spikes', 'shoot:bubble:4', 'idle:1.2'] },
@@ -2715,7 +2715,7 @@
   var P2 = ['f2_a', 'f2_b', 'f2_c', 'f2_d', 'f2_e', 'f2_f', 'f2_g', 'f2_h'];
   st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cave', kind: 'main',
     chunks: { start: 'f2_start', pool: P2.concat(['lv_crates']), count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
-    intro: "THE GOBLIN WARRENS! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
+    intro: "GOBLIN COUNTRY! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
   st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main', rescue: 'squeaks',
     chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door', insert: ['r_cave_target'] }, reward: { box: 'bronze', xp: 20 },
     enemies: [['goblin_archer', 4], ['goblin', 3], ['shaman', 2]],
@@ -2780,7 +2780,7 @@
   /* ---------------- floor 5 ---------------- */
   st('f5_s1', mix('bubble5', { name: 'THE SEA CAVES', floor: 5, theme: 'bubble', kind: 'main', questItem: 'tide_chart', owMarker: 'ow_cave',
     chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e', 'lv_cache'], count: 5, end: 'end_door', insert: ['q_bubble_grotto'] }, reward: { box: 'silver', xp: 35 },
-    intro: "THE BUBBLE SEA! THE AIR IS WATER AND THE WATER IS ALSO WATER. PHYSICS HAS LEFT THE CHAT." }));
+    intro: "THE SEA QUADRANT OF YOUR BUBBLE! THE AIR IS WATER AND THE WATER IS ALSO WATER. PHYSICS HAS LEFT THE CHAT." }));
   st('f5_s2', mix('swamp5', { name: 'KELP MARKET', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
     chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b', 'lv_gate_climb', 'lv_tunnel'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
     intro: "A FLOATING MARKET. THE FISHMEN SELL KELP. THEY ALSO SELL CRAWLERS. GUESS WHICH ONE IS IN STOCK." }));
@@ -2951,12 +2951,12 @@
   st('f10_ambush', mix('crew10', { name: 'PIT CREW BRAWL', floor: 10, theme: 'city', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
     intro: "AMBUSH! A RIVAL PIT CREW WANTS TO CHANGE YOUR TIRES. YOU DO NOT HAVE TIRES. THEY WILL IMPROVISE." }));
-  st('f10_boss', mix('track10', { name: 'THE CUL-DE-SAC CUP', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
+  st('f10_boss', mix('track10', { name: 'THE FINAL HEAT', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
     race: { rivals: ['champion'], place: 1, boss: 'champion' },
     chunks: { start: 'race_pole', pool: ['race_e', 'race_f', 'race_g', 'race_h', 'race_i', 'race_j', 'race_k', 'race_l'], count: 8, end: 'race_finish' },
     elite: [['goblin_brute', 2], ['conductor', 1]], flyers: [['drone', 3], ['skyfowl', 1]],
     reward: { box: 'boss', xp: 240 },
-    intro: "THE CUL-DE-SAC CUP! ONE RACE, ONE RIVAL, ONE TROPHY. VORN DREADAXLE HAS NEVER LOST. THERE IS A FIRST TIME FOR EVERYTHING!" }));
+    intro: "THE FINAL HEAT! ONE RACE, ONE RIVAL, ONE WAY DOWN. VORN DREADAXLE HAS NEVER LOST. THERE IS A FIRST TIME FOR EVERYTHING!" }));
 
   /* ---------------- floor 11: the parade (Update 3) ----------------
      Four areas on foot, each with one float part behind a lever puzzle. The parade (B)
@@ -2976,12 +2976,12 @@
   st('f11_ambush', mix('city11', { name: 'HECKLER MOB', floor: 11, theme: 'city', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 35 },
     intro: "AMBUSH! A MOB OF HECKLERS. THEY HAVE OPINIONS ABOUT YOUR FLOAT. THEY ARE EXPRESSING THEM WITH FISTS." }));
-  st('f11_boss', { name: 'THE GRAND PARADE', floor: 11, theme: 'parade', kind: 'parade', music: 'boss_final', owMarker: 'ow_float',
+  st('f11_boss', { name: 'THE PARADE ROUTE', floor: 11, theme: 'parade', kind: 'parade', music: 'boss_final', owMarker: 'ow_float',
     chunks: { start: 'parade_start', pool: ['parade_a', 'parade_b', 'parade_c', 'parade_d'], count: 4, end: 'arena_marshal' },
     enemies: [['clown', 3], ['soldier', 1]], elite: [['clown_brute', 1]], flyers: [['jelly', 2], ['skyfowl', 1]],
     parade: { speed: 34, waves: [['clown', 4], ['jelly', 3], ['skyfowl', 2], ['soldier', 1], ['rail_rat', 1]] },
     boss: 'grand_marshal', reward: { box: 'boss', xp: 300 },
-    intro: "THE GRAND PARADE! RIDE YOUR FLOAT DOWN THE ROUTE, PUNCH THE HECKLERS AND WAVE. ALWAYS WAVE. THE MARSHAL WAITS AT THE END." });
+    intro: "THE PARADE ROUTE! RIDE YOUR FLOAT PAST THE JUDGING STANDS, PUNCH THE HECKLERS AND WAVE. ALWAYS WAVE. THE MARSHAL WAITS AT THE END." });
 
   /* ---------------- quest items (Update 2) ----------------
      Each sits in exactly one stage (stages[id].questItem, a 'Q' in an insert
@@ -3132,13 +3132,13 @@
 
   /* ---------------- floors ---------------- */
   D.floors = [
-    { n: 1, name: 'THE TUTORIAL DUNGEON', tagline: 'MIND THE GAP. AND THE RATS.', theme: 'sewer', music: 'floor1',
-      intro: ["WELCOME TO FLOOR ONE, CRAWLER! THE TUTORIAL! WE WILL GO EASY ON YOU. FOR ABOUT FOUR MINUTES.",
-        "CLEAR THE STAGES, FIND THE SAFE ROOM, KILL THE BOSS. THE VIEWERS ARE WATCHING. TRY NOT TO DIE BORING."],
+    { n: 1, name: 'THE FIRST FLOOR', tagline: 'FIVE DAYS TO FIND THE STAIRS. MIND THE RATS.', theme: 'sewer', music: 'floor1',
+      intro: ["WELCOME, CRAWLER. WELCOME TO THE FIRST FLOOR. TORCHLIT TUNNELS, A TUTORIAL, AND RATS. SO MANY RATS.",
+        "CLEAR THE STAGES, FIND THE SAFE ROOM, KILL THE BOSS. NOBODY IS WATCHING LIVE YET. THAT CHANGES ON THE SECOND FLOOR. PRACTICE YOUR SMILE."],
       sequence: ['f1_s1', 'f1_s2', 'SAFE', 'f1_boss'], overworld: null,
       required: ['f1_s1', 'f1_s2'], boss: 'f1_boss', par: 600 },
-    { n: 2, name: 'THE GOBLIN WARRENS', tagline: 'SMALL GREEN GUYS. BIG GREEN PROBLEMS.', theme: 'cave', music: 'floor2',
-      intro: ["FLOOR TWO! THE GOBLIN WARRENS. THE GOBLINS HAVE HEARD OF YOU. THEY ARE NOT IMPRESSED. YET.",
+    { n: 2, name: 'THE SECOND FLOOR', tagline: 'LAST TRAINING LEVEL. NO PEEING IN THE HALLS.', theme: 'cave', music: 'floor2',
+      intro: ["WELCOME TO THE SECOND FLOOR! THE LAST TRAINING LEVEL. THE VIEWERS ARE ON NOW, SO TRY TO DIE INTERESTINGLY.",
         "THREE STAGES, A SAFE ROOM, AND A BOSS WHO HAS NEVER SKIPPED A WORKOUT. LET'S GET PHYSICAL!"],
       sequence: ['f2_s1', 'f2_s2', 'f2_s3', 'SAFE', 'f2_boss'], overworld: null,
       companion: 'squeaks',
@@ -3193,8 +3193,8 @@
         "THE RINGMASTER WANTS A TICKET. A CLOWN WENT DOWN INTO THE BAYOU WITH ONE. NOBODY SAW HIM COME BACK UP.",
         "ONE OF THE MIDWAY GAMES HAS A REAL EGG AS THE TOP PRIZE. RING THE BELL. TRUST ME ON THIS ONE, KID."],
       required: ['f3_s1', 'f3_s2', 'f3_s3'], boss: 'f3_boss', par: 1200 },
-    { n: 4, name: 'THE RAIL TANGLE', tagline: 'EVERY TRAIN IS LATE. EVERY TRACK IS LOADED.', theme: 'train', music: 'floor4',
-      intro: ["FLOOR FOUR! A KNOT OF RAILWAYS OVER A BOTTOMLESS VOID. WALK ON THE BRIDGES, CRAWLER. NOT OFF THEM.",
+    { n: 4, name: 'THE IRON TANGLE', tagline: 'RIDE THE RAILS. FIND THE STAIRS. DO THE MATH.', theme: 'train', music: 'floor4',
+      intro: ["FLOOR FOUR! WE CALL IT THE IRON TANGLE. A KNOT OF TRAIN LINES OVER A BOTTOMLESS VOID. THESE TRAIN THINGS ARE SO NIFTY.",
         "THREE STOPS TO CLEAR, TWO SIDE SPURS FULL OF GOODIES, AND A BOSS WHO IS MOSTLY ENGINE."],
       overworld: { theme: 'ow_rail', music: 'ow4',
         map: [
@@ -3240,8 +3240,8 @@
         "THE DEAD END TUNNEL EXIT IS STUCK ON RED. THE FREIGHT MAZE STORES SPARE SIGNAL GLASS.",
         "THE YARD CREW SAYS SOMETHING IN A CABOOSE ON THE OLD SPUR HAS BEEN CURSING FOR A WEEK. IN A VERY POSH VOICE."],
       required: ['f4_s1', 'f4_s2', 'f4_s3'], boss: 'f4_boss', par: 1300 },
-    { n: 5, name: 'THE BUBBLE SEA', tagline: 'HOLD YOUR BREATH. OR DO NOT. NOBODY CARES.', theme: 'bubble', music: 'floor5',
-      intro: ["FLOOR FIVE! A SEA OF ISLANDS CONNECTED BY THE WORST BOARDWALKS EVER BUILT.",
+    { n: 5, name: 'THE BUBBLES', tagline: 'EVERY BUBBLE IS ITS OWN LITTLE WORLD.', theme: 'bubble', music: 'floor5',
+      intro: ["FLOOR FIVE! THE BUBBLES. PICTURE BUBBLE WRAP. EVERY BUBBLE IS A SEALED LITTLE WORLD, AND YOU ARE STUCK IN ONE. THIS ONE IS MOSTLY WATER.",
         "FOUR AREAS THIS TIME. THE TIDEMOTHER WAITS ON THE FAR ISLAND. SHE HAS BEEN WAITING A WHILE. SHE IS CRANKY."],
       overworld: { theme: 'ow_reef', music: 'ow5',
         map: [
@@ -3482,8 +3482,8 @@
         "THE GUN CREWS ON THE HILL KEEP BLASTING CHARGES. ONE OPENS THE TRENCH BARRICADE. ONE OPENS THE DROPSHIP.",
         "THE BACKSTAGE PASS IS IN THE DROPSHIP WRECK. NO PASS, NO SHOWRUNNER. HE IS THE BIGGEST THING YOU HAVE FACED, KID."],
       required: ['f9_s1', 'f9_s2', 'f9_s3', 'f9_s4'], boss: 'f9_boss', bossMusic: 'boss', par: 2000 },
-    { n: 10, name: 'THE CUL-DE-SAC CUP', tagline: 'NICE NEIGHBORHOOD. TERRIBLE DRIVERS.', theme: 'raceway', music: 'floor10',
-      intro: ["FLOOR TEN! WELCOME TO THE CUL-DE-SAC CUP! ONE WAY IN, NO WAY OUT, AND A NEIGHBORHOOD WATCH THAT WATCHES YOU CRASH.",
+    { n: 10, name: "DON'T COME IN LAST", tagline: 'HEAT AFTER HEAT. LAST PLACE IS LUNCH.', theme: 'raceway', music: 'floor10',
+      intro: ["FLOOR TEN! THIS FLOOR IS CALLED DON'T COME IN LAST. I GUESS YOU CAN FIGURE OUT WHAT THAT MEANS. THE GARAGES ARE ON A VERY NICE CUL-DE-SAC.",
         "YOUR RIDE: A GENUINE FOOD TRUCK! CARL DRIVES. PRINCESS DONUT RIDES SHOTGUN, FIRES MISSILES AND CRITIQUES YOUR STEERING.",
         "FINISH TOP THREE IN EACH HEAT TO UNLOCK THE NEXT GARAGE. WIN THE CHAMPIONSHIP TO LEAVE. SECOND PLACE IS A NICE WORD FOR LUNCH.",
         "YOUR RIVALS LIVE ON THE BLOCK. WALK UP TO THEIR DRIVEWAYS AND SAY HELLO. THEY WILL SAY SOMETHING RUDE BACK. IT IS TRADITION."],
@@ -3551,8 +3551,8 @@
         "WORD IS SOMEONE STASHED A MINE HOPPER ON A BILLBOARD IN HEAT TWO. HIT THE JUMP PAD AND TAKE THE HIGH ROAD.",
         "JUMP PADS FLING YOU HIGH, OVERPASSES ARE SAFER, OIL SPINS YOU OUT, CRATES BREAK IF YOU ARE FAST. DO NOT BRAKE. EVER."],
       required: ['f10_r1', 'f10_r2', 'f10_r3'], boss: 'f10_boss', par: 1500 },
-    { n: 11, name: 'THE GRAND PARADE', tagline: 'SMILE. WAVE. PUNCH. REPEAT.', theme: 'parade', music: 'floor11',
-      intro: ["FLOOR ELEVEN! THE GRAND PARADE! EVERY RACER FROM LAST FLOOR IS TURNING THEIR RIDE INTO A FLOAT. THEY ARE THRILLED. NOT REALLY.",
+    { n: 11, name: 'A PARADE OF HORRIBLES', tagline: 'BUILD A FLOAT. MARCH. PERFORM. SURVIVE.', theme: 'parade', music: 'floor11',
+      intro: ["FLOOR ELEVEN! A PARADE OF HORRIBLES! THE SHORTEST FLOOR OF THE CRAWL. EVERY RACER IS TURNING THEIR RIDE INTO A FLOAT. NOBODY IS THRILLED.",
         "YOUR FOOD TRUCK NEEDS A CONFETTI CANNON, A SPOTLIGHT, BALLOONS AND A BANNER. ONE IS HIDDEN IN EACH CORNER OF THE STAGING GROUNDS.",
         "BUILD THE FLOAT, JOIN THE PARADE, SURVIVE THE GRAND MARSHAL. THIS IS THE LAST FLOOR WE HAVE BUILT, CRAWLER. MAKE IT COUNT."],
       overworld: { theme: 'ow_parade', music: 'ow11',
@@ -3722,7 +3722,7 @@
     carl_toga: { name: 'THE SENATOR', desc: 'A BEDSHEET TOGA AND A LAUREL WREATH. ROME WAS NOT BUILT IN A DAY. NEITHER WAS THIS LOOK.',
       perk: { speed: 0.1 }, how: 'RANDOM DROP FROM LOOT BOXES, OR LAND A 25 HIT COMBO.' },
     carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD BOXERS, GOLD JACKET, GOLD TOENAILS. YOU WON. NOW EVERYONE HAS TO LOOK AT IT.',
-      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'FINISH THE GRAND PARADE ON FLOOR 11.' }
+      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'FINISH A PARADE OF HORRIBLES ON FLOOR 11.' }
   };
 
   /* Update 2: every companion except Donut is FOUND and RESCUED, one per floor
@@ -3825,7 +3825,7 @@
     race_win:     { name: 'CHECKERED PAST', desc: 'WON A RACE IN A FOOD TRUCK. THE OTHER DRIVERS DEMAND A DRUG TEST. FOR THE TACOS.', event: 'race_win', count: 1, box: 'silver' },
     race_win_3:   { name: 'TRIPLE CROWN', desc: 'WON THREE RACES. THE SPONSORS WANT A DECAL ON YOUR FOREHEAD. WE SAID ASK THE CAT.', event: 'race_win', count: 3, box: 'gold' },
     race_flawless:{ name: 'NOT A SCRATCH', desc: 'WON A RACE WITHOUT A SINGLE DENT. THE INSURANCE COMPANY SENT FLOWERS.', event: 'race_flawless', count: 1, box: 'platinum' },
-    race_champion:{ name: 'KING OF THE CUL-DE-SAC', desc: 'WON THE CUL-DE-SAC CUP AND ROLLED ONTO FLOOR 11. THE MAULER IS IN THERAPY. IT HAS SO MANY TEETH TO TALK ABOUT.', event: 'floor:11', count: 1, box: 'legendary' },
+    race_champion:{ name: 'DID NOT COME IN LAST', desc: 'WON THE FINAL HEAT AND ROLLED ONTO FLOOR 11. THE MAULER IS IN THERAPY. IT HAS SO MANY TEETH TO TALK ABOUT.', event: 'floor:11', count: 1, box: 'legendary' },
     float_part:   { name: 'ARTS AND CRAFTS', desc: 'FOUND YOUR FIRST FLOAT PART. GLITTER HAS ENTERED YOUR BLOODSTREAM. THERE IS NO CURE.', event: 'float_part', count: 1, box: 'silver' },
     float_full:   { name: 'SOME ASSEMBLY REQUIRED', desc: 'FOUND FOUR FLOAT PARTS. YOUR FOOD TRUCK IS NOW LEGALLY A PARADE. CONGRATULATIONS?', event: 'float_part', count: 4, box: 'gold' },
     parade_done:  { name: 'GRAND FINALE', desc: 'FINISHED THE PARADE. THE STREETS ARE COVERED IN CONFETTI AND HECKLERS. MOSTLY HECKLERS.', event: 'parade_done', count: 1, box: 'platinum' },
@@ -4022,10 +4022,10 @@
       { text: "THE GRAND MARSHAL TOPPLED OFF HIS THRONE FLOAT. HIS BATON ROLLED INTO THE GUTTER. THE MARCHING BAND, FOR ONCE, MISSED A BEAT.", portrait: null },
       { text: "CONFETTI KEPT FALLING. NOBODY HAD TOLD THE CANNON TO STOP. PRINCESS DONUT WAVED FROM THE TRUCK WINDOW LIKE SHE PLANNED IT ALL.", portrait: 'p_donut' },
       { text: "THEN THE CROWD ERUPTED. BILLIONS OF VIEWERS, SCREAMING ONE NAME. IT WAS YOURS. THE CAT ASSUMED IT WAS HERS.", portrait: 'p_donut' },
-      { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACING CUP AND A PARADE. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
+      { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACE AND A PARADE OF HORRIBLES. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
       { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE PARADE ROUTE ENDS AT A STAIRCASE GOING UP. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
-      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE RUIN, THE MANOR, THE WOODS, THE SEA, THE RAILS AND THE CITY.", portrait: 'p_carl' },
-      { text: "PAST THE WARRENS AND THE SEWERS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
+      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE RUIN, THE MANOR, THE JUNGLE, THE BUBBLES, THE IRON TANGLE AND THE OVER CITY.", portrait: 'p_carl' },
+      { text: "PAST THE TRAINING FLOORS AND THEIR RATS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
       { text: "PRINCESS DONUT STRETCHED, YAWNED, AND ANNOUNCED THAT SHE WAS HUNGRY. SOME THINGS SURVIVE EVERYTHING.", portrait: 'p_donut' },
       { text: "SEASON ONE: COMPLETE. THANK YOU FOR WATCHING. STAY TUNED, CRAWLER. THE GALAXY IS ALREADY ASKING FOR SEASON TWO.", portrait: 'p_ai' }
     ],
@@ -4039,7 +4039,7 @@
       "STARRING CARL AND PRINCESS DONUT",
       "WITH MONGO, SAMANTHA, KATIA, ZEV, SIGNET",
       "AND SIR SQUEAKS, OF COURSE",
-      "AND THE RIVALS OF THE CUL-DE-SAC CUP",
+      "AND THE RIVALS OF DON'T COME IN LAST",
       "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
       "AND TO BOPCA FOR THE TERRIBLE PRICES",
       "NO TUTORIAL RATS WERE HARMED. OK, SEVERAL WERE.",

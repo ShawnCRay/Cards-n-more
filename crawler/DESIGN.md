@@ -416,11 +416,11 @@ turn it on), `w` white detail. Skins may also set any of these to `null`.
 
 | Floor | Name idea | Layout | Side-scroll themes | Enemies | Boss | Boss unlock |
 |---|---|---|---|---|---|---|
-| 1 | Tutorial dungeon / sewers under the city | linear: 2 stages, safe room, boss | sewer | rat roach goblin bat | hoarder | companion `squeaks` |
-| 2 | Goblin warrens | linear: 3 stages, safe room, boss | cave | goblin goblin_archer goblin_brute grub shaman bat juicer_minion | juicer | companion `mongo` |
+| 1 | The First Floor (tutorial; sewers stand in for the books' torchlit tunnels) | linear: 2 stages, safe room, boss | sewer | rat roach goblin bat | hoarder | companion `squeaks` |
+| 2 | The Second Floor (last training level; goblin tunnels) | linear: 3 stages, safe room, boss | cave | goblin goblin_archer goblin_brute grub shaman bat juicer_minion | juicer | companion `mongo` |
 | 3 | The over city (FIRST OVERWORLD) | overworld `ow_city` | city circus swamp | clown clown_brute skyfowl swamp_troll gator rat | ringmaster | skin `carl_clown` |
-| 4 | The rail tangle | overworld `ow_rail` | train city | steam_goblin conductor rail_rat bat | engineer | companion `katia` |
-| 5 | The bubble sea | overworld `ow_reef` | bubble swamp | fishman jelly crab gator | tidemother | skin `carl_hazmat` |
+| 4 | The Iron Tangle | overworld `ow_rail` | train city | steam_goblin conductor rail_rat bat | engineer | companion `katia` |
+| 5 | The Bubbles (one bubble's sea quadrant) | overworld `ow_reef` | bubble swamp | fishman jelly crab gator | tidemother | skin `carl_hazmat` |
 | 6 | The hunting grounds | overworld `ow_woods` | forest | hunter hound masked_noble skyfowl | butcher | companion `zev` |
 | 7 | The bedlam manor | overworld `ow_manor` | castle | ghoul gargoyle skeleton bat | bride | skin `carl_bodyguard` |
 | 8 | The ruin | overworld `ow_waste` | ruin city | mutant drone golem | overseer | skin `carl_kilt` |
