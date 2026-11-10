@@ -83,8 +83,8 @@
 
   D.version = 1;
 
-  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'raceway', 'parade', 'tunnels', 'cinder'];
-  D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_war', 'ow_suburb', 'ow_parade'];
+  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'ghosttown', 'ghostmine', 'warzone', 'safe', 'raceway', 'parade', 'tunnels', 'cinder'];
+  D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_town', 'ow_war', 'ow_suburb', 'ow_parade'];
 
   /* ---------------- enemy scaling (optional helper) ----------------
      Index = floor-1. hp tracks expected punch damage at that floor's natural
@@ -217,7 +217,7 @@
       projectile: 'rock', shootEvery: 2.2, aggro: 170, xp: 10, gold: [3, 9], sprite: 'skeleton',
       flavor: "THROWS HIS OWN BONES. ALWAYS HAS SPARES. DO NOT ASK WHERE THE SPARES COME FROM." },
 
-    /* floor 8 */
+    /* floor 8 (the old ruin set; floor 8 now uses the folklore set below, floors 9 and 10 still use these) */
     mutant: { name: 'RUIN MUTANT', tier: 8, hp: 50, dmg: 5, speed: 44, w: 18, h: 22, ai: 'chaser',
       aggro: 150, jump: 210, xp: 12, gold: [5, 12], sprite: 'mutant',
       flavor: "THREE ARMS. TWO OPINIONS. ONE GOAL: HUGGING YOU UNTIL YOU POP." },
@@ -227,6 +227,23 @@
     golem: { name: 'SCRAP GOLEM', tier: 8, hp: 130, dmg: 6, speed: 26, w: 22, h: 24, ai: 'hopper',
       jump: 250, aggro: 150, armor: 3, kb: 0.1, xp: 32, gold: [14, 28], sprite: 'golem',
       flavor: "MADE OF CARS, FRIDGES AND ONE VERY CONFUSED VENDING MACHINE. STILL SELLS SODA." },
+    // floor 8 retheme (THE GHOSTS OF EARTH): Appalachian folklore, seeded into a West Virginia
+    // river town on December 10th. Same stat lines and AI as the ruin set they replace.
+    wampus_cat: { name: 'WAMPUS CAT', tier: 8, hp: 50, dmg: 5, speed: 44, w: 18, h: 18, ai: 'chaser',
+      aggro: 150, jump: 210, xp: 12, gold: [5, 12], sprite: 'wampus_cat',
+      flavor: "HALF WOMAN, HALF MOUNTAIN LION, ALL ATTITUDE. DONUT HAS ASKED ME TO SAY SHE IS NOT IMPRESSED." },
+    mountain_light: { name: 'BROWN MOUNTAIN LIGHT', tier: 8, hp: 34, dmg: 4, speed: 60, w: 14, h: 12, ai: 'flyer', flying: true,
+      projectile: 'laser_orb', shootEvery: 3.0, aggro: 180, xp: 10, gold: [4, 10], sprite: 'mountain_light',
+      flavor: "A FLOATING LIGHT OVER THE RIDGE. SCIENTISTS SAID SWAMP GAS. THE SWAMP GAS HAS A FACE. IT BITES." },
+    woodbooger: { name: 'WOODBOOGER', tier: 8, hp: 130, dmg: 6, speed: 26, w: 22, h: 26, ai: 'hopper',
+      jump: 250, aggro: 150, armor: 3, kb: 0.1, xp: 32, gold: [14, 28], sprite: 'woodbooger',
+      flavor: "THE LOCAL BIGFOOT. NINE FEET OF HAIR AND ZERO PHOTOS IN FOCUS. LANDS LIKE A DROPPED PIANO." },
+    sheepsquatch: { name: 'SHEEPSQUATCH', tier: 8, hp: 42, dmg: 5, speed: 46, w: 20, h: 18, ai: 'charger',
+      chargeSpeed: 200, aggro: 170, xp: 10, gold: [4, 10], sprite: 'sheepsquatch',
+      flavor: "A WOOLLY WHITE BEAST WITH RAM HORNS AND A BAD TEMPER. NOBODY HAS EVER SUCCESSFULLY SHEARED IT." },
+    mothling: { name: 'MOTHLING', tier: 8, hp: 26, dmg: 4, speed: 64, w: 16, h: 12, ai: 'flyer', flying: true,
+      aggro: 170, xp: 8, gold: [3, 8], sprite: 'mothling',
+      flavor: "A MOTH THE SIZE OF A TURKEY. DRAWN TO LIGHT. YOU ARE WEARING A VERY SHINY JACKET." },
 
     /* floor 9 */
     soldier: { name: 'FACTION SOLDIER', tier: 9, hp: 54, dmg: 5, speed: 40, w: 14, h: 20, ai: 'shooter',
@@ -341,16 +358,18 @@
       defeat: "THE BRIDE HAS FINALLY BEEN GIVEN AWAY! TO THE AFTERLIFE! NO REFUNDS ON THE GIFTS!",
       loot: 'boss', unlock: { skin: 'carl_bodyguard' } },
 
-    overseer: { name: 'THE OVERSEER', title: 'ALL SEEING EYE OF THE RUIN',
-      hp: 680, dmg: 5, w: 48, h: 40, sprite: 'overseer', xp: 380, gold: [300, 420], flying: true,
+    // floor 8 (THE GHOSTS OF EARTH): replaces the old OVERSEER. Same hp, phases and move set,
+    // so the flying boss fight plays the same; spawns moths and wampus cats instead of drones.
+    mothman: { name: 'THE MOTHMAN', title: 'HARBINGER OF THE RIVER TOWN',
+      hp: 680, dmg: 5, w: 48, h: 40, sprite: 'mothman', xp: 380, gold: [300, 420], flying: true,
       phases: [
-        { below: 1.0, speed: 46, pattern: ['hover:1.2', 'laser', 'shoot:laser_orb:4', 'spawn:drone:2', 'swoop', 'hover:1.2'] },
-        { below: 0.6, speed: 60, pattern: ['laser', 'teleport', 'spread:laser_orb:7', 'summon_spikes', 'swoop', 'spawn:mutant:1', 'laser', 'hover:0.8'] },
+        { below: 1.0, speed: 46, pattern: ['hover:1.2', 'laser', 'shoot:laser_orb:4', 'spawn:mothling:2', 'swoop', 'hover:1.2'] },
+        { below: 0.6, speed: 60, pattern: ['laser', 'teleport', 'spread:laser_orb:7', 'summon_spikes', 'swoop', 'spawn:wampus_cat:1', 'laser', 'hover:0.8'] },
         { below: 0.3, speed: 74, pattern: ['laser', 'laser', 'rain:laser_orb:10', 'teleport', 'spread:laser_orb:9', 'summon_spikes', 'hover:0.6'] }
       ],
-      intro: ["THE OVERSEER WAS BUILT TO WATCH. IT HAS WATCHED EVERYTHING. IT HAS NOTES ON YOUR FORM.",
-        "ONE EYE, NINE LASERS, ZERO CHILL. THE NETWORK WOULD LIKE TO REMIND YOU NOT TO BLINK."],
-      defeat: "THE OVERSEER HAS STOPPED WATCHING! FIRST TIME IN A THOUSAND YEARS! IT LOOKS SO PEACEFUL!",
+      intro: ["LOCAL LEGEND SAYS IF YOU SEE THE MOTHMAN, SOMETHING TERRIBLE IS ABOUT TO HAPPEN. WELL. LOOK AROUND. HE WAS RIGHT.",
+        "TEN FEET OF WINGS AND TWO RED HEADLIGHTS FOR EYES. HE HAS BEEN STARING AT YOUR BEACON ALL NIGHT. DO NOT LOOK DIRECTLY INTO THEM."],
+      defeat: "THE MOTHMAN IS DOWN! HE PREDICTED THIS, OBVIOUSLY. HE JUST DID NOT WANT TO BE A DOWNER ABOUT IT.",
       loot: 'boss', unlock: { skin: 'carl_kilt' } },
 
     // Floor 9's big boss. Since Update 3 he is NOT the end of the game (see grand_marshal).
@@ -1470,7 +1489,7 @@
     '########################################',
     '########################################'] };
 
-  /* ---------- FLOOR 8: ruin / city ---------- */
+  /* ---------- FLOOR 8: ghost town / mine (f8_* chunks are also reused by floors 10-11) ---------- */
   C.f8_start = { rows: [
     '........................',
     '........................',
@@ -1583,7 +1602,7 @@
     '####################################',
     '####################################'] };
 
-  C.arena_overseer = { rows: [
+  C.arena_mothman = { rows: [
     'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
     'X......................................X',
     'X......................................X',
@@ -2127,8 +2146,8 @@
     '########################################',
     '########################################'] };
 
-  /* ---------- floor 8 (ruin / city) ---------- */
-  // megamall: up the dead escalator, lever upstairs, guard office below
+  /* ---------- floor 8 (ghost town / mine) ---------- */
+  // department store: up the steps, lever on the roof, lost and found office below
   C.q_ruin_store = { rows: [
     '........................................',
     '........................................',
@@ -2143,7 +2162,7 @@
     '########################################',
     '########################################'] };
 
-  // dead air tower: climb the mast, hop the swinging rig to the top perch
+  // radio station mast: climb the mast, hop the swinging rig to the beacon perch
   C.q_ruin_mast = { rows: [
     '...........................Q....',
     '..........................XXX...',
@@ -2669,8 +2688,9 @@
     swamp5:  { enemies: [['gator', 2], ['fishman', 3]], elite: [['crab', 1], ['swamp_troll', 1]], flyers: [['jelly', 2], ['skyfowl', 1]] },
     forest6: { enemies: [['hunter', 3], ['hound', 3]], elite: [['masked_noble', 1]], flyers: [['skyfowl', 1]] },
     castle7: { enemies: [['ghoul', 4], ['skeleton', 3]], elite: [['masked_noble', 1], ['gargoyle', 1]], flyers: [['gargoyle', 2], ['bat', 1]] },
-    ruin8:   { enemies: [['mutant', 4], ['drone', 1]], elite: [['golem', 1]], flyers: [['drone', 1]] },
-    city8:   { enemies: [['mutant', 3], ['steam_goblin', 1], ['rail_rat', 1]], elite: [['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
+    // floor 8 (THE GHOSTS OF EARTH): town8 and mine8 replace the old ruin8 and city8 mixes (same weights and tiers)
+    town8:   { enemies: [['wampus_cat', 4], ['mountain_light', 1]], elite: [['woodbooger', 1]], flyers: [['mountain_light', 1]] },
+    mine8:   { enemies: [['wampus_cat', 3], ['sheepsquatch', 2]], elite: [['woodbooger', 1]], flyers: [['mountain_light', 2], ['mothling', 1]] },
     war9:    { enemies: [['soldier', 5], ['sniper', 1], ['cultist', 1], ['mutant', 1]], elite: [['war_beast', 2], ['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
     // Update 3. track10 = pit crews and pests standing on the race track (the truck rams them)
     track10: { enemies: [['rail_rat', 3], ['goblin', 3], ['steam_goblin', 1]], elite: [['goblin_brute', 1]], flyers: [['drone', 2], ['skyfowl', 1]] },
@@ -2861,35 +2881,36 @@
     boss: 'bride', reward: { box: 'boss', xp: 130 },
     intro: "AN ORGAN PLAYS A WEDDING MARCH. BADLY. FROM INSIDE THE WALLS." });
 
-  /* ---------------- floor 8 ---------------- */
-  st('f8_s1', mix('ruin8', { name: 'MEGAMALL', floor: 8, theme: 'ruin', kind: 'main', questItem: 'security_badge', owMarker: 'ow_door',
+  /* ---------------- floor 8: THE GHOSTS OF EARTH ---------------- */
+  // A replica West Virginia river town on December 10th. Layouts (chunks) are the old ruin floor's.
+  st('f8_s1', mix('town8', { name: 'MAIN STREET', floor: 8, theme: 'ghosttown', kind: 'main', questItem: 'security_badge', owMarker: 'ow_door',
     chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_store'] }, reward: { box: 'gold', xp: 70 },
-    intro: "THE MEGAMALL! EVERYTHING MUST GO! MOSTLY YOU. YOU MUST GO." }));
-  st('f8_s2', mix('city8', { name: 'LINE ZERO', floor: 8, theme: 'city', kind: 'main', questItem: 'power_cell', owMarker: 'ow_manhole', dark: true,
+    intro: "MAIN STREET! FIFTEEN SHOPPING DAYS LEFT UNTIL CHRISTMAS. FOREVER. THE GHOSTS ARE STILL LOOKING FOR PARKING." }));
+  st('f8_s2', mix('mine8', { name: 'THE NUMBER NINE MINE', floor: 8, theme: 'ghostmine', kind: 'main', questItem: 'power_cell', owMarker: 'ow_cave', dark: true,
     chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_city_boiler'] }, reward: { box: 'gold', xp: 70 },
-    intro: "THE OLD SUBWAY. THE LAST TRAIN LEFT A THOUSAND YEARS AGO. THE COMMUTERS STAYED. THEY CHANGED." }));
-  st('f8_s3', mix('ruin8', { name: 'THE SCRAPWORKS', floor: 8, theme: 'ruin', kind: 'main', exitNeeds: 'power_cell', owMarker: 'ow_door',
+    intro: "THE OLD COAL MINE. THE NIGHT SHIFT IS STILL DOWN HERE, SWINGING PICKS AT NOTHING. THEY DO NOT KNOW. DO NOT TELL THEM." }));
+  st('f8_s3', mix('town8', { name: 'THE HIGH SCHOOL', floor: 8, theme: 'ghosttown', kind: 'main', exitNeeds: 'power_cell', owMarker: 'ow_door',
     chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g', 'lv_cache', 'lv_tunnel'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
-    elite: [['golem', 2]],
-    intro: "A FACTORY THAT BUILDS GOLEMS OUT OF YOUR OLD STUFF. THAT ONE HAS YOUR TOASTER." }));
-  st('f8_s4', mix('ruin8', { name: 'DEAD AIR TOWER', floor: 8, theme: 'ruin', kind: 'main', questItem: 'tower_lens', owMarker: 'ow_door',
+    elite: [['woodbooger', 2]],
+    intro: "THE WINTER DANCE IS TONIGHT! THE GHOST BAND PLAYS THE SAME THREE SONGS ON A LOOP. THE CHAPERONES ARE BIGFOOT." }));
+  st('f8_s4', mix('town8', { name: 'THE RADIO STATION', floor: 8, theme: 'ghosttown', kind: 'main', questItem: 'tower_lens', owMarker: 'ow_door',
     chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_mast'] }, reward: { box: 'gold', xp: 70 },
-    enemies: [['mutant', 2], ['drone', 3]],
-    intro: "A RADIO TOWER STILL BROADCASTING THE LAST SONG ON EARTH. IT IS A JINGLE FOR A MATTRESS STORE." }));
-  st('f8_x1', mix('ruin8', { name: 'THE BUNKER', floor: 8, theme: 'ruin', kind: 'side', owMarker: 'ow_manhole',
+    enemies: [['wampus_cat', 2], ['mountain_light', 3]],
+    intro: "THE LOCAL AM STATION. A GHOST DJ IS TAKING CALLS ABOUT STRANGE LIGHTS ON THE RIDGE. THE LIGHTS ARE CALLING BACK." }));
+  st('f8_x1', mix('town8', { name: 'THE MOONSHINE CAVE', floor: 8, theme: 'ghostmine', kind: 'side', owMarker: 'ow_cave',
     chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b', 'lv_cache'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
-    intro: "A PREPPER BUNKER. CANNED BEANS. BATTERIES. ONE HUNDRED YEARS OF PARANOIA. WORTH IT, TURNS OUT." }));
-  st('f8_x2', mix('city8', { name: 'THE SCHOOL BUS', floor: 8, theme: 'city', kind: 'side', owMarker: 'ow_door',
+    intro: "A HIDDEN STILL IN A HILLSIDE CAVE. THE GHOST RUNNING IT HAS BEEN TASTE TESTING SINCE 1931. HE SEEMS HAPPY." }));
+  st('f8_x2', mix('mine8', { name: 'THE TOY STORE', floor: 8, theme: 'ghosttown', kind: 'side', owMarker: 'ow_door',
     chunks: { start: 'f8_start', pool: ['f8_g', 'sx_b', 'f8_d', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
-    intro: "AN OVERTURNED SCHOOL BUS. SOMEBODY LEFT THEIR LUNCH. AND THEIR LUNCH MONEY. AND THEIR BOX." }));
-  st('f8_ambush', mix('city8', { name: 'SCAVENGERS', floor: 8, theme: 'ruin', kind: 'ambush',
+    intro: "EVERY TOY ON EVERY WISH LIST AND NOBODY AT THE REGISTER. TAKE IT ALL. IT TURNS TO DUST WHEN THE FLOOR GOES ANYWAY." }));
+  st('f8_ambush', mix('mine8', { name: 'SOMETHING IN THE SNOW', floor: 8, theme: 'ghosttown', kind: 'ambush',
     chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
-    intro: "AMBUSH! THE SCAVENGERS WANT YOUR STUFF. YOU HAVE ONE JACKET. THEY WANT IT." }));
-  st('f8_boss', { name: 'THE WATCHTOWER', floor: 8, theme: 'ruin', kind: 'boss', music: 'boss',
-    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_a'], count: 2, end: 'arena_overseer' },
-    enemies: [['mutant', 2]], elite: [['golem', 1]], flyers: [['drone', 1]],
-    boss: 'overseer', reward: { box: 'boss', xp: 145 },
-    intro: "THE TALLEST THING LEFT STANDING. AT THE TOP, SOMETHING HAS BEEN WATCHING YOU THE WHOLE TIME." });
+    intro: "AMBUSH! THE LOCALS TELL STORIES ABOUT THESE HILLS. THE STORIES JUST CAUGHT UP WITH YOU." }));
+  st('f8_boss', { name: 'THE TOWN SQUARE', floor: 8, theme: 'ghosttown', kind: 'boss', music: 'boss',
+    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_a'], count: 2, end: 'arena_mothman' },
+    enemies: [['wampus_cat', 2]], elite: [['woodbooger', 1]], flyers: [['mothling', 1]],
+    boss: 'mothman', reward: { box: 'boss', xp: 145 },
+    intro: "THE TREE LIGHTING CEREMONY. THE WHOLE GHOST TOWN CAME OUT. SOMETHING WITH RED EYES IS SITTING ON TOP OF THE TREE." });
 
   /* ---------------- floor 9 ---------------- */
   st('f9_s1', mix('war9', { name: 'BUNKER ROW', floor: 9, theme: 'warzone', kind: 'main', questItem: 'field_map', owMarker: 'ow_door',
@@ -3036,15 +3057,16 @@
     bridal_tiara: { name: 'BRIDAL TIARA', floor: 7, sprite: 'qi_crown',
       desc: "A TIARA OF BLACK PEARLS. THE BRIDE WILL NOT COME DOWN THE GRAND STAIR WITHOUT IT.",
       hint: "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. THE BALCONY LEVER HANGS FROM A CHANDELIER." },
-    security_badge: { name: 'SECURITY BADGE', floor: 8, sprite: 'qi_badge',
-      desc: "A MALL COP BADGE WITH A WORKING CHIP. THE DEAD AIR TOWER DOOR STILL READS IT.",
-      hint: "THE MEGAMALL GUARD OFFICE IS LOCKED. ITS LEVER IS UPSTAIRS. TAKE THE DEAD ESCALATOR." },
-    power_cell: { name: 'POWER CELL', floor: 8, sprite: 'qi_bolt',
-      desc: "A HUMMING BATTERY THE SIZE OF A LUNCHBOX. ENOUGH JUICE TO RUN THE SCRAPWORKS FREIGHT LIFT.",
-      hint: "LINE ZERO HAS AN OLD SUBSTATION WITH A WORKING CELL INSIDE. THE LEVER IS ON THE SUBSTATION ROOF." },
-    tower_lens: { name: 'GIANT CONTACT LENS', floor: 8, sprite: 'qi_lens',
-      desc: "A CONTACT LENS AS BIG AS A MANHOLE COVER. THE WATCHTOWER EYE SCANNER THINKS YOU ARE THE OVERSEER.",
-      hint: "THE OVERSEER DROPPED A SPARE LENS ON TOP OF THE DEAD AIR TOWER MAST. CLIMB, THEN HOP THE SWINGING RIG." },
+    // floor 8 (THE GHOSTS OF EARTH): ids kept from the old ruin floor so the lock chain is unchanged
+    security_badge: { name: 'STATION KEYS', floor: 8, sprite: 'qi_key',
+      desc: "THE NIGHT DJ'S KEYS ON A REINDEER LANYARD. SOLID, REAL, AND DUST BY NEXT WEEK. OPENS THE RADIO STATION.",
+      hint: "THE DJ LOST HIS KEYS ON MAIN STREET. THE LOST AND FOUND IS IN THE DEPARTMENT STORE. ITS LEVER IS UP ON THE ROOF." },
+    power_cell: { name: 'CARBIDE LAMP', floor: 8, sprite: 'qi_lamp',
+      desc: "A MINER'S HEADLAMP, STILL HISSING. THE ONLY LIGHT THAT REACHES THE HIGH SCHOOL BOILER TUNNEL.",
+      hint: "THE NUMBER NINE MINE HAS A LAMP ROOM. THE GHOST FOREMAN LOCKED IT. THE LEVER IS ON THE ROOF OF THE MINE OFFICE." },
+    tower_lens: { name: 'RED BEACON', floor: 8, sprite: 'qi_beacon',
+      desc: "THE BLINKING RED LIGHT FROM THE TOP OF THE RADIO MAST. THE MOTHMAN CANNOT RESIST IT. NEITHER CAN MOTHS.",
+      hint: "THE BEACON SITS ON TOP OF THE RADIO STATION MAST. CLIMB THE LADDER, THEN HOP THE SWINGING RIG." },
     field_map: { name: 'MINEFIELD MAP', floor: 9, sprite: 'qi_map',
       desc: "A SPONSOR-BRANDED MAP OF EVERY MINE ON ARTILLERY HILL. MOSTLY ACCURATE. MOSTLY.",
       hint: "THE MAP IS IN A COMMAND BUNKER ON BUNKER ROW. THE ROOF HATCH LEVER IS ON THE WATCHTOWER." },
@@ -3387,10 +3409,12 @@
         "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. NO TIARA, NO WEDDING, NO BOSS FIGHT.",
         "AT THE HEART OF THE HEDGE MAZE IS A SUMMONER WHO ANNOYED THE BRIDE. ANYONE WHO ANNOYS THE BRIDE IS A FRIEND."],
       required: ['f7_s1', 'f7_s2', 'f7_s3', 'f7_s4'], boss: 'f7_boss', par: 1700 },
-    { n: 8, name: 'THE RUIN', tagline: 'WHAT IS LEFT OF A CITY. WHAT IS LEFT OF HOPE.', theme: 'ruin', music: 'floor8',
-      intro: ["FLOOR EIGHT! A CITY THAT LOST. TOXIC CRATERS, SCRAP GOLEMS, AND A DRONE ON EVERY CORNER.",
-        "THE OVERSEER WATCHES FROM THE TOWER IN THE NORTHEAST. WAVE! IT HATES THAT."],
-      overworld: { theme: 'ow_waste', music: 'ow8',
+    { n: 8, name: 'THE GHOSTS OF EARTH', tagline: 'IT IS DECEMBER 10TH. IT ALWAYS WILL BE.', theme: 'ghosttown', music: 'floor8',
+      intro: ["FLOOR EIGHT! WELCOME HOME! A PERFECT COPY OF A LITTLE WEST VIRGINIA RIVER TOWN, EXACTLY AS IT WAS ON DECEMBER 10TH.",
+        "THE LOCALS ARE STILL HERE. SORT OF. THEY ARE GHOSTS, THEY CANNOT SEE YOU, AND THEY ARE VERY BUSY WITH THEIR CHRISTMAS SHOPPING.",
+        "WE STOCKED THE HILLS WITH LOCAL FOLKLORE, FREE OF CHARGE. HELP YOURSELF TO ANYTHING. IT ALL TURNS TO DUST WHEN THE FLOOR GOES.",
+        "THE MOTHMAN IS ROOSTING ON THE TOWN TREE IN THE NORTHEAST. HE KNEW YOU WERE COMING. HE ALWAYS KNOWS."],
+      overworld: { theme: 'ow_town', music: 'ow8',
         map: [
       '########################################################',
       '#.................................######.....###########',
@@ -3426,13 +3450,14 @@
       '########################################################'
         ],
         entrances: { '1': 'f8_s1', '2': 'f8_s2', '3': 'f8_s3', '4': 'f8_s4', 'A': 'f8_x1', 'C': 'f8_x2', 'S': 'SAFE', 'B': 'f8_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'mutant', x: 20, y: 24 }, { enemy: 'drone', x: 30, y: 18 }, { enemy: 'mutant', x: 40, y: 12 }, { enemy: 'drone', x: 14, y: 4 }],
+        roamers: [{ enemy: 'wampus_cat', x: 20, y: 24 }, { enemy: 'mountain_light', x: 30, y: 18 }, { enemy: 'sheepsquatch', x: 40, y: 12 }, { enemy: 'mountain_light', x: 14, y: 4 }],
         ambush: 'f8_ambush' },
-      locks: { '4': { needs: 'security_badge', text: "THE TOWER DOOR HAS A BADGE READER. IT BEEPS AT YOU IN A JUDGMENTAL WAY." }, 'B': { needs: 'tower_lens', text: "THE WATCHTOWER EYE SCANNER BLINKS RED. YOU ARE NOT THE OVERSEER. YET." } },
+      locks: { '4': { needs: 'security_badge', text: "THE RADIO STATION IS LOCKED. A GHOST DJ INSIDE SPINS CAROLS FOR NOBODY. HIS KEYS ARE ON MAIN STREET." }, 'B': { needs: 'tower_lens', text: "SOMETHING HUGE IS ROOSTING ON THE TOWN TREE. IT WILL ONLY COME DOWN FOR A BLINKING RED LIGHT." } },
       hints: [
-        "THE DEAD AIR TOWER READS BADGES. THE MEGAMALL GUARD OFFICE HAS ONE. ITS LEVER IS UPSTAIRS.",
-        "THE SCRAPWORKS FREIGHT LIFT NEEDS A POWER CELL. LINE ZERO HAS AN OLD SUBSTATION. BRING YOUR NERVE.",
-        "THE WATCHTOWER SCANS EYES. THERE IS A SPARE LENS AT THE VERY TOP OF THE DEAD AIR TOWER MAST."],
+        "THE RADIO STATION NEEDS THE NIGHT DJ'S KEYS. HE LOST THEM ON MAIN STREET. THE LOST AND FOUND LEVER IS ON THE STORE ROOF.",
+        "THE HIGH SCHOOL'S WAY OUT IS A PITCH BLACK BOILER TUNNEL. BORROW A CARBIDE LAMP FROM THE NUMBER NINE MINE FIRST.",
+        "THE MOTHMAN LOVES A RED LIGHT. THE BEACON ON TOP OF THE RADIO MAST WILL BRING HIM DOWN OFF THAT TREE.",
+        "THE GHOSTS CANNOT SEE YOU OR HEAR YOU. YOU CANNOT HURT THEM EITHER. STOP PUNCHING THE CAROLERS, CARL."],
       required: ['f8_s1', 'f8_s2', 'f8_s3', 'f8_s4'], boss: 'f8_boss', par: 1800 },
     { n: 9, name: 'FACTION WARS', tagline: 'THE MIDSEASON FINALE. LIVE.', theme: 'warzone', music: 'floor9',
       intro: ["FLOOR NINE! THE MIDSEASON FINALE! TWO ARMIES, ONE PLANET, AND YOU IN THE MIDDLE IN YOUR UNDERWEAR.",
@@ -3714,7 +3739,7 @@
     carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, DARK SHADES, EARPIECE THAT CONNECTS TO NOTHING. VERY PROFESSIONAL.',
       perk: { hp: 4 }, how: 'DEFEAT THE BRIDE ON FLOOR 7.' },
     carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICKING FREEDOM. THE CAMERAS ARE KEEPING A RESPECTFUL DISTANCE.',
-      perk: { dmg: 1 }, how: 'DEFEAT THE OVERSEER ON FLOOR 8.' },
+      perk: { dmg: 1 }, how: 'DEFEAT THE MOTHMAN ON FLOOR 8.' },
     carl_hazmat: { name: 'HAZMAT SUIT', desc: 'BRIGHT YELLOW. FULLY SEALED. YOU CAN STILL SMELL THE SEWER SOMEHOW.',
       perk: { def: 1, hp: 2 }, how: 'DEFEAT THE TIDEMOTHER ON FLOOR 5.' },
     carl_pajamas: { name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SPRINGY SLIPPERS LET YOU JUMP TWICE. SCIENCE.',
@@ -3820,7 +3845,7 @@
     boss_tidemother:{ name: 'MOTHER OF ALL FIGHTS', desc: 'BEAT THE TIDEMOTHER. HER SEVEN HUNDRED KIDS ARE WRITING YOU LETTERS. ANGRY ONES.', event: 'boss:tidemother', count: 1, box: 'gold' },
     boss_butcher:   { name: 'CUT FROM THE TEAM', desc: 'BEAT THE BUTCHER. THE HUNTING GROUNDS ARE CLOSED FOR RENOVATION.', event: 'boss:butcher', count: 1, box: 'gold' },
     boss_bride:     { name: 'OBJECTION!', desc: 'BEAT THE BRIDE. YOU STOPPED THE WEDDING. THE GUESTS WERE ALREADY DEAD, SO NO HARM DONE.', event: 'boss:bride', count: 1, box: 'platinum' },
-    boss_overseer:  { name: 'EYE CANDY', desc: 'BEAT THE OVERSEER. IT FINALLY BLINKED. FOREVER.', event: 'boss:overseer', count: 1, box: 'platinum' },
+    boss_mothman:   { name: 'LIGHTS OUT', desc: 'BEAT THE MOTHMAN. HE SAW IT COMING. HE ALWAYS SEES IT COMING.', event: 'boss:mothman', count: 1, box: 'platinum' },
     boss_showrunner:{ name: 'CANCELLED', desc: 'BEAT THE SHOWRUNNER. THE SHOW IS OVER! JUST KIDDING. THE NETWORK RENEWED IT ON THE SPOT.', event: 'boss:showrunner', count: 1, box: 'legendary' },
     /* Update 3: races (stage.js emits race_win, race_place:<n>, race_flawless) and the parade */
     race_place_3: { name: 'PODIUM PEASANT', desc: 'FINISHED A RACE IN THIRD. BRONZE IS JUST GOLD THAT GAVE UP. STILL COUNTS!', event: 'race_place:3', count: 1, box: 'bronze' },
@@ -4026,7 +4051,7 @@
       { text: "THEN THE CROWD ERUPTED. BILLIONS OF VIEWERS, SCREAMING ONE NAME. IT WAS YOURS. THE CAT ASSUMED IT WAS HERS.", portrait: 'p_donut' },
       { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACE AND A PARADE OF HORRIBLES. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
       { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE PARADE ROUTE ENDS AT A STAIRCASE GOING UP. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
-      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE RUIN, THE MANOR, THE JUNGLE, THE BUBBLES, THE IRON TANGLE AND THE OVER CITY.", portrait: 'p_carl' },
+      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE GHOST TOWN, THE MANOR, THE JUNGLE, THE BUBBLES, THE IRON TANGLE AND THE OVER CITY.", portrait: 'p_carl' },
       { text: "PAST THE TRAINING FLOORS AND THEIR RATS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
       { text: "PRINCESS DONUT STRETCHED, YAWNED, AND ANNOUNCED THAT SHE WAS HUNGRY. SOME THINGS SURVIVE EVERYTHING.", portrait: 'p_donut' },
       { text: "SEASON ONE: COMPLETE. THANK YOU FOR WATCHING. STAY TUNED, CRAWLER. THE GALAXY IS ALREADY ASKING FOR SEASON TWO.", portrait: 'p_ai' }

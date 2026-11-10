@@ -431,6 +431,29 @@
       lad: { k: 'metal', m: '#8c5c34', l: '#c08850', d: '#3c200c' },
       crate: { d: '#4c2810', m: '#8c5c34', l: '#c08850' }
     },
+    // ---- floor 8 retheme (THE GHOSTS OF EARTH): a December river town, and its coal mine ----
+    ghosttown: {
+      ol: '#0c0c14', sh: '#2c2834',
+      body: { k: 'brick', m: '#2c2028', a: '#6c4848', b: '#5c3c40', h: '#8c6460', s: '#3c2830' },
+      top: { k: 'snow', d: '#6c7c9c', m: '#c8d4e8', l: '#fcfcfc', x: '#a4e4fc' },
+      alt: { k: 'clapboard', base: '#5c6c74', a: '#6c7c84', h: '#8c9ca4', s: '#3c4850', w: '#f8d878', W: '#ac7c00', r: '#a80020', g: '#2c6c3c' },
+      plat: { k: 'awning', d: '#5c1420', m: '#a83040', l: '#e8dcd0', x: '#3c3c48' },
+      spike: { l: '#fcfcfc', m: '#a4e4fc', d: '#5c8cbc', b: '#2c2834' },
+      liq: { k: 'water', d: '#0c1c3c', m: '#2c4c7c', l: '#6c9cc8', x: '#d8f0fc' },
+      lad: { k: 'metal', m: '#5c6470', l: '#9ca4b0', d: '#2c3038' },
+      crate: { d: '#5c1420', m: '#a83040', l: '#f8d878' }
+    },
+    ghostmine: {
+      ol: '#060608', sh: '#1c1c24',
+      body: { k: 'rock', base: '#24242c', a: '#34343e', h: '#5c5c6c', s: '#141418', d: '#0c0c10' },
+      top: { k: 'ledge', d: '#2c2c34', m: '#6c6870', l: '#9c98a0', x: '#58d8f8' },
+      alt: { k: 'timber', d: '#2c1c10', m: '#6c4c2c', l: '#9c7444', x: '#7c7c7c' },
+      plat: { k: 'plank', d: '#3c2c1c', m: '#7c5c34', l: '#a88454', x: '#5c5c5c' },
+      spike: { l: '#bcbcbc', m: '#6c6c74', d: '#2c2c34', b: '#141418' },
+      liq: { k: 'water', d: '#04080c', m: '#0c1820', l: '#24404c', x: '#7cb8c8' },
+      lad: { k: 'wood', m: '#7c5c34', l: '#a88454', d: '#3c2c1c' },
+      crate: { d: '#3c2c1c', m: '#6c4c2c', l: '#9c7444' }
+    },
     warzone: {
       ol: '#080604', sh: '#1c140c',
       body: { k: 'dirt', base: '#3c2c20', a: '#4c3a2c', h: '#64503c', s: '#20160e', d: '#7c7c7c' },
@@ -968,6 +991,42 @@
     }
     R(g, 0, 13, 16, 3, c.b); R(g, 0, 13, 16, 1, mix(c.b, '#fcfcfc', 0.3)); P(g, 4, 14, '#4c4a44'); P(g, 11, 15, '#4c4a44');
   }
+  /* ---- floor 8 painters (ghosttown): snowy sidewalk cap, painted clapboard with lit windows, shop awnings ---- */
+  TOP.snow = function (g, c, r) {
+    R(g, 0, 0, 16, 4, c.m); R(g, 0, 0, 16, 1, c.l);
+    for (var x = 0; x < 16; x++) { if (r() < 0.45) P(g, x, 1, c.l); if (r() < 0.55) P(g, x, 4, c.m); if (r() < 0.2) P(g, x, 2, '#fcfcfc'); }
+    for (x = 0; x < 16; x++) P(g, x, 5, r() < 0.7 ? c.d : c.m);
+    for (var i = 0; i < 2; i++) { // icicles
+      if (r() < 0.6) { x = 1 + ((r() * 14) | 0); var len = 2 + ((r() * 3) | 0); R(g, x, 5, 1, len, c.x); P(g, x, 5 + len, '#fcfcfc'); P(g, x + 1, 5, c.x); }
+    }
+    return 5;
+  };
+  ALT.clapboard = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var y = 0; y < 16; y += 4) { R(g, 0, y, 16, 1, c.h); R(g, 0, y + 1, 16, 1, c.a); R(g, 0, y + 3, 16, 1, c.s); }
+    var roll = r();
+    if (roll < 0.3) { // a lit window, sometimes with a wreath
+      R(g, 3, 2, 10, 11, '#1c1820'); R(g, 4, 3, 8, 9, c.w); R(g, 4, 3, 8, 2, mix(c.w, '#fcfcfc', 0.4));
+      R(g, 7, 3, 2, 9, c.W); R(g, 4, 7, 8, 1, c.W); R(g, 2, 13, 12, 1, c.h); R(g, 2, 14, 12, 1, c.s);
+      if (r() < 0.5) { ring(g, 8, 7, 3, c.g, 1); P(g, 8, 10, c.r); P(g, 7, 11, c.r); P(g, 9, 11, c.r); P(g, 6, 5, c.r); P(g, 10, 6, c.r); }
+    } else if (roll < 0.5) { // a sagging strand of bulbs
+      var cols = ['#f83800', '#58d854', '#f8b800', '#3cbcfc', '#f878f8'];
+      for (var x = 0; x < 16; x++) { var yy = 2 + Math.round(Math.sin(x / 16 * Math.PI) * 3); P(g, x, yy, '#1c1820'); if (x % 4 === 1) { P(g, x, yy + 1, cols[(x >> 2) % cols.length]); P(g, x, yy + 2, cols[(x >> 2) % cols.length]); } }
+    }
+    for (var i = 0; i < 3; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, c.s);
+  };
+  PLAT.awning = function (g, c, L, Rt) {
+    R(g, 0, 0, 16, 2, '#fcfcfc'); R(g, 0, 2, 16, 1, '#c8d4e8');
+    for (var x = 0; x < 16; x++) {
+      var col = ((x >> 2) & 1) ? c.l : c.m, mid = (x & 3) === 1 || (x & 3) === 2;
+      R(g, x, 3, 1, 3, col);
+      if (mid) { P(g, x, 6, col); P(g, x, 7, '#000000'); } else P(g, x, 6, '#000000');
+    }
+    R(g, 0, 3, 16, 1, c.d);
+    P(g, 3, 0, '#c8d4e8'); P(g, 11, 1, '#c8d4e8');
+    if (!L) { R(g, 0, 0, 1, 7, '#000000'); R(g, 1, 7, 1, 4, c.x); }
+    if (!Rt) { R(g, 15, 0, 1, 7, '#000000'); R(g, 14, 7, 1, 4, c.x); }
+  };
 
   function paintSpikes(g, c) {
     if (c.k === 'rebar') return paintRebar(g, c);
@@ -1616,6 +1675,268 @@
     }
   };
 
+  /* ---- floor 8 (THE GHOSTS OF EARTH): a replica river town on December 10th, and its coal mine.
+     The townsfolk are translucent ghosts replaying their day: they walk a stretch of sidewalk,
+     fade out, and start the same walk again, never noticing anything. ---- */
+  var GHOST_PAL = { w: '#f0fcff', g: '#b0e4f8', G: '#5ca4cc', e: '#1c3854' };
+  var GHOST_LEGS = [['...g..g.....', '...g..g.....', '..g....g....', '.gg....gg...'], ['....gg......', '....gg......', '....gg......', '...gggg.....']];
+  var GHOSTS = { // facing right; 14 rows of body, then 4 leg rows per frame (null = stands still)
+    shopper: ['....ggg.....', '...gwwgg....', '...gwegg....', '...ggggg....', '....ggg.....', '...gGGGg....', '..gGgggGg...', '..gGgggGg.G.',
+      '..gGgggGgGGG', '..gGgggG.GGG', '..ggggggg.G.', '..gGgggGg...', '..gGgggGg...', '...ggggg....'],
+    gift: ['...GGGG.....', '..GGGGGG....', '...gwwg.....', '...gweg.....', '...gggg.....', '....gg......', '...gGGgg....', '..gGggggwGw.',
+      '..gGgggwwGw.', '..gGggggGGG.', '..gGggggwGw.', '..gGgggg....', '...gggg.....', '...gggg.....'],
+    kid: ['............', '............', '............', '.....w......', '....ggg.....', '...gwwgg....', '...gwegg....', '...ggggg....',
+      '....ggg.....', '..ggGGGgg...', '.g.gGggGg...', '...gGggGg...', '...ggggg....', '...ggggg....'],
+    tree: ['.........GG.', '.......GGGGG', '.....GGGGGGG', '...ggGGGGGGG', '..gwwgGGGGG.', '..gwegg.GG..', '..ggggg.....', '...ggg......',
+      '..gGGGgg....', '..gGgggg....', '..gGgggg....', '..gGgggg....', '..gGgggg....', '...gggg.....'],
+    caroler: ['...GGG......', '..GGGGG.....', '..gwwgg.....', '..gwegg.....', '..gGGgg.....', '...ggg......', '..gGGGg.....', '.gGgggGg....',
+      '.gGggwwww...', '.gGggwGGw...', '.gGggwwww...', '.gGggggg....', '.gGggggg....', '..gggggg....'],
+    miner: ['...GGGG.....', '..GGGGGGw...', '..GgwwgGww..', '...gweg.....', '...gggg..G..', '....gg..G...', '...gGGgG....', '..gGgggg....',
+      '..gGggggg...', '..gGgggg....', '..gGgggg....', '..gGgggg....', '...gggg.....', '...gggg.....']
+  };
+  var ghostCache = {};
+  function ghostSprite(kind, frame, flip) { // pre-rendered 12x18 ghost, frame 0/1
+    var key = kind + frame + (flip ? 'f' : '');
+    if (ghostCache[key]) return ghostCache[key];
+    var cv = mkCanvas(12, 18), g = g2(cv), body = GHOSTS[kind], legs = GHOST_LEGS[frame & 1];
+    if (kind === 'caroler') { body = body.slice(); if (frame & 1) body[4] = '..gGeGg.....'; legs = GHOST_LEGS[1]; }
+    rows(g, 0, 0, body, GHOST_PAL); rows(g, 0, 14, legs, GHOST_PAL);
+    if (flip) { var c2 = mkCanvas(12, 18), f2 = g2(c2); f2.translate(12, 0); f2.scale(-1, 1); f2.drawImage(cv, 0, 0); cv = c2; }
+    return (ghostCache[key] = cv);
+  }
+  // one ghost replaying its little loop of the day. G = {k, x, d (dir), v (px/s), D (loop secs), o (offset)}
+  function drawGhost(ctx, G, camX, rate, W, footY, t, i) {
+    var ph = ((t + G.o) % G.D) / G.D, walking = G.v > 0;
+    var lx = G.x + G.d * G.v * ph * G.D;
+    var a = Math.min(1, ph / 0.1, (1 - ph) / 0.1) * 0.5;
+    var gl = hash2(Math.floor(t * 9) + i * 31, i) % 23; // the recording glitches now and then
+    if (gl === 0) a *= 0.3;
+    var jx = gl === 1 ? 1 : gl === 2 ? -1 : 0;
+    var fr = walking ? (Math.floor(t * 4 + i * 0.5) & 1) : (Math.floor(t * 1.5 + i) & 1);
+    var cv = ghostSprite(G.k, fr, G.d < 0);
+    var sx = Math.round(((lx - camX * rate) % W + W) % W) + jx;
+    for (var k = -1; k <= 0; k++) {
+      var x = sx + k * W;
+      if (x < -14 || x > 330) continue;
+      ctx.globalAlpha = a * 0.35; ctx.drawImage(cv, x - G.d * 2 - 6, footY - 18);  // afterimage
+      ctx.globalAlpha = a; ctx.drawImage(cv, x - 6, footY - 18);
+    }
+    ctx.globalAlpha = 1;
+  }
+  var GT_BUILD = ['#382830', '#2c2a3a', '#36302c', '#26303c', '#32282e'];
+  var GT_LIGHTS = ['#e04838', '#58b858', '#e8b830', '#58a8e0', '#d878d8'];
+  function townRow(seed, w) { // storefront descriptors shared by the layer painter and the twinkle animation
+    var r = rng(seed), x = 0, out = [];
+    while (x < w) {
+      var bw = 44 + ((r() * 30) | 0); if (x + bw > w - 34) bw = w - x;
+      out.push({ x: x, w: bw, top: 58 + ((r() * 30) | 0), c: GT_BUILD[(r() * GT_BUILD.length) | 0], aw: (r() * 3) | 0, sign: r() < 0.7, lights: r() < 0.8, wreath: r() < 0.5, seed: (r() * 1e6) | 0 });
+      x += bw;
+    }
+    return out;
+  }
+  BG.ghosttown = {
+    sky: function (g) {
+      bands(g, 320, 0, 150, ['#06061a', '#0a0c22', '#10122a', '#161830', '#1e1e38', '#282640', '#342e48']);
+      R(g, 0, 150, 320, BGH - 150, '#342e48');
+      stars(g, 320, 90, 40, 808, ['#3c4064', '#5c6088', '#8c90b4']);
+      g.globalAlpha = 0.18; blob(g, 252, 30, 18, 18, '#a8b4d8'); g.globalAlpha = 1;
+      blob(g, 252, 30, 10, 10, '#c8d0e4'); blob(g, 255, 28, 8, 8, '#e0e4f0'); P(g, 249, 33, '#a8b0c8'); P(g, 254, 26, '#c8d0e0');
+    },
+    layers: [
+      layer(480, 0.07, function (g, w) { // Appalachian ridges with a few farmhouse lights and a radio mast
+        rep(g, w, function () {
+          var x, y, r = rng(811);
+          for (x = 0; x < w; x++) { y = 66 + Math.round(Math.sin(x / 61) * 12 + Math.sin(x / 23 + 1) * 5); R(g, x, y, 1, BGH - y, '#1a1c34'); if (x % 3) P(g, x, y, '#3c4064'); }
+          for (x = 0; x < w; x++) { y = 84 + Math.round(Math.sin(x / 41 + 2) * 9 + Math.sin(x / 13) * 3); R(g, x, y, 1, BGH - y, '#22223a'); P(g, x, y, '#4c5074'); if ((x * 7) % 5 === 0) P(g, x, y + 1, '#3c4064'); }
+          for (var i = 0; i < 14; i++) { x = (r() * w) | 0; y = 96 + ((r() * 22) | 0); P(g, x, y, r() < 0.7 ? '#a08848' : '#7c6c48'); }
+          R(g, 380, 46, 1, 50, '#2c2c48'); line(g, 376, 96, 380, 46, '#2c2c48'); line(g, 384, 96, 380, 46, '#2c2c48'); // radio mast (beacon lit in anim)
+          R(g, 120, 80, 3, 16, '#1e1e36'); tri(g, 121, 72, 5, 8, '#1e1e36'); R(g, 116, 86, 11, 10, '#1e1e36'); // steeple
+          R(g, 300, 76, 14, 8, '#1e1e36'); R(g, 301, 84, 1, 14, '#1e1e36'); R(g, 312, 84, 1, 14, '#1e1e36'); tri(g, 307, 71, 16, 5, '#1e1e36'); // water tower
+          // the big town tree in the square, rising over the rooftops (the Mothman's perch)
+          for (var tk = 0; tk < 5; tk++) { tri(g, 200, 22 + tk * 16, 18 + tk * 12, 24, '#14301c'); tri(g, 200, 24 + tk * 16, 12 + tk * 12, 22, '#1a3c24'); }
+          for (tk = 0; tk < 22; tk++) { var ty2 = 30 + ((r() * 76) | 0), tw2 = 4 + (ty2 - 22) * 0.4; P(g, Math.round(200 + (r() - 0.5) * tw2 * 1.6), ty2, ['#a04040', '#a08840', '#4878a0', '#48904c'][tk % 4]); }
+          P(g, 200, 18, '#f8d878'); P(g, 199, 19, '#d8b850'); P(g, 201, 19, '#d8b850'); P(g, 200, 20, '#d8b850'); P(g, 200, 17, '#b89838');
+        });
+      }),
+      layer(384, 0.3, function (g, w) { // Main Street storefronts, decorated, snow on the roofs
+        rep(g, w, function () {
+          var row = townRow(821, w);
+          for (var b = 0; b < row.length; b++) {
+            var B = row[b], x = B.x, bw = B.w, top = B.top, c = B.c, r = rng(B.seed), wx, wy;
+            var lit = mix(c, '#fcfcfc', 0.12), dark = dk(c, 0.35);
+            R(g, x, top, bw, 150 - top, c); R(g, x, top, 1, 150 - top, dark); R(g, x + bw - 1, top, 1, 150 - top, dark);
+            R(g, x, top + 4, bw, 2, lit); R(g, x, top + 6, bw, 1, dark); // cornice
+            R(g, x - 1, top - 2, bw + 2, 3, '#c8d0e0'); R(g, x - 1, top - 2, bw + 2, 1, '#e8ecf4'); // snow on the roof
+            for (wx = x + 2; wx < x + bw - 2; wx += 5) if (r() < 0.5) R(g, wx, top + 1, 1, 1 + ((r() * 3) | 0), '#c8d0e0');
+            for (wy = top + 11; wy < 100; wy += 14) for (wx = x + 6; wx < x + bw - 9; wx += 12) { // upstairs windows
+              var on = r() < 0.55;
+              R(g, wx, wy, 7, 9, '#141220'); R(g, wx + 1, wy + 1, 5, 7, on ? '#98804c' : '#221e2c'); R(g, wx + 3, wy + 1, 1, 7, '#141220'); R(g, wx + 1, wy + 4, 5, 1, '#141220');
+              if (on && r() < 0.35) { R(g, wx + 1, wy + 1, 5, 2, '#b8a070'); }
+              R(g, wx - 1, wy + 9, 9, 1, '#a8b0c4');
+            }
+            // storefront: display window, door, awning, sign
+            var sy = 118;
+            R(g, x + 3, sy, bw - 6, 32, dark);
+            R(g, x + 5, sy + 8, bw - 22, 20, '#141220'); R(g, x + 6, sy + 9, bw - 24, 18, '#a08858'); R(g, x + 6, sy + 9, bw - 24, 3, '#b8a070');
+            for (var q = 0; q < 4; q++) { var gx = x + 8 + ((r() * (bw - 30)) | 0); R(g, gx, sy + 20, 4, 7, ['#7c3438', '#3c6c4c', '#4c5c8c', '#8c7c3c'][q]); R(g, gx + 1, sy + 20, 2, 7, '#d8c8a0'); R(g, gx, sy + 22, 4, 1, '#d8c8a0'); } // gift boxes in the window
+            R(g, x + bw - 14, sy + 6, 9, 24, '#141220'); R(g, x + bw - 13, sy + 7, 7, 23, '#5c3c2c'); R(g, x + bw - 12, sy + 9, 5, 8, '#a08858'); P(g, x + bw - 8, sy + 20, '#e8c050');
+            if (B.wreath) { ring(g, x + bw - 10, sy + 12, 3, '#2c7c3c', 2); P(g, x + bw - 10, sy + 15, '#c03030'); }
+            var ac = [['#7c2c34', '#c8c0b4'], ['#2c5c44', '#c8c0b4'], ['#3c4c7c', '#c8c0b4']][B.aw];
+            for (var ax = x + 3; ax < x + bw - 3; ax++) { var ac1 = ((ax - x) >> 2) & 1 ? ac[1] : ac[0]; R(g, ax, sy, 1, 5, ac1); if (((ax - x) & 3) === 1 || ((ax - x) & 3) === 2) P(g, ax, sy + 5, ac1); }
+            R(g, x + 3, sy - 1, bw - 6, 1, '#e8ecf4');
+            if (B.sign) { R(g, x + 8, 106, bw - 16, 6, '#1c1824'); for (var l = x + 10; l < x + bw - 10; l += 3) if (r() < 0.8) R(g, l, 108, 2, 3, B.aw === 1 ? '#e8d8a8' : '#d8c898'); }
+            if (B.lights) { // sagging strand of bulbs along the roofline
+              for (var lx2 = 0; lx2 < bw; lx2++) { var ly = top + 8 + Math.round(Math.sin(lx2 / bw * Math.PI) * 4); P(g, x + lx2, ly, '#0c0c14'); if (lx2 % 4 === 2) R(g, x + lx2, ly + 1, 1, 2, GT_LIGHTS[((lx2 >> 2) + b) % GT_LIGHTS.length]); }
+            }
+          }
+          R(g, 0, 150, w, 6, '#4c4c60'); R(g, 0, 150, w, 1, '#c8d0e0'); R(g, 0, 156, w, BGH - 156, '#1c1c2a'); // sidewalk + snow edge + road
+          for (var s = 0; s < w; s += 7) R(g, s, 151, 3 + (s % 4), 1, '#8c94ac');
+        });
+      }),
+      layer(512, 0.6, function (g, w) { // parked cars, lamp posts, snowbanks
+        rep(g, w, function () {
+          var cars = [[20, '#5c2c34'], [150, '#2c3c5c'], [262, '#4c5c4c'], [390, '#6c6050']];
+          for (var c = 0; c < cars.length; c++) {
+            var cx = cars[c][0], col = cars[c][1], hi = mix(col, '#fcfcfc', 0.2), lo = dk(col, 0.4), y = 146;
+            R(g, cx + 2, y + 2, 40, 9, col); R(g, cx + 2, y + 2, 40, 1, hi); R(g, cx, y + 5, 44, 5, col); R(g, cx, y + 10, 44, 1, lo); // body
+            R(g, cx + 10, y - 5, 22, 7, col); R(g, cx + 12, y - 4, 8, 5, '#1c2438'); R(g, cx + 22, y - 4, 8, 5, '#1c2438'); R(g, cx + 13, y - 4, 2, 2, '#3c4c6c'); // cab + windows
+            R(g, cx + 9, y - 7, 24, 3, '#d8e0ec'); R(g, cx + 9, y - 7, 24, 1, '#f0f4fc'); R(g, cx + 1, y + 1, 9, 2, '#d8e0ec'); R(g, cx + 34, y + 1, 9, 2, '#d8e0ec'); // snow
+            blob(g, cx + 9, y + 11, 4, 4, '#0c0c12'); blob(g, cx + 35, y + 11, 4, 4, '#0c0c12'); P(g, cx + 9, y + 11, '#5c5c6c'); P(g, cx + 35, y + 11, '#5c5c6c');
+            R(g, cx + 42, y + 5, 2, 2, '#e8d8a0'); R(g, cx, y + 5, 2, 2, '#a83030');
+          }
+          for (var lp = 0; lp < w; lp += 128) { // lamp posts (the glow is animated)
+            var px0 = lp + 104;
+            R(g, px0, 98, 2, 60, '#1c1c28'); R(g, px0 - 2, 156, 6, 3, '#1c1c28'); R(g, px0 - 4, 94, 10, 4, '#2c2c3c'); R(g, px0 - 3, 98, 8, 3, '#e8d8a0');
+            R(g, px0 - 4, 93, 10, 1, '#d8e0ec');
+            ring(g, px0 + 1, 112, 4, '#2c6c3c', 2); P(g, px0 + 1, 116, '#c03030'); P(g, px0, 117, '#c03030'); P(g, px0 + 2, 117, '#c03030'); // wreath on the post
+          }
+          for (var sx2 = 0; sx2 < w; sx2 += 2) { var sh = 3 + Math.round(Math.sin(sx2 / 17) * 2 + Math.sin(sx2 / 5) * 1); R(g, sx2, 160 - sh, 2, sh + 40, '#a8b4c8'); P(g, sx2, 160 - sh, '#e0e8f4'); }
+          R(g, 470, 148, 6, 8, '#8c2c2c'); R(g, 469, 150, 8, 2, '#a83c3c'); R(g, 471, 146, 4, 2, '#d8e0ec'); // fire hydrant
+          R(g, 0, 160, w, BGH - 160, '#a8b4c8');
+        });
+      })
+    ],
+    ghosts: [ // [band, kind, x, dir, speed, loop secs, offset]
+      [0, 'shopper', 30, 1, 9, 14, 0], [0, 'gift', 200, -1, 8, 16, 5], [0, 'kid', 120, 1, 12, 11, 2], [0, 'caroler', 300, 1, 0, 9, 1], [0, 'caroler', 309, 1, 0, 9, 4],
+      [0, 'tree', 260, -1, 7, 18, 9], [0, 'shopper', 340, -1, 10, 13, 6],
+      [1, 'gift', 60, 1, 13, 12, 3], [1, 'shopper', 300, -1, 12, 15, 0], [1, 'kid', 420, -1, 16, 10, 7], [1, 'tree', 180, 1, 10, 17, 11]
+    ],
+    anim: function (ctx, camX, camY, t, oy) {
+      var cy = camY < 0 ? 0 : camY > 160 ? 160 : camY, i, k, x, y;
+      var oy2 = -Math.round(Math.min(BGH - 180, cy * 0.3 * 0.5)), oy3 = -Math.round(Math.min(BGH - 180, cy * 0.6 * 0.5));
+      var oy1 = -Math.round(Math.min(BGH - 180, cy * 0.07 * 0.5));
+      // radio mast beacon on the ridge (the one Carl climbs, blinking)
+      if ((t % 1.6) < 0.8) { x = ((380 - camX * 0.07) % 480 + 480) % 480; for (k = -1; k <= 0; k++) { var bx = Math.round(x + k * 480); if (bx > -4 && bx < 324) { ctx.fillStyle = '#f83800'; ctx.fillRect(bx, 45 + oy1, 1, 2); ctx.globalAlpha = 0.25; ctx.fillRect(bx - 1, 44 + oy1, 3, 4); ctx.globalAlpha = 1; } } }
+      // twinkling strands: a few bulbs blink brighter at a time
+      var B = BG.ghosttown, row = B._row || (B._row = townRow(821, 384));
+      for (i = 0; i < row.length; i++) {
+        var R0 = row[i]; if (!R0.lights) continue;
+        for (var lx2 = 2; lx2 < R0.w; lx2 += 4) {
+          if (((hash2(lx2 + i * 97, Math.floor(t * 3)) >> 3) % 5) !== 0) continue;
+          x = ((R0.x + lx2 - camX * 0.3) % 384 + 384) % 384;
+          y = R0.top + 9 + Math.round(Math.sin(lx2 / R0.w * Math.PI) * 4) + oy2;
+          for (k = -1; k <= 0; k++) { var tx = Math.round(x + k * 384); if (tx < -2 || tx > 322) continue; ctx.fillStyle = '#fcfcfc'; ctx.fillRect(tx, y, 1, 1); ctx.globalAlpha = 0.3; ctx.fillStyle = GT_LIGHTS[((lx2 >> 2) + i) % GT_LIGHTS.length]; ctx.fillRect(tx - 1, y - 1, 3, 3); ctx.globalAlpha = 1; }
+        }
+      }
+      // lamp post glow
+      for (i = 0; i < 4; i++) {
+        x = ((i * 128 + 105 - camX * 0.6) % 512 + 512) % 512;
+        for (k = -1; k <= 0; k++) {
+          var lpx = Math.round(x + k * 512); if (lpx < -30 || lpx > 350) continue;
+          ctx.fillStyle = '#f8d878'; ctx.globalAlpha = 0.07 + Math.sin(t * 3 + i) * 0.01;
+          ctx.beginPath(); ctx.arc(lpx, 102 + oy3, 18, 0, 6.283); ctx.fill();
+          ctx.globalAlpha = 0.05; ctx.beginPath(); ctx.moveTo(lpx - 4, 100 + oy3); ctx.lineTo(lpx + 4, 100 + oy3); ctx.lineTo(lpx + 16, 160 + oy3); ctx.lineTo(lpx - 16, 160 + oy3); ctx.closePath(); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      // the ghosts of Earth, replaying December 10th
+      var gs = B.ghosts;
+      for (i = 0; i < gs.length; i++) {
+        var gd = gs[i], G = B['_g' + i] || (B['_g' + i] = { k: gd[1], x: gd[2], d: gd[3], v: gd[4], D: gd[5], o: gd[6] });
+        if (gd[0] === 0) drawGhost(ctx, G, camX, 0.3, 384, 150 + oy2, t, i);
+        else drawGhost(ctx, G, camX, 0.6, 512, 158 + oy3, t, i);
+      }
+      // a thin cold haze over the town, and the snow
+      ctx.globalAlpha = 0.08; ctx.fillStyle = '#8c9cc8'; ctx.fillRect(0, 50 + oy2, 320, 120); ctx.globalAlpha = 1;
+      var r = rng(83);
+      for (i = 0; i < 56; i++) {
+        var bx2 = r() * 340, by = r() * 200, sp = 9 + r() * 14, ph = r() * 6, big = i % 5 === 0;
+        x = ((bx2 - camX * (big ? 0.8 : 0.45) + Math.sin(t * 0.9 + ph) * 6) % 340 + 340) % 340 - 10;
+        y = ((by + t * sp) % 200) - 10;
+        ctx.fillStyle = big ? '#fcfcfc' : '#c8d0e4';
+        ctx.fillRect(Math.round(x), Math.round(y), big ? 2 : 1, big ? 2 : 1);
+      }
+    }
+  };
+
+  BG.ghostmine = {
+    sky: function (g) {
+      bands(g, 320, 0, BGH, ['#060608', '#0a0a0e', '#0e0e14', '#121218', '#0e0e14']);
+      var r = rng(851);
+      for (var i = 0; i < 90; i++) R(g, (r() * 320) | 0, (r() * BGH) | 0, 1 + ((r() * 4) | 0), 1, r() < 0.2 ? '#24303c' : '#16161e');
+    },
+    layers: [
+      layer(384, 0.2, function (g, w) { // far tunnel: coal seams and small timber sets receding
+        rep(g, w, function () {
+          var r = rng(853), x, y;
+          for (y = 30; y < 150; y += 22 + ((r() * 10) | 0)) { R(g, 0, y, w, 4, '#0a0a0e'); for (x = 0; x < w; x += 3) if (r() < 0.3) P(g, x, y + 1, '#2c3c4c'); }
+          for (x = 24; x < w; x += 64) { R(g, x, 70, 4, 80, '#2c2014'); R(g, x + 36, 70, 4, 80, '#2c2014'); R(g, x - 3, 66, 46, 5, '#3c2c1c'); R(g, x - 3, 66, 46, 1, '#4c3824'); R(g, x + 4, 71, 32, 79, '#060608'); }
+          R(g, 0, 150, w, BGH - 150, '#100e12');
+        });
+      }),
+      layer(448, 0.5, function (g, w) { // near: big timber sets, rails, a mine cart
+        rep(g, w, function () {
+          var x;
+          for (x = 40; x < w; x += 224) {
+            R(g, x, 34, 8, 122, '#3c2c1c'); R(g, x + 1, 34, 2, 122, '#5c4428'); R(g, x + 120, 34, 8, 122, '#3c2c1c'); R(g, x + 121, 34, 2, 122, '#5c4428');
+            R(g, x - 6, 26, 140, 9, '#4c3824'); R(g, x - 6, 26, 140, 2, '#6c5034'); R(g, x - 6, 34, 140, 1, '#1c140c');
+            for (var k = 0; k < 4; k++) P(g, x + 3 + k * 40, 30, '#7c7c7c');
+            R(g, x + 30, 35, 1, 8, '#2c2c34'); R(g, x + 90, 35, 1, 8, '#2c2c34'); // lantern hooks
+          }
+          R(g, 0, 150, w, 3, '#2c2c34'); R(g, 0, 150, w, 1, '#6c6c78'); R(g, 0, 155, w, 2, '#2c2c34'); R(g, 0, 155, w, 1, '#6c6c78');
+          for (x = 0; x < w; x += 9) R(g, x, 153, 6, 6, '#2c2014');
+          R(g, 0, 159, w, BGH - 159, '#0c0a0c');
+          var cx = 300; // mine cart full of coal
+          R(g, cx, 132, 36, 16, '#4c4c58'); R(g, cx, 132, 36, 2, '#7c7c88'); R(g, cx + 2, 136, 32, 1, '#2c2c34'); R(g, cx + 2, 142, 32, 1, '#2c2c34');
+          blob(g, cx + 18, 131, 15, 4, '#141418'); P(g, cx + 12, 129, '#3c4c5c'); P(g, cx + 22, 128, '#3c4c5c');
+          blob(g, cx + 8, 149, 3, 3, '#1c1c24'); blob(g, cx + 28, 149, 3, 3, '#1c1c24');
+          line(g, 150, 150, 162, 112, '#5c4428'); R(g, 158, 110, 10, 3, '#7c7c7c'); // a pick leaning on the wall
+        });
+      })
+    ],
+    ghosts: [[0, 'miner', 60, 1, 10, 15, 0], [0, 'miner', 260, -1, 9, 17, 6], [0, 'miner', 380, 1, 0, 8, 2]],
+    anim: function (ctx, camX, camY, t, oy) {
+      var i, k, x;
+      // hanging lanterns
+      for (i = 0; i < 4; i++) {
+        x = (((i >> 1) * 224 + 40 + (i & 1 ? 90 : 30) - camX * 0.5) % 448 + 448) % 448;
+        for (k = -1; k <= 0; k++) {
+          var lx = Math.round(x + k * 448); if (lx < -30 || lx > 350) continue;
+          var f = Math.sin(t * 9 + i * 2) * 0.02;
+          ctx.globalAlpha = 0.1 + f; ctx.fillStyle = '#f8b860'; ctx.beginPath(); ctx.arc(lx, 46 + oy, 22, 0, 6.283); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = '#2c2c34'; ctx.fillRect(lx - 2, 42 + oy, 5, 7); ctx.fillStyle = '#f8d878'; ctx.fillRect(lx - 1, 44 + oy, 3, 4); ctx.fillStyle = '#fcfcfc'; ctx.fillRect(lx, 45 + oy, 1, 2);
+        }
+      }
+      // ghost miners with their headlamps on, still working the night shift
+      var B = BG.ghostmine;
+      for (i = 0; i < B.ghosts.length; i++) {
+        var gd = B.ghosts[i], G = B['_g' + i] || (B['_g' + i] = { k: gd[1], x: gd[2], d: gd[3], v: gd[4], D: gd[5], o: gd[6] });
+        var ph = ((t + G.o) % G.D) / G.D, lx2 = G.x + G.d * G.v * ph * G.D;
+        x = ((lx2 - camX * 0.5) % 448 + 448) % 448;
+        for (k = -1; k <= 0; k++) {
+          var hx = Math.round(x + k * 448); if (hx < -40 || hx > 360) continue;
+          ctx.globalAlpha = 0.07 * Math.min(1, ph / 0.1, (1 - ph) / 0.1); ctx.fillStyle = '#f8f0b0';
+          ctx.beginPath(); ctx.moveTo(hx + G.d * 3, 136 + oy); ctx.lineTo(hx + G.d * 46, 124 + oy); ctx.lineTo(hx + G.d * 46, 152 + oy); ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        drawGhost(ctx, G, camX, 0.5, 448, 152 + oy, t, i + 3);
+      }
+      // coal dust in the lamplight
+      var r = rng(87); ctx.fillStyle = '#5c5c68';
+      for (i = 0; i < 24; i++) { x = ((r() * 320 - camX * 0.6 + Math.sin(t * 0.5 + i) * 5) % 320 + 320) % 320; ctx.fillRect(Math.round(x), Math.round((r() * 180 + t * (2 + r() * 3)) % 180), 1, 1); }
+    }
+  };
+
   BG.warzone = {
     sky: function (g) {
       bands(g, 320, 0, 140, ['#080202', '#100404', '#180606', '#200808', '#2c0c08', '#3c140a', '#4c1c0c']);
@@ -2256,6 +2577,15 @@
       water: { k: 'toxic', d: '#2c4000', m: '#58a000', l: '#a8e030', x: '#e8fc98', shore: '#784020' },
       tree: { k: 'boulder', d: '#3c3430', m: '#7c7068', l: '#a89c90', t: '#3c3430' }
     },
+    // ---- floor 8 (THE GHOSTS OF EARTH): the replica river town in December snow ----
+    ow_town: {
+      ground: { k: 'snow', base: '#c4cede', a: '#e0e6f0', s: '#9ca8bc' },
+      decor: { k: 'snowyard', base: '#bcc8da', a: '#2c6c3c', s: '#949eb4', x: '#e04838' },
+      road: { k: 'asphalt', base: '#3c3c48', a: '#4c4c58', s: '#2c2c38', line: '#d8b850', edge: '#e8ecf4' },
+      block: { k: 'xmas', roof: '#646c88', rh: '#dce4f0', rs: '#464c66', front: '#6c4044', fh: '#8c5c58', fs: '#4c2c30', win: '#2c2838', lit: '#f8d878' },
+      water: { k: 'ice', d: '#5c7ca8', m: '#9cbcdc', l: '#c8e0f4', x: '#fcfcfc', shore: '#a8b4c8' },
+      tree: { k: 'xmastree', d: '#0c4c1c', m: '#1c7c2c', l: '#fcfcfc', t: '#503000' }
+    },
     ow_war: {
       ground: { k: 'mud', base: '#5c4430', a: '#6c5038', s: '#3c2c1c' },
       decor: { k: 'crater', base: '#544030', a: '#2c2018', s: '#3c2c1c', x: '#7c6448' },
@@ -2349,6 +2679,25 @@
     for (i = 0; i < 5; i++) { x = (r() * 15) | 0; y = (r() * 15) | 0; var cc = cols[(r() * cols.length) | 0]; P(g, x, y, cc); if (i & 1) P(g, x + 1, y, cc); }
   };
 
+  // floor 8 town: packed snow with footprints, and front yards with shrubs, lights and the odd snowman
+  OWG.snow = function (g, c, r) {
+    R(g, 0, 0, 16, 16, c.base);
+    for (var i = 0; i < 10; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, i & 1 ? c.a : c.s);
+    if (r() < 0.5) { var x = 2 + ((r() * 9) | 0), y = 1 + ((r() * 4) | 0); for (i = 0; i < 3; i++) { P(g, x + (i & 1) * 2, y + i * 4, c.s); P(g, x + (i & 1) * 2, y + i * 4 + 1, c.s); } }
+  };
+  OWD.snowyard = function (g, c, r) {
+    OWG.snow(g, { base: c.base, a: '#f0f4fc', s: c.s }, r);
+    var v = r();
+    if (v < 0.35) { // snowman
+      blob(g, 8, 11, 3, 3, '#fcfcfc'); blob(g, 8, 6, 2, 2, '#fcfcfc'); P(g, 7, 6, '#000000'); P(g, 9, 6, '#000000'); P(g, 10, 7, '#e45c10');
+      R(g, 6, 3, 5, 1, '#2c2c34'); R(g, 7, 1, 3, 2, '#2c2c34'); P(g, 6, 9, c.x); P(g, 10, 9, c.x); R(g, 5, 14, 7, 1, c.s);
+    } else { // a shrub wrapped in lights
+      blob(g, 8, 10, 5, 3, c.a); blob(g, 8, 9, 4, 2, '#3c8c4c'); R(g, 4, 7, 9, 1, '#f0f4fc');
+      var cols = [c.x, '#f8b800', '#58a8e0', '#58d854'];
+      for (var i = 0; i < 5; i++) P(g, 4 + i * 2, 9 + (i & 1) * 2, cols[i % 4]);
+    }
+  };
+
   function owRoad(g, c, mask, r) {
     var up = mask & 1, dn = mask & 2, L = mask & 4, Rt = mask & 8;
     var horiz = (L || Rt) && !(up || dn), vert = (up || dn) && !(L || Rt);
@@ -2420,6 +2769,12 @@
       else if (k === 'coral' || k === 'cliff') { for (i = 0; i < 10; i++) { var px = (r() * 15) | 0, py = (r() * 15) | 0; P(g, px, py, c.rh); P(g, px + 1, py + 1, c.rs); } if (k === 'coral') for (i = 0; i < 3; i++) { px = (r() * 14) | 0; py = (r() * 14) | 0; R(g, px, py, 2, 2, c.rs); P(g, px, py, '#28082c'); } }
       else if (k === 'manor') { for (var y = 0; y < 16; y += 4) for (x = (y & 4) ? 2 : 0; x < 16; x += 4) { R(g, x, y, 3, 3, c.rh); R(g, x, y + 2, 3, 1, c.rs); } }
       else if (k === 'ruin') { for (i = 0; i < 6; i++) P(g, (r() * 16) | 0, (r() * 16) | 0, c.rs); if (v & 1) { blob(g, 8, 8, 3, 2, '#1c1410'); P(g, 6, 6, '#a84c20'); P(g, 10, 7, '#a84c20'); } }
+      else if (k === 'xmas') { // snowy rooftop: drifts, a brick chimney or a rooftop light-up reindeer
+        for (y = 1; y < 16; y += 4) R(g, 0, y, 16, 1, c.rs); // shingle rows
+        for (i = 0; i < 6; i++) { var sx = (r() * 13) | 0, sy = (r() * 15) | 0; R(g, sx, sy, 2 + ((r() * 4) | 0), 1, c.rh); P(g, sx + 1, sy + 1, mix(c.rh, c.roof, 0.5)); }
+        if (v === 1) { R(g, 9, 3, 4, 5, '#6c4044'); R(g, 9, 3, 4, 1, '#fcfcfc'); R(g, 10, 4, 2, 1, '#2c2028'); R(g, 9, 8, 4, 1, c.rs); }
+        if (v === 2 && r() < 0.4) { R(g, 4, 8, 6, 2, '#a07848'); R(g, 4, 10, 1, 2, '#a07848'); R(g, 9, 10, 1, 2, '#a07848'); R(g, 9, 6, 2, 2, '#a07848'); P(g, 10, 5, '#a07848'); P(g, 11, 7, '#e04838'); }
+      }
       else if (k === 'bunker') { for (y = 0; y < 16; y += 4) for (x = (y & 4) ? -4 : 0; x < 16; x += 8) { R(g, x + 1, y, 6, 3, c.roof); R(g, x + 1, y, 6, 1, c.rh); R(g, x, y + 3, 8, 1, c.rs); P(g, x, y + 1, c.rs); } }
       else if (k === 'house') {
         for (y = 0; y < 16; y += 3) { R(g, 0, y + 2, 16, 1, c.rs); for (x = (y % 6) ? 1 : 3; x < 16; x += 4) P(g, x, y + 1, c.rs); P(g, (y * 5) % 16, y, c.rh); }
@@ -2455,6 +2810,13 @@
     } else if (k === 'ruin') {
       R(g, 0, rt, 16, 1, c.fh); R(g, 3, rt + 3, 4, 5, c.win); R(g, 10, rt + 3, 3, 6, c.win); P(g, 3, rt + 3, c.front); P(g, 6, rt + 7, c.front); P(g, 12, rt + 3, c.front);
       for (i = 0; i < 4; i++) P(g, (r() * 16) | 0, rt + 2 + ((r() * (13 - rt)) | 0), c.fs);
+    } else if (k === 'xmas') { // brick storefront: string lights under the eaves, lit windows, a wreath on the door
+      for (y = rt + 2; y < 16; y += 3) { R(g, 0, y, 16, 1, c.fs); for (x = (y % 6) ? 1 : 5; x < 16; x += 8) P(g, x, y + 1, c.fs); }
+      R(g, 0, rt, 16, 1, c.fh);
+      var bulbs = ['#e04838', '#58d854', '#f8b800', '#58a8e0'];
+      for (x = 1; x < 16; x += 3) P(g, x, rt + 1 + ((x >> 1) & 1), bulbs[((x / 3) | 0) % 4]);
+      if (v === 3) { R(g, 5, rt + 4, 6, 12 - rt, K); R(g, 6, rt + 5, 4, 11 - rt, '#3c2c20'); ring(g, 8, rt + 8, 2, '#2c7c3c', 1); P(g, 8, rt + 10, '#e04838'); }
+      else { R(g, 2, rt + 4, 5, 6, K); R(g, 3, rt + 5, 3, 4, (v & 1) ? c.lit : c.win); R(g, 9, rt + 4, 5, 6, K); R(g, 10, rt + 5, 3, 4, (v & 2) ? c.win : c.lit); R(g, 1, rt + 10, 14, 1, '#fcfcfc'); }
     } else if (k === 'house') {
       for (y = rt + 1; y < 16; y += 2) R(g, 0, y, 16, 1, c.fs);
       R(g, 0, rt, 16, 1, c.fh);
@@ -2487,6 +2849,17 @@
       if (!L) R(g, 0, 0, 2, 16, c.shore); if (!Rt) R(g, 14, 0, 2, 16, c.shore); if (!dn) R(g, 0, 14, 16, 2, c.m);
       if (!up) { R(g, 0, 0, 16, 3, c.shore); R(g, 0, 3, 16, 3, c.m); for (var x = 0; x < 16; x += 2) P(g, x, 3, (x + a * 2) % 6 ? c.l : c.x); }
       for (var i = 0; i < 3; i++) { var px = (i * 5 + a * 3) % 16; P(g, px, 9 + i * 2, a & 1 ? c.l : c.m); }
+    } else if (k === 'ice') { // frozen river: still, cracked, a glint that crawls along
+      R(g, 0, 0, 16, 16, c.m);
+      var cxk = 3 + ((r() * 9) | 0), cyk = 3 + ((r() * 9) | 0);
+      if (r() < 0.7) { line(g, cxk - 5, cyk - 3, cxk, cyk, c.d); line(g, cxk, cyk, cxk - 1, cyk + 5, c.d); line(g, cxk, cyk, cxk + 6, cyk + 2, c.l); }
+      if (r() < 0.4) line(g, (r() * 8) | 0, 13, 15, 10 + ((r() * 5) | 0), c.d);
+      P(g, (r() * 16) | 0, (r() * 16) | 0, c.l); P(g, (r() * 16) | 0, (r() * 16) | 0, c.l);
+      var gx = (a * 4) % 16; P(g, gx, 1 + (gx & 7), c.x);
+      if (!up) { R(g, 0, 0, 16, 2, c.shore); for (x = 0; x < 16; x += 2) P(g, x, 2, c.x); }
+      if (!dn) R(g, 0, 15, 16, 1, c.shore);
+      if (!L) { R(g, 0, 0, 1, 16, c.shore); for (y = 0; y < 16; y += 2) P(g, 1, y, c.x); }
+      if (!Rt) { R(g, 15, 0, 1, 16, c.shore); for (y = 1; y < 16; y += 2) P(g, 14, y, c.x); }
     } else {
       for (var y = 2; y < 16; y += 5) { var off = (y * 3 + a * 2) % 16; R(g, off, y, 4, 1, c.l); R(g, (off + 8) % 16, y + 2, 3, 1, c.d); }
       if (k === 'toxic' && (a & 1)) { P(g, 4 + a, 6, c.x); P(g, 11, 10 + a, c.x); }
@@ -2517,6 +2890,11 @@
       P(g, 7, 7, c.l); P(g, 7, 10, c.l);
     } else if (k === 'boulder') {
       blob(g, 8, 10, 6, 4, c.m); blob(g, 7, 9, 4, 3, c.l); blob(g, 10, 12, 3, 1, c.d); P(g, 5, 8, '#c8bcb0');
+    } else if (k === 'xmastree') { // snowy pine strung with lights, star on top
+      R(g, 7, 13, 2, 2, c.t); tri(g, 8, 2, 9, 5, c.m); tri(g, 8, 5, 11, 5, c.m); tri(g, 8, 8, 15, 6, c.d); tri(g, 8, 8, 11, 4, c.m);
+      R(g, 5, 6, 3, 1, c.l); R(g, 9, 9, 3, 1, c.l); R(g, 3, 13, 4, 1, c.l); R(g, 10, 13, 3, 1, c.l);
+      P(g, 8, 1, '#f8d878'); P(g, 7, 2, '#f8b800'); P(g, 9, 2, '#f8b800');
+      P(g, 7, 5, '#e04838'); P(g, 10, 7, '#58a8e0'); P(g, 6, 9, '#f8b800'); P(g, 9, 11, '#e04838'); P(g, 4, 12, '#58d854'); P(g, 12, 12, '#f878f8');
     } else if (k === 'hedge') {
       R(g, 7, 12, 2, 3, c.t); blob(g, 8, 8, 6, 5, c.d); R(g, 2, 8, 13, 5, c.d); blob(g, 8, 7, 5, 4, c.m); R(g, 3, 7, 11, 5, c.m);
       R(g, 3, 6, 11, 1, c.l); P(g, 5, 8, c.l); P(g, 10, 9, c.l); P(g, 4, 10, '#f85898'); P(g, 9, 7, '#f85898'); P(g, 12, 10, '#f8d878');
@@ -3578,6 +3956,35 @@
     'yyo......',
     'yo.......'
   ], '#f8f8a0');
+  // floor 8 (THE GHOSTS OF EARTH): a miner's carbide headlamp, and the red beacon off the radio mast
+  qiItem('qi_lamp', { g: '#bcbcbc', G: '#7c7c7c', d: '#3c3c3c', y: '#f8d878', Y: '#f8b800', w: '#fcfcfc', b: '#7c4c18', B: '#503000' }, [
+    '....ww......',
+    '...wyyw.....',
+    '..wyYYyw....',
+    '..dgggggd...',
+    '.dgwggggGd..',
+    '.dggggggGd..',
+    '..dgggGGd...',
+    '...dGGGd....',
+    '...bbbbb....',
+    '..bBBBBBb...',
+    '.bB.....Bb..',
+    '.b.......b..'
+  ], '#f8f0b0');
+  qiItem('qi_beacon', { r: '#e40058', R: '#a80020', o: '#f83800', w: '#fcfcfc', p: '#f8a4c0', g: '#7c7c7c', G: '#3c3c3c' }, [
+    '....rrrr....',
+    '...rpwwor...',
+    '..rpwwoorr..',
+    '..rpwoorrR..',
+    '..roorrrRR..',
+    '..rrrrrRRR..',
+    '...rrrRRR...',
+    '..gggggggg..',
+    '..gGgGgGgG..',
+    '..gggggggg..',
+    '...GGGGGG...',
+    '....GGGG....'
+  ], '#f85898');
 
   // ---- overworld lock badge (16x16): padlock to draw over a locked entrance marker ----
   // small padlock badge, bottom-centred in a 16x16 cell (overworld.js pins it to a marker's corner)

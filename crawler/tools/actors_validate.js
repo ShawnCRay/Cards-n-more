@@ -27,6 +27,9 @@ const fr = (n, c) => need.push([n, c]);
 ['donut', 'mongo', 'katia', 'zev', 'squeaks'].forEach(c => { fr(c + '_idle', 2); fr(c + '_run', 2); fr(c + '_act', 1); });
 'rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute skyfowl swamp_troll gator steam_goblin conductor rail_rat fishman jelly crab hunter hound masked_noble ghoul gargoyle skeleton mutant drone golem soldier sniper war_beast cultist'.split(' ').forEach(e => { fr(e + '_walk', 2); fr(e + '_attack', 1); fr(e + '_hurt', 1); });
 'hoarder juicer ringmaster engineer tidemother butcher bride overseer showrunner'.split(' ').forEach(b => { fr(b + '_idle', 2); fr(b + '_walk', 2); fr(b + '_attack', 1); fr(b + '_hurt', 1); fr(b + '_special', 1); fr('p_' + b, 1); });
+// floor 8 retheme (THE GHOSTS OF EARTH): folklore enemies + the mothman boss
+'wampus_cat mountain_light woodbooger sheepsquatch mothling'.split(' ').forEach(e => { fr(e + '_walk', 2); fr(e + '_attack', 1); fr(e + '_hurt', 1); });
+['mothman'].forEach(b => { fr(b + '_idle', 2); fr(b + '_walk', 2); fr(b + '_attack', 1); fr(b + '_hurt', 1); fr(b + '_special', 1); fr('p_' + b, 1); });
 fr('mordecai', 2); fr('bopca', 2); fr('ai_screen', 2);
 'p_carl p_donut p_mongo p_katia p_zev p_squeaks p_ai p_mordecai p_bopca'.split(' ').forEach(p => fr(p, 1));
 const skinIds = 'carl_boxers carl_jacket carl_bodyguard carl_kilt carl_hazmat carl_pajamas carl_clown carl_toga carl_gold'.split(' ');

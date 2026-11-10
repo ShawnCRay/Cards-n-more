@@ -723,7 +723,7 @@
     };
   })();
 
-  // FLOOR 8 - the ruin: bleak, heavy, slow, F minor
+  // FLOOR 8 - the ghosts of earth (written for the old ruin floor): bleak, heavy, slow, F minor
   (function () {
     function hv(r) { return r + ':6 ' + r + ':2 ' + r + ':8'; }
     SONGS.floor8 = {
@@ -746,7 +746,7 @@
     };
   })();
 
-  // OW8 - wasteland overworld: lonely echoing melody, B minor
+  // OW8 - the empty replica town overworld: lonely echoing melody, B minor
   (function () {
     var Bm = ap('B3', 'D4', 'F#4', 'D4'), G = ap('G3', 'B3', 'D4', 'B3'), D = ap('D4', 'F#4', 'A4', 'F#4'), Aa = ap('A3', 'C#4', 'E4', 'C#4'),
         Em = ap('E4', 'G4', 'B4', 'G4'), Fs = ap('F#3', 'A#3', 'C#4', 'A#3');

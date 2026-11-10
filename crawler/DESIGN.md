@@ -169,8 +169,9 @@ the level they'd naturally be (about level `1 + (N-1)*2.5`), and bosses take ~45
 All under `DCW.data`.
 
 ### Themes (ids are fixed; art draws them)
-Side-scroll themes: `sewer cave city circus swamp train bubble forest castle ruin warzone safe`.
-Overworld themes: `ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war`.
+Side-scroll themes: `sewer cave city circus swamp train bubble forest castle ruin warzone safe`
+(+ `ghosttown ghostmine` for Floor 8).
+Overworld themes: `ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war` (+ `ow_town` for Floor 8).
 
 ### floors
 ```js
@@ -373,6 +374,9 @@ Required sprite names (all face right):
   masked_noble ghoul gargoyle skeleton mutant drone golem soldier sniper war_beast cultist`.
 - Bosses (32-64 px): `<id>_idle(2) _walk(2) _attack _hurt _special` for
   `hoarder juicer ringmaster engineer tidemother butcher bride overseer showrunner`.
+- Floor 8 retheme (THE GHOSTS OF EARTH): enemies `wampus_cat mountain_light woodbooger sheepsquatch
+  mothling`, boss `mothman` (+ `p_mothman`; replaces overseer in data), quest items `qi_lamp qi_beacon`.
+  Floor 8 no longer uses mutant/drone/golem/overseer, but floors 9-10 still use the first three.
 - Projectiles/fx: `arrow rock fireball bubble bolt bottle laser_orb knife spore note missile`
   `bomb` `explosion`(5) `hit`(3) `dust`(3) `sparkle`(4) `shockwave`(2) `smoke`(3)
 - Pickups/objects: `coin`(4) `snack` `bomb_pickup` `potion` `box_bronze box_silver box_gold box_platinum
@@ -423,7 +427,7 @@ turn it on), `w` white detail. Skins may also set any of these to `null`.
 | 5 | The Bubbles (one bubble's sea quadrant) | overworld `ow_reef` | bubble swamp | fishman jelly crab gator | tidemother | skin `carl_hazmat` |
 | 6 | The hunting grounds | overworld `ow_woods` | forest | hunter hound masked_noble skyfowl | butcher | companion `zev` |
 | 7 | The bedlam manor | overworld `ow_manor` | castle | ghoul gargoyle skeleton bat | bride | skin `carl_bodyguard` |
-| 8 | The ruin | overworld `ow_waste` | ruin city | mutant drone golem | overseer | skin `carl_kilt` |
+| 8 | The ghosts of Earth (a replica West Virginia river town on December 10th; ghost townsfolk, Appalachian folklore) | overworld `ow_town` | ghosttown ghostmine | wampus_cat mountain_light woodbooger sheepsquatch mothling | mothman | skin `carl_kilt` |
 | 9 | Faction wars (finale) | overworld `ow_war` | warzone | soldier sniper war_beast cultist + mix | showrunner | skin `carl_gold`, game won |
 
 Other skins (`carl_jacket`, `carl_pajamas`, `carl_toga`) come from loot boxes and achievements.
@@ -501,7 +505,7 @@ item, and in-level levers open gates.
   spirits sweeps the screen.
 - No loot table may contain `{kind:'companion'}`. No boss `unlock` may be a companion.
   Boss skin unlocks: hoarder `carl_jacket`, ringmaster `carl_clown`, tidemother `carl_hazmat`,
-  bride `carl_bodyguard`, overseer `carl_kilt`, showrunner `carl_gold`; juicer, engineer, butcher: none.
+  bride `carl_bodyguard`, overseer (now mothman) `carl_kilt`, showrunner `carl_gold`; juicer, engineer, butcher: none.
 
 ### New data
 ```js

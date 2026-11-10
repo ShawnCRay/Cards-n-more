@@ -1889,6 +1889,156 @@
       'SSS.ssssSssss.......']);
     enemy('golem', gop, w0, w1, at);
 
+    /* ---- floor 8 (THE GHOSTS OF EARTH): Appalachian folklore ---- */
+    // ---- wampus cat: lean mountain lion with a wild black mane and glowing eyes ----
+    var wcp = { f: C.y1, F: C.y0, b: C.n3, h: C.p0, H: C.b1, e: C.l2, n: C.r1, w: C.W, t: C.y0 };
+    w0 = [
+      '...............F..F.',
+      '..............hFfhFf.',
+      't............hhffffff',
+      't...........hhhfeefffn',
+      '.t..........hhhffffff',
+      '.tt..ffffffhhhhffwfw',
+      '..ttfffffffffhhfff..',
+      '...fFffffFfffhhbb...',
+      '...fFFfffFFffbbbh...',
+      '...fFFffffffbbbb....',
+      '....FF.ff...ffbf....',
+      '...FF...ff.ff..ff...',
+      '..ff....ff.f....ff..'];
+    w1 = legs(w0, ['....FF.ff...ffbf....', '....FFff....ff.f....', '.....ffff...fff.....']);
+    at = alt(w0, 3, ['t...........hhhfeefffnn', '.t..........hhhffffffw.', '.tt..ffffffhhhhffwwwwf', '..ttfffffffffhhffw.w..']);
+    enemy('wampus_cat', wcp, w0, w1, at);
+
+    // ---- brown mountain light: a hovering ball of light with a sad little face ----
+    var mlp = { w: C.W, y: C.y3, Y: C.y2, o: C.n2, O: C.n1, e: C.n0, r: C.o1 };
+    w0 = [
+      '.....oo.o.....',
+      '....oYYoYo....',
+      '...oYyyyyYo...',
+      '..oYyywwyyYo..',
+      '..oyywwwwwyo..',
+      '.oYyewwwweyYo.',
+      '.oYywwwwwwyYo.',
+      '..oyywwewyyo..',
+      '..oYyywwyyYo..',
+      '...oYyyyyYo...',
+      '....oYYYYo....',
+      '.....oOOo.....',
+      '......OO......',
+      '.......O......'];
+    w1 = [
+      '......oo.o....',
+      '....oYoYYo....',
+      '...oYyyyyYo...',
+      '..oYyywwyyYo..',
+      '..oyywwwwwyo..',
+      '.oYyewwwweyYo.',
+      '.oYywwwwwwyYo.',
+      '..oyywwewyyo..',
+      '..oYyywwyyYo..',
+      '...oYyyyyYo...',
+      '....oYYYYo....',
+      '.....oOOo.....',
+      '.....OO.......',
+      '....O.........'];
+    at = alt(w0, 0, ['..o..oo.o..o.', '.o..oYYoYo..o', '...oYyyyyYo...', '..oYyywwyyYo..', '..oyywwwwwyo..', '.oYyrwwwwryYo.', '.oYywwwwwwyYo.', '..oyywweeyyo..', '..oYyyweeyyYo..']);
+    enemy('mountain_light', mlp, w0, w1, at);
+
+    // ---- woodbooger: the local bigfoot, snow on his shoulders ----
+    var wbp = { f: C.y0, F: C.n0, h: C.y1, s: C.g0, S: C.g3, e: C.W, x: C.K, w: C.W, m: C.r0 };
+    w0 = [
+      '........wwwww.......',
+      '.......wffffhw......',
+      '......ffffffffh.....',
+      '......ffssssfff.....',
+      '......fsexsexff.....',
+      '......fsssssSff.....',
+      '....wwfssmmsfffww...',
+      '...wffffssssfffffw..',
+      '..fffhfffffffffhff..',
+      '..ffhffffFffffffhff.',
+      '.fffffffFFffffffffff',
+      '.ffhf.ffffffffff.fhf',
+      '.ffff.ffffhfffff.fff',
+      '.sss..fffffffff..sss',
+      '.sss..ffffFffff..sss',
+      '......ffff.ffff.....',
+      '......fff...fff.....',
+      '......fff...fff.....',
+      '.....ffff...ffff....',
+      '.....ssss...ssss....'];
+    w1 = legs(w0, ['......ffff.ffff.....', '.....fff.....fff....', '....fff.......fff...', '...ffff.......ffff..', '...ssss.......ssss..']);
+    at = alt(w0, 6, [
+      '....wwfssmmsfffww....ss',
+      '...wffffssssfffffwfffss',
+      '..fffhfffffffffhffffff.',
+      '..ffhffffFffffffhff....',
+      '.fffffffFFfffffff......',
+      '.ffhf.ffffffffff.......',
+      '.ffff.ffffhfffff.......',
+      '.sss..fffffffff........',
+      '.sss..ffffFffff........']);
+    enemy('woodbooger', wbp, w0, w1, at);
+
+    // ---- sheepsquatch: woolly white beast with ram horns and a goat face ----
+    var ssp = { w: C.W, W: C.g1, G: C.g0, c: C.y1, C: C.y0, s: C.g3, e: C.o1, n: C.K };
+    w0 = [
+      '..............cc....',
+      '.............cCCc...',
+      '...........wcc..c...',
+      '..wwww....wwcssss...',
+      '.wwWwwwwwwwwssessn..',
+      'wwwwwWwwwWwwwsssss..',
+      'wWwwwwwwwwwwwwsss...',
+      'wwwWwwwwWwwwwwW.....',
+      'wwwwwwWwwwwwwWw.....',
+      '.wWwwwwwwwWwwww.....',
+      '..GG.GG....GG.GG....',
+      '..ss.ss....ss.ss....',
+      '.sss.ss...sss.ss....'];
+    w1 = legs(w0, ['...GG.GG..GG.GG.....', '...ss..ss.ss..ss....', '..sss..ss.sss.ss....']);
+    at = alt(w0, 0, [
+      '....................',
+      '....................',
+      '...........w........',
+      '..wwww....wwww.cc...',
+      '.wwWwwwwwwwwwwcCCc..',
+      'wwwwwWwwwWwwwwsssc..',
+      'wWwwwwwwwwwwwssessn.',
+      'wwwWwwwwWwwwwsssss..',
+      'wwwwwwWwwwwwwWss....']);
+    enemy('sheepsquatch', ssp, w0, w1, at);
+
+    // ---- mothling: a moth the size of a turkey, eyespot wings ----
+    var mtp = { g: C.y1, G: C.y0, y: C.n2, Y: C.n1, o: C.n3, r: C.K, b: C.g1, e: C.o1, a: C.g3 };
+    w0 = [
+      '.a..........a...',
+      '..a........a....',
+      'GGGa......aGGG..',
+      'GgggG.bb.GgggGG.',
+      'GgorgGbbGgrogyG.',
+      'GgoogGbebGoogyG.',
+      '.GgggGbbbGgggG..',
+      '..GyyGbbbGyyG...',
+      '...GGYbbbYGG....',
+      '......bb........',
+      '......b.........'];
+    w1 = [
+      '................',
+      '.a....bb....a...',
+      '..aGGGbebGGa....',
+      '.GgggGbbbGgggG..',
+      'GgorgGbbbGgrogG.',
+      'GgoogGbbbGgoogG.',
+      '.GyyGGbbbGGyyG..',
+      '..GGG.bbb.GGG...',
+      '......bb........',
+      '......b.........',
+      '................'];
+    at = alt(w0, 4, ['GgorgGbbGgrogyG.', 'GgoogGbrbGoogyG.', '.GgggGbbbbGggG..', '..GyyGbbbbbyG...']);
+    enemy('mothling', mtp, w0, w1, at);
+
     // ---- soldier (helmet, armour vest, blaster) ----
     var sop = { h: C.l0, H: C.G0, s: C.n3, e: C.K, v: C.G0, V: C.t0, g: C.g0, G: C.g3, b: C.y0, r: C.o1, l: C.l0 };
     w0 = [
@@ -2307,6 +2457,66 @@
     else { rect(g, cx + 16, 26 + b, 8, 12, 'a'); rect(g, cx + 15, 37 + b, 11, 9, 'A'); rect(g, cx + 17, 45 + b, 7, 2, 'G'); }
   });
 
+  // ---- THE MOTHMAN (floor 8, THE GHOSTS OF EARTH): tall grey winged figure, no real head,
+  //      two glowing red eyes set in the shoulders, moth wings with eyespots, taloned feet ----
+  boss('mothman', { b: C.g0, B: C.p0, f: C.g1, m: C.y0, M: C.y1, h: C.n0, o: C.n3, O: C.K, e: C.o1, E: C.y3, t: C.g1, T: C.g3, K: C.K }, 66, 58, function (g, p) {
+    var cx = 33, atk = p.a === 'attack', sp = p.a === 'special', hurt = p.a === 'hurt';
+    var flap = (p.a === 'idle' || p.a === 'walk') ? p.i : sp ? -1 : atk ? 2 : 1;
+    var bob = flap === 1 ? 2 : 0, sy = 16 + bob;
+    // wings: tip height by pose (-1 = flared high, 0 = up, 1 = level, 2 = swept forward/down)
+    var tipY = [0, 2, 12, 22][flap + 1], tipX = [1, 3, 0, 7][flap + 1], lowY = [38, 42, 48, 52][flap + 1];
+    [-1, 1].forEach(function (s) {
+      var sx = cx + s * 5, tx = s < 0 ? tipX : 65 - tipX, ty = tipY + bob;
+      // outline of the wing as a fan from the shoulder: tip, then a scalloped trailing edge back to the body
+      var pts = [[tx, ty], [cx + s * 25, lowY - 17 + bob], [cx + s * 20, lowY - 6 + bob], [cx + s * 13, lowY + bob], [cx + s * 8, lowY - 8 + bob], [sx, sy + 20]];
+      for (var k = 0; k < pts.length - 1; k++) tri(g, sx, sy, pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], 'm');
+      // carve scallops between the trailing-edge points
+      for (k = 1; k < pts.length - 2; k++) {
+        var A = pts[k], B2 = pts[k + 1], mx = (A[0] + B2[0]) / 2, my = (A[1] + B2[1]) / 2;
+        var dx = sx - mx, dy = sy - my, dl = Math.sqrt(dx * dx + dy * dy) || 1;
+        tri(g, A[0], A[1], B2[0], B2[1], Math.round(mx + dx / dl * 4), Math.round(my + dy / dl * 4), '.');
+      }
+      // leading edge + veins out to each trailing point
+      line(g, sx, sy, tx, ty, 'h', 2);
+      for (k = 1; k < pts.length - 1; k++) line(g, sx, sy + 2, pts[k][0] - s, pts[k][1] - 2, 'M');
+      // eyespot on the outer wing
+      var ox = Math.round(sx + (tx - sx) * 0.6), oy = Math.round(sy + (ty - sy) * 0.6 + 7);
+      oval(g, ox, oy, 3, 3, 'o'); rect(g, ox, oy, 1, 1, sp ? 'e' : 'O'); px(g, ox - 1, oy - 1, 'h');
+    });
+    // legs (dangling: he hovers)
+    var lg = p.a === 'walk' ? (p.i ? 2 : -2) : 0;
+    line(g, cx - 4, 38 + bob, cx - 6 + lg, 50 + bob, 'b', 3); line(g, cx + 4, 38 + bob, cx + 6 - lg, 50 + bob, 'b', 3);
+    [[cx - 6 + lg, -1], [cx + 6 - lg, 1]].forEach(function (L) {
+      var fx = L[0], fy = 51 + bob;
+      line(g, fx, fy, fx - 3, fy + 4, 't'); line(g, fx, fy, fx, fy + 5, 't'); line(g, fx, fy, fx + 3, fy + 4, 't');
+    });
+    // torso: tall, hunched, no neck. Shoulders rise into a domed hood with the eyes in it
+    oval(g, cx, 30 + bob, 8, 11, 'b');
+    oval(g, cx, 18 + bob, 9, 7, 'b');
+    rect(g, cx - 7, 20 + bob, 15, 10, 'b');
+    for (var y = 22; y < 40; y += 3) { px(g, cx - 3, y + bob, 'B'); px(g, cx + 2, y + 1 + bob, 'B'); px(g, cx, y + 2 + bob, 'f'); }
+    line(g, cx - 7, 24 + bob, cx - 5, 38 + bob, 'B'); line(g, cx + 7, 24 + bob, cx + 5, 38 + bob, 'B');
+    px(g, cx - 4, 12 + bob, 'f'); px(g, cx - 2, 11 + bob, 'f'); px(g, cx + 1, 11 + bob, 'f');
+    // the eyes: huge, red, set wide in the hood. Brighter when he attacks
+    var ew = sp || atk ? 4 : 3;
+    [-5, 5].forEach(function (dx) {
+      oval(g, cx + dx, 18 + bob, ew, ew - 1, 'e');
+      oval(g, cx + dx, 18 + bob, ew - 2, ew - 2 > 0 ? ew - 3 : 0, 'E');
+      if (hurt) { rect(g, cx + dx - 3, 18 + bob, 7, 1, 'B'); }
+    });
+    // arms: long, thin, clawed
+    if (atk) {
+      line(g, cx + 7, 24 + bob, cx + 22, 30 + bob, 'b', 2); line(g, cx - 7, 24 + bob, cx + 4, 34 + bob, 'b', 2);
+      [[cx + 23, 30], [cx + 5, 35]].forEach(function (c) { line(g, c[0], c[1] + bob, c[0] + 4, c[1] - 2 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + 4, c[1] + 1 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + 3, c[1] + 3 + bob, 't'); });
+    } else if (sp) {
+      line(g, cx - 7, 24 + bob, cx - 14, 10 + bob, 'b', 2); line(g, cx + 7, 24 + bob, cx + 14, 10 + bob, 'b', 2);
+      [[cx - 15, 9, -1], [cx + 15, 9, 1]].forEach(function (c) { line(g, c[0], c[1], c[0] + c[2] * 2, c[1] - 4, 't'); line(g, c[0], c[1], c[0], c[1] - 4, 't'); line(g, c[0], c[1], c[0] - c[2] * 2, c[1] - 4, 't'); });
+    } else {
+      line(g, cx - 7, 24 + bob, cx - 9, 38 + bob, 'b', 2); line(g, cx + 7, 24 + bob, cx + 9, 38 + bob, 'b', 2);
+      [[cx - 9, 39, -1], [cx + 9, 39, 1]].forEach(function (c) { line(g, c[0], c[1] + bob, c[0] - 1, c[1] + 4 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + c[2] * 2, c[1] + 3 + bob, 't'); });
+    }
+  });
+
   // ---- THE SHOWRUNNER: alien game-show host, mic, sequins, many eyes, big grin ----
   boss('showrunner', { g: C.G2, G: C.G1, q: C.y2, Q: C.y1, W: C.W, l: C.p1, L: C.p0, r: C.o1, w: C.W, e: C.y3, K: C.K, m: C.g0, M: C.g3, p: C.K, s: C.m2, t: C.W, b: C.K, h: C.y0 }, 56, 64, function (g, p) {
     var b = p.a === 'idle' ? p.i : 0, cx = 24, st = p.a === 'walk' ? (p.i ? 2 : -2) : 0;
@@ -2525,6 +2735,18 @@
     rect(g, 11, 18, 11, 2, 'S'); for (var x = 11; x < 22; x += 3) rect(g, x, 20, 1, 3, 'S');
     px(g, 7, 4, 'w'); px(g, 6, 5, 'w'); px(g, 8, 3, 'w');
     rect(g, 5, 22, 22, 3, 'A');
+  });
+  portrait('p_mothman', { b: C.g0, B: C.p0, f: C.g1, m: C.y0, M: C.y1, h: C.n0, e: C.o1, E: C.y3, K: C.K }, BG_FOE, function (g) {
+    // wings framing the shot
+    tri(g, 16, 14, 0, 0, 0, 30, 'm'); tri(g, 16, 14, 31, 0, 31, 30, 'm');
+    line(g, 16, 14, 0, 1, 'h', 2); line(g, 16, 14, 31, 1, 'h', 2);
+    line(g, 15, 16, 1, 18, 'M'); line(g, 15, 18, 3, 28, 'M'); line(g, 17, 16, 30, 18, 'M'); line(g, 17, 18, 28, 28, 'M');
+    // hooded shoulders, no face, just the eyes
+    oval(g, 16, 22, 11, 10, 'b'); oval(g, 16, 14, 10, 8, 'b'); rect(g, 6, 16, 21, 16, 'b');
+    for (var y = 24; y < 32; y += 3) { px(g, 12, y, 'B'); px(g, 20, y + 1, 'B'); px(g, 16, y + 2, 'f'); }
+    px(g, 12, 7, 'f'); px(g, 14, 6, 'f'); px(g, 18, 6, 'f');
+    oval(g, 10, 15, 4, 3, 'e'); oval(g, 22, 15, 4, 3, 'e'); oval(g, 10, 15, 2, 1, 'E'); oval(g, 22, 15, 2, 1, 'E');
+    px(g, 9, 14, 'E'); px(g, 21, 14, 'E');
   });
   portrait('p_showrunner', { g: C.G2, G: C.G1, q: C.y2, Q: C.y1, W: C.W, l: C.p1, r: C.o1, w: C.W, K: C.K, s: C.m2 }, BG_FOE, function (g) {
     rect(g, 2, 26, 28, 6, 'q'); tri(g, 12, 26, 20, 26, 16, 31, 'w'); rect(g, 13, 26, 7, 2, 'r'); line(g, 12, 26, 14, 31, 'l'); line(g, 20, 26, 18, 31, 'l');
