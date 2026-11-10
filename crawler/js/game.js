@@ -112,8 +112,10 @@
     persist();
     G.track('floor:' + n);
     var card = S().floorCard;
-    if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } });
-    else G.resumeFloor();
+    var showCard = function () { if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } }); else G.resumeFloor(); };
+    // a floor can open with a cold-open cutscene first (floor 7: the Great Race blows up)
+    if (f.coldOpen && S()[f.coldOpen] && !DCW.params.has('skipintro')) go(S()[f.coldOpen], { floor: n, onDone: showCard });
+    else showCard();
   };
 
   // Decide where the player belongs on the current floor.

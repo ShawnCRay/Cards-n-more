@@ -2056,6 +2056,107 @@
     }
   };
 
+  /* ---------- FLOOR 7 COLD OPEN: THE GREAT RACE (it does not survive the countdown) ----------
+     Book floor 7 was the Great Race: starting pods corkscrewed around a shaft of exit portals,
+     a maze ahead. A goat crawler named Prepotente destroyed it before anyone raced. Here the
+     show then swaps in its backup floor (the manor). START skips straight to the floor card. */
+  scenes.greatRace = {
+    enter: function (p) {
+      this.p = p || {}; this.t = 0; this.phase = 'title'; this.pt = 0; this.done = false; this.count = 10; this.debris = [];
+      music(null); sfx('fanfare');
+    },
+    go: function (ph) { this.phase = ph; this.pt = 0; },
+    finish: function () { if (this.done) return; this.done = true; closeAll(); if (this.p.onDone) this.p.onDone(); },
+    update: function (dt) {
+      var self = this, ai = function (t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; };
+      this.t += dt; this.pt += dt;
+      if (P('start') && this.t > 0.5) { this.finish(); return; }
+      if (this.phase === 'title' && (this.pt > 3.2 || (P('confirm') && this.pt > 0.6))) {
+        this.go('pods');
+        ui.say([ai('WELCOME TO THE SEVENTH FLOOR! THE GREAT RACE! A FAIRY TALE KNOWN ACROSS THE GALAXY, NOW A LIVE EVENT.'),
+          ai('YOU ARE IN YOUR STARTING POD. THE EXITS ARE GLOWING RIGHT BEHIND YOU, AND YOU CANNOT REACH THEM. THE ONLY WAY OUT IS THROUGH THE MAZE.'),
+          ai('HUNDREDS OF KILOMETERS OF TUNNELS. NO DEAD ENDS. WE BUILT THIS FLOOR IN A HURRY AND WE ARE VERY PROUD OF IT. COUNTDOWN BEGINS NOW!')],
+          { onDone: function () { self.go('count'); self.count = 10; sfx('countdown'); } });
+      } else if (this.phase === 'count') {
+        var c = 10 - Math.floor(this.pt / 0.75);
+        if (c !== this.count && c >= 3) { this.count = c; sfx('countdown'); if (c === 5) sfx('warn'); }
+        if (this.pt > 0.75 * 7.6) { // dies at "3"
+          this.go('boom'); sfx('explosion'); DCW.shake && DCW.shake(6, 1.2);
+          for (var i = 0; i < 60; i++) this.debris.push({ x: 160 + (Math.random() - 0.5) * 60, y: 70 + (Math.random() - 0.5) * 40, vx: (Math.random() - 0.5) * 340, vy: -Math.random() * 260, c: ['#fcfcfc', '#f8b800', '#f83800', '#9878f8', '#bcbcbc'][i % 5] });
+        }
+      } else if (this.phase === 'boom') {
+        this.debris.forEach(function (d) { d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 420 * dt; });
+        if (this.pt > 0.5 && this.pt - dt <= 0.5) sfx('crash');
+        if (this.pt > 2.2) { this.go('static'); }
+      } else if (this.phase === 'static' && this.pt > 2.4 && !this.said) {
+        this.said = true;
+        ui.say([ai('...'),
+          ai('THAT WAS A CRAWLER NAMED PREPOTENTE. A GOAT. HE HAS JUST DESTROYED THE GREAT RACE. NOBODY RACED. NOT ONE METER.'),
+          { who: 'CARL', portrait: 'p_carl', text: 'DID THAT GOAT JUST BLOW UP THE ENTIRE FLOOR?' },
+          { who: 'PRINCESS DONUT', portrait: 'p_donut', text: 'HONESTLY, CARL, I AM A LITTLE JEALOUS. THAT WAS VERY DRAMATIC.' },
+          ai('GOOD NEWS! THE SHOW ALWAYS HAS A BACKUP. PLEASE ENJOY THE BEDLAM MANOR, AN EMERGENCY UNDERSTUDY FLOOR WE HAD IN STORAGE.'),
+          ai('IT HAS GARDENS, A HEDGE MAZE AND A GRAVEYARD. THE HEDGE MAZE IS NOT A RACE. PLEASE DO NOT BLOW IT UP.')],
+          { onDone: function () { self.finish(); } });
+      }
+    },
+    idle: function (dt) { this.t += dt; this.pt += dt; },
+    draw: function (ctx) {
+      var t = this.t, pt = this.pt, ph = this.phase;
+      if (ph === 'title') {
+        R(0, 0, W, H, '#05020e'); stars(ctx, t, 2, 60);
+        T('FLOOR', 160, 30, C.white, { align: 'center', scale: 2 });
+        T('7', 160, 48, C.gold, { align: 'center', scale: 5 });
+        if (pt > 0.5) T('THE GREAT RACE', 160, 98, C.white, { align: 'center', scale: 2 });
+        if (pt > 1.0) T('A MAZE. A RACE. NO DEAD ENDS. ONE WAY OUT.', 160, 118, C.yellow, { align: 'center' });
+        return;
+      }
+      if (ph === 'static') {
+        for (var sy = 0; sy < H; sy += 2) for (var sx = 0; sx < W; sx += 4) R(sx, sy, 4, 2, ['#202020', '#585858', '#989898', '#383838'][(Math.random() * 4) | 0]);
+        var bars = ['#fcfcfc', '#f8d878', '#00e8d8', '#58d854', '#f878f8', '#f83800', '#0058f8'];
+        if (pt > 0.6) { for (var b = 0; b < bars.length; b++) R(40 + b * 34, 40, 34, 60, bars[b]); DCW.box(52, 108, 216, 34);
+          T('TECHNICAL DIFFICULTIES', 160, 114, C.white, { align: 'center' }); T('PLEASE STAND BY', 160, 126, C.gray, { align: 'center' }); }
+        return;
+      }
+      // pole position chamber: pods corkscrewed around a shaft of glowing exit portals
+      R(0, 0, W, H, '#0a0614');
+      var shaftX = 160;
+      R(shaftX - 22, 0, 44, H, '#140c24'); R(shaftX - 23, 0, 1, H, '#2c1c4c'); R(shaftX + 22, 0, 1, H, '#2c1c4c');
+      for (var k = -1; k < 7; k++) { // portal column, drifting upward
+        var py = Math.round(((k * 28 - t * 14) % 196 + 196) % 196) - 16, pul = Math.sin(t * 4 + k) > 0;
+        R(shaftX - 14, py, 28, 18, pul ? '#9878f8' : '#6844fc'); R(shaftX - 10, py + 3, 20, 12, pul ? '#d8b8f8' : '#9878f8'); R(shaftX - 5, py + 6, 10, 6, '#fcfcfc');
+      }
+      // background pods (two corkscrew columns receding up)
+      for (var i = 0; i < 6; i++) {
+        var side = i % 2 ? 1 : -1, row = Math.floor(i / 2), w = 46 - row * 8, h = 30 - row * 5;
+        var x = shaftX + side * (34 + row * 22) - (side < 0 ? w : 0), y = 98 - row * 34;
+        R(x, y, w, h, '#1c2c3c'); R(x + 1, y + 1, w - 2, h - 2, '#0c1420');
+        for (var bx = x + 3; bx < x + w - 2; bx += 4) R(bx, y + 1, 1, h - 2, '#5c7c9c');
+        if (i === 3) { // Prepotente's pod: a goat with ideas
+          var gx = x + Math.round(w / 2) - 6, gy = y + h - 9;
+          R(gx, gy, 12, 6, '#bcbcbc'); R(gx + 9, gy - 4, 5, 5, '#bcbcbc'); R(gx + 12, gy - 1, 2, 3, '#fcfcfc');
+          R(gx + 9, gy - 6, 1, 2, '#7c5c3c'); R(gx + 12, gy - 6, 1, 2, '#7c5c3c'); R(gx + 1, gy + 6, 1, 2, '#7c7c7c'); R(gx + 9, gy + 6, 1, 2, '#7c7c7c');
+          if (ph === 'count' && this.count <= 6) { R(gx - 3, gy - 3, 3, 3, blink(6) ? '#f83800' : '#f8b800'); T('!', gx + 11, gy - 14, C.red, { shadow: null }); }
+        } else { R(x + Math.round(w / 2) - 2, y + h - 10, 4, 9, '#3c3c5c'); }
+      }
+      // Carl's pod, front and center
+      R(98, 120, 124, 52, '#3c5c7c'); R(100, 122, 120, 48, '#101c2c');
+      spr(ctx, 'carl_idle', 140, 168, { frame: Math.floor(t * 2), skin: equipped('skin') });
+      spr(ctx, compSprite(equipped('companion')) + '_idle', 170, 168, { frame: Math.floor(t * 2), flip: true });
+      for (var gb = 104; gb < 218; gb += 8) R(gb, 122, 2, 48, '#7c9cbc');
+      if (ph === 'count') {
+        var n = String(this.count), pop = (this.pt % 0.75) < 0.12 ? 1 : 0;
+        T(n, 160, 38 - pop * 2, this.count <= 5 ? C.red : C.gold, { align: 'center', scale: 5 + pop });
+      }
+      if (ph === 'boom') {
+        var a = pt < 0.35 ? 1 : Math.max(0, 1 - (pt - 0.35) / 1.2);
+        this.debris.forEach(function (d) { R(Math.round(d.x), Math.round(d.y), 3, 3, d.c); });
+        ctx.globalAlpha = a; R(0, 0, W, H, '#fcfcfc'); ctx.globalAlpha = 1;
+        if (pt > 0.6) T('KA-BLAM', 160, 60, C.red, { align: 'center', scale: 3 });
+      }
+      if (blink(2) && !ui.blocking()) T(bn('start') + ': SKIP', 316, 4, C.dgray, { align: 'right', shadow: null });
+    }
+  };
+
   /* ---------- FLOOR CARD ---------- */
   scenes.floorCard = {
     enter: function (p) {

@@ -3338,8 +3338,10 @@
         "THE BUTCHER COMES OUT FOR HIS HORN AND NOTHING ELSE. IT HANGS IN THE KENNELS, UP A BIG TREE.",
         "SOMEBODY DOWN THE WISHING WELL IS YELLING ABOUT ENGAGEMENT NUMBERS. KID, I THINK THAT IS YOUR PR LADY."],
       required: ['f6_s1', 'f6_s2', 'f6_s3', 'f6_s4'], boss: 'f6_boss', par: 1600 },
-    { n: 7, name: 'THE BEDLAM MANOR', tagline: 'A LOVELY ESTATE. TERRIBLE HOSTESS.', theme: 'castle', music: 'floor7',
-      intro: ["FLOOR SEVEN! A HAUNTED MANOR WITH GARDENS, A MAZE, AND A GRAVEYARD. REAL ESTATE AGENTS CALL IT CHARMING.",
+    // book floor 7 is the Great Race, which a goat crawler destroys before anyone races; the
+    // coldOpen cutscene plays that, then the show swaps in this manor as its backup floor
+    { n: 7, name: 'THE BEDLAM MANOR', tagline: "THE GREAT RACE'S EMERGENCY UNDERSTUDY.", theme: 'castle', music: 'floor7', coldOpen: 'greatRace',
+      intro: ["FLOOR SEVEN, TAKE TWO! THE BACKUP FLOOR: A HAUNTED MANOR WITH GARDENS, A HEDGE MAZE AND A GRAVEYARD. REAL ESTATE AGENTS CALL IT CHARMING.",
         "THE LADY OF THE HOUSE AWAITS AT THE END OF THE HALL. DRESS CODE IS FORMAL. YOU ARE IN BOXERS. GOOD LUCK."],
       overworld: { theme: 'ow_manor', music: 'ow7',
         map: [
@@ -4040,6 +4042,7 @@
       "WITH MONGO, SAMANTHA, KATIA, ZEV, SIGNET",
       "AND SIR SQUEAKS, OF COURSE",
       "AND THE RIVALS OF DON'T COME IN LAST",
+      "AND PREPOTENTE, WHO RUINED FLOOR SEVEN",
       "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
       "AND TO BOPCA FOR THE TERRIBLE PRICES",
       "NO TUTORIAL RATS WERE HARMED. OK, SEVERAL WERE.",
