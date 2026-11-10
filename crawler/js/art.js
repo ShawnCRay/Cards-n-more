@@ -2241,6 +2241,166 @@
     ctx.fillStyle = '#f8d878'; ctx.fillRect(x, y - 2, 2, 2);
   }
 
+  /* ---- floor 1 tunnels: ambient background life (FANCY EFFECTS only) ----
+     Everything here is a pure function of time, drawn after its parallax layer
+     (layer.after) so depth reads right. Light sources for the stage light map come
+     from BG.tunnels.lights below, at the same parallax positions. */
+  var TUN_POSTS = [40, 200], TUN_SCONCE = [245, 330];
+  var TUN_LICH = [[104, 34, 18], [128, 118, 12], [270, 52, 14], [292, 126, 16]];
+  function fancyOn() { return !(typeof DCW.fancy === 'function' && !DCW.fancy()); }
+  // call fn(screenX) for every on-screen copy of a wrapped layer x
+  function eachX(lx, camX, rate, w, fn, m) {
+    m = m === undefined ? 40 : m;
+    var x = Math.round(wrapX(lx, camX, rate, w));
+    for (var k = -1; k <= 1; k++) { var xx = x + k * w; if (xx > -m && xx < 320 + m) fn(xx); }
+  }
+  function flick(t, ph) { var q = Math.floor(t * 15) / 15; return 0.5 + 0.25 * Math.sin(q * 13 + ph) + 0.25 * Math.sin(q * 29 + ph * 2); }
+  // a distant crawler carrying a torch: black silhouette, warm rim light
+  function crawlerSil(ctx, x, fy, dir, t, kind) {
+    var st = Math.floor(t * 5) % 2, bob = st, tx = x + dir * 3, ty = fy - 14 + bob, f = flick(t, kind * 3);
+    var k = '#020101', h = kind === 1 ? 1 : 0;
+    R(ctx, x - 1, fy - 12 - h + bob, 3, 3, k);              // head
+    R(ctx, x - 1, fy - 9 - h + bob, 3, 6 + h, k);           // body
+    if (kind === 1) R(ctx, x - dir * 2, fy - 9 + bob, 2, 4, k); // backpack
+    R(ctx, x - 1 + st, fy - 3, 1, 3, k); R(ctx, x + 1 - st, fy - 3, 1, 3, k); // legs
+    line(ctx, x + dir, fy - 8 + bob, tx, ty + 2, k);         // arm up
+    if (kind === 1) line(ctx, x - dir, fy - 7 + bob, x - dir * 4, fy - 17 + bob, k); // spear
+    R(ctx, tx, ty, 1, 3, '#3c2410');
+    ctx.fillStyle = '#f83800'; ctx.fillRect(tx - (f > 0.5 ? 1 : 0), ty - 2, 2, 2);
+    ctx.fillStyle = '#f8d878'; ctx.fillRect(tx, ty - 2 - (f > 0.6 ? 1 : 0), 1, 1);
+    P(ctx, x + dir, fy - 11 - h + bob, '#7c3c08');            // rim light on the face
+    P(ctx, x + dir, fy - 7 - h + bob, '#5c2c08');
+  }
+  // a rat silhouette scurrying (feet at fy)
+  function ratSil(ctx, x, fy, dir, run, t) {
+    var c = '#3a3028', st = run ? Math.floor(t * 14) % 2 : 0;
+    R(ctx, x - 3, fy - 3, 5, 2, c); P(ctx, x - 2, fy - 4, c); P(ctx, x - 1, fy - 4, c);
+    R(ctx, dir > 0 ? x + 2 : x - 4, fy - 2, 2, 1, c);       // snout
+    P(ctx, dir > 0 ? x + 1 : x - 3, fy - 4, '#4c4036');       // ear
+    P(ctx, dir > 0 ? x + 2 : x - 4, fy - 3, '#a81000');       // eye glint
+    var tb = dir > 0 ? x - 4 : x + 2;                         // tail
+    P(ctx, tb, fy - 2, c); P(ctx, tb - dir, fy - 1 - (Math.sin(t * 9) > 0 ? 1 : 0), c); P(ctx, tb - dir * 2, fy - 1, c);
+    P(ctx, x - 2 + st, fy - 1, c); P(ctx, x + 1 - st, fy - 1, c);
+  }
+  // stop-and-go distance travelled after s seconds
+  function scurry(s, seed) {
+    var d = 0, k = 0, r = rng(seed);
+    while (s > 0 && k < 40) { var run = 0.35 + r() * 0.5, rest = r() < 0.6 ? 0.2 + r() * 0.7 : 0; d += Math.min(s, run) * 70; s -= run + rest; k++; }
+    return d;
+  }
+  function tunnelsFarLife(ctx, camX, camY, t, oy) {
+    if (!fancyOn()) return;
+    var i;
+    // crawlers with torches crossing the side tunnel mouth now and then
+    var per = 19, u = ((t + 7) % per + per) % per, cyc = Math.floor((t + 7) / per), dur = 8;
+    if (u < dur + 3) {
+      eachX(96, camX, 0.2, 384, function (sx) {
+        ctx.save(); ctx.beginPath(); ctx.rect(sx - 40, oy + 30, 81, 121); ctx.clip();
+        var dir = cyc % 2 ? -1 : 1, n = cyc % 3 === 0 ? 2 : 1;
+        for (var j = 0; j < n; j++) {
+          var tt = u - j * 1.6; if (tt < 0 || tt > dur) continue;
+          crawlerSil(ctx, Math.round(sx - dir * 46 + dir * tt * 92 / dur), oy + 146, dir, t + j * 0.37, j);
+        }
+        ctx.restore();
+      }, 60);
+    }
+    // the Tutorial Guild Hall door swings open now and then, spilling warm light
+    var o = guildOpen(t);
+    if (o > 0) eachX(288, camX, 0.2, 384, function (sx) { guildDoor(ctx, sx, oy, o, t); }, 40);
+    // rats scurrying along the foot of the far wall
+    for (i = 0; i < 3; i++) {
+      var rp = 9 + i * 4, ru = ((t + i * 5.3) % rp + rp) % rp, rc = Math.floor((t + i * 5.3) / rp);
+      if (ru > 4.2) continue;
+      var rdir = (rc + i) % 2 ? -1 : 1, lx0 = (rc * 97 + i * 131) % 384, dist = scurry(ru, rc * 7 + i);
+      var moving = scurry(ru + 0.05, rc * 7 + i) > dist;
+      eachX(lx0 + rdir * dist * 0.6, camX, 0.2, 384, function (sx) { ratSil(ctx, sx, oy + 150, rdir, moving, t); }, 10);
+    }
+  }
+  // 0 = shut, 1 = wide open
+  function guildOpen(t) {
+    var per = 23, u = ((t + 15) % per + per) % per;
+    if (u < 0.6) return u / 0.6;
+    if (u < 3.4) return 1;
+    if (u < 4.0) return 1 - (u - 3.4) / 0.6;
+    return 0;
+  }
+  function guildDoor(ctx, sx, oy, o, t) {
+    var top = oy + 76, bot = oy + 150, y, hw;
+    // the hall beyond: warm firelight, a lit floor, someone standing in the doorway
+    blob(ctx, sx, top, 15, 13, '#7c3c10'); R(ctx, sx - 15, top, 31, bot - top, '#7c3c10');
+    blob(ctx, sx, top + 2, 12, 10, '#b8682c'); R(ctx, sx - 12, top + 2, 25, bot - top - 2, '#b8682c');
+    R(ctx, sx - 7, top + 6, 15, bot - top - 6, '#e49c50');
+    R(ctx, sx - 15, bot - 10, 31, 10, '#a85c24'); R(ctx, sx - 15, bot - 10, 31, 1, '#f8c888');
+    for (y = top + 4; y < bot - 12; y += 9) R(ctx, sx - 12, y, 25, 1, '#9c5420'); // hall stonework in the glow
+    var g = Math.floor(t / 23) % 2, k = '#120806';
+    if (g) { R(ctx, sx - 2, bot - 22, 5, 5, k); R(ctx, sx - 3, bot - 17, 7, 9, k); R(ctx, sx - 3, bot - 8, 2, 8, k); R(ctx, sx + 2, bot - 8, 2, 8, k); }
+    // the two leaves swing inward (narrower as they open)
+    var ww = Math.round(15 * (1 - 0.82 * o));
+    for (y = top - 13; y < bot; y++) {
+      hw = y >= top ? 15 : Math.round(15 * Math.sqrt(Math.max(0, 1 - ((y - top) * (y - top)) / (13.5 * 13.5))));
+      if (hw <= 0) continue;
+      var x0 = sx - hw, x1 = Math.min(sx - 15 + ww, sx + 1);
+      if (x1 > x0) { R(ctx, x0, y, x1 - x0, 1, '#3c2410'); P(ctx, x1 - 1, y, '#6c4418'); }
+      var x2 = Math.max(sx + 16 - ww, sx), x3 = sx + hw + 1;
+      if (x3 > x2) { R(ctx, x2, y, x3 - x2, 1, '#3c2410'); P(ctx, x2, y, '#6c4418'); }
+    }
+    // light spilling out over the threshold
+    ctx.fillStyle = '#fca044';
+    for (y = 0; y < 6; y++) { ctx.globalAlpha = 0.22 - y * 0.03; var sw = Math.round(31 * o) + y * 6; ctx.fillRect(sx - (sw >> 1), bot + y, sw, 1); }
+    ctx.globalAlpha = 1;
+  }
+  function web(ctx, cx, cy, pts, t, ph) {
+    var sw = Math.sin(t * 1.3 + ph) * 1.2, i, j, a, b;
+    var P2 = pts.map(function (p) { return [p[0] + (p[2] ? Math.round(sw * p[2]) : 0), p[1] + (p[2] ? Math.round(Math.abs(sw) * 0.5 * p[2]) : 0)]; });
+    ctx.globalAlpha = 0.38;
+    for (i = 0; i < P2.length; i++) line(ctx, cx, cy, P2[i][0], P2[i][1], '#bcb4a4');
+    for (j = 1; j <= 3; j++) {
+      var f = j / 4;
+      for (i = 0; i + 1 < P2.length; i++) {
+        a = P2[i]; b = P2[i + 1];
+        line(ctx, Math.round(cx + (a[0] - cx) * f), Math.round(cy + (a[1] - cy) * f), Math.round(cx + (b[0] - cx) * f), Math.round(cy + (b[1] - cy) * f), '#bcb4a4');
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function tunnelsNearLife(ctx, camX, camY, t, oy) {
+    if (!fancyOn()) return;
+    var i;
+    // cobwebs in the brace corners and under the cap beam, swaying in the draft
+    for (i = 0; i < TUN_POSTS.length; i++) {
+      var px = TUN_POSTS[i];
+      eachX(px, camX, 0.45, 320, function (sx) {
+        web(ctx, sx - 1, oy + 16, [[sx - 15, oy + 28, 0], [sx - 10, oy + 33, 1], [sx - 1, oy + 36, 0]], t, i * 2);
+      }, 30);
+    }
+    eachX(150, camX, 0.45, 320, function (sx) {
+      web(ctx, sx, oy + 13, [[sx - 12, oy + 13, 0], [sx - 8, oy + 21, 1], [sx, oy + 25, 2], [sx + 8, oy + 21, 1], [sx + 12, oy + 13, 0]], t, 1);
+      // a spider bobbing on a thread
+      var len = 18 + Math.round(Math.sin(t * 0.7) * 7), spx = sx + 16;
+      ctx.globalAlpha = 0.45; R(ctx, spx, oy + 13, 1, len, '#bcb4a4'); ctx.globalAlpha = 1;
+      R(ctx, spx - 1, oy + 13 + len, 3, 2, '#120d09'); P(ctx, spx - 2, oy + 14 + len, '#120d09'); P(ctx, spx + 2, oy + 14 + len, '#120d09');
+    }, 30);
+    eachX(272, camX, 0.45, 320, function (sx) {
+      web(ctx, sx, oy + 13, [[sx - 9, oy + 13, 0], [sx - 4, oy + 22, 2], [sx + 5, oy + 20, 1], [sx + 10, oy + 13, 0]], t, 3);
+    }, 30);
+    // dust motes drifting up through the torchlight
+    for (i = 0; i < TUN_POSTS.length; i++) {
+      var r = rng(500 + i);
+      eachX(TUN_POSTS[i] + 12, camX, 0.45, 320, function (tx) {
+        var ty = oy + 66;
+        for (var k = 0; k < 16; k++) {
+          var ox = (r() - 0.5) * 70, sp = 3 + r() * 6, ph = r() * 50, wob = r() * 6;
+          var mx = tx + ox + Math.sin(t * 0.5 + ph) * (4 + wob), my = ty + 34 - ((t * sp + ph) % 70);
+          var d = Math.sqrt((mx - tx) * (mx - tx) + (my - ty) * (my - ty)) / 36;
+          if (d >= 1) continue;
+          ctx.fillStyle = d < 0.4 ? '#f8d878' : d < 0.7 ? '#e49038' : '#7c3c08';
+          ctx.fillRect(Math.round(mx), Math.round(my), 1, 1);
+        }
+        r = rng(500 + i);
+      }, 50);
+    }
+  }
+
   BG.tunnels = {
     sky: function (g) {
       R(g, 0, 0, 320, BGH, '#0c0a08');
@@ -2294,7 +2454,7 @@
           for (i = 0; i < lich.length; i++) for (var k = 0; k < 5; k++) { var lx = lich[i][0] + ((r() * 16) | 0), ly = lich[i][1] + ((r() * 8) | 0); blob(g, lx, ly, 2, 1, '#0c3a32'); P(g, lx, ly, '#145244'); }
           R(g, 0, 150, w, BGH - 150, '#1a1612'); R(g, 0, 150, w, 1, '#2c261e');
         });
-      }),
+      }, { after: tunnelsFarLife }),
       // near: timber support sets with wall torches, glowing lichen patches
       layer(320, 0.45, function (g, w) {
         rep(g, w, function () {
@@ -2332,21 +2492,21 @@
           // loose rubble along the foot of the wall
           for (x = 0; x < w; x += 6 + ((r() * 18) | 0)) { var rw = 3 + ((r() * 6) | 0); R(g, x, 156 - (rw >> 1), rw, rw >> 1, '#241f19'); R(g, x, 156 - (rw >> 1), rw, 1, '#342d24'); }
         });
-      })
+      }, { after: tunnelsNearLife })
     ],
     anim: function (ctx, camX, camY, t, oy) {
-      var oyA = bgOy(camY, 0.2), i, x, k;
+      var oyA = bgOy(camY, 0.2), i, x, k, lit = fancyOn(); // FANCY: the stage light map does the glow
       // guild portal sconces (far layer)
       var sc = [288 - 30 - 13, 288 + 30 + 12];
       for (i = 0; i < 2; i++) {
         x = Math.round(wrapX(sc[i], camX, 0.2, 384));
-        for (k = -1; k <= 1; k++) { var xx = x + k * 384; if (xx > -20 && xx < 340) torchFlame(ctx, xx, oyA + 85, t, i * 2.1, 12); }
+        for (k = -1; k <= 1; k++) { var xx = x + k * 384; if (xx > -20 && xx < 340) torchFlame(ctx, xx, oyA + 85, t, i * 2.1, lit ? 0 : 12); }
       }
       // wall torches on the timber posts (near layer)
       var posts = [40, 200];
       for (i = 0; i < posts.length; i++) {
         x = Math.round(wrapX(posts[i] + 12, camX, 0.45, 320));
-        for (k = -1; k <= 1; k++) { xx = x + k * 320; if (xx > -40 && xx < 360) torchFlame(ctx, xx, oy + 71, t, i * 3.7 + 1, 24); }
+        for (k = -1; k <= 1; k++) { xx = x + k * 320; if (xx > -40 && xx < 360) torchFlame(ctx, xx, oy + 71, t, i * 3.7 + 1, lit ? 0 : 24); }
       }
       // lichen breathing glow
       var lich = [[104, 34, 18], [128, 118, 12], [270, 52, 14], [292, 126, 16]];
@@ -2356,6 +2516,7 @@
         var a = 0.05 + 0.03 * Math.sin(t * 1.7 + i * 1.9);
         for (k = -1; k <= 1; k++) {
           xx = x + k * 320; if (xx < -30 || xx > 350) continue;
+          if (lit) continue;
           ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(xx, oy + lich[i][1], lich[i][2] * 0.9, 0, 6.283); ctx.fill();
         }
       }
@@ -2365,6 +2526,35 @@
         var li = lich[i % 4], sx = li[0] - (li[2] >> 1) + r() * li[2], sy = li[1] - 3 + r() * 6, ph = r() * 6;
         if (Math.sin(t * 2.3 + ph) > 0.6) { ctx.fillStyle = '#a4f8e8'; ctx.fillRect(Math.round(wrapX(sx, camX, 0.45, 320)), Math.round(oy + sy), 1, 1); }
       }
+    },
+    // light sources for the stage light map (screen space): torches, sconces, lichen, the guild door, crawler torches
+    lights: function (out, camX, camY, t, oy) {
+      var oyA = bgOy(camY, 0.2), i;
+      for (i = 0; i < TUN_POSTS.length; i++) {
+        var f = flick(t, i * 3.7 + 1);
+        eachX(TUN_POSTS[i] + 12, camX, 0.45, 320, function (x) { out.push({ x: x + 1, y: oy + 66, r: 70 + f * 10, c: [255, 160, 80], i: 0.85 + f * 0.15 }); }, 90);
+      }
+      for (i = 0; i < TUN_SCONCE.length; i++) {
+        var f2 = flick(t, i * 2.1);
+        eachX(TUN_SCONCE[i], camX, 0.2, 384, function (x) { out.push({ x: x + 1, y: oyA + 81, r: 40 + f2 * 6, c: [255, 150, 70], i: 0.7 + f2 * 0.15 }); }, 50);
+      }
+      for (i = 0; i < TUN_LICH.length; i++) {
+        var li = TUN_LICH[i], a = 0.5 + 0.2 * Math.sin(t * 1.7 + i * 1.9);
+        eachX(li[0], camX, 0.45, 320, function (x) { out.push({ x: x, y: oy + li[1], r: li[2] * 1.9 + 8, c: [40, 230, 190], i: a }); }, 40);
+      }
+      var o = guildOpen(t);
+      if (o > 0) eachX(288, camX, 0.2, 384, function (x) { out.push({ x: x, y: oyA + 130, r: 30 + 44 * o, c: [255, 180, 100], i: 0.75 * o }); }, 70);
+      var per = 19, u = ((t + 7) % per + per) % per, cyc = Math.floor((t + 7) / per), dur = 8;
+      if (u < dur + 3 && fancyOn()) {
+        var dir = cyc % 2 ? -1 : 1, n = cyc % 3 === 0 ? 2 : 1;
+        eachX(96, camX, 0.2, 384, function (sx) {
+          for (var j = 0; j < n; j++) {
+            var tt = u - j * 1.6; if (tt < 0 || tt > dur) continue;
+            out.push({ x: Math.round(sx - dir * 46 + dir * tt * 92 / dur) + dir * 3, y: oyA + 132, r: 22, c: [255, 150, 70], i: 0.55 });
+          }
+        }, 60);
+      }
+      return out;
     }
   };
 
@@ -2518,9 +2708,21 @@
       var ox = Math.floor(((camX * L.rate + t * L.speed) % w + w) % w);
       var oy = -Math.round(Math.min(BGH - 180, cy * L.rate * 0.5));
       for (var x = -ox; x < 320; x += w) ctx.drawImage(Ly.cv, x, oy);
+      if (L.after) L.after(ctx, camX, camY, t, oy);
       oyLast = oy;
     }
     if (b.spec.anim) b.spec.anim(ctx, camX, camY, t, oyLast);
+  };
+  // light sources a theme's background contributes to the stage light map (screen space).
+  // Pushes {x, y, r, c:[r,g,b], i} into out and returns it. Themes without lights add nothing.
+  art.bgLights = function (theme, camX, camY, out) {
+    out = out || [];
+    var spec = BG[theme];
+    if (!spec || !spec.lights || !spec.layers.length) return out;
+    camX = camX || 0; camY = camY || 0;
+    var cy = camY < 0 ? 0 : camY > 160 ? 160 : camY, last = spec.layers[spec.layers.length - 1];
+    spec.lights(out, camX, camY, DCW.t || 0, -Math.round(Math.min(BGH - 180, cy * last.rate * 0.5)));
+    return out;
   };
   // optional: pre-build a theme's background layers (e.g. on stage enter) to avoid a first-frame hitch
   art.prepare = function (theme) { if (BG[theme] && !bgCache[theme]) buildBg(theme); };

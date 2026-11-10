@@ -1244,6 +1244,7 @@
         { label: 'MUSIC', type: 'vol', key: 'music' },
         { label: 'SOUND FX', type: 'vol', key: 'sfx' },
         { label: 'SCREEN SHAKE', type: 'bool', key: 'shake', val: s.shake !== false },
+        { label: 'FANCY EFFECTS', type: 'bool', key: 'fancy', val: s.fancy !== false },
         { label: 'CRT FILTER', type: 'bool', key: 'crt', val: s.crt !== false },
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
         { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
@@ -1288,7 +1289,7 @@
       var rs = rows(), s = settings();
       frame(ctx, 'SETTINGS', { footer: '◀▶:CHANGE  ' + bn('confirm') + ':TOGGLE  ' + bn('back') + ':BACK' });
       rs.forEach(function (r, i) {
-        var yy = 26 + i * 15 + (i >= 7 ? 5 : 0), act = i === m.sel;
+        var yy = 24 + i * 14 + (i >= 8 ? 4 : 0), act = i === m.sel;
         if (act) { R(14, yy - 3, 292, 13, '#1c2c5c'); cursor(18, yy); }
         T(r.label, 30, yy, r.type === 'reset' ? (act ? C.red : C.dred) : act ? C.white : C.gray);
         if (r.type === 'vol') {

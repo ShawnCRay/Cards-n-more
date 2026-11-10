@@ -66,7 +66,9 @@ the request in your final report.
   `DCW.bar(x,y,w,h,frac,color,back)`.
 - Utils `DCW.U`: `clamp lerp sign rand randi chance pick shuffle(arr,rnd) rng(seed) hash(str) overlap(a,b) approach weighted([[item,w]],rnd) fmtTime fmtNum`.
 - Save: `DCW.save` (live object), `DCW.persist()`, `DCW.resetSave()`. Settings in `DCW.save.settings`
-  `{music, sfx, shake, crt, touch:'auto'|'on'|'off'}`; after changing call `DCW.applyCrt()` / `DCW.applyTouchSetting()` / `DCW.audio.setVolumes()`.
+  `{music, sfx, shake, crt, touch:'auto'|'on'|'off', easy, fancy}`; after changing call `DCW.applyCrt()` / `DCW.applyTouchSetting()` / `DCW.audio.setVolumes()`.
+  `fancy` (FANCY EFFECTS, default on) gates the heavy stage lighting and ambient background life; read it with `DCW.fancy()`.
+  All screen shake and camera kicks obey `shake`.
 - `DCW.debug` true with `?debug` in the URL. `DCW.params` is the URLSearchParams.
 - Test hooks: `DCW.stepFrames(n)` advances n frames synchronously; `DCW.pressKey(btn, frames)`.
 
@@ -359,6 +361,10 @@ DCW.art.tile(ctx, theme, ch, x, y, ctxInfo)  // top-left 16x16 for chunk chars '
 DCW.art.background(ctx, theme, camX, camY)  // fills the whole screen; parallax layers
 DCW.art.owTile(ctx, owTheme, ch, x, y, info) // overworld 16x16 tile for '#','.',',','=','~','T' (info like tile)
 DCW.art.boxColor(tier) -> css color
+DCW.art.bgLights(theme, camX, camY, out) // pushes screen-space lights {x, y, r, c:[r,g,b], i} from the theme's
+  // background (torches etc., at their parallax positions) for the stage light map. BG specs may define
+  // `lights(out, camX, camY, t, oy)`, and a parallax layer may carry `after(ctx, camX, camY, t, oy)` to draw
+  // animated life right after that layer (so depth reads right).
 ```
 
 Required sprite names (all face right):
@@ -489,6 +495,12 @@ arcing), use potion, companion special (special button when meter full: meter fi
 damage dealt and over time). Companion follows the player and uses its ability on cooldown.
 Combo counter: hits within 2s chain; views gained per kill scale with combo.
 Debug (`DCW.debug`): key `9` (code Digit9) clears the stage, `0` toggles god mode.
+Lighting: stage.js builds one dithered light map per frame (ambient + colored lights from the
+background, Carl, projectiles, blasts, pickups, doors, hazards). Per-theme config lives in `LIGHTING`
+(Floor 1 `tunnels` uses it); `dark` stages use the same path with a near-black ambient. The background is
+multiplied by the map, tiles and actors by "lifted" copies so gameplay stays readable. Ambient life that never
+collides (drips, rumble grit) is per-theme in `AMBIENT`. Juice: camera kick on hits, slow motion on a combo
+finisher (10+) and boss phase changes, sprite-colored gibs, landing dust scaled by fall height.
 
 ## Update 2: quests, rescues, levers (binding for this update)
 

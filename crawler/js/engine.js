@@ -485,7 +485,7 @@
       equipped: { skin: 'carl_boxers', companion: 'donut' },
       run: null,
       meta: { achievements: {}, counters: {}, bestFloor: 0, runs: 0, wins: 0, deaths: 0, boxesOpened: 0, seenIntro: false },
-      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto', easy: false }
+      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto', easy: false, fancy: true }
     };
   }
   function merge(base, over) {
@@ -578,6 +578,8 @@
     if (DCW.save && DCW.save.settings && DCW.save.settings.shake === false) return;
     if (mag >= shake.mag || shake.t <= 0) { shake.mag = mag; shake.t = time || 0.2; }
   };
+  // FANCY EFFECTS setting: heavy lighting + ambient background life (default on)
+  DCW.fancy = function () { return !(DCW.save && DCW.save.settings && DCW.save.settings.fancy === false); };
   var freezeFrames = 0;
   DCW.freeze = function (frames) { freezeFrames = Math.max(freezeFrames, frames); };
 

@@ -35,7 +35,7 @@ const J = [
   { n: 'boxes_empty', s: 'boxes', steps: [['eval', 'DCW.save.run.boxes=[]; 1'], ['frames', 5], ['shot', 'boxes_empty']] },
   { n: 'wardrobe', s: 'wardrobe', steps: [['frames', 10], ['shot', 'wardrobe'], ...tap('down'), ['shot', 'wardrobe_locked'], ...tap('confirm', 5), ['shot', 'wardrobe_locked_msg'], ...tap('right', 5), ['shot', 'wardrobe_pals'], ...tap('down'), ...tap('down'), ['shot', 'wardrobe_pals2']] },
   { n: 'achievements', s: 'achievements', steps: [['frames', 10], ['shot', 'achievements'], ...tap('down'), ['shot', 'ach_locked'], ['hold', 'down', 60], ['shot', 'ach_scrolled']] },
-  { n: 'settings', s: 'settings', steps: [['frames', 10], ['shot', 'settings'], ...tap('left'), ...tap('down'), ...tap('down'), ...tap('confirm'), ['shot', 'settings_changed'], ...tap('down'), ...tap('down'), ...tap('down'), ...tap('confirm', 5), ['shot', 'settings_reset1'], ...tap('up'), ...tap('confirm', 5), ['shot', 'settings_reset2']] },
+  { n: 'settings', s: 'settings', steps: [['frames', 10], ['shot', 'settings'], ...tap('left'), ...tap('down'), ...tap('down'), ...tap('confirm'), ['shot', 'settings_changed'], ...tap('down'), ...tap('down'), ...tap('down'), ...tap('down'), ...tap('down'), ...tap('down'), ...tap('confirm', 5), ['shot', 'settings_reset1'], ...tap('up'), ...tap('confirm', 5), ['shot', 'settings_reset2']] },
   { n: 'shop', s: 'shop', steps: [['frames', 10], ['shot', 'shop'], ...tap('down'), ...tap('down'), ...tap('down'), ...tap('down'), ...tap('down'), ...tap('confirm', 5), ['shot', 'shop_fail']] },
   { n: 'mapow', s: 'mapow', steps: [['frames', 10], ['shot', 'map_ow']] },
   { n: 'maplinear', s: 'maplinear', steps: [['frames', 10], ['shot', 'map_linear']] },
