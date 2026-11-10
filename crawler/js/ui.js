@@ -384,7 +384,7 @@
     if (typeof r === 'string') return { text: r, icon: 'star', color: C.white };
     var n;
     switch (r.kind) {
-      case 'gold': return { text: '+' + (r.amount || 0) + ' GOLD' + (r.converted ? ' (DUPE)' : ''), icon: 'coin', color: C.gold };
+      case 'gold': return { text: (r.converted === 'skin' ? 'SKIN OWNED: +' : '+') + (r.amount || 0) + ' GOLD', icon: 'coin', color: C.gold };
       case 'item':
         n = r.count || 1;
         var nm = r.id === 'bomb' ? 'BOMB' : r.id === 'potion' ? 'POTION' : String(r.id || 'ITEM').toUpperCase();
@@ -395,7 +395,7 @@
       case 'xp': return { text: '+' + (r.amount || 0) + ' XP', icon: 'star', color: C.green };
       case 'hp': return { text: '+' + (r.amount || 1) + ' MAX HP', icon: 'heart', color: C.red };
       case 'box': return { text: tierName(r.tier), icon: 'box', color: boxColor(r.tier) };
-      case 'views': return { text: '+' + fmtNum(r.amount) + ' VIEWS' + (r.note ? ' (' + r.note + ')' : ''), icon: 'eye', color: C.pink };
+      case 'views': return { text: '+' + fmtNum(r.amount) + (r.note ? ' ' + r.note : '') + ' VIEWS', icon: 'eye', color: C.pink }; // fits the 21-char results column
       case 'place': return { text: (r.place === 1 ? '1ST' : r.place === 2 ? '2ND' : r.place === 3 ? '3RD' : r.place + 'TH') + ' PLACE' + (r.of ? ' OF ' + r.of : ''), icon: 'star', color: r.place === 1 ? C.gold : C.white };
       case 'revival': n = r.count || 1; return { text: '+' + n + ' SPONSOR REVIVAL' + (n > 1 ? 'S' : ''), icon: 'heart', color: C.pink };
       default: return { text: r.text || String(r.kind || '?').toUpperCase(), icon: r.icon || 'star', color: C.white };
@@ -664,8 +664,9 @@
       var full = h.special >= 1;
       DCW.bar(bx, 9, bw, 2, h.special, full ? (blink(6) ? C.white : C.yellow) : C.purple, '#200828');
     }
-    T(Math.ceil(hp) + '/' + mx, 77, 3, low ? C.red : C.white);
-    var x = 113;
+    var hpStr = Math.ceil(hp) + '/' + mx;
+    T(hpStr, 77, 3, low ? C.red : C.white);
+    var x = Math.max(113, 77 + tw(hpStr) + 4); // 3-digit HP pushes the row right instead of overlapping
     icon(ctx, 'bomb', x, 2); T(h.bombs === undefined ? '-' : h.bombs, x + 9, 3, C.white); x += 22;
     icon(ctx, 'potion', x, 2); T(h.potions === undefined ? '-' : h.potions, x + 9, 3, C.white); x += 22;
     icon(ctx, 'coin', x, 2); T(fitText(h.gold || 0, 30), x + 9, 3, C.gold); x += 44;
@@ -1243,11 +1244,12 @@
         { label: 'MUSIC', type: 'vol', key: 'music' },
         { label: 'SOUND FX', type: 'vol', key: 'sfx' },
         { label: 'SCREEN SHAKE', type: 'bool', key: 'shake', val: s.shake !== false },
+        { label: 'FANCY EFFECTS', type: 'bool', key: 'fancy', val: s.fancy !== false },
         { label: 'CRT FILTER', type: 'bool', key: 'crt', val: s.crt !== false },
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
         { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
         { label: 'KEYBOARD CONTROLS', type: 'controls' },
-        { label: 'RESET SAVE', type: 'reset' },
+        { label: 'ERASE THIS SAVE SLOT', type: 'reset' },
         { label: 'BACK', type: 'back' }
       ];
     }
@@ -1271,13 +1273,13 @@
         else if (r.type === 'controls') { sfx('menu_select'); ui.openControls(); }
         else if (r.type === 'reset') {
           sfx('menu_select');
-          ui.confirm('ERASE ALL PROGRESS, UNLOCKS AND ACHIEVEMENTS?', function () {
+          ui.confirm('ERASE SLOT ' + (DCW.slot || 1) + '? ITS CRAWL, UNLOCKS AND ACHIEVEMENTS ALL GO. OTHER SLOTS ARE SAFE.', function () {
             ui.confirm('REALLY? THE AI WILL REMEMBER THIS. FOREVER.', function () {
               if (typeof DCW.resetSave === 'function') DCW.resetSave();
               applySettings();
               closeAll();
               DCW.fade(function () { DCW.setScene(ui.scenes.title, {}); });
-              setTimeout(function () { ui.toast('SAVE ERASED. FRESH MEAT!', { icon: 'skull', color: C.red }); }, 400);
+              setTimeout(function () { ui.toast('SLOT ' + (DCW.slot || 1) + ' ERASED. FRESH MEAT!', { icon: 'skull', color: C.red }); }, 400);
             }, { yes: 'ERASE IT', no: 'NO WAIT', color: C.red, border: C.red });
           }, { color: C.red });
         } else if (r.type !== 'vol') change(r, 1);
@@ -1287,7 +1289,7 @@
       var rs = rows(), s = settings();
       frame(ctx, 'SETTINGS', { footer: '◀▶:CHANGE  ' + bn('confirm') + ':TOGGLE  ' + bn('back') + ':BACK' });
       rs.forEach(function (r, i) {
-        var yy = 26 + i * 15 + (i >= 7 ? 5 : 0), act = i === m.sel;
+        var yy = 24 + i * 14 + (i >= 8 ? 4 : 0), act = i === m.sel;
         if (act) { R(14, yy - 3, 292, 13, '#1c2c5c'); cursor(18, yy); }
         T(r.label, 30, yy, r.type === 'reset' ? (act ? C.red : C.dred) : act ? C.white : C.gray);
         if (r.type === 'vol') {
@@ -1861,9 +1863,10 @@
       return [
         hasRun ? { label: 'CONTINUE', action: function () { start('continueRun'); } } : null,
         { label: 'NEW CRAWL', action: function () {
-          if (DCW.save && DCW.save.run) ui.confirm('START OVER? YOUR CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
+          if (DCW.save && DCW.save.run) ui.confirm('START OVER IN SLOT ' + (DCW.slot || 1) + '? THIS SLOT\'S CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
           else start('newRun');
         } },
+        { label: 'SAVE SLOT ' + (DCW.slot || 1), action: function () { ui.openSlots(); } },
         { label: 'WARDROBE', action: ui.openWardrobe },
         { label: 'ACHIEVEMENTS', action: ui.openAchievements },
         { label: 'SETTINGS', action: ui.openSettings },
@@ -1880,14 +1883,22 @@
     idle: function (dt) { this.t += dt; },
     draw: function (ctx) {
       var t = this.t || 0;
-      bands(ctx, ['#07021a', '#0b0424', '#12062e', '#1a0838', '#240a40', '#300c46', '#3c1048', '#4c1448'], 0, 172);
-      stars(ctx, t, 3, 100);
-      // alien planet with ring
-      var px = 268, py = 34;
-      pdisc(ctx, px, py, 23, '#000'); pdisc(ctx, px, py, 22, '#881488'); pdiscIn(ctx, px - 8, py - 8, 16, px, py, 22, '#b83cb8'); pdiscIn(ctx, px + 10, py + 6, 6, px, py, 22, '#5c0c5c');
-      R(px - 40, py + 2, 80, 2, '#f8b800'); R(px - 34, py + 4, 68, 1, '#ac7c00');
-      saucer(ctx, 40 + Math.sin(t * 0.7) * 20, 30 + Math.sin(t * 1.3) * 4, 0);
-      skyline(ctx, 168, 99, '#120620', '#5c3c00', t);
+      // background matches the floor the saved crawl is on (like the outfit and companion); fresh saves get the alien sky
+      var run = DCW.save && DCW.save.run, fdT = run && floorDef(run.floor || 1), bgTheme = fdT && fdT.theme, drewBg = false;
+      if (bgTheme && DCW.art && typeof DCW.art.background === 'function') {
+        try { DCW.art.background(ctx, bgTheme, t * 12, 0); drewBg = true; } catch (e) { drewBg = false; }
+        if (drewBg) { ctx.globalAlpha = 0.12; R(0, 0, W, H, '#000'); ctx.globalAlpha = 0.3; R(0, 0, W, 74, '#000'); ctx.globalAlpha = 1; } // light dim keeps the logo readable
+      }
+      if (!drewBg) {
+        bands(ctx, ['#07021a', '#0b0424', '#12062e', '#1a0838', '#240a40', '#300c46', '#3c1048', '#4c1448'], 0, 172);
+        stars(ctx, t, 3, 100);
+        // alien planet with ring
+        var px = 268, py = 34;
+        pdisc(ctx, px, py, 23, '#000'); pdisc(ctx, px, py, 22, '#881488'); pdiscIn(ctx, px - 8, py - 8, 16, px, py, 22, '#b83cb8'); pdiscIn(ctx, px + 10, py + 6, 6, px, py, 22, '#5c0c5c');
+        R(px - 40, py + 2, 80, 2, '#f8b800'); R(px - 34, py + 4, 68, 1, '#ac7c00');
+        saucer(ctx, 40 + Math.sin(t * 0.7) * 20, 30 + Math.sin(t * 1.3) * 4, 0);
+        skyline(ctx, 168, 99, '#120620', '#5c3c00', t);
+      }
       R(0, 168, W, 12, '#000'); R(0, 168, W, 1, '#3c1048');
       // logo
       var bob = Math.round(Math.sin(t * 2) * 1);
@@ -1909,11 +1920,11 @@
       spr(ctx, 'carl_idle', 40, 169, { frame: Math.floor(t * 2), skin: equipped('skin') });
       spr(ctx, compSprite(equipped('companion')) + '_idle', 62, 169, { frame: Math.floor(t * 2), flip: true });
       // menu
-      var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh;
+      var its = this.items(), rowH = its.length > 6 ? 11 : 12, mh = its.length * rowH + 10, my = 166 - mh;
       DCW.box(104, my, 112, mh);
       var self = this;
       its.forEach(function (it, k) {
-        var yy = my + 6 + k * 12;
+        var yy = my + 6 + k * rowH;
         if (k === self.sel) cursor(110, yy);
         T(it.label, 120, yy, k === self.sel ? C.white : C.gray);
       });
@@ -1942,6 +1953,253 @@
     update: function (dt) { if (!this.done) this.pager.update(dt); },
     idle: function (dt) { this.pager.t += dt; },
     draw: function (ctx) { R(0, 0, W, H, '#000'); this.pager.draw(ctx); }
+  };
+
+  /* ---------- NAME ENTRY (new run): you type a name, the AI calls you Carl anyway ---------- */
+  var NAME_MAX = 10, NAME_ROWS = ['ABCDEFGHIJ', 'KLMNOPQRST', "UVWXYZ.'-!"], NAME_CMDS = ['SPACE', 'DEL', 'DONE'];
+  function carlLines(name, tries) {
+    var ai = function (t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; };
+    var n = name.replace(/^\s+|\s+$/g, '');
+    if (!n) return [ai('NOTHING? YOU CANNOT EVEN COMMIT TO A NAME. THAT IS THE MOST CARL THING I HAVE EVER SEEN.'), ai('YOU ARE CARL. CONGRATULATIONS, CARL.')];
+    if (/^CARL\b/.test(n)) return [ai('...OH. YOU ACTUALLY ARE A CARL.'), ai('THAT IS DEEPLY DISAPPOINTING. I HAD A WHOLE BIT PREPARED. FINE. CARL IT IS.')];
+    if (/DONUT/.test(n)) return [ai(n + '? THAT NAME IS TAKEN. BY A CAT. A VERY LITIGIOUS CAT.'), ai('YOU LOOK LIKE A CARL TO ME. I AM GONNA CALL YOU CARL.')];
+    if (tries > 1) return [ai(n + '. WE HAVE BEEN OVER THIS.'), ai(U.pick(['YOU ARE CARL. YOU WERE CARL LAST TIME. YOU WILL BE CARL NEXT TIME.', 'THE NAME FIELD IS DECORATIVE. IT ALWAYS HAS BEEN. HELLO AGAIN, CARL.', 'I DID NOT EVEN READ THAT. WELCOME BACK, CARL.']))];
+    return [ai(n + '. ' + n + '. HMM. LET ME LOOK AT YOU.'),
+      ai(U.pick(['NAH. YOU LOOK LIKE A CARL TO ME. I AM GONNA CALL YOU CARL.', 'NO. ABSOLUTELY NOT. YOU HAVE A CARL FACE. YOU ARE CARL NOW.', 'THAT IS A LOVELY NAME FOR SOMEONE ELSE. YOU, HOWEVER, ARE A CARL.'])),
+      ai('THE PAPERWORK IS ALREADY FILED, CARL. THE AUDIENCE LOVES IT. MOVING ON.')];
+  }
+  scenes.nameEntry = {
+    enter: function (p) {
+      var self = this;
+      this.p = p || {}; this.t = 0; this.name = ''; this.row = 0; this.col = 0; this.done = false; this.said = false;
+      tryCall(I(), 'textCapture', [function (kind, ch) {
+        if (self.said) return;
+        if (kind === 'char') self.add(ch); else if (kind === 'del') self.del(); else if (kind === 'done') self.finish();
+      }]);
+    },
+    exit: function () { tryCall(I(), 'textCapture', [null]); },
+    add: function (ch) {
+      if (this.name.length >= NAME_MAX || (ch === ' ' && (!this.name || / $/.test(this.name)))) { sfx('error'); return; }
+      this.name += ch; sfx('menu_move');
+    },
+    del: function () { if (!this.name) return; this.name = this.name.slice(0, -1); sfx('menu_back'); },
+    finish: function () {
+      if (this.said || this.t < 0.3) return;
+      this.said = true; sfx('menu_select');
+      tryCall(I(), 'textCapture', [null]);
+      var s = save(), self = this;
+      s.meta = s.meta || {};
+      s.meta.nameTries = (s.meta.nameTries || 0) + 1;
+      s.meta.typedName = this.name.replace(/\s+$/, '');
+      var run = getRun(); if (run) run.typedName = s.meta.typedName;
+      tryCall(DCW, 'persist', []);
+      ui.say(carlLines(s.meta.typedName, s.meta.nameTries), { onDone: function () {
+        if (self.done) return; self.done = true;
+        if (self.p.onDone) self.p.onDone(); else tryCall(DCW.game, 'startFloor', [1]);
+      } });
+    },
+    update: function (dt) {
+      this.t += dt;
+      if (this.said) return;
+      var rows = NAME_ROWS.length + 1, cols = this.row < NAME_ROWS.length ? NAME_ROWS[0].length : NAME_CMDS.length;
+      if (P('up') || P('down')) {
+        var fromCmd = this.row === NAME_ROWS.length;
+        this.row = (this.row + (P('down') ? 1 : rows - 1)) % rows;
+        var toCmd = this.row === NAME_ROWS.length;
+        if (fromCmd && !toCmd) this.col = [1, 5, 8][this.col] || 0; // SPACE/DEL/DONE map back onto the grid
+        else if (!fromCmd && toCmd) this.col = this.col < 4 ? 0 : this.col < 7 ? 1 : 2;
+        sfx('menu_move');
+      }
+      cols = this.row < NAME_ROWS.length ? NAME_ROWS[0].length : NAME_CMDS.length;
+      if (P('left')) { this.col = (this.col + cols - 1) % cols; sfx('menu_move'); }
+      if (P('right')) { this.col = (this.col + 1) % cols; sfx('menu_move'); }
+      if (P('start')) { this.finish(); return; }
+      if (P('back')) this.del();
+      if (P('confirm') && this.t > 0.3) {
+        if (this.row < NAME_ROWS.length) this.add(NAME_ROWS[this.row].charAt(this.col));
+        else if (this.col === 0) this.add(' ');
+        else if (this.col === 1) this.del();
+        else this.finish();
+      }
+    },
+    idle: function (dt) { this.t += dt; },
+    draw: function (ctx) {
+      var self = this;
+      R(0, 0, W, H, '#0c0418');
+      for (var i = 0; i < 12; i++) R(0, i * 15, W, 1, '#140828');
+      // AI prompt
+      DCW.box(8, 6, 304, 40);
+      R(12, 9, 34, 34, C.white); R(13, 10, 32, 32, '#000'); portrait(ctx, 'p_ai', 13, 10);
+      T('SYSTEM AI', 52, 11, C.gold);
+      T('PLEASE ENTER YOUR NAME, CRAWLER.', 52, 22, C.white);
+      T('IT IS FOR THE PAPERWORK.', 52, 31, C.gray);
+      // name field
+      var fx = 160 - 66;
+      DCW.box(fx, 52, 132, 22);
+      var shown = this.name + (this.name.length < NAME_MAX && !this.said && blink(2.5) ? '_' : '');
+      T(shown, fx + 6, 57, C.yellow, { scale: 2 });
+      // letter grid
+      var gx = 160 - 5 * 18 + 3, gy = 82;
+      NAME_ROWS.forEach(function (row, r) {
+        for (var c = 0; c < row.length; c++) {
+          var sel = !self.said && self.row === r && self.col === c, x = gx + c * 18, y = gy + r * 14;
+          if (sel) R(x - 4, y - 3, 14, 12, C.blue);
+          T(row.charAt(c), x, y, sel ? C.white : C.gray);
+        }
+      });
+      var cy = gy + NAME_ROWS.length * 14 + 4, cw = 54, cx0 = 160 - Math.round((NAME_CMDS.length * cw - 8) / 2);
+      NAME_CMDS.forEach(function (lbl, k) {
+        var sel = !self.said && self.row === NAME_ROWS.length && self.col === k, x = cx0 + k * cw;
+        R(x, cy - 3, cw - 8, 12, sel ? C.blue : '#1c1c3c');
+        T(lbl, x + (cw - 8) / 2, cy, sel ? C.white : (k === 2 ? C.green : C.gray), { align: 'center' });
+      });
+      var kbd = ((DCW.input && DCW.input.lastDevice) || 'keyboard') === 'keyboard';
+      if (!this.said) T(kbd ? 'TYPE YOUR NAME.  ENTER: DONE  BKSP: DELETE' : 'PICK LETTERS.  ' + bn('start') + ': DONE  ' + bn('back') + ': DELETE', 160, 168, C.dgray, { align: 'center', shadow: null });
+    }
+  };
+
+  /* ---------- SAVE SLOTS (title menu): each slot is its own profile ---------- */
+  function agoText(ms) {
+    if (!ms) return '';
+    var m = Math.floor((Date.now() - ms) / 60000);
+    return m < 1 ? 'PLAYED JUST NOW' : m < 60 ? 'PLAYED ' + m + 'M AGO' : m < 1440 ? 'PLAYED ' + Math.floor(m / 60) + 'H AGO' : 'PLAYED ' + Math.floor(m / 1440) + 'D AGO';
+  }
+  function slotSummary(i) {
+    if (i.empty) return { right: 'EMPTY', color: C.dgray, hint: 'A FRESH START. NEW UNLOCKS, NEW ACHIEVEMENTS, SAME CONTROLS.' };
+    var right = i.won ? 'CLEARED' : i.floor ? 'FLOOR ' + i.floor + ' LV' + i.level : 'NO CRAWL';
+    var bits = ['RUNS ' + i.runs, 'BEST FLOOR ' + i.bestFloor];
+    if (i.wins) bits.push('WINS ' + i.wins);
+    if (i.achievements) bits.push(i.achievements + ' ACHIEVEMENTS');
+    var ago = agoText(i.lastPlayed);
+    return { right: right, color: i.won ? C.gold : C.white, hint: bits.join('. ') + '.' + (ago ? ' ' + ago + '.' : '') };
+  }
+  function switchSlot(n, erased) {
+    if (n !== DCW.slot) DCW.useSlot(n);
+    applySettings();
+    closeAll();
+    DCW.fade(function () { DCW.setScene(ui.scenes.title, {}); });
+    setTimeout(function () { ui.toast(erased ? 'SLOT ' + n + ' ERASED. FRESH MEAT!' : 'SLOT ' + n + ' LOADED', { icon: erased ? 'skull' : 'star', color: erased ? C.red : C.gold }); }, 400);
+  }
+  ui.openSlots = function (sel) {
+    var items = [];
+    for (var n = 1; n <= (DCW.SLOTS || 3); n++) (function (n) {
+      var i = DCW.slotInfo ? DCW.slotInfo(n) : { n: n, empty: true }, sm = slotSummary(i);
+      items.push({ label: (i.current ? '★ ' : '') + 'SLOT ' + n, right: sm.right, rightColor: i.current ? C.gold : sm.color, color: i.current ? C.gold : null, hint: sm.hint,
+        action: function () {
+          ui.menu([
+            { label: i.current ? 'PLAYING THIS SLOT' : i.empty ? 'START IN THIS SLOT' : 'LOAD THIS SLOT', disabled: i.current, why: 'ALREADY LOADED', action: function () { switchSlot(n); } },
+            { label: 'ERASE THIS SLOT', disabled: i.empty, why: 'NOTHING TO ERASE', color: C.red, action: function () {
+              ui.confirm('ERASE SLOT ' + n + '? ITS CRAWL, UNLOCKS AND ACHIEVEMENTS ALL GO. OTHER SLOTS ARE SAFE.', function () {
+                DCW.eraseSlot(n);
+                if (n === DCW.slot) { DCW.persist(); switchSlot(n, true); } else ui.openSlots(n - 1);
+              }, { yes: 'ERASE IT', no: 'NO WAIT', color: C.red, border: C.red, onNo: function () { ui.openSlots(n - 1); } });
+            } },
+            { label: 'BACK', action: function () { ui.openSlots(n - 1); } }
+          ], { title: 'SLOT ' + n + (i.empty ? '' : ': ' + sm.right), onBack: function () { ui.openSlots(n - 1); } });
+        } });
+    })(n);
+    return ui.menu(items, { title: 'SAVE SLOTS', sel: sel !== undefined ? sel : (DCW.slot || 1) - 1, w: 230 });
+  };
+
+  /* ---------- FLOOR 7 COLD OPEN: THE GREAT RACE (it does not survive the countdown) ----------
+     Book floor 7 was the Great Race: starting pods corkscrewed around a shaft of exit portals,
+     a maze ahead. A goat crawler named Prepotente destroyed it before anyone raced. Here the
+     show then swaps in its backup floor (the manor). START skips straight to the floor card. */
+  scenes.greatRace = {
+    enter: function (p) {
+      this.p = p || {}; this.t = 0; this.phase = 'title'; this.pt = 0; this.done = false; this.count = 10; this.debris = [];
+      music(null); sfx('fanfare');
+    },
+    go: function (ph) { this.phase = ph; this.pt = 0; },
+    finish: function () { if (this.done) return; this.done = true; closeAll(); if (this.p.onDone) this.p.onDone(); },
+    update: function (dt) {
+      var self = this, ai = function (t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; };
+      this.t += dt; this.pt += dt;
+      if (P('start') && this.t > 0.5) { this.finish(); return; }
+      if (this.phase === 'title' && (this.pt > 3.2 || (P('confirm') && this.pt > 0.6))) {
+        this.go('pods');
+        ui.say([ai('WELCOME TO THE SEVENTH FLOOR! THE GREAT RACE! A FAIRY TALE KNOWN ACROSS THE GALAXY, NOW A LIVE EVENT.'),
+          ai('YOU ARE IN YOUR STARTING POD. THE EXITS ARE GLOWING RIGHT BEHIND YOU, AND YOU CANNOT REACH THEM. THE ONLY WAY OUT IS THROUGH THE MAZE.'),
+          ai('HUNDREDS OF KILOMETERS OF TUNNELS. NO DEAD ENDS. WE BUILT THIS FLOOR IN A HURRY AND WE ARE VERY PROUD OF IT. COUNTDOWN BEGINS NOW!')],
+          { onDone: function () { self.go('count'); self.count = 10; sfx('countdown'); } });
+      } else if (this.phase === 'count') {
+        var c = 10 - Math.floor(this.pt / 0.75);
+        if (c !== this.count && c >= 3) { this.count = c; sfx('countdown'); if (c === 5) sfx('warn'); }
+        if (this.pt > 0.75 * 7.6) { // dies at "3"
+          this.go('boom'); sfx('explosion'); DCW.shake && DCW.shake(6, 1.2);
+          for (var i = 0; i < 60; i++) this.debris.push({ x: 160 + (Math.random() - 0.5) * 60, y: 70 + (Math.random() - 0.5) * 40, vx: (Math.random() - 0.5) * 340, vy: -Math.random() * 260, c: ['#fcfcfc', '#f8b800', '#f83800', '#9878f8', '#bcbcbc'][i % 5] });
+        }
+      } else if (this.phase === 'boom') {
+        this.debris.forEach(function (d) { d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 420 * dt; });
+        if (this.pt > 0.5 && this.pt - dt <= 0.5) sfx('crash');
+        if (this.pt > 2.2) { this.go('static'); }
+      } else if (this.phase === 'static' && this.pt > 2.4 && !this.said) {
+        this.said = true;
+        ui.say([ai('...'),
+          ai('THAT WAS A CRAWLER NAMED PREPOTENTE. A GOAT. HE HAS JUST DESTROYED THE GREAT RACE. NOBODY RACED. NOT ONE METER.'),
+          { who: 'CARL', portrait: 'p_carl', text: 'DID THAT GOAT JUST BLOW UP THE ENTIRE FLOOR?' },
+          { who: 'PRINCESS DONUT', portrait: 'p_donut', text: 'HONESTLY, CARL, I AM A LITTLE JEALOUS. THAT WAS VERY DRAMATIC.' },
+          ai('GOOD NEWS! THE SHOW ALWAYS HAS A BACKUP. PLEASE ENJOY THE BEDLAM MANOR, AN EMERGENCY UNDERSTUDY FLOOR WE HAD IN STORAGE.'),
+          ai('IT HAS GARDENS, A HEDGE MAZE AND A GRAVEYARD. THE HEDGE MAZE IS NOT A RACE. PLEASE DO NOT BLOW IT UP.')],
+          { onDone: function () { self.finish(); } });
+      }
+    },
+    idle: function (dt) { this.t += dt; this.pt += dt; },
+    draw: function (ctx) {
+      var t = this.t, pt = this.pt, ph = this.phase;
+      if (ph === 'title') {
+        R(0, 0, W, H, '#05020e'); stars(ctx, t, 2, 60);
+        T('FLOOR', 160, 30, C.white, { align: 'center', scale: 2 });
+        T('7', 160, 48, C.gold, { align: 'center', scale: 5 });
+        if (pt > 0.5) T('THE GREAT RACE', 160, 98, C.white, { align: 'center', scale: 2 });
+        if (pt > 1.0) T('A MAZE. A RACE. NO DEAD ENDS. ONE WAY OUT.', 160, 118, C.yellow, { align: 'center' });
+        return;
+      }
+      if (ph === 'static') {
+        for (var sy = 0; sy < H; sy += 2) for (var sx = 0; sx < W; sx += 4) R(sx, sy, 4, 2, ['#202020', '#585858', '#989898', '#383838'][(Math.random() * 4) | 0]);
+        var bars = ['#fcfcfc', '#f8d878', '#00e8d8', '#58d854', '#f878f8', '#f83800', '#0058f8'];
+        if (pt > 0.6) { for (var b = 0; b < bars.length; b++) R(40 + b * 34, 40, 34, 60, bars[b]); DCW.box(52, 108, 216, 34);
+          T('TECHNICAL DIFFICULTIES', 160, 114, C.white, { align: 'center' }); T('PLEASE STAND BY', 160, 126, C.gray, { align: 'center' }); }
+        return;
+      }
+      // pole position chamber: pods corkscrewed around a shaft of glowing exit portals
+      R(0, 0, W, H, '#0a0614');
+      var shaftX = 160;
+      R(shaftX - 22, 0, 44, H, '#140c24'); R(shaftX - 23, 0, 1, H, '#2c1c4c'); R(shaftX + 22, 0, 1, H, '#2c1c4c');
+      for (var k = -1; k < 7; k++) { // portal column, drifting upward
+        var py = Math.round(((k * 28 - t * 14) % 196 + 196) % 196) - 16, pul = Math.sin(t * 4 + k) > 0;
+        R(shaftX - 14, py, 28, 18, pul ? '#9878f8' : '#6844fc'); R(shaftX - 10, py + 3, 20, 12, pul ? '#d8b8f8' : '#9878f8'); R(shaftX - 5, py + 6, 10, 6, '#fcfcfc');
+      }
+      // background pods (two corkscrew columns receding up)
+      for (var i = 0; i < 6; i++) {
+        var side = i % 2 ? 1 : -1, row = Math.floor(i / 2), w = 46 - row * 8, h = 30 - row * 5;
+        var x = shaftX + side * (34 + row * 22) - (side < 0 ? w : 0), y = 98 - row * 34;
+        R(x, y, w, h, '#1c2c3c'); R(x + 1, y + 1, w - 2, h - 2, '#0c1420');
+        for (var bx = x + 3; bx < x + w - 2; bx += 4) R(bx, y + 1, 1, h - 2, '#5c7c9c');
+        if (i === 3) { // Prepotente's pod: a goat with ideas
+          var gx = x + Math.round(w / 2) - 6, gy = y + h - 9;
+          R(gx, gy, 12, 6, '#bcbcbc'); R(gx + 9, gy - 4, 5, 5, '#bcbcbc'); R(gx + 12, gy - 1, 2, 3, '#fcfcfc');
+          R(gx + 9, gy - 6, 1, 2, '#7c5c3c'); R(gx + 12, gy - 6, 1, 2, '#7c5c3c'); R(gx + 1, gy + 6, 1, 2, '#7c7c7c'); R(gx + 9, gy + 6, 1, 2, '#7c7c7c');
+          if (ph === 'count' && this.count <= 6) { R(gx - 3, gy - 3, 3, 3, blink(6) ? '#f83800' : '#f8b800'); T('!', gx + 11, gy - 14, C.red, { shadow: null }); }
+        } else { R(x + Math.round(w / 2) - 2, y + h - 10, 4, 9, '#3c3c5c'); }
+      }
+      // Carl's pod, front and center
+      R(98, 120, 124, 52, '#3c5c7c'); R(100, 122, 120, 48, '#101c2c');
+      spr(ctx, 'carl_idle', 140, 168, { frame: Math.floor(t * 2), skin: equipped('skin') });
+      spr(ctx, compSprite(equipped('companion')) + '_idle', 170, 168, { frame: Math.floor(t * 2), flip: true });
+      for (var gb = 104; gb < 218; gb += 8) R(gb, 122, 2, 48, '#7c9cbc');
+      if (ph === 'count') {
+        var n = String(this.count), pop = (this.pt % 0.75) < 0.12 ? 1 : 0;
+        T(n, 160, 38 - pop * 2, this.count <= 5 ? C.red : C.gold, { align: 'center', scale: 5 + pop });
+      }
+      if (ph === 'boom') {
+        var a = pt < 0.35 ? 1 : Math.max(0, 1 - (pt - 0.35) / 1.2);
+        this.debris.forEach(function (d) { R(Math.round(d.x), Math.round(d.y), 3, 3, d.c); });
+        ctx.globalAlpha = a; R(0, 0, W, H, '#fcfcfc'); ctx.globalAlpha = 1;
+        if (pt > 0.6) T('KA-BLAM', 160, 60, C.red, { align: 'center', scale: 3 });
+      }
+      if (blink(2) && !ui.blocking()) T(bn('start') + ': SKIP', 316, 4, C.dgray, { align: 'right', shadow: null });
+    }
   };
 
   /* ---------- FLOOR CARD ---------- */

@@ -388,6 +388,78 @@
     if (S.nums.length > 40) S.nums.shift();
   }
   function flash(color, t) { S.flashColor = color || '#fff'; S.flashT = t || 0.15; }
+  /* ---------------- juice helpers (global, every floor) ---------------- */
+  function fancy() { return typeof DCW.fancy === 'function' ? !!DCW.fancy() : true; }
+  function shakeOn() { return !(DCW.save && DCW.save.settings && DCW.save.settings.shake === false); }
+  // tiny camera kick (px) in a direction; decays fast; obeys SCREEN SHAKE
+  function camKick(dx, dy, mag) {
+    if (!S || !shakeOn()) return;
+    S.kickX = U.clamp((S.kickX || 0) + dx * mag, -5, 5);
+    S.kickY = U.clamp((S.kickY || 0) + dy * mag, -4, 4);
+  }
+  // brief slow motion (real seconds), e.g. combo finishers and boss phase changes
+  function slowMo(sec, scale) {
+    if (!S) return;
+    S.slowT = Math.max(S.slowT || 0, sec);
+    S.slowScale = scale || 0.35;
+  }
+  // an invisible particle that only lights the light map for a moment
+  function lightPart(x, y, r, c, i, life) { return part({ kind: 'light', x: x, y: y, r: r, c: c, i: i, life: life || 0.15 }); }
+  // the main non-outline colors of a sprite (for gibs), sampled once from the rasterized sheet
+  var colCache = {};
+  function spriteColors(name) {
+    if (colCache[name] !== undefined) return colCache[name];
+    var res = null;
+    try {
+      var a = ART(), sh = has(a, 'sheet') && hasArt(name) ? a.sheet(name) : null;
+      if (sh && sh.canvas) {
+        var w = Math.min(sh.w || sh.canvas.width, sh.canvas.width), h = Math.min(sh.h || sh.canvas.height, sh.canvas.height);
+        var d = sh.canvas.getContext('2d').getImageData(0, 0, w, h).data, cnt = {}, keys = [];
+        for (var i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 200 || d[i] + d[i + 1] + d[i + 2] < 70) continue;
+          var k = '#' + ((1 << 24) | (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]).toString(16).slice(1);
+          if (!cnt[k]) { cnt[k] = 0; keys.push(k); }
+          cnt[k]++;
+        }
+        keys.sort(function (p, q) { return cnt[q] - cnt[p]; });
+        if (keys.length) res = keys.slice(0, 4);
+      }
+    } catch (e) { res = null; }
+    colCache[name] = res;
+    return res;
+  }
+  // enemy death: white pop, star burst, sprite-colored gibs that bounce on the floor, sparks
+  function deathPop(e) {
+    var x = cx(e), y = cy(e), big = e.elite ? 1.6 : 1, r = Math.max(e.w, e.h) * 0.5 + 4;
+    var cols = spriteColors(e.sprite + '_walk') || [e.color || '#fcfcfc'];
+    part({ kind: 'pop', x: x, y: y, r: r * big, life: 0.14, color: '#fcfcfc' });
+    part({ kind: 'burst', x: x, y: y, r: r * 1.8 * big, life: 0.2, color: '#f8d878', n: 8, rot: Math.random() });
+    var n = Math.round((e.elite ? 16 : 9) * (fancy() ? 1 : 0.6));
+    for (var i = 0; i < n; i++) {
+      var a = -Math.PI * (0.1 + Math.random() * 0.8), s = U.rand(70, 190) * (0.8 + big * 0.2);
+      part({ kind: 'gib', x: x + U.rand(-3, 3), y: y + U.rand(-3, 3), vx: Math.cos(a) * s, vy: Math.sin(a) * s, grav: 640, life: 0.9 + Math.random() * 0.8,
+        color: cols[i % cols.length], size: Math.random() < 0.45 ? 2 : 1 });
+    }
+    for (i = 0; i < 6; i++) {
+      var b = Math.random() * Math.PI * 2;
+      part({ kind: 'px', x: x, y: y, vx: Math.cos(b) * 170, vy: Math.sin(b) * 170, grav: 0, life: 0.12 + Math.random() * 0.08, color: '#fcfcfc', size: 1 });
+    }
+    lightPart(x, y, 54 * big, [255, 230, 170], 1, 0.22);
+  }
+  // landing dust, scaled by how hard the landing was (k 0..1)
+  function landPuff(x, y, k) {
+    var n = 2 + Math.round(k * 6);
+    for (var i = 0; i < n; i++) {
+      var side = i % 2 ? 1 : -1, sp = 12 + k * 70 * (0.5 + Math.random() * 0.6);
+      fxSprite('dust', x + side * U.rand(1, 5 + k * 6), y, 0.26 + k * 0.16, { vx: side * sp, vy: -U.rand(4, 10 + k * 22), color: '#bcbcbc', size: 4 });
+    }
+    if (k > 0.35) debris(x, y - 1, Math.round(k * 8), '#8c8272', 60 + k * 60);
+    if (k > 0.75) { camKick(0, 1, 1.5); }
+  }
+  function footDust(x, y, face) {
+    fxSprite('dust', x - face * 3, y, 0.22, { vx: -face * U.rand(8, 22), vy: -U.rand(3, 9), color: '#bcbcbc', size: 3 });
+    if (fancy() && Math.random() < 0.6) part({ kind: 'px', x: x - face * 2, y: y - 1, vx: -face * U.rand(10, 30), vy: -U.rand(15, 35), grav: 260, life: 0.25, color: '#8c8272', size: 1 });
+  }
 
   /* ---------------- pickups ---------------- */
   function addPickup(kind, x, y, vx, vy, dropped, value) {
@@ -417,6 +489,8 @@
         sfx('coin');
         track('coin');
         fxSprite('sparkle', cx(p), p.y + p.h, 0.3, { color: '#f8d878', size: 6 });
+        lightPart(cx(p), cy(p), 28, C_GOLD, 0.8, 0.22);
+        for (var gi = 0; gi < 3; gi++) part({ kind: 'px', x: cx(p) + U.rand(-3, 3), y: cy(p), vx: U.rand(-15, 15), vy: -U.rand(40, 80), life: 0.3, color: gi ? '#f8d878' : '#fcfcfc', size: 1 });
         if (S.comp && S.comp.ability === 'magnet') { var bv = Math.max(1, Math.round(2 * floorScale())); addViews(bv); }
         break;
       }
@@ -459,7 +533,11 @@
         p.vy = Math.min(p.vy + 700 * dt, 300);
         moveBody(p, dt, false);
         if (p.onGround) {
-          if (wasVy > 70) { p.vy = -wasVy * 0.45; p.onGround = false; if (p.kind === 'coin' && onScreen(p)) fxSprite('sparkle', cx(p), p.y + p.h, 0.2, { color: '#f8d878', size: 4 }); }
+          var coin = p.kind === 'coin';
+          if (wasVy > (coin ? 45 : 70)) {
+            p.vy = -wasVy * (coin ? 0.55 : 0.45); p.onGround = false;
+            if (coin && onScreen(p)) { fxSprite('sparkle', cx(p), p.y + p.h, 0.2, { color: '#f8d878', size: 4 }); if (wasVy > 110) debris(cx(p), p.y + p.h, 2, '#f8d878', 40); }
+          }
           p.vx *= 0.82; if (Math.abs(p.vx) < 4) p.vx = 0;
         }
         if (p.hitWall) p.vx = -p.vx * 0.5;
@@ -498,7 +576,7 @@
     var armor = num(e.def.armor, 0);
     var n = Math.max(1, Math.round(dmg - armor));
     e.hp -= n;
-    e.flash = e.elite ? 0.16 : 0.1; e.lastHit = S.t;
+    e.flash = e.elite ? 0.16 : 0.1; e.flashDur = e.flash; e.lastHit = S.t;
     var dir = opts.dir || (cx(e) < cx(S.player) ? -1 : 1);
     var kb = num(e.def.kb, 1) * (opts.kb || 80);
     if (e.ai !== 'turret' && e.ai !== 'spawner') {
@@ -519,7 +597,13 @@
     sfx('enemy_die');
     smoke(cx(e), cy(e), e.elite ? 6 : 3);
     fxSprite('explosion', cx(e), e.y + e.h + 4, 0.3, { color: '#f8b800', size: 12, scale: e.elite ? 2 : 1 });
-    debris(cx(e), cy(e), 8, '#fcfcfc', 110);
+    deathPop(e);
+    // the kill that finishes a 10+ combo (nothing else left on screen) gets a beat of slow motion
+    if (S.combo >= 10) {
+      var left = false;
+      for (var li = 0; li < S.enemies.length && !left; li++) { var o2 = S.enemies[li]; if (o2 !== e && !o2.dead && o2.active && onScreen(o2, 8)) left = true; }
+      if (!left) { slowMo(0.3, 0.35); lightPart(cx(e), cy(e), 110, C_WHITE, 1, 0.3); }
+    }
     if (!e.isAdd && !e.noLoot) {
       var xp = num(d.xp, 1) * (e.elite ? 2.5 : 1);
       call(G(), 'addXP', Math.round(xp));
@@ -644,6 +728,7 @@
       DCW.freeze(r.crit ? 5 : (opts.kind === 'kick' ? 4 : 3));
       sfx(r.crit ? 'crit' : 'hit');
       if (r.crit || opts.kind === 'kick') DCW.shake(r.crit ? 3 : 2, 0.12);
+      camKick(opts.dir || 0, 0, r.crit ? 3 : opts.kind === 'kick' ? 2.5 : 1.5);
     }
     return n;
   }
@@ -881,7 +966,7 @@
       if (hits) {
         P.vy = -K.airkickBounce; P.vx = -P.face * 50; P.state = 'normal'; P.airJumps = st.extraJump ? 1 : 0;
         P.jumping = false; P.inv = Math.max(P.inv, 0.12);
-        sfx('stomp'); track('stomp'); DCW.freeze(r.crit ? 5 : 4); DCW.shake(2, 0.1);
+        sfx('stomp'); track('stomp'); DCW.freeze(r.crit ? 5 : 4); DCW.shake(2, 0.1); camKick(0, 1, 2);
       }
     }
 
@@ -941,11 +1026,14 @@
     if (P.onGround) {
       P.coyote = K.coyote; P.airJumps = st.extraJump ? 1 : 0;
       if (!wasGround) {
-        if (fallV > 160) { dust(cx(P), P.y + P.h, 3); sfx('land'); P.landT = 0.1; }
-        if (P.state === 'airkick') { P.state = 'normal'; P.landT = 0.14; DCW.shake(1, 0.08); dust(cx(P), P.y + P.h, 4); }
+        var fallH = P.peakY === undefined ? 0 : P.y - P.peakY;
+        if (fallV > 110) { landPuff(cx(P), P.y + P.h, U.clamp((fallH - 20) / 130, 0, 1)); if (fallV > 160) { sfx('land'); P.landT = 0.1; } }
+        if (P.state === 'airkick') { P.state = 'normal'; P.landT = 0.14; DCW.shake(1, 0.08); dust(cx(P), P.y + P.h, 4); camKick(0, 1, 1.5); }
       }
-      if (Math.abs(P.vx) > 60 && P.state === 'normal') { P.runT += dt; if (P.runT > 0.22) { P.runT = 0; dust(cx(P) - P.face * 4, P.y + P.h, 1); } }
-    }
+      P.peakY = P.y;
+      if (Math.abs(P.vx) > 60 && P.state === 'normal') { P.runT += dt; if (P.runT > 0.17) { P.runT = 0; footDust(cx(P), P.y + P.h, P.face); } }
+      if (P.state === 'normal' && ax && P.vx * ax < 0 && Math.abs(P.vx) > 45 && S.frameParity) fxSprite('dust', cx(P) + U.sign(P.vx) * 5, P.y + P.h, 0.2, { vx: U.sign(P.vx) * 20, vy: -U.rand(4, 12), color: '#bcbcbc', size: 3 });
+    } else if (P.peakY === undefined || P.y < P.peakY) P.peakY = P.y;
     afterMove(P, dt);
   }
   function standingOnPassable(P) {
@@ -1745,6 +1833,7 @@
       p = S.pproj[i];
       if (p.kind === 'bomb') {
         p.fuse -= dt; p.spin += dt * 12;
+        if (S.frameParity && fancy() && onScreen(p)) part({ kind: 'px', x: cx(p) + U.rand(-1, 1), y: p.y - 1, vx: U.rand(-30, 30), vy: -U.rand(20, 60), grav: 300, life: 0.2, color: U.chance(0.5) ? '#f8d878' : '#f83800', size: 1 });
         var wvy = p.vy, wvx = p.vx;
         p.vy = Math.min(p.vy + K.bombGrav * dt, 360);
         moveBody(p, dt, false);
@@ -1821,7 +1910,7 @@
     if (B.pendingPhase > B.phase) {
       B.phase = B.pendingPhase; B.pIdx = 0;
       B.move = { name: 'phase', t: 0, sub: 0, st: 0, invuln: true };
-      sfx('boss_roar'); DCW.shake(4, 0.6); flash('#f83800', 0.12);
+      sfx('boss_roar'); DCW.shake(4, 0.6); flash('#f83800', 0.12); slowMo(0.35, 0.35);
       announce('PHASE ' + (B.phase + 1), { color: '#f83800', time: 1 });
       return;
     }
@@ -1918,7 +2007,7 @@
   }
   function bossDie(B) {
     B.dying = true; B.dt = 0; B.move = null; B.vx = 0;
-    sfx('boss_die'); DCW.freeze(18); DCW.shake(5, 1.6); flash('#fcfcfc', 0.25);
+    sfx('boss_die'); DCW.freeze(18); DCW.shake(5, 1.6); flash('#fcfcfc', 0.25); slowMo(0.6, 0.35);
     S.eproj.length = 0; S.haz.length = 0;
     for (var i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && e.isAdd) { e.dead = true; smoke(cx(e), cy(e), 3); } }
     music(null);
@@ -2288,6 +2377,10 @@
       p.t += dt;
       if (p.t >= p.life) { S.parts.splice(i, 1); continue; }
       p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.kind === 'gib' && p.vy > 0 && standableAt(p.x, p.y)) {
+        p.y = Math.floor(p.y / TS) * TS - 0.01;
+        if (p.vy > 70) { p.vy = -p.vy * 0.38; p.vx *= 0.6; } else { p.vy = 0; p.vx = 0; p.grav = 0; }
+      }
     }
     for (i = S.nums.length - 1; i >= 0; i--) {
       p = S.nums[i]; p.t += dt;
@@ -2339,9 +2432,11 @@
     S.player = makePlayer(S.start.x, S.start.y);
     S.lastSafe = { x: S.start.x, y: S.start.y };
     S.comp = makeCompanion(S.player);
+    S.kickX = 0; S.kickY = 0; S.slowT = 0; S.slowScale = 1;
     if (S.isBoss) S.boss = makeBoss();
     if (S.def.kind === 'race' || S.def.race) setupRace();
     else if (S.def.kind === 'parade' || S.def.parade) setupParade();
+    setupAmbient();
     var mx = stats().maxHp;
     if (!(run.hp > 0)) run.hp = mx;
     if (run.hp > mx) run.hp = mx;
@@ -2356,7 +2451,10 @@
   }
   function update(dt) {
     if (!S || S.exited) return;
-    var P = S.player;
+    var P = S.player, rdt = dt;
+    if (S.slowT > 0) { S.slowT -= rdt; dt *= S.slowScale || 0.35; }
+    if (S.kickX) { S.kickX -= S.kickX * Math.min(1, 16 * rdt); if (Math.abs(S.kickX) < 0.1) S.kickX = 0; }
+    if (S.kickY) { S.kickY -= S.kickY * Math.min(1, 16 * rdt); if (Math.abs(S.kickY) < 0.1) S.kickY = 0; }
     S.t += dt; S.frameParity = !S.frameParity;
     if (S.quipT > 0) S.quipT -= dt;
     if (S.flashT > 0) S.flashT -= dt;
@@ -2384,6 +2482,7 @@
     updHaz(dt);
     updPickups(dt);
     updParts(dt);
+    updAmbient(dt);
     if (S.comboT > 0) { S.comboT -= dt; if (S.comboT <= 0) S.combo = 0; }
     if (!S.done) S.special = Math.min(1, S.special + K.specialPassive * dt);
     updCamera(dt, false);
@@ -2438,10 +2537,18 @@
   function draw(ctx) {
     if (!S) return;
     var camX = Math.round(S.cam.x), camY = Math.round(S.cam.y), i, P = S.player;
+    if (S.kickX || S.kickY) { // camera kick, kept inside the level
+      var kx = Math.round(S.cam.x + (S.kickX || 0)), ky = Math.round(S.cam.y + (S.kickY || 0));
+      camX = U.clamp(kx, Math.min(camX, 0), Math.max(camX, S.L.pxW - W)); camY = U.clamp(ky, Math.min(camY, 0), Math.max(camY, S.L.pxH - H));
+    }
+    var lc = lightCfg(), out = ctx;
+    if (lc) { lightBufs(); collectLights(lc, camX, camY); renderLightMap(lc, camX, camY); }
     // background
     if (has(ART(), 'background')) { try { DCW.art.background(ctx, S.theme, camX, camY); } catch (e) { console.error('[stage] background', e); ctx.fillStyle = '#101828'; ctx.fillRect(0, 0, W, H); } }
     else { ctx.fillStyle = '#101828'; ctx.fillRect(0, 0, W, H); }
+    if (lc) { multiplyMap(ctx, LM.map); ctx = beginLayer(); }
     drawTiles(ctx, camX, camY);
+    drawAmbient(ctx, camX, camY);
     // back objects
     for (i = 0; i < S.objects.length; i++) drawObject(ctx, S.objects[i], camX, camY);
     for (i = 0; i < S.platforms.length; i++) {
@@ -2449,6 +2556,7 @@
       if (pl.x + pl.w < camX || pl.x > camX + W) continue;
       for (var k = 0; k < 3; k++) drawTileAt(ctx, '=', Math.round(pl.x - camX) + k * 16, Math.round(pl.y - camY), k, i);
     }
+    if (lc) { endLayer(out, LM.liftT); ctx = beginLayer(); }
     // hazard telegraphs + hazards
     for (i = 0; i < S.haz.length; i++) drawHaz(ctx, S.haz[i], camX, camY);
     // pickups
@@ -2478,6 +2586,7 @@
     }
     // particles
     for (i = 0; i < S.parts.length; i++) drawPart(ctx, S.parts[i], camX, camY);
+    if (lc) { endLayer(out, LM.liftA); glowPass(out, lc); ctx = out; }
     // floating numbers
     for (i = 0; i < S.nums.length; i++) {
       var n = S.nums[i];
@@ -2489,7 +2598,7 @@
       var o = interactAt(P);
       if (o && Math.floor(S.t * 3) % 2 === 0) DCW.text('↑', Math.round(cx(o) - camX), Math.round(o.y - camY - 12), '#fcfcfc', { align: 'center' });
     }
-    if (S.dark) drawDark(ctx, camX, camY);
+    if (S.dark && !lc) drawDark(ctx, camX, camY);
     if (S.flashT > 0) { ctx.globalAlpha = Math.min(0.7, S.flashT * 4); ctx.fillStyle = S.flashColor; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     drawHud(ctx);
     if (S.race) drawRaceHud(ctx);
@@ -2535,7 +2644,16 @@
     var bob = p.phys || p.magnet ? 0 : Math.round(Math.sin(S.t * 4 + p.bob) * 1.5);
     var x = cx(p) - camX, y = p.y + p.h - camY + bob;
     switch (p.kind) {
-      case 'coin': spr(ctx, 'coin', x, y, Math.floor(S.t * 10 + p.bob), false, null, 6, 7, '#f8d878'); break;
+      case 'coin': {
+        spr(ctx, 'coin', x, y, Math.floor(S.t * (p.phys && !p.onGround ? 22 : 10) + p.bob), false, null, 6, 7, '#f8d878');
+        var tw = (S.t * 0.9 + p.bob * 0.37) % 2.4;
+        if (tw < 0.3 && fancy()) { // a little 4-point glint
+          var gl = tw < 0.1 || tw > 0.2 ? 1 : 2, gx = Math.round(x) + ((p.bob * 7) | 0) % 4 - 2, gy = Math.round(y) - 6 + ((p.bob * 3) | 0) % 3;
+          ctx.fillStyle = '#f8d878'; ctx.fillRect(gx - gl, gy, gl * 2 + 1, 1); ctx.fillRect(gx, gy - gl, 1, gl * 2 + 1);
+          ctx.fillStyle = '#fcfcfc'; ctx.fillRect(gx, gy, 1, 1);
+        }
+        break;
+      }
       case 'snack': spr(ctx, 'snack', x, y, 0, false, null, 8, 7, '#58f898'); break;
       case 'bomb': spr(ctx, 'bomb_pickup', x, y, Math.floor(S.t * 4 + p.bob), false, null, 7, 7, '#303030'); break;
       case 'potion': spr(ctx, 'potion', x, y, 0, false, null, 6, 8, '#f83800'); break;
@@ -2584,7 +2702,7 @@
       spr(ctx, name, x, y - 1, frame, flip, { flash: true, alpha: a }, e.w, e.h, '#fff');
       spr(ctx, name, x, y + 1, frame, flip, { flash: true, alpha: a }, e.w, e.h, '#fff');
     }
-    spr(ctx, name, x + shake, y, frame, flip, { flash: e.flash > 0 }, e.w, e.h, e.color);
+    spr(ctx, name, x + shake, y, frame, flip, { flash: e.flash > 0 && (e.flashDur || 0.1) - e.flash < 0.025 }, e.w, e.h, e.color);
     if (e.elite) DCW.text('★', Math.round(x), Math.round(e.y - camY - 10), '#f8d878', { align: 'center' });
     if (e.stun > 0 && Math.floor(S.t * 6) % 2) DCW.text('*', Math.round(x), Math.round(e.y - camY - 9), '#3cbcfc', { align: 'center' });
     if (e.hp < e.maxHp && e.maxHp > 3) {
@@ -2604,10 +2722,25 @@
     spr(ctx, name, x, y, frame, B.face < 0, { flash: B.flash > 0, alpha: B.alpha }, B.w, B.h, '#a81000');
     if (B.stun > 0 && Math.floor(S.t * 6) % 2) DCW.text('* * *', Math.round(x), Math.round(B.y - camY - 10), '#3cbcfc', { align: 'center' });
   }
+  // [frame, seconds] timelines for the long idle cycles (60fps game time)
+  var COMP_IDLE_SEQ = [[0, 0.6], [1, 0.6], [0, 0.5], [1, 0.6], [2, 0.25], [3, 0.2], [2, 0.2], [0, 0.6], [1, 0.6],
+    [4, 0.12], [0, 0.1], [4, 0.12], [0, 0.5], [1, 0.6], [5, 0.15], [0, 0.6], [1, 0.6], [3, 0.18], [2, 0.18]];
+  var CARL_IDLE_SEQ = [[0, 0.45], [1, 0.5], [0, 0.35], [2, 0.5], [0, 0.3], [3, 0.08], [0, 0.07], [1, 0.5], [0, 0.35], [2, 0.5],
+    [0, 0.45], [1, 0.5], [0, 0.35], [2, 0.5], [4, 0.9], [3, 0.08], [4, 0.6], [0, 0.1], [1, 0.5], [0, 0.35], [2, 0.5]];
+  function seqFrame(seq, t) {
+    var total = seq.total;
+    if (!total) { total = 0; for (var i = 0; i < seq.length; i++) total += seq[i][1]; seq.total = total; }
+    t = t % total;
+    for (var j = 0; j < seq.length; j++) { if (t < seq[j][1]) return seq[j][0]; t -= seq[j][1]; }
+    return seq[0][0];
+  }
   function drawComp(ctx, C, camX, camY) {
     var name = C.sprite + (C.actT > 0 ? '_act' : (Math.abs(C.vx) > 12 || !C.onGround) ? '_run' : '_idle');
     if (!hasArt(name)) name = C.sprite + '_idle';
-    var frame = Math.floor(C.t * (name.indexOf('_run') > 0 ? 8 : 2));
+    var inf = artInfo(name), nf = (inf && inf.frames) || 2, frame;
+    if (name.indexOf('_run') > 0) frame = Math.floor(C.t * (nf >= 6 ? 13 : 8)); // 6-frame gallop: ~0.46s per bound
+    else if (name.indexOf('_idle') > 0 && nf >= 6) frame = seqFrame(COMP_IDLE_SEQ, C.t);
+    else frame = Math.floor(C.t * 2);
     spr(ctx, name, cx(C) - camX, C.y + C.h - camY, frame, C.face < 0, null, C.w, C.h, C.color);
   }
   function drawAllies(ctx, camX, camY) {
@@ -2634,18 +2767,46 @@
     }
   }
   function playerSprite(P) {
+    var sp = playerPose(P);
+    if (sp[0] !== 'carl_idle') P.idleAt = -1;
+    if (sp[0] !== 'carl_run') P.runPh = -1;
+    P.animPrev = P.animT;
+    return sp;
+  }
+  function playerPose(P) {
+    var st = P.st || 0;
     if (P.state === 'dead') return ['carl_dead', 0];
     if (P.state === 'victory') return ['carl_victory', 0];
     if (P.state === 'climb') return ['carl_climb', Math.floor(P.animT * 8)];
     if (P.state === 'hurt') return ['carl_hurt', 0];
-    if (P.state === 'punch') return ['carl_punch', P.pIdx % 2];
-    if (P.state === 'kick') return ['carl_kick', P.st > 0.09 ? 1 : 0];
+    if (P.state === 'punch') { // 0 chamber, 1 jab, 2 cross, 3 haymaker windup, 4 haymaker
+      if (P.pIdx === 2) return ['carl_punch', st < 0.07 ? 3 : st < 0.2 ? 4 : 0];
+      return ['carl_punch', st < 0.035 || st >= 0.15 ? 0 : P.pIdx === 1 ? 2 : 1];
+    }
+    if (P.state === 'kick') return ['carl_kick', st < 0.05 ? 2 : st < 0.1 ? 0 : st < 0.24 ? 1 : 0];
     if (P.state === 'airkick') return ['carl_airkick', 0];
     if (P.throwT > 0) return ['carl_throw', 0];
-    if (!P.onGround) return [P.vy < 0 ? 'carl_jump' : 'carl_fall', 0];
+    if (!P.onGround) {
+      if (P.vy < -110) return ['carl_jump', 0];                   // takeoff / rise
+      if (P.vy < 70) return ['carl_jump', 1];                     // apex hang
+      return ['carl_fall', P.vy > 250 ? Math.floor(P.animT * 8) : 0]; // long drop: arms flail
+    }
     if (P.crouch) return [hasArt('carl_crouch') ? 'carl_crouch' : 'carl_idle', 0];
-    if (Math.abs(P.vx) > 8) return ['carl_run', Math.floor(P.animT * 11)];
-    return ['carl_idle', Math.floor(P.animT * 2)];
+    var spd = Math.abs(P.vx);
+    // skid: facing the new direction while momentum still carries him the old way. Held briefly
+    // so the 3-frame physical turn reads on screen.
+    if (P.state === 'normal' && P.vx * P.face < -30) { P.skidT = P.animT + 0.1; P.skidFace = P.face; }
+    if (P.skidT > P.animT && P.skidFace === P.face && hasArt('carl_skid')) return ['carl_skid', 0];
+    if (P.landT > 0 && hasArt('carl_land') && (spd < 40 || P.landT > 0.05)) return ['carl_land', P.landT > 0.05 ? 0 : 1];
+    if (spd > 8) {
+      // 8-frame cycle; cadence follows speed (7fps creeping up to 18fps at full run)
+      var dA = P.runPh >= 0 ? Math.max(0, P.animT - (P.animPrev || P.animT)) : 0;
+      if (!(P.runPh >= 0)) P.runPh = 0;
+      P.runPh += dA * (7 + 11 * Math.min(1, spd / K.runMax));
+      return ['carl_run', Math.floor(P.runPh)];
+    }
+    if (!(P.idleAt >= 0)) P.idleAt = P.animT;
+    return ['carl_idle', seqFrame(CARL_IDLE_SEQ, P.animT - P.idleAt)];
   }
   var skinOpt = { skin: 'carl_boxers', flash: false, alpha: 1 };
   function drawPlayer(ctx, P, camX, camY) {
@@ -2668,6 +2829,30 @@
     var x = p.x - camX, y = p.y - camY;
     if (x < -40 || x > W + 40) return;
     if (p.kind === 'px') { ctx.fillStyle = p.color; ctx.fillRect(Math.round(x), Math.round(y), p.size, p.size); return; }
+    if (p.kind === 'light') return;
+    if (p.kind === 'gib') {
+      if (p.life - p.t < 0.3 && Math.floor(p.t * 20) % 2) return;
+      ctx.fillStyle = p.color; ctx.fillRect(Math.round(x), Math.round(y) - p.size + 1, p.size, p.size); return;
+    }
+    if (p.kind === 'pop') { // solid white disc for a frame or two, then a thin pixel ring
+      var pf = p.t / p.life, pr = Math.round(p.r * (0.55 + pf * 0.7)), rx = Math.round(x), ry = Math.round(y);
+      ctx.fillStyle = pf < 0.45 ? '#fcfcfc' : '#f8d878';
+      for (var dy = -pr; dy <= pr; dy++) {
+        var hw = Math.floor(Math.sqrt(pr * pr - dy * dy) + 0.35);
+        if (pf < 0.45) ctx.fillRect(rx - hw, ry + dy, hw * 2 + 1, 1);
+        else { var iw = Math.floor(Math.sqrt(Math.max(0, (pr - 1) * (pr - 1) - dy * dy)) + 0.35); ctx.fillRect(rx - hw, ry + dy, hw - iw, 1); ctx.fillRect(rx + iw + 1, ry + dy, hw - iw, 1); }
+      }
+      return;
+    }
+    if (p.kind === 'burst') { // star burst: dotted rays flying outward
+      var bf = p.t / p.life;
+      ctx.fillStyle = bf < 0.5 ? '#fcfcfc' : p.color;
+      for (var k = 0; k < p.n; k++) {
+        var ang = (p.rot + k / p.n) * Math.PI * 2, ca = Math.cos(ang), sa = Math.sin(ang);
+        for (var dd = p.r * (0.25 + bf * 0.55); dd < p.r * (0.45 + bf * 0.6); dd += 2) ctx.fillRect(Math.round(x + ca * dd), Math.round(y + sa * dd), 1, 1);
+      }
+      return;
+    }
     if (p.kind === 'ring') {
       ctx.strokeStyle = p.color; ctx.globalAlpha = 1 - p.t / p.life;
       ctx.beginPath(); ctx.arc(Math.round(x), Math.round(y), p.r * (0.5 + p.t / p.life * 0.7), 0, Math.PI * 2); ctx.stroke();
@@ -2678,6 +2863,270 @@
     else {
       var s = Math.max(1, Math.round(p.size * (1 - p.t / p.life)));
       ctx.fillStyle = p.color; ctx.fillRect(Math.round(x - s / 2), Math.round(y - s), s, s);
+    }
+  }
+  /* ---------------- lighting (one light map per frame) ----------------
+     Ambient color + additive colored lights, quantized with a 4x4 ordered dither so
+     the pools band like 8-bit art. The background is multiplied by the map; tiles and
+     actors are drawn on their own layer and multiplied by a "lifted" copy (closer to
+     white) so platforms, enemies and pickups stay readable. Fully dark stages use the
+     same path with a near-black ambient and no lift. FANCY EFFECTS off: tunnels get no
+     light pass and dark stages fall back to the cheap darkness overlay (drawDark). */
+  var LIGHTING = {
+    tunnels: { amb: [48, 48, 64], tileLift: 0.34, actorLift: 0.58, carl: { r: 84, c: [255, 222, 176], i: 0.8 }, comp: 22, glow: 0.12, lichenFloor: true }
+  };
+  var DARK_LIGHT = { amb: [16, 16, 16], tileLift: 0, actorLift: 0, carl: { r: 82, c: [255, 244, 228], i: 1 }, comp: 30, glow: 0.08, dark: true };
+  var LSTEP = 16, BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], QLUT = null;
+  var LM = null, lights = [];
+  var C_WARM = [255, 168, 88], C_WHITE = [255, 240, 220], C_GOLD = [255, 208, 96], C_PINK = [248, 120, 248], C_TEAL = [40, 230, 190], C_RED = [255, 72, 32], C_GREEN = [96, 248, 150];
+  var PROJ_LIGHT = { fireball: C_WARM, bolt: [130, 200, 255], laser_orb: C_RED, spore: [150, 240, 90], note: C_PINK, bubble: [120, 220, 255] };
+  function lightCfg() {
+    if (!S || !fancy()) return null;
+    if (S.dark) return DARK_LIGHT;
+    return LIGHTING[S.theme] || null;
+  }
+  function mkCv() { var c = document.createElement('canvas'); c.width = W; c.height = H; return c; }
+  function lightBufs() {
+    if (LM) return LM;
+    LM = { map: mkCv(), liftT: mkCv(), liftA: mkCv(), layer: mkCv(), mask: mkCv() };
+    LM.g = LM.map.getContext('2d', { willReadFrequently: true });
+    LM.gT = LM.liftT.getContext('2d'); LM.gA = LM.liftA.getContext('2d');
+    LM.lg = LM.layer.getContext('2d'); LM.mg = LM.mask.getContext('2d');
+    [LM.g, LM.gT, LM.gA, LM.lg, LM.mg].forEach(function (g) { g.imageSmoothingEnabled = false; });
+    QLUT = [];
+    for (var b = 0; b < 16; b++) {
+      var row = new Uint8Array(256), th = (b + 0.5) / 16 * LSTEP;
+      for (var v = 0; v < 256; v++) row[v] = Math.min(255, Math.floor((v + th) / LSTEP) * LSTEP);
+      QLUT.push(row);
+    }
+    return LM;
+  }
+  function addLight(x, y, r, c, i, glow) {
+    if (i <= 0.02 || r < 2 || x < -r || x > W + r || y < -r || y > H + r) return;
+    lights.push({ x: x, y: y, r: r, c: c, i: i, glow: !!glow });
+  }
+  function collectLights(cfg, camX, camY) {
+    lights.length = 0;
+    var i, p, f;
+    if (has(ART(), 'bgLights')) {
+      try { DCW.art.bgLights(S.theme, camX, camY, lights); } catch (e) { console.error('[stage] bgLights', e); }
+      for (i = 0; i < lights.length; i++) lights[i].glow = true;
+    }
+    var P = S.player;
+    if (P && P.state !== 'pit') addLight(cx(P) - camX, cy(P) - 2 - camY, cfg.carl.r + Math.sin(S.t * 3) * 2, cfg.carl.c, cfg.carl.i);
+    if (S.comp && !S.race) addLight(cx(S.comp) - camX, cy(S.comp) - camY, cfg.comp, C_WHITE, cfg.dark ? 1 : 0.3);
+    for (i = 0; i < S.pproj.length; i++) {
+      p = S.pproj[i];
+      if (p.kind === 'missile') addLight(cx(p) - camX, cy(p) - camY, 30, C_PINK, 0.9, true);
+      else addLight(cx(p) - camX, cy(p) - camY, 12 + (S.frameParity ? 3 : 0), C_WARM, 0.7);
+    }
+    for (i = 0; i < S.eproj.length; i++) {
+      p = S.eproj[i];
+      var pc = PROJ_LIGHT[p.sprite];
+      if (pc) addLight(cx(p) - camX, cy(p) - camY, 26, pc, 0.8, true);
+      else if (!cfg.dark) addLight(cx(p) - camX, cy(p) - camY, 12, C_WHITE, 0.3);
+    }
+    for (i = 0; i < S.parts.length; i++) {
+      p = S.parts[i]; f = 1 - p.t / p.life;
+      var px = p.x - camX, py = p.y - camY;
+      if (p.kind === 'light') addLight(px, py, p.r * (0.6 + 0.4 * f), p.c, p.i * f, true);
+      else if (p.kind === 'pop') addLight(px, py, p.r * 3, C_WHITE, f);
+      else if (p.kind === 'ring') addLight(px, py, p.r * 1.8, C_WHITE, 0.7 * f);
+      else if (p.kind === 'spr') {
+        if (p.name === 'explosion') addLight(px, py - p.size * 0.5, 34 + p.size * 2.2 * (0.5 + f * 0.5), C_WARM, 0.35 + f, true);
+        else if (p.name === 'hit') addLight(px, py - 8, 30, C_WHITE, 0.9 * f, true);
+        else if (p.name === 'sparkle') addLight(px, py - 4, 18, C_GOLD, 0.7 * f);
+        else if (p.name === 'shockwave') addLight(px, py - 6, 26, C_WHITE, 0.5 * f);
+      }
+    }
+    for (i = 0; i < S.pickups.length; i++) {
+      p = S.pickups[i];
+      if (p.kind === 'coin') addLight(cx(p) - camX, cy(p) - camY, 13, C_GOLD, 0.32 + 0.12 * Math.sin(S.t * 5 + p.bob));
+      else if (p.kind === 'box') addLight(cx(p) - camX, cy(p) - camY, 24, C_GOLD, 0.55);
+      else addLight(cx(p) - camX, cy(p) - camY, 12, C_WHITE, 0.25);
+    }
+    for (i = 0; i < S.objects.length; i++) {
+      var o = S.objects[i], ox = cx(o) - camX, oy = o.y - camY;
+      if (o.kind === 'door' && !(o.needs && !hasItem(o.needs))) addLight(ox, oy + 12, 50, C_WARM, 0.5, true);
+      else if (o.kind === 'checkpoint') addLight(ox, oy + 4, o.on ? 30 : 16, o.on ? C_GREEN : C_RED, 0.5);
+      else if (o.kind === 'qitem' && !o.taken) addLight(ox, oy + 8, 36, C_GOLD, 0.75, true);
+      else if (o.kind === 'cage' && !o.broken) addLight(ox, oy + o.h / 2, 24, C_GOLD, 0.3);
+      else if (o.kind === 'lever' && !o.on) addLight(ox, oy + 6, 16, C_RED, 0.35);
+    }
+    for (i = 0; i < S.haz.length; i++) {
+      var h = S.haz[i], tele = h.t < h.tele, hx = h.x - camX, hy = h.y - camY;
+      if (h.kind === 'beam') for (var bx = 0; bx < h.w; bx += 36) addLight(hx + bx + 18, hy + h.h / 2, tele ? 18 : 34, C_RED, tele ? 0.35 : 0.9, !tele);
+      else if (h.kind === 'marker' && tele) addLight(hx + h.w / 2, hy + 8, 18, C_RED, 0.5);
+      else if (h.kind === 'spikes') addLight(hx + h.w / 2, hy + h.h - 4, 20, tele ? C_RED : C_WHITE, 0.45);
+      else if (h.kind === 'wave' && !tele) addLight(hx + h.w / 2, hy + h.h / 2, 24, C_WHITE, 0.5);
+    }
+    if (S.boss && !S.boss.gone && (cfg.dark ? S.locked : true)) addLight(cx(S.boss) - camX, cy(S.boss) - camY, cfg.dark ? 50 : 40, C_WHITE, cfg.dark ? 0.8 : 0.25);
+    if (S.amb) for (i = 0; i < S.amb.parts.length; i++) { p = S.amb.parts[i]; if (p.kind === 'drop') addLight(p.x - camX, p.y - camY, 6, [140, 220, 255], 0.35); }
+    // glowing water and lichen-crusted floor edges in view
+    var L = S.L, tx0 = Math.max(0, Math.floor(camX / TS)), tx1 = Math.min(L.w - 1, Math.floor((camX + W) / TS));
+    var ty0 = Math.max(0, Math.floor(camY / TS)), ty1 = Math.min(L.h - 1, Math.floor((camY + H) / TS));
+    for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
+      var t = L.t[ty * L.w + tx], above = ty > 0 ? L.t[(ty - 1) * L.w + tx] : 0;
+      if (t === T_LIQUID && above !== T_LIQUID) addLight(tx * TS + 8 - camX, ty * TS + 4 - camY, 24, C_TEAL, 0.3 + 0.08 * Math.sin(S.t * 2 + tx));
+      else if (cfg.lichenFloor && (t === T_SOLID) && !above && ((tx * 7 + ty * 13) % 9 === 0)) addLight(tx * TS + 8 - camX, ty * TS + 1 - camY, 18, C_TEAL, 0.22 + 0.06 * Math.sin(S.t * 1.7 + tx));
+    }
+  }
+  function renderLightMap(cfg, camX, camY) {
+    var M = lightBufs(), g = M.g, i;
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    g.fillStyle = 'rgb(' + cfg.amb[0] + ',' + cfg.amb[1] + ',' + cfg.amb[2] + ')'; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'lighter';
+    for (i = 0; i < lights.length; i++) {
+      var l = lights[i], a = Math.min(1, l.i), r = l.r, c = l.c, cs = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',';
+      var gr = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
+      gr.addColorStop(0, cs + a + ')'); gr.addColorStop(0.3, cs + (a * 0.8) + ')'); gr.addColorStop(0.65, cs + (a * 0.32) + ')'); gr.addColorStop(1, cs + '0)');
+      g.fillStyle = gr; g.fillRect(Math.floor(l.x - r), Math.floor(l.y - r), Math.ceil(r * 2) + 1, Math.ceil(r * 2) + 1);
+    }
+    g.globalCompositeOperation = 'source-over';
+    // ordered dither into LSTEP bands; the pattern is anchored to the world so it does not crawl as the camera scrolls
+    var img = g.getImageData(0, 0, W, H), d = img.data, ox = camX & 3, oy = camY & 3, idx = 0;
+    for (var y = 0; y < H; y++) {
+      var by = ((y + oy) & 3) << 2;
+      for (var x = 0; x < W; x++, idx += 4) {
+        var q = QLUT[BAYER4[by | ((x + ox) & 3)]];
+        d[idx] = q[d[idx]]; d[idx + 1] = q[d[idx + 1]]; d[idx + 2] = q[d[idx + 2]];
+      }
+    }
+    g.putImageData(img, 0, 0);
+    liftCopy(M.gT, cfg.tileLift); liftCopy(M.gA, cfg.actorLift);
+  }
+  function liftCopy(g, k) {
+    g.globalCompositeOperation = 'copy'; g.drawImage(LM.map, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    if (k > 0) { g.globalAlpha = k; g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+  }
+  function multiplyMap(ctx, cv) {
+    var op = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(cv, 0, 0);
+    ctx.globalCompositeOperation = op;
+  }
+  function beginLayer() { var g = LM.lg; g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H); return g; }
+  // multiply the layer by a light map (keeping its alpha) and put it on the screen
+  function endLayer(ctx, cv) {
+    var g = LM.lg;
+    LM.mg.globalCompositeOperation = 'copy'; LM.mg.drawImage(LM.layer, 0, 0);
+    g.globalCompositeOperation = 'multiply'; g.drawImage(cv, 0, 0);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(LM.mask, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    ctx.drawImage(LM.layer, 0, 0);
+  }
+  // a faint additive haze around strong lights (torches, blasts, missiles)
+  function glowPass(ctx, cfg) {
+    if (!cfg.glow) return;
+    var op = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < lights.length; i++) {
+      var l = lights[i]; if (!l.glow) continue;
+      var a = cfg.glow * Math.min(1, l.i), r = l.r * 0.6, c = l.c, cs = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',';
+      var gr = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
+      gr.addColorStop(0, cs + a + ')'); gr.addColorStop(1, cs + '0)');
+      ctx.fillStyle = gr; ctx.fillRect(Math.floor(l.x - r), Math.floor(l.y - r), Math.ceil(r * 2) + 1, Math.ceil(r * 2) + 1);
+    }
+    ctx.globalCompositeOperation = op;
+  }
+
+  /* ---------------- ambient stage life (never collides with gameplay) ----------------
+     Ceiling drips that splash on whatever is below, and a rare distant rumble that
+     shakes loose falling grit. Per-theme; FANCY EFFECTS only. */
+  var AMBIENT = { tunnels: { drips: true, rumble: true } };
+  function setupAmbient() {
+    var cfg = AMBIENT[S.theme];
+    S.amb = null;
+    if (!cfg || S.race || S.parade) return;
+    var A = S.amb = { cfg: cfg, parts: [], spots: [], rumbleT: 14 + Math.random() * 16, gritT: 0 };
+    if (cfg.drips) {
+      var r = U.rng((U.hash(String(S.id)) ^ 0x5eed) >>> 0);
+      for (var x = 40 + r() * 60; x < S.L.pxW - 16; x += 70 + r() * 110) {
+        var px = Math.round(x);
+        A.spots.push({ x: px, per: 2.2 + r() * 3.5, cd: r() * 4 });
+      }
+    }
+  }
+  function ambGround(x, y) { // first solid/platform/liquid surface at or below y
+    var tx = Math.floor(x / TS);
+    for (var ty = Math.max(0, Math.floor(y / TS)); ty < S.L.h; ty++) {
+      var t = tileAt(tx, ty);
+      if (t === T_SOLID || t === T_ALT || t === T_ONEWAY || t === T_CRATE || t === T_GATE || t === T_LIQUID || t === T_SPIKE) return { y: ty * TS + (t === T_LIQUID ? 3 : t === T_SPIKE ? 10 : 0), liquid: t === T_LIQUID };
+    }
+    return null;
+  }
+  function updAmbient(dt) {
+    var A = S.amb;
+    if (!A || !fancy()) { if (A) A.parts.length = 0; return; }
+    var cam = S.cam, i, p;
+    for (i = 0; i < A.spots.length; i++) {
+      var sp = A.spots[i];
+      sp.cd -= dt;
+      if (sp.cd > 0) continue;
+      sp.cd = sp.per * (0.7 + Math.random() * 0.6);
+      if (sp.x < cam.x - 8 || sp.x > cam.x + W + 8) continue;
+      var y0 = Math.max(0, cam.y - 2), gr = ambGround(sp.x, y0 + 2);
+      if (gr && gr.y > y0 + 20) A.parts.push({ kind: 'drop', x: sp.x, y: y0, vy: 10, gy: gr.y, liquid: gr.liquid });
+    }
+    if (A.cfg.rumble) {
+      A.rumbleT -= dt;
+      if (A.rumbleT <= 0) {
+        A.rumbleT = 22 + Math.random() * 26; A.gritT = 1.4;
+        DCW.shake(1, 0.9);
+        sfx('explosion', { vol: 0.14, pitch: 0.32 });
+      }
+      if (A.gritT > 0) {
+        A.gritT -= dt;
+        var n = Math.random() < 0.7 ? 1 : 2;
+        for (i = 0; i < n; i++) {
+          var gx = cam.x + Math.random() * W, gg = ambGround(gx, cam.y + 2);
+          if (gg) A.parts.push({ kind: 'grit', x: gx, y: cam.y - 2, vx: U.rand(-6, 6), vy: U.rand(10, 50), gy: gg.y, size: Math.random() < 0.25 ? 2 : 1, color: U.pick(['#5c5448', '#786a56', '#3c342c', '#9c9484']), rest: 0 });
+        }
+        if (Math.random() < 0.08) { var dx = cam.x + Math.random() * W; for (i = 0; i < 4; i++) A.parts.push({ kind: 'grit', x: dx + U.rand(-3, 3), y: cam.y - 2 - i * 3, vx: U.rand(-4, 4), vy: 30, gy: (ambGround(dx, cam.y + 2) || { y: cam.y + H }).y, size: 1, color: '#8c8272', rest: 0 }); }
+      }
+    }
+    for (i = A.parts.length - 1; i >= 0; i--) {
+      p = A.parts[i];
+      if (p.kind === 'drop') {
+        p.vy = Math.min(p.vy + 560 * dt, 300); p.y += p.vy * dt;
+        if (p.y >= p.gy) {
+          A.parts.splice(i, 1);
+          if (p.x > cam.x - 4 && p.x < cam.x + W + 4) {
+            for (var k = 0; k < 4; k++) A.parts.push({ kind: 'splash', x: p.x, y: p.gy - 1, vx: U.rand(-28, 28), vy: -U.rand(30, 70), t: 0, life: 0.32 });
+            A.parts.push({ kind: 'ripple', x: p.x, y: p.gy, t: 0, life: p.liquid ? 0.5 : 0.22, big: p.liquid });
+          }
+        }
+      } else if (p.kind === 'splash') {
+        p.t += dt; p.vy += 420 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.t >= p.life) A.parts.splice(i, 1);
+      } else if (p.kind === 'ripple') {
+        p.t += dt; if (p.t >= p.life) A.parts.splice(i, 1);
+      } else if (p.kind === 'grit') {
+        if (p.rest > 0) { p.rest -= dt; if (p.rest <= 0) A.parts.splice(i, 1); continue; }
+        p.vy = Math.min(p.vy + 380 * dt, 220); p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y >= p.gy - p.size) { p.y = p.gy - p.size; p.rest = 0.6 + Math.random() * 0.8; }
+        else if (p.y > cam.y + H + 8) A.parts.splice(i, 1);
+      }
+    }
+    if (A.parts.length > 260) A.parts.splice(0, A.parts.length - 260);
+  }
+  function drawAmbient(ctx, camX, camY) {
+    var A = S.amb;
+    if (!A || !A.parts.length || !fancy()) return;
+    for (var i = 0; i < A.parts.length; i++) {
+      var p = A.parts[i], x = Math.round(p.x - camX), y = Math.round(p.y - camY);
+      if (x < -4 || x > W + 4) continue;
+      if (p.kind === 'drop') { ctx.fillStyle = '#3cbcfc'; ctx.fillRect(x, y - 2, 1, 3); ctx.fillStyle = '#d8f8f8'; ctx.fillRect(x, y, 1, 1); }
+      else if (p.kind === 'splash') { ctx.fillStyle = p.t < 0.16 ? '#d8f8f8' : '#3cbcfc'; ctx.fillRect(x, y, 1, 1); }
+      else if (p.kind === 'ripple') {
+        var f = p.t / p.life, w = Math.round(2 + f * (p.big ? 12 : 6));
+        ctx.fillStyle = f < 0.5 ? '#a4e4fc' : '#3cbcfc';
+        ctx.fillRect(x - w, y - 1, 2, 1); ctx.fillRect(x + w - 1, y - 1, 2, 1);
+      }
+      else if (p.kind === 'grit') {
+        if (p.rest > 0 && p.rest < 0.3 && Math.floor(p.rest * 20) % 2) continue;
+        ctx.fillStyle = p.color; ctx.fillRect(x, y, p.size, p.size);
+      }
     }
   }
   function drawDark(ctx, camX, camY) {

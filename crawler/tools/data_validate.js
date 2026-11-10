@@ -19,7 +19,7 @@ const warn = (m) => warns.push(m);
 if (!D) { console.log('DCW.data missing'); process.exit(1); }
 
 /* ---------------- fixed lists from DESIGN.md ---------------- */
-const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe raceway parade'.split(' ');
+const THEMES = 'sewer cave city circus swamp train bubble forest castle ruin warzone safe raceway parade tunnels cinder'.split(' ');
 const OW_THEMES = 'ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war ow_suburb ow_parade'.split(' ');
 const NFLOORS = 11;   // Update 3: floor 10 = the races, floor 11 = the parade (the finale)
 const ENEMY_IDS = ('rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute ' +
@@ -42,6 +42,12 @@ const AI_TYPES = 'walker chaser jumper flyer shooter charger turret spawner bomb
 const TIERS = 'bronze silver gold platinum legendary fan boss'.split(' ');
 const MUSIC = ('title intro floor1 floor2 floor3 floor4 floor5 floor6 floor7 floor8 floor9 floor10 floor11 ' +
   'ow3 ow4 ow5 ow6 ow7 ow8 ow9 ow10 ow11 boss boss_final safe results gameover ending lootbox').split(' ');
+// Floor 8 retheme (THE GHOSTS OF EARTH): town + mine themes, folklore enemies, the mothman boss
+// (replaces the overseer), lamp + beacon quest item art
+THEMES.push('ghosttown', 'ghostmine'); OW_THEMES.push('ow_town');
+ENEMY_IDS.push('wampus_cat', 'mountain_light', 'woodbooger', 'sheepsquatch', 'mothling');
+BOSS_IDS.splice(BOSS_IDS.indexOf('overseer'), 1, 'mothman');
+QI_SPRITES.push('qi_lamp', 'qi_beacon');
 const MARKERS = 'ow_door ow_manhole ow_tent ow_cave ow_garage ow_float'.split(' ');
 const PORTRAITS = ['p_carl', 'p_donut', 'p_mongo', 'p_katia', 'p_zev', 'p_squeaks', 'p_samantha', 'p_signet', 'p_ai', 'p_mordecai', 'p_bopca']
   .concat(BOSS_IDS.map(b => 'p_' + b)).concat(RACER_IDS.map(r => 'p_racer_' + r));
@@ -574,7 +580,7 @@ for (const id of Object.keys(D.stages)) if (!stageFloorRef[id]) err('stage ' + i
 // boss unlocks per DESIGN Update 2 (no companion unlocks any more)
 // Update 3: the gold skin comes from winning (G.win after the last floor), not from a boss unlock
 const PLAN = { hoarder: 'carl_jacket', juicer: null, ringmaster: 'carl_clown', engineer: null,
-  tidemother: 'carl_hazmat', butcher: null, bride: 'carl_bodyguard', overseer: 'carl_kilt', showrunner: null, grand_marshal: null };
+  tidemother: 'carl_hazmat', butcher: null, bride: 'carl_bodyguard', mothman: 'carl_kilt', showrunner: null, grand_marshal: null };
 const finals = Object.keys(D.bosses).filter(b => D.bosses[b].final);
 if (finals.length !== 1 || finals[0] !== 'grand_marshal') err('bosses: exactly one final boss (grand_marshal) wanted, got ' + finals.join(','));
 if (D.floors[NFLOORS - 1] && D.stages[D.floors[NFLOORS - 1].boss] && D.stages[D.floors[NFLOORS - 1].boss].boss !== finals[0]) err('the last floor boss stage must hold the final boss');

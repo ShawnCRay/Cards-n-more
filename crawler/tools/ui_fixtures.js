@@ -202,7 +202,7 @@
       DCW.rect(0, 148, 320, 32, '#5c3c24'); DCW.rect(0, 148, 320, 2, '#a87850');
       if (DCW.art && DCW.art.sprite) { DCW.art.sprite(ctx, 'carl_idle', 80, 148, { frame: 0 }); DCW.art.sprite(ctx, 'clown_walk', 200, 148, {}); }
       var r = DCW.save.run || makeRun();
-      DCW.ui.drawHUD(ctx, { hp: r.hp, maxHp: 15, special: this.p.special === undefined ? 0.6 : this.p.special, bombs: r.bombs, potions: r.potions, gold: r.gold, level: r.level, xpFrac: 0.4,
+      DCW.ui.drawHUD(ctx, { hp: r.hp, maxHp: this.p.maxHp || 15, special: this.p.special === undefined ? 0.6 : this.p.special, bombs: r.bombs, potions: r.potions, gold: r.gold, level: r.level, xpFrac: 0.4,
         views: r.views, combo: this.p.combo || 0, companion: 'donut', bossHp: this.p.boss ? 0.62 : null, bossName: 'THE RINGMASTER, MASTER OF CEREMONIES', time: 487, par: 600, stageName: 'THE BIG TOP' });
     }
   };
@@ -221,7 +221,7 @@
       case 'floorcard': DCW.setScene(S.floorCard, { floor: 3, onDone: function () { window.__cardDone = true; } }); break;
       case 'floorcard1': DCW.setScene(S.floorCard, { floor: 1, onDone: function () { window.__cardDone = true; } }); break;
       case 'results': DCW.setScene(S.results, { result: { stageId: 'f3_s2', kills: 23, time: 143, damageTaken: 3, maxCombo: 14, views: 2350, gold: 87, secrets: 1 },
-        rewards: [{ kind: 'xp', amount: 40 }, { kind: 'gold', amount: 55 }, { kind: 'box', tier: 'silver' }, { kind: 'views', amount: 750, note: 'FLAWLESS' }, { kind: 'skin', id: 'carl_clown', isNew: true }], onDone: function () { window.__resultsDone = true; } }); break;
+        rewards: [{ kind: 'xp', amount: 40 }, { kind: 'gold', amount: 360, converted: 'skin' }, { kind: 'box', tier: 'silver' }, { kind: 'views', amount: 4263, note: 'FLAWLESS' }, { kind: 'skin', id: 'carl_clown', isNew: true }], onDone: function () { window.__resultsDone = true; } }); break;
       case 'death': DCW.setScene(S.death, { result: { stageId: 'f3_s2', cause: 'SAD CLOWN' } }); break;
       case 'death0': DCW.save.run.revivals = 0; DCW.setScene(S.death, { result: { cause: 'THE RINGMASTER' } }); break;
       case 'safe': DCW.setScene(S.safeRoom, {}); break;
@@ -229,6 +229,7 @@
       case 'overworld': DCW.setScene(DCW.overworld.scene, { floor: 3 }); break;
       case 'hud': DCW.setScene(fakeStage, { combo: 14, boss: true }); break;
       case 'hud2': DCW.save.run.hp = 2; DCW.setScene(fakeStage, { combo: 31, special: 1 }); break;
+      case 'hud3': var rr = DCW.save.run; rr.bonus = rr.bonus || {}; rr.bonus.hp = 120; rr.hp = 105; rr.gold = 9999; rr.views = 1234567; DCW.setScene(fakeStage, { maxHp: 120 }); break; // 3-digit HP must not overlap the bomb count
       default:
         DCW.setScene(fakeStage, {});
         var map = { pause: function () { DCW.ui.openPause({ canFlee: true }); }, character: DCW.ui.openCharacter, boxes: DCW.ui.openBoxes, wardrobe: DCW.ui.openWardrobe,
