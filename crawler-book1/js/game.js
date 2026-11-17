@@ -1,7 +1,9 @@
 /* ============================================================
-   DCW GAME - the run: floors, stages, overworld entrances,
-   rewards, loot boxes, unlocks, achievements, progression.
-   Contract: ../DESIGN.md "Game flow API".
+   DCC BOOK ONE - GAME FLOW. The crawl: two linear floors whose
+   sequences mix stages, safe rooms and cutscenes; rewards, loot
+   boxes, gear, story flags, achievements, progression.
+   Contract: ../DESIGN.md ("Run flow", "Game API additions" and
+   the inherited "Game flow API").
    ============================================================ */
 (function () {
   'use strict';
@@ -15,7 +17,6 @@
   function D() { return DCW.data || {}; }
   function S() { return (DCW.ui && DCW.ui.scenes) || {}; }
   function sfx(n, o) { try { if (DCW.audio && DCW.audio.sfx) DCW.audio.sfx(n, o); } catch (e) { /* audio optional */ } }
-  function music(n) { try { if (DCW.audio && DCW.audio.music) DCW.audio.music(n); } catch (e) { /* optional */ } }
   function toast(t, o) { if (DCW.ui && DCW.ui.toast) DCW.ui.toast(t, o || {}); }
   function say(lines, opts) {
     opts = opts || {};
@@ -39,10 +40,22 @@
   function stages() { return D().stages || {}; }
   G.floorDef = function (n) {
     var r = G.run; n = n || (r ? r.floor : 1);
-    return floors()[n - 1] || floors().filter(function (f) { return f.n === n; })[0] || null;
+    return floors().filter(function (f) { return f.n === n; })[0] || floors()[n - 1] || null;
   };
   G.stageDef = function (id) { return stages()[id] || null; };
   function floorScale() { var r = G.run; return 1 + ((r ? r.floor : 1) - 1) * 0.5; }
+
+  // a sequence step: 'f1_hall' | 'SAFE' | 'SAFE:tally' | 'CUT:f1_mordecai'
+  function parseStep(step) {
+    if (step === undefined || step === null) return null;
+    step = String(step);
+    if (step === 'SAFE') return { kind: 'safe', id: null };
+    if (step.indexOf('SAFE:') === 0) return { kind: 'safe', id: step.slice(5) };
+    if (step.indexOf('CUT:') === 0) return { kind: 'cut', id: step.slice(4) };
+    return { kind: 'stage', id: step };
+  }
+  G.parseStep = parseStep;
+  function currentStep() { var r = G.run, f = G.floorDef(); return r && f ? parseStep((f.sequence || [])[r.seqIndex]) : null; }
 
   /* ---------------- run creation ---------------- */
   function makeRun() {
@@ -51,52 +64,53 @@
       hp: 12, level: 1, xp: 0, statPoints: 0,
       stats: { str: 3, con: 3, dex: 3, int: 3 },
       bonus: { hp: 2 },
-      gold: 0, bombs: 3, potions: 1, views: 0, fanTier: 0,
+      gold: 0, bombs: 3, potions: 1, biscuits: 0, views: 0, fanTier: 0,
       boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0,
-      currentStage: null, inSafe: false, pendingAmbush: null, won: false,
-      companions: ['donut'], items: {},
+      currentStage: null, inSafe: false, room: null, seenRooms: {}, cookieHere: false, restedHere: false,
+      pendingAmbush: null, won: false,
+      companions: ['donut'], items: {}, gear: {}, flags: {},
       seed: (Math.random() * 1e9) >>> 0
     };
   }
 
   G.init = function () {
     var p = DCW.params;
-    if (DCW.debug && (p.has('floor') || p.has('stage') || p.has('scene'))) { G.debugStart(); return; }
+    if (DCW.debug && (p.has('floor') || p.has('stage') || p.has('scene') || p.has('cut'))) { G.debugStart(); return; }
     G.toTitle(true);
   };
 
   G.toTitle = function (instant) {
-    var sc = S().title || fallbackScene('DUNGEON CRAWLER WORLD', function () { G.newRun(); });
+    var sc = S().title || fallbackScene('DUNGEON CRAWLER CARL', function () { G.newRun(); });
     if (instant) DCW.setScene(sc, {}); else go(sc, {});
   };
 
+  // New crawl: the Transformation on the surface, the name gag at the dungeon doors, then Floor 1.
   G.newRun = function () {
     var s = DCW.save;
     s.run = makeRun();
-    s.equipped.companion = 'donut';   // companions are found again every crawl
+    s.equipped.companion = 'donut';
+    s.equipped.skin = 'carl_boxers';
     s.meta.runs = (s.meta.runs || 0) + 1;
     persist();
-    // intro, then the name gag (you type a name, the AI calls you Carl), then floor 1
-    var naming = function () { if (S().nameEntry) go(S().nameEntry, { onDone: function () { G.startFloor(1); } }); else G.startFloor(1); };
-    if (S().intro && !DCW.params.has('skipintro')) {
-      go(S().intro, { onDone: function () { s.meta.seenIntro = true; persist(); naming(); } });
-    } else G.startFloor(1);
+    var floor1 = function () { G.startFloor(1); };
+    var naming = function () { if (S().nameEntry) go(S().nameEntry, { onDone: floor1 }); else floor1(); };
+    if (DCW.params.has('skipintro')) { floor1(); return; }
+    G.cutscene('prologue', function () { s.meta.seenIntro = true; persist(); naming(); });
   };
 
-  // runs saved before quests existed keep the companions they already had
   G.migrateRun = function () {
     var r = G.run; if (!r) return;
-    if (!r.companions) r.companions = (DCW.save.unlocks.companions || ['donut']).slice();
-    if (!r.items) r.items = {};
+    var fresh = makeRun();
+    Object.keys(fresh).forEach(function (k) { if (r[k] === undefined) r[k] = fresh[k]; });
     if (r.companions.indexOf(DCW.save.equipped.companion) < 0) DCW.save.equipped.companion = 'donut';
   };
   G.continueRun = function () {
     var r = G.run;
     if (!r) { G.newRun(); return; }
     G.migrateRun();
-    if (r.won) { go(S().ending || fallbackScene('YOU WON'), {}); return; }
+    if (r.won) { go(S().ending || fallbackScene('THE END OF BOOK ONE'), {}); return; }
     if (r.hp <= 0) { go(S().death || fallbackScene('YOU HAVE DIED', function () { G.revive() || G.endRun(); }), { result: r.lastDeath || {} }); return; }
-    if (r.inSafe) { G.enterSafeRoom(); return; }
+    if (r.inSafe) { G.enterSafeRoom(r.room); return; }
     G.resumeFloor();
   };
 
@@ -106,39 +120,79 @@
     if (!f) { G.win(); return; }
     r.floor = n; r.cleared = {}; r.bossDown = false; r.seqIndex = 0; r.owPos = null;
     r.roamersDown = []; r.floorTime = 0; r.currentStage = null; r.inSafe = false; r.pendingAmbush = null;
-    var perk = skinPerk();
-    if (perk.bombs && n > 1) r.bombs += perk.bombs;
     var m = DCW.save.meta; m.bestFloor = Math.max(m.bestFloor || 0, n);
     persist();
     G.track('floor:' + n);
     var card = S().floorCard;
-    var showCard = function () { if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } }); else G.resumeFloor(); };
-    // a floor can open with a cold-open cutscene first (floor 7: the Great Race blows up)
-    if (f.coldOpen && S()[f.coldOpen] && !DCW.params.has('skipintro')) go(S()[f.coldOpen], { floor: n, onDone: showCard });
-    else showCard();
+    if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } }); else G.resumeFloor();
   };
 
-  // Decide where the player belongs on the current floor.
+  // Where the player belongs right now: the current step of the floor sequence.
   G.resumeFloor = function () {
     var r = G.run, f = G.floorDef();
     if (!r || !f) { G.toTitle(); return; }
-    if (f.overworld) {
-      r.currentStage = null; persist();
-      var ow = DCW.overworld && DCW.overworld.scene;
-      go(ow || fallbackScene('OVERWORLD MISSING'), { floor: r.floor });
+    var step = currentStep();
+    if (!step) { G.floorEnd(); return; }
+    if (step.kind === 'safe') { G.enterSafeRoom(step.id); return; }
+    if (step.kind === 'cut') {
+      r.currentStage = null; r.inSafe = false; persist();
+      G.cutscene(step.id, function () { G.advance(); });
       return;
     }
-    var seq = f.sequence || [];
-    var step = seq[r.seqIndex];
-    if (step === undefined) { r.bossDown = true; G.takeStairs(); return; }
-    if (step === 'SAFE') { G.enterSafeRoom(); return; }
-    G.enterStage(step);
+    G.enterStage(step.id);
+  };
+  // move to the next step of the sequence
+  G.advance = function () {
+    var r = G.run; if (!r) return;
+    r.seqIndex++;
+    r.currentStage = null;
+    persist();
+    G.resumeFloor();
+  };
+
+  // End of a floor's sequence: down the stairs to the next floor, or the end of the book.
+  G.floorEnd = function () {
+    var r = G.run, f = G.floorDef(); if (!r) return;
+    r.bossDown = true;
+    sfx('stairs');
+    if (f && f.par && r.floorTime <= f.par) G.giveLootBox('gold', 'UNDER PAR ON FLOOR ' + r.floor);
+    G.track('floor_clear');
+    r.totalTime += r.floorTime; r.floorTime = 0;
+    var next = r.floor + 1;
+    persist();
+    if (!G.floorDef(next)) { G.win(); return; }
+    G.startFloor(next);
+  };
+  G.takeStairs = function () { G.floorEnd(); };
+  G.floorCleared = function () { G.resumeFloor(); };
+
+  /* ---------------- cutscenes ---------------- */
+  // Plays D.cutscenes[id] through the UI cutscene scene, then applies its give list and fires
+  // 'story:<id>'. Missing cutscene or scene: the rewards still land and the flow continues.
+  G.cutsceneDef = function (id) { return (D().cutscenes || {})[id] || null; };
+  G.cutscene = function (id, onDone) {
+    var def = G.cutsceneDef(id), sc = S().cutscene;
+    var fired = false;
+    var finish = function () {
+      if (fired) return; fired = true;
+      if (def && def.give) G.give(def.give, def.title || 'STORY');
+      G.track('story:' + id);
+      persist();
+      if (onDone) onDone();
+    };
+    if (!def || !sc) { finish(); return; }
+    go(sc, { id: id, onDone: finish });
   };
 
   /* ---------------- stages ---------------- */
   G.enterStage = function (stageId) {
     var r = G.run; if (!r) return;
-    if (!G.stageDef(stageId)) { toast('STAGE MISSING: ' + stageId, { color: '#f83800' }); return; }
+    if (!G.stageDef(stageId)) {
+      toast('STAGE MISSING: ' + stageId, { color: '#f83800' });
+      // never strand the run on a missing stage: skip it
+      var st = currentStep(); if (st && st.kind === 'stage' && st.id === stageId) setTimeout(function () { G.advance(); }, 600);
+      return;
+    }
     r.currentStage = stageId; r.inSafe = false; r.stageStartHp = r.hp;
     persist();
     var sc = DCW.stage && DCW.stage.scene;
@@ -150,14 +204,11 @@
     result = result || {};
     var id = result.stageId || r.currentStage;
     var st = G.stageDef(id) || { reward: {} };
-    var f = G.floorDef();
     var rewards = [];
     var first = !r.cleared[id];
     var rw = st.reward || {};
     r.cleared[id] = true;
-    if (result.place) rewards.push({ kind: 'place', place: result.place, of: result.racers || 0 });
     sfx('fanfare');
-    // xp + gold for the clear
     var xp = rw.xp ? (first ? rw.xp : Math.round(rw.xp / 3)) : 0;
     if (xp) { G.addXP(xp); rewards.push({ kind: 'xp', amount: xp }); }
     if (rw.gold) {
@@ -166,58 +217,36 @@
       g = G.addGold(g); rewards.push({ kind: 'gold', amount: g });
     }
     if (first && rw.box) { G.giveLootBox(rw.box, st.name || 'STAGE CLEAR', true); rewards.push({ kind: 'box', tier: rw.box }); }
-    if (!result.damageTaken) {
+    if (first && rw.gear && G.giveGear(rw.gear, st.name, true)) rewards.push({ kind: 'gear', id: rw.gear, isNew: true });
+    if (!result.damageTaken && st.kind !== 'ride') {
       G.track('no_damage_stage');
       var bonusViews = G.addViews(250 * r.floor);
-      rewards.push({ kind: 'views', amount: bonusViews, note: 'FLAWLESS' });
+      if (bonusViews) rewards.push({ kind: 'views', amount: bonusViews, note: 'FLAWLESS' });
     }
     if (result.maxCombo >= 25 && first) { G.giveLootBox('silver', 'COMBO ' + result.maxCombo, true); rewards.push({ kind: 'box', tier: 'silver' }); }
-    // boss
-    var bossId = result.boss || st.boss || result.raceBoss;
-    var isBoss = st.kind === 'boss' || !!result.boss || !!result.raceBoss || (f && f.boss === id);
-    if (isBoss) {
-      r.bossDown = true;
-      var b = (D().bosses || {})[bossId] || (D().racers || {})[bossId] || {};
+    var bossId = result.boss || st.boss;
+    var isBoss = st.kind === 'boss' || !!result.boss;
+    if (isBoss && bossId) {
+      var b = (D().bosses || {})[bossId] || {};
       if (first) {
         G.giveLootBox(b.loot || 'boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: b.loot || 'boss' });
         if (b.loot && b.loot !== 'boss') { G.giveLootBox('boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: 'boss' }); }
+        if (b.gear && G.giveGear(b.gear, b.name, true)) rewards.push({ kind: 'gear', id: b.gear, isNew: true });
         var un = b.unlock || {};
         if (un.skin) rewards.push({ kind: 'skin', id: un.skin, isNew: G.unlockSkin(un.skin, true) });
-        if (un.companion) rewards.push({ kind: 'companion', id: un.companion, isNew: G.rescueCompanion(un.companion) });
       }
       G.track('boss:' + bossId);
     }
-    // ambush roamer
-    if (st.kind === 'ambush' && r.pendingAmbush !== null && r.pendingAmbush !== undefined) {
-      if (r.roamersDown.indexOf(r.pendingAmbush) < 0) r.roamersDown.push(r.pendingAmbush);
-      r.pendingAmbush = null;
-    }
-    if (f && !f.overworld && (f.sequence || [])[r.seqIndex] === id) r.seqIndex++;
+    var step = currentStep();
+    var advance = !!(step && step.kind === 'stage' && step.id === id);
     r.currentStage = null;
     var maxHp = G.playerStats().maxHp;
     r.hp = U.clamp(r.hp, 1, maxHp);
+    if (advance) r.seqIndex++;
     persist();
-    var after = function () {
-      if (isBoss) G.floorCleared();
-      else G.resumeFloor();
-    };
     var res = S().results;
-    if (res) go(res, { result: result, rewards: rewards, onDone: after });
-    else after();
-  };
-
-  // Boss down: AI congratulates. Linear floors go straight down the stairs; overworld floors
-  // send you back to walk to the stairwell (now open).
-  G.floorCleared = function () {
-    var r = G.run, f = G.floorDef();
-    if (!r) return;
-    if (!G.floorDef(r.floor + 1)) { G.win(); return; }
-    if (f && f.overworld) {
-      G.resumeFloor();
-      setTimeout(function () { if (DCW.overworld && DCW.scene === DCW.overworld.scene) toast('THE STAIRWELL IS OPEN', { icon: 'key', color: '#f8b800' }); }, 900);
-    } else {
-      G.takeStairs();
-    }
+    if (res) go(res, { result: result, rewards: rewards, onDone: function () { G.resumeFloor(); } });
+    else G.resumeFloor();
   };
 
   G.playerDied = function (result) {
@@ -249,126 +278,80 @@
     G.toTitle();
   };
 
+  // Linear floors have no map to flee to: "flee" restarts the stage from the top.
   G.fleeStage = function () {
     var r = G.run; if (!r) return;
     G.track('flee');
-    r.pendingAmbush = null;
-    r.currentStage = null; persist();
     var line = pickLine('flee');
-    G.resumeFloor();
+    var stageId = r.currentStage;
+    persist();
+    if (stageId) G.enterStage(stageId); else G.resumeFloor();
     if (line) setTimeout(function () { toast(line, { icon: 'skull', time: 4 }); }, 700);
   };
 
-  /* ---------------- overworld entrances ---------------- */
-  G.entranceState = function (code) {
-    var r = G.run, f = G.floorDef();
-    var ow = f && f.overworld;
-    if (!ow) return null;
-    var target = (ow.entrances || {})[code];
-    if (!target) return null;
-    var n = r ? r.floor : 1;
-    if (target === 'SAFE') return { kind: 'safe', name: 'SAFE ROOM', cleared: false, locked: false };
-    if (target === 'STAIRS') {
-      var last = n >= floors().length;
-      return { kind: 'stairs', name: last ? 'THE FINAL STAIRWELL' : 'STAIRWELL TO FLOOR ' + (n + 1), cleared: false,
-        locked: !(r && r.bossDown), lockText: 'DEFEAT THE FLOOR BOSS FIRST' };
-    }
-    var st = G.stageDef(target);
-    if (!st) return { kind: 'stage', name: '???', stageId: target, locked: true, lockText: 'UNDER CONSTRUCTION' };
-    var isBossEnt = st.kind === 'boss' || target === f.boss;
-    var out = { kind: isBossEnt ? 'boss' : 'stage', side: st.kind === 'side', stageId: target, name: st.name || target,
-      cleared: !!(r && r.cleared[target]), locked: false, race: !!st.race, parade: !!st.parade };
-    if (isBossEnt) {
-      var left = (f.required || []).filter(function (id) { return !(r && r.cleared[id]); }).length;
-      if (left > 0) { out.locked = true; out.lockText = 'CLEAR ' + left + ' MORE AREA' + (left > 1 ? 'S' : '') + ' TO OPEN'; }
-      if (r && r.bossDown) out.cleared = true;
-    }
-    var lock = (f.locks || {})[code];
-    if (lock && lock.afterCleared && !(r && r.cleared[lock.afterCleared]) && !out.cleared) {
-      var prev = G.stageDef(lock.afterCleared);
-      out.locked = true; out.lockText = 'FINISH ' + ((prev && prev.name) || 'THE LAST RACE') + ' FIRST'; out.lockFlavor = lock.text || '';
-    }
-    if (lock && Array.isArray(lock.needs) && !out.cleared) {
-      var missing = lock.needs.filter(function (id) { return !G.hasItem(id); });
-      if (missing.length) {
-        out.itemLock = true; out.needs = missing[0]; out.lockFlavor = lock.text || '';
-        out.locked = true; out.lockText = 'NEEDS ' + missing.length + ' MORE: ' + missing.map(G.itemName).join(', ');
-      }
-    } else if (lock && lock.needs && !G.hasItem(lock.needs) && !out.cleared) {
-      out.itemLock = true; out.needs = lock.needs; out.lockFlavor = lock.text || '';
-      if (out.locked) out.lockText += ' + ' + G.itemName(lock.needs);
-      else { out.locked = true; out.lockText = 'NEEDS: ' + G.itemName(lock.needs); }
-    }
-    if (!out.locked && st.exitNeeds && !G.hasItem(st.exitNeeds) && !out.cleared) out.note = 'EXIT LOCKED: NEEDS ' + G.itemName(st.exitNeeds);
-    if (st.rescue && !G.hasCompanion(st.rescue)) out.rumor = true;
+  // overworld leftovers (Book One has no overworld)
+  G.entranceState = function () { return null; };
+  G.enterEntrance = function () { return false; };
+
+  /* ---------------- safe rooms ---------------- */
+  G.safeRoomDef = function (id) {
+    var r = G.run;
+    id = id || (r && r.room) || 'tally';
+    var def = (D().safeRooms || {})[id];
+    var out = {};
+    if (def) Object.keys(def).forEach(function (k) { out[k] = def[k]; });
+    out.id = id;
+    if (!out.name) out.name = 'SAFE ROOM';
+    if (!out.theme) out.theme = 'safe';
+    if (!out.services) out.services = ['mordecai', 'boxes', 'rest'];
     return out;
   };
-
-  G.enterEntrance = function (code) {
-    var r = G.run, f = G.floorDef();
-    if (!r || !f || !f.overworld) return false;
-    if (typeof code === 'string' && code.indexOf('!ambush:') === 0) {
-      var idx = parseInt(code.slice(8), 10);
-      var amb = f.overworld.ambush;
-      if (!amb || !G.stageDef(amb)) { if (r.roamersDown.indexOf(idx) < 0) r.roamersDown.push(idx); return false; }
-      r.pendingAmbush = idx;
-      if (DCW.ui && DCW.ui.announce) DCW.ui.announce('AMBUSH!', { color: '#f83800' });
-      sfx('warn');
-      G.enterStage(amb);
-      return true;
-    }
-    var st = G.entranceState(code);
-    if (!st) return false;
-    if (st.locked) { sfx('error'); toast(st.lockText || 'LOCKED', { icon: 'key', color: '#f83800' }); return false; }
-    sfx('door');
-    if (st.kind === 'safe') G.enterSafeRoom();
-    else if (st.kind === 'stairs') G.takeStairs();
-    else G.enterStage(st.stageId);
-    return true;
-  };
-
-  /* ---------------- safe room + stairs ---------------- */
-  G.enterSafeRoom = function () {
+  G.enterSafeRoom = function (roomId) {
     var r = G.run; if (!r) return;
-    r.inSafe = true; r.restedHere = false; persist();
-    go(S().safeRoom || fallbackScene('SAFE ROOM', function () { G.heal(999); G.leaveSafeRoom(); }), {});
+    if (!roomId) { var st = currentStep(); roomId = (st && st.kind === 'safe' && st.id) || r.room || 'tally'; }
+    var fresh = r.room !== roomId || !r.inSafe;
+    r.room = roomId; r.inSafe = true; r.currentStage = null;
+    if (fresh) { r.restedHere = false; r.cookieHere = false; }
+    r.seenRooms = r.seenRooms || {};
+    var firstVisit = !r.seenRooms[roomId];
+    if (firstVisit) {
+      r.seenRooms[roomId] = true;
+      var def = G.safeRoomDef(roomId);
+      if (def.give) G.give(def.give, def.name);
+      G.track('safe:' + roomId);
+      G.track('safe_room');
+    }
+    persist();
+    go(S().safeRoom || fallbackScene('SAFE ROOM', function () { G.heal(999); G.leaveSafeRoom(); }), { room: roomId, firstVisit: firstVisit });
   };
   G.leaveSafeRoom = function () {
     var r = G.run; if (!r) return;
     r.inSafe = false;
-    var f = G.floorDef();
-    if (f && !f.overworld && (f.sequence || [])[r.seqIndex] === 'SAFE') r.seqIndex++;
+    var st = currentStep();
+    if (st && st.kind === 'safe') r.seqIndex++;
     persist();
     G.resumeFloor();
   };
-
-  G.takeStairs = function () {
-    var r = G.run, f = G.floorDef();
-    if (!r) return;
-    if (!r.bossDown) { toast('DEFEAT THE FLOOR BOSS FIRST', { color: '#f83800' }); return; }
-    sfx('stairs');
-    if (f && f.par && r.floorTime <= f.par) G.giveLootBox('gold', 'UNDER PAR ON FLOOR ' + r.floor);
-    G.track('floor_clear');
-    r.totalTime += r.floorTime;
-    var line = pickLine('floorClear');
-    var next = r.floor + 1;
+  // Experience cookies: once per visit, in rooms that have them.
+  G.eatCookie = function () {
+    var r = G.run; if (!r || r.cookieHere) return 0;
+    r.cookieHere = true;
+    var def = G.safeRoomDef(r.room);
+    var xp = def.cookieXp || Math.round(25 * floorScale());
+    G.addXP(xp);
+    G.track('cookie');
+    sfx('pickup');
     persist();
-    if (!G.floorDef(next)) { G.win(); return; }
-    var proceed = function () { G.startFloor(next); };
-    if (line) {
-      // show the quip over whatever scene is current, then descend
-      say([{ who: 'SYSTEM AI', portrait: 'p_ai', text: line }], { onDone: proceed });
-    } else proceed();
+    return xp;
   };
 
   G.win = function () {
     var r = G.run, m = DCW.save.meta;
     if (r) r.won = true;
     m.wins = (m.wins || 0) + 1;
-    G.unlockSkin('carl_gold', true);
     G.track('win');
     persist();
-    go(S().ending || fallbackScene('YOU BEAT THE DUNGEON. FOR NOW.', function () { G.quitToTitle(); }), {});
+    go(S().ending || fallbackScene('THE END OF BOOK ONE', function () { G.quitToTitle(); }), {});
   };
 
   G.quitToTitle = function () {
@@ -380,33 +363,151 @@
 
   G.tick = function (dt) { var r = G.run; if (r) r.floorTime += dt; };
 
+  /* ---------------- story flags ---------------- */
+  var FLAG_NOTES = {
+    missile: 'DONUT CAN CAST MAGIC MISSILE',
+    chopper: 'GOBLIN COPPER CHOPPER ACQUIRED',
+    jugs: "BOMBS ARE NOW CARL'S JUG O'BOOMS"
+  };
+  G.flag = function (id) { var r = G.run; return !!(r && r.flags && r.flags[id]); };
+  G.setFlag = function (id, quiet) {
+    var r = G.run; if (!r) return false;
+    r.flags = r.flags || {};
+    if (r.flags[id]) return false;
+    r.flags[id] = true;
+    if (!quiet && FLAG_NOTES[id]) toast(FLAG_NOTES[id], { title: 'NEW ABILITY', icon: 'star', color: '#58d854', time: 3.5 });
+    persist();
+    return true;
+  };
+
+  /* ---------------- gear (book loot, permanent for the crawl) ---------------- */
+  G.gearDef = function (id) { return (D().gear || {})[id] || null; };
+  G.hasGear = function (id) { var r = G.run; return !!(r && r.gear && r.gear[id]); };
+  G.gearList = function () {
+    var r = G.run; if (!r || !r.gear) return [];
+    var table = D().gear || {}, order = Object.keys(table);
+    var ids = Object.keys(r.gear).filter(function (id) { return r.gear[id]; });
+    ids.sort(function (a, b) {
+      var wa = (table[a] && table[a].who === 'donut') ? 1 : 0, wb = (table[b] && table[b].who === 'donut') ? 1 : 0;
+      if (wa !== wb) return wa - wb;
+      var ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+    return ids.map(function (id) { return { id: id, def: table[id] || { name: String(id).toUpperCase() } }; });
+  };
+  G.giveGear = function (id, from, quiet) {
+    var r = G.run; if (!r || !id) return false;
+    r.gear = r.gear || {};
+    if (r.gear[id]) return false;
+    r.gear[id] = true;
+    var def = G.gearDef(id) || { name: String(id).toUpperCase() };
+    var maxBefore = G.playerStats().maxHp;
+    if (def.skin && (D().skins || {})[def.skin]) {
+      G.unlockSkin(def.skin, true);
+      DCW.save.equipped.skin = def.skin;    // put the new clothes on right away
+    }
+    var gain = G.playerStats().maxHp - maxBefore;
+    if (gain > 0) r.hp += gain;
+    if (!quiet) { sfx('unlock'); toast(def.name, { title: 'NEW GEAR', icon: def.icon || 'shield', color: '#f8b800', time: 3.5 }); }
+    G.track('gear');
+    persist();
+    return true;
+  };
+  function gearPerks() {
+    var r = G.run, out = {};
+    if (!r || !r.gear) return out;
+    Object.keys(r.gear).forEach(function (id) {
+      if (!r.gear[id]) return;
+      var p = (G.gearDef(id) || {}).perk || {};
+      Object.keys(p).forEach(function (k) {
+        if (typeof p[k] === 'number') out[k] = (out[k] || 0) + p[k];
+        else if (p[k]) out[k] = p[k];
+      });
+    });
+    return out;
+  }
+  G.gearPerks = gearPerks;
+
+  /* ---------------- consumables ---------------- */
+  G.biscuits = function () { var r = G.run; return r ? (r.biscuits || 0) : 0; };
+  G.useBiscuit = function () {
+    var r = G.run; if (!r || !(r.biscuits > 0)) { sfx('error'); return false; }
+    r.biscuits--; persist();
+    return true;
+  };
+
+  /* ---------------- reward lists (cutscenes, safe rooms) ---------------- */
+  G.give = function (list, from) {
+    if (!list) return;
+    (Array.isArray(list) ? list : [list]).forEach(function (rw) {
+      if (!rw) return;
+      var r = G.run;
+      switch (rw.kind) {
+        case 'achieve': G.achieve(rw.id); break;
+        case 'box': G.giveLootBox(rw.tier || 'bronze', rw.from || from || 'STORY'); break;
+        case 'gear': G.giveGear(rw.id, rw.from || from); break;
+        case 'flag': G.setFlag(rw.id, !!rw.quiet); break;
+        case 'item': {
+          var n = rw.count || 1;
+          G.giveItem(rw.id, n);
+          var nm = rw.id === 'biscuit' ? 'PET BISCUIT' : rw.id === 'potion' ? 'HEALTH POTION' : rw.id === 'bomb' ? (G.flag('jugs') ? "JUG O'BOOM" : 'GOBLIN DYNAMITE') : G.itemName(rw.id);
+          toast(nm + (n > 1 ? ' X' + n : ''), { title: 'ITEM GET', icon: rw.id === 'bomb' ? (G.flag('jugs') ? 'jug' : 'bomb') : rw.id, color: '#58d854' });
+          sfx('pickup');
+          break;
+        }
+        case 'xp': G.addXP(rw.amount || 10); break;
+        case 'gold': if (r) { var g = G.addGold(rw.amount || 10); toast(g + ' GOLD', { icon: 'coin', color: '#f8b800' }); } break;
+        case 'hp': if (r) { r.bonus.hp += rw.amount || 1; r.hp += rw.amount || 1; } break;
+        case 'skin': G.unlockSkin(rw.id); break;
+        case 'companion':
+          if (r) { r.companions = r.companions || ['donut']; if (r.companions.indexOf(rw.id) < 0) r.companions.push(rw.id); G.unlockCompanion(rw.id, true); }
+          break;
+        case 'stat': if (r) { var stat = rw.stat || 'str', a = rw.amount || 1; r.stats[stat] += a; if (stat === 'con') r.hp += 2 * a; } break;
+        case 'heal': G.heal(999); break;
+        default: break;
+      }
+    });
+    persist();
+  };
+
   /* ---------------- stats ---------------- */
   function skinPerk() {
     var sk = (D().skins || {})[DCW.save.equipped.skin];
     return (sk && sk.perk) || {};
   }
-  function mul(v) { if (!v) return 1; return v < 1 ? 1 + v : v; } // perk.gold: 0.25 or 1.25 both mean +25%
+  function mul(v) { if (!v) return 1; return v < 1 ? 1 + v : v; } // 0.25 or 1.25 both mean +25%
   G.xpNeed = function (level) { return Math.round(18 * Math.pow(level, 1.5)); };
   G.playerStats = function () {
     var r = G.run || makeRun();
-    var st = r.stats, lv = r.level, p = skinPerk();
-    var dmg = 2 + (st.str - 3) + Math.floor((lv - 1) / 2) + (p.dmg || 0);
+    var st = r.stats, lv = r.level, p = skinPerk(), g = gearPerks();
+    var dmg = 2 + (st.str - 3) + Math.floor((lv - 1) / 2) + (p.dmg || 0) + (g.dmg || 0);
+    var jugs = !!(r.flags && r.flags.jugs);
     return {
-      maxHp: 10 + (st.con - 3) * 2 + (lv - 1) + ((r.bonus && r.bonus.hp) || 0) + (p.hp || 0),
+      maxHp: 10 + (st.con - 3) * 2 + (lv - 1) + ((r.bonus && r.bonus.hp) || 0) + (p.hp || 0) + (g.hp || 0),
       dmg: dmg,
-      kickDmg: Math.round(dmg * 1.5),
-      crit: Math.min(0.6, 0.04 + (st.dex - 3) * 0.02 + (p.crit || 0)),
-      speedMul: (1 + (st.dex - 3) * 0.03) * mul(p.speed),
-      bombDmg: 8 + lv * 2 + (st.str - 3),
-      bombRadius: 28,
+      kickDmg: Math.round(dmg * 1.5) + (g.kick || 0),
+      crit: Math.min(0.6, 0.04 + (st.dex - 3) * 0.02 + (p.crit || 0) + (g.crit || 0)),
+      speedMul: (1 + (st.dex - 3) * 0.03) * mul(p.speed) * (1 + (g.speed || 0)),
+      bombDmg: 8 + lv * 2 + (st.str - 3) + (jugs ? 4 : 0),
+      bombRadius: jugs ? 36 : 28,
       compPower: 1 + (st.int - 3) * 0.15 + (lv - 1) * 0.04,
-      def: p.def || 0,
+      def: (p.def || 0) + (g.def || 0),
       goldMul: mul(p.gold),
       viewMul: mul(p.views),
       extraJump: !!p.doubleJump,
-      skinPerk: p
+      skinPerk: p,
+      // Book One gear perks
+      stompMul: 1 + (g.stomp || 0) + (G.hasAchievement('smush') ? 0.5 : 0),
+      regen: g.regen || 0,
+      stun: Math.min(0.5, g.stun || 0),
+      missileDmg: g.missile || 0,
+      missileCd: g.missileCd || 0,
+      specialMul: 1 + (g.special || 0),
+      maxBombs: 9 + (g.bombs || 0),
+      jugs: jugs
     };
   };
+  G.hasAchievement = function (id) { var m = DCW.save && DCW.save.meta; return !!(m && m.achievements && m.achievements[id]); };
 
   G.addXP = function (n) {
     var r = G.run; if (!r || !n) return;
@@ -434,9 +535,11 @@
     r.gold += g;
     return g;
   };
+  // The First Floor is closed to live viewers (edited recaps only): views switch on with Floor 2.
+  G.viewersOn = function () { var f = G.floorDef(); return !(f && f.viewers === false); };
   var FAN_TIERS = [1000, 5000, 15000, 40000, 100000, 250000, 500000, 1000000, 2500000, 5000000];
   G.addViews = function (n) {
-    var r = G.run; if (!r || !n) return 0;
+    var r = G.run; if (!r || !n || !G.viewersOn()) return 0;
     var v = Math.max(1, Math.round(n * G.playerStats().viewMul));
     r.views += v;
     while (r.fanTier < FAN_TIERS.length && r.views >= FAN_TIERS[r.fanTier]) {
@@ -495,10 +598,9 @@
     }
   };
 
-  function lockedOf(kind) {
-    var table = kind === 'skin' ? (D().skins || {}) : (D().companions || {});
-    var owned = kind === 'skin' ? DCW.save.unlocks.skins : DCW.save.unlocks.companions;
-    return Object.keys(table).filter(function (id) { return owned.indexOf(id) < 0 && id !== 'carl_gold'; });
+  function lockedSkins() {
+    var table = D().skins || {}, owned = DCW.save.unlocks.skins;
+    return Object.keys(table).filter(function (id) { return owned.indexOf(id) < 0; });
   }
   function resolveReward(rw) {
     var r = G.run;
@@ -512,23 +614,35 @@
       }
       case 'item': {
         var c = rw.count || 1;
-        if (rw.id === 'bomb') r.bombs += c; else if (rw.id === 'potion') r.potions += c;
+        G.giveItem(rw.id, c);
         return { kind: 'item', id: rw.id, count: c };
       }
-      case 'companion': { // companions are rescued, never boxed
+      case 'gear': {
+        var gid = rw.id;
+        if (rw.any || !gid) {
+          var pool = Object.keys(D().gear || {}).filter(function (k) { var gd = D().gear[k]; return !G.hasGear(k) && !(gd && gd.noBox); });
+          gid = pool.length ? U.pick(pool) : null;
+        }
+        if (!gid || G.hasGear(gid)) {
+          var gc = Math.round(40 * floorScale()); r.gold += gc;
+          return { kind: 'gold', amount: gc, converted: 'gear' };
+        }
+        G.giveGear(gid, 'LOOT BOX', true);
+        return { kind: 'gear', id: gid, isNew: true };
+      }
+      case 'companion': {
         var cg = Math.round(60 * floorScale()); r.gold += cg;
         return { kind: 'gold', amount: cg, converted: 'companion' };
       }
       case 'skin': {
         var id = rw.id;
-        var owned = rw.kind === 'skin' ? DCW.save.unlocks.skins : DCW.save.unlocks.companions;
-        if (rw.any || !id) { var pool = lockedOf(rw.kind); id = pool.length ? U.pick(pool) : null; }
-        if (!id || owned.indexOf(id) >= 0) {
+        if (rw.any || !id) { var sp = lockedSkins(); id = sp.length ? U.pick(sp) : null; }
+        if (!id || DCW.save.unlocks.skins.indexOf(id) >= 0) {
           var conv = Math.round(60 * floorScale()); r.gold += conv;
           return { kind: 'gold', amount: conv, converted: 'skin' };
         }
-        if (rw.kind === 'skin') G.unlockSkin(id, true); else G.unlockCompanion(id, true);
-        return { kind: rw.kind, id: id, isNew: true };
+        G.unlockSkin(id, true);
+        return { kind: 'skin', id: id, isNew: true };
       }
       case 'stat': {
         var keys = ['str', 'con', 'dex', 'int'];
@@ -542,6 +656,7 @@
       case 'hp': { var h = rw.amount || 1; r.bonus.hp += h; r.hp += h; return { kind: 'hp', amount: h }; }
       case 'revival': { var n = rw.count || 1; r.revivals += n; return { kind: 'revival', count: n }; }
       case 'box': { G.giveLootBox(rw.tier || 'bronze', 'PURCHASE', true); return { kind: 'box', tier: rw.tier || 'bronze' }; }
+      case 'flag': { G.setFlag(rw.id, true); return { kind: 'flag', id: rw.id }; }
       default: return { kind: 'gold', amount: 0 };
     }
   }
@@ -552,12 +667,13 @@
     var tables = D().lootTables || {};
     var table = tables[box.tier] || tables.bronze || { rolls: 2, entries: [[{ kind: 'gold', min: 10, max: 30 }, 1]] };
     var out = [];
-    var rolls = table.rolls || 2;
+    // a box can carry fixed contents (story boxes): box.contents = [reward, ...]
+    var gu = box.contents || table.guaranteed || table.guarantee;
+    var rolls = box.contents ? 0 : (table.rolls || 2);
     for (var i = 0; i < rolls; i++) {
       var entry = U.weighted(table.entries || [[{ kind: 'gold', min: 10, max: 30 }, 1]]);
       out.push(resolveReward(entry));
     }
-    var gu = table.guaranteed || table.guarantee;
     if (gu) (Array.isArray(gu) ? gu : [gu]).forEach(function (g) { out.push(resolveReward(g)); });
     DCW.save.meta.boxesOpened = (DCW.save.meta.boxesOpened || 0) + 1;
     r.hp = Math.min(r.hp, G.playerStats().maxHp);
@@ -571,21 +687,24 @@
     if (list.indexOf(id) >= 0) return false;
     list.push(id); persist();
     var sk = (D().skins || {})[id];
-    if (!quiet) { sfx('unlock'); toast((sk && sk.name) || id, { title: 'NEW SKIN', icon: 'star', color: '#f8b800' }); }
+    if (!quiet) { sfx('unlock'); toast((sk && sk.name) || id, { title: 'NEW OUTFIT', icon: 'star', color: '#f8b800' }); }
     return true;
   };
-  /* ---------------- key items + rescued companions ---------------- */
+
+  /* ---------------- items, key items, companions ---------------- */
   G.itemDef = function (id) { return (D().questItems || {})[id] || null; };
   G.itemName = function (id) { var q = G.itemDef(id); return (q && q.name) || String(id || '').toUpperCase(); };
   G.hasItem = function (id) { var r = G.run; return !!(r && r.items && r.items[id]); };
-  G.giveItem = function (id) {
+  // giveItem('potion'|'bomb'|'biscuit', n) adds consumables; any other id is a key item.
+  G.giveItem = function (id, n) {
     var r = G.run; if (!r) return false;
+    if (id === 'potion') { r.potions += (n || 1); persist(); return true; }
+    if (id === 'bomb' || id === 'jug' || id === 'dynamite') { r.bombs = Math.min(G.playerStats().maxBombs, r.bombs + (n || 1)); persist(); return true; }
+    if (id === 'biscuit') { r.biscuits = (r.biscuits || 0) + (n || 1); persist(); return true; }
     r.items = r.items || {};
     if (r.items[id]) return false;
     r.items[id] = true;
     G.track('quest_item');
-    var qd = G.itemDef(id);
-    if (qd && qd.float) G.track('float_part');
     persist();
     return true;
   };
@@ -599,8 +718,7 @@
     r.companions = r.companions || ['donut'];
     if (r.companions.indexOf(id) >= 0) return false;
     r.companions.push(id);
-    G.unlockCompanion(id, true);          // remembered forever for the collection screen
-    DCW.save.equipped.companion = id;     // the new friend tags along right away
+    G.unlockCompanion(id, true);
     G.track('rescue'); G.track('rescue:' + id);
     persist();
     return true;
@@ -648,70 +766,100 @@
   };
 
   /* ---------------- achievements ---------------- */
+  // Achievements are remembered per profile, but every crawl re-earns them (the book replays):
+  // their boxes and gear land in the current run once, counted with per-run counters.
   G.track = function (event, n) {
-    var m = DCW.save.meta;
+    var m = DCW.save.meta, run = G.run;
     m.counters = m.counters || {};
     m.counters[event] = (m.counters[event] || 0) + (n || 1);
+    if (run) { run.counters = run.counters || {}; run.counters[event] = (run.counters[event] || 0) + (n || 1); }
     var achs = D().achievements || {};
     for (var id in achs) {
       if (!achs.hasOwnProperty(id)) continue;
       var a = achs[id];
-      if (a.event === event && !m.achievements[id] && m.counters[event] >= (a.count || 1)) G.achieve(id);
+      if (a.event !== event) continue;
+      var need = a.count || 1;
+      var lifetime = !m.achievements[id] && m.counters[event] >= need;
+      var thisRun = run && !(run.achRewarded || {})[id] && run.counters[event] >= need;
+      if (lifetime || thisRun) G.achieve(id);
     }
   };
   G.achieve = function (id) {
     var m = DCW.save.meta;
-    if (m.achievements[id]) return false;
-    var a = (D().achievements || {})[id] || { name: id };
+    var a = (D().achievements || {})[id] || { name: String(id).toUpperCase() };
+    var run = G.run;
+    var already = !!m.achievements[id];
+    if (run) run.achRewarded = run.achRewarded || {};
+    if (already && (!run || run.achRewarded[id])) return false;
     m.achievements[id] = true;
     sfx('achievement');
-    toast(a.name, { title: 'NEW ACHIEVEMENT!', icon: 'star', color: '#f8d878', time: 3.5 });
-    if (G.run) G.giveLootBox(a.box || 'bronze', 'ACHIEVEMENT: ' + a.name, true);
+    toast(a.name, { title: already ? 'ACHIEVEMENT!' : 'NEW ACHIEVEMENT!', icon: 'star', color: '#f8d878', time: 3.5 });
+    if (run && !run.achRewarded[id]) {
+      run.achRewarded[id] = true;
+      if (a.box !== null) G.giveLootBox(a.box || 'bronze', 'ACHIEVEMENT: ' + a.name, true);
+      if (a.gear) G.giveGear(a.gear, a.name);
+      if (a.give) G.give(a.give, a.name);
+    }
     var un = a.unlock;
-    if (typeof un === 'string') un = (D().skins || {})[un] ? { skin: un } : { companion: un };
+    if (typeof un === 'string') un = { skin: un };
     if (un && un.skin) G.unlockSkin(un.skin);
-    if (un && un.companion) G.unlockCompanion(un.companion);
     persist();
     return true;
   };
 
-  /* ---------------- objectives (MAP screen) ---------------- */
+  /* ---------------- objectives (pause / gear screens) ---------------- */
+  G.stepName = function (step) {
+    var p = typeof step === 'string' ? parseStep(step) : step;
+    if (!p) return '';
+    if (p.kind === 'safe') return (G.safeRoomDef(p.id).name || 'SAFE ROOM');
+    if (p.kind === 'cut') { var c = G.cutsceneDef(p.id); return (c && c.title) || 'STORY'; }
+    var st = G.stageDef(p.id); return (st && st.name) || p.id;
+  };
   G.objectives = function () {
     var r = G.run, f = G.floorDef();
     if (!r || !f) return [];
     var out = ['FLOOR ' + r.floor + ': ' + (f.name || '')];
-    var st = stages();
-    if (f.overworld) {
-      (f.required || []).forEach(function (id) {
-        out.push((r.cleared[id] ? '✓ ' : '- ') + ((st[id] && st[id].name) || id));
-      });
-      var b = st[f.boss];
-      out.push((r.bossDown ? '✓ ' : '- ') + 'DEFEAT ' + ((b && b.boss && D().bosses && D().bosses[b.boss] && D().bosses[b.boss].name) || 'THE BOSS'));
-      out.push((r.bossDown ? '▶ ' : '- ') + 'TAKE THE STAIRWELL');
-      var sides = Object.keys(f.overworld.entrances || {}).map(function (k) { return f.overworld.entrances[k]; })
-        .filter(function (id) { return st[id] && st[id].kind === 'side'; });
-      if (sides.length) out.push('SIDE AREAS: ' + sides.filter(function (id) { return r.cleared[id]; }).length + '/' + sides.length);
-    } else {
-      (f.sequence || []).forEach(function (id, i) {
-        var name = id === 'SAFE' ? 'SAFE ROOM' : ((st[id] && st[id].name) || id);
-        out.push((i < r.seqIndex ? '\u2713 ' : i === r.seqIndex ? '\u25B6 ' : '- ') + name);
-      });
-    }
-    // key items for this floor
-    var qi = D().questItems || {};
-    var mine = Object.keys(qi).filter(function (k) { return qi[k].floor === r.floor; });
-    if (mine.length) out.push('KEY ITEMS: ' + mine.filter(function (k) { return G.hasItem(k); }).length + '/' + mine.length + ' FOUND');
-    if (f.companion) {
-      var cd = (D().companions || {})[f.companion] || {};
-      out.push(G.hasCompanion(f.companion) ? '\u2713 ' + (cd.name || f.companion.toUpperCase()) + ' RESCUED' : '- SOMEONE IS TRAPPED HERE');
-    }
+    (f.sequence || []).forEach(function (step, i) {
+      var p = parseStep(step);
+      if (!p || p.kind === 'cut') return;
+      out.push((i < r.seqIndex ? '✓ ' : i === r.seqIndex ? '▶ ' : '- ') + G.stepName(p));
+    });
     return out;
   };
 
   /* ---------------- debug entry ---------------- */
-  // ?debug&floor=N            fresh run at floor N with a level-appropriate build
-  // ?debug&stage=ID           straight into a stage (uses that stage's floor)
-  // ?debug&scene=safe|ending|death|title|results
+  // ?debug&floor=N            fresh run at the start of floor N with the story so far applied
+  // ?debug&stage=ID           straight into a stage (flags/gear/level of the story up to that point)
+  // ?debug&cut=ID             play one cutscene, then back to the title
+  // ?debug&scene=safe&room=ID | ending | death | title
+  // extras: &god  &level=N  &flags=jugs,missile  &gear=a,b
+  // story state at a sequence position: flags + gear from earlier cutscenes, safe rooms and bosses
+  function simulateStory(r, floorN, seqIdx) {
+    var stagesBefore = 0;
+    floors().forEach(function (f) {
+      if (f.n > floorN) return;
+      (f.sequence || []).forEach(function (step, i) {
+        if (f.n === floorN && i >= seqIdx) return;
+        var p = parseStep(step); if (!p) return;
+        var gives = [];
+        if (p.kind === 'cut') { var c = G.cutsceneDef(p.id); if (c && c.give) gives = c.give; }
+        else if (p.kind === 'safe') { var sr = (D().safeRooms || {})[p.id]; if (sr && sr.give) gives = sr.give; r.seenRooms[p.id] = true; }
+        else {
+          stagesBefore++; r.cleared[p.id] = true;
+          var sd = G.stageDef(p.id), bd = sd && sd.boss && (D().bosses || {})[sd.boss];
+          if (bd && bd.gear) r.gear[bd.gear] = true;
+          if (sd && sd.reward && sd.reward.gear) r.gear[sd.reward.gear] = true;
+        }
+        (gives || []).forEach(function (g) {
+          if (g.kind === 'flag') r.flags[g.id] = true;
+          else if (g.kind === 'gear') r.gear[g.id] = true;
+          else if (g.kind === 'item' && g.id === 'biscuit') r.biscuits += g.count || 1;
+          else if (g.kind === 'companion' && r.companions.indexOf(g.id) < 0) r.companions.push(g.id);
+        });
+      });
+    });
+    return stagesBefore;
+  }
   G.debugStart = function () {
     var p = DCW.params, s = DCW.save;
     var stId = p.get('stage');
@@ -721,23 +869,27 @@
     s.run = makeRun();
     var r = s.run;
     r.floor = n;
-    var lvl = Math.max(1, Math.round(1 + (n - 1) * 2.5));
+    var f = G.floorDef(n);
+    var seqIdx = 0;
+    if (stId && f) { var k = (f.sequence || []).indexOf(stId); if (k >= 0) seqIdx = k; }
+    var before = simulateStory(r, n, seqIdx);
+    r.seqIndex = seqIdx;
+    var lvl = parseInt(p.get('level') || '0', 10) || Math.max(1, Math.round(1 + before * 0.45));
     for (var i = 1; i < lvl; i++) { r.level++; var pts = (r.level % 5 === 0) ? 2 : 1; r.stats[['str', 'con', 'dex', 'int'][i % 4]] += pts; }
-    r.hp = G.playerStats().maxHp; r.gold = 100 * n; r.bombs = 5; r.potions = 3;
+    (p.get('flags') || '').split(',').filter(Boolean).forEach(function (fl) { r.flags[fl] = true; });
+    (p.get('gear') || '').split(',').filter(Boolean).forEach(function (gid) { r.gear[gid] = true; });
+    Object.keys(r.gear).forEach(function (gid) { var gd = G.gearDef(gid); if (gd && gd.skin && (D().skins || {})[gd.skin]) { G.unlockSkin(gd.skin, true); s.equipped.skin = gd.skin; } });
+    r.hp = G.playerStats().maxHp; r.gold = 60 * n; r.bombs = 5; r.potions = 3; r.biscuits = Math.max(r.biscuits, 3);
     if (p.has('god')) r.god = true;
-    if (p.has('allcomp')) r.companions = ['donut', 'squeaks', 'mongo', 'samantha', 'katia', 'zev', 'signet'];
-    if (p.get('comp')) { r.companions.push(p.get('comp')); s.equipped.companion = p.get('comp'); }
+    var cut = p.get('cut');
+    if (cut) { DCW.setScene(S().cutscene || fallbackScene('NO CUTSCENE SCENE'), { id: cut, onDone: function () { G.toTitle(); } }); return; }
     var scene = p.get('scene');
-    if (scene === 'safe') { r.inSafe = true; DCW.setScene(S().safeRoom, {}); return; }
-    if (scene === 'ending') { DCW.setScene(S().ending, {}); return; }
+    if (scene === 'safe') { r.room = p.get('room') || 'tally'; r.inSafe = true; DCW.setScene(S().safeRoom, { room: r.room }); return; }
+    if (scene === 'ending') { r.won = true; DCW.setScene(S().ending, {}); return; }
     if (scene === 'death') { DCW.setScene(S().death, { result: { cause: 'TESTING' } }); return; }
     if (scene === 'title') { DCW.setScene(S().title, {}); return; }
-    var f = G.floorDef(n);
-    if (f) { r.cleared = {}; r.bossDown = false; }
+    if (scene && S()[scene]) { DCW.setScene(S()[scene], { floor: n, room: p.get('room') }); return; }
     if (stId) { r.currentStage = stId; DCW.setScene(DCW.stage.scene, { stageId: stId }); return; }
-    if (p.has('bossdown')) r.bossDown = true;
-    if (p.has('allclear') && f) (f.required || []).forEach(function (id) { r.cleared[id] = true; });
-    if (f && f.overworld) DCW.setScene(DCW.overworld.scene, { floor: n });
-    else G.resumeFloor();
+    G.resumeFloor();
   };
 })();

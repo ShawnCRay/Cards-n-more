@@ -1121,6 +1121,24 @@
     };
   })();
 
+  // BOOK ONE track names. The parent wrote a song per floor; Book One reuses them by mood.
+  // The goblin-warrens tune moves to goblin town, the Second Floor gets the old city theme.
+  (function () {
+    var orig = {}; Object.keys(SONGS).forEach(function (k) { orig[k] = SONGS[k]; });
+    var alias = {
+      goblin: 'floor2',     // tribal drums + low riff: goblin town and the workshop
+      floor2: 'floor3',     // the cinderblock maze
+      chase: 'floor10',     // fast driving theme: the murder dozer and the burning workshop
+      ride: 'floor4',       // galloping 6/8: the Goblin Copper Chopper
+      gym: 'floor9',        // brass and bluster for the Juicer's gym
+      rage: 'boss_final',   // the rage elemental
+      odette: 'ow11',       // talk-show festival brass
+      tension: 'floor7',    // creepy organ
+      sad: 'floor8'         // bleak and slow
+    };
+    Object.keys(alias).forEach(function (k) { if (orig[alias[k]]) SONGS[k] = orig[alias[k]]; });
+  })();
+
   /* ================================================================== SFX */
   var SFX = {
     jump: function (e, o, t, p) { return tone(e, o, t, { w: 'p25', f: 300 * p, f2: 760 * p, ft: 0.1, dur: 0.15, v: 0.3, sus: 0.3 }); },
