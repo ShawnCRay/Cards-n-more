@@ -1318,31 +1318,31 @@
 
   // ---- MORDECAI, FLOOR 1: the Rat Hooligan. Bearded rat-man a head shorter than Carl, black vest,
   //      blue pants, worn sandals, a gnarled cane. Master Splinter energy. ----
-  var MORD1_PAL = { g: C.g0, w: C.g1, p: C.r3, v: C.K, b: C.b3, y: C.y1, x: C.K };
+  var MORD1_PAL = { g: C.g0, W: C.W, p: C.r3, v: C.K, b: C.b3, y: C.y1, x: C.K };
   var MORD1 = [
-    '.gg.............',
-    'gppg.........yy.',
-    'gppgggg.....yyy.',
-    '.ggggwwgg....yy.',
-    '..ggggxgggg...y.',
-    '..gggggggggggpy.',
-    '..gggggggggww.y.',
-    '...gwwwwwwwgw.y.',
-    '....wwwwwwww..y.',
-    '...vvwwwwwvv..y.',
-    '..gvvvwwwwvvggy.',
-    '..gvvvvwwvvv.gy.',
-    '..gvvvvvwvvv..y.',
-    '..p.vvvvvvv...y.',
-    '...pbbbbbbb...y.',
-    '..p.bbbbbbb...y.',
-    '.p..bbb.bbb...y.',
-    '.p..bbb.bbb...y.',
-    'p...bbb.bbb...y.',
-    'p...bbb.bbb...y.',
-    '...ppyy.ppyy..y.',
-    '...yyyy.yyyy.yyy'];
-  npc('mordecai_f1', MORD1_PAL, MORD1, { f1: setPx(breathe(MORD1, 14), [[6, 5]], 'g') });
+    '.ggg............',
+    'gpppg..........y',
+    'gppgggg.......yy',
+    '.ggggggggg....yy',
+    '..ggggWWWgg....y',
+    '..gggggxgggg...y',
+    '..gggggggggggp.y',
+    '..gggggggggW...y',
+    '...gWWWWWgg....y',
+    '....WWWWWWv....y',
+    '...vvWWWWWvv...y',
+    '..gvvvWWWvvvggpy',
+    '..gvvvvWWvvv...y',
+    '..gvvvvvWvvv...y',
+    '..p.vvvvvvv....y',
+    '...pbbbbbbb....y',
+    '..p.bbbbbbb....y',
+    '.p..bbb.bbb....y',
+    '.p..bbb.bbb....y',
+    'p...bbb.bbb....y',
+    '...ppyy.ppyy...y',
+    '...yyyy.yyyy..yy'];
+  npc('mordecai_f1', MORD1_PAL, MORD1, { f1: setPx(breathe(MORD1, 15), [[7, 6]], 'g') });
 
   // ---- MORDECAI, FLOOR 2: the Bugaboo. 7-ft neckless black-furred bear shape, huge owl eyes,
   //      comically skinny arms and legs ----
@@ -1379,11 +1379,11 @@
     '...wWwwwwwww..',
     '...hhhhhhhhhh.',
     '..hhHhhhhhhhh.',
-    '.hhhhhhxhhhxh.',
-    'hhHhhhhhhhRrh.',
-    'hhhhhhhhhrrrr.',
-    'hhhhHhhhhhrrh.',
-    'hhhhhhHhhhhhhh',
+    '.hhhhhxwhhxwh.',
+    'hhHhhhxxhhxxh.',
+    'hhhhhhhhRrrrh.',
+    'hhhhHhhhrrrrr.',
+    'hhhhhhHhhrrrhh',
     'hhhbbbbbbbbhhh',
     'hh.bbbbbbbb.hh',
     'hh.bbwwBbbb.hh',
@@ -1391,10 +1391,10 @@
     '...bBbbbBbb...',
     '...hhh..hhh...',
     '..hhhh..hhhh..'];
-  npc('tally', TALLY_PAL, TALLY, { f1: setPx(TALLY, [[7, 4], [11, 4]], 'h') });
+  npc('tally', TALLY_PAL, TALLY, { f1: setPx(TALLY, [[6, 4], [7, 4], [10, 4], [11, 4]], 'h') });
   // ---- QWIST: another Bopca (Second Floor shelter): mossier fur, red apron, tall cook's toque ----
   var QWIST = ['....wwwwww....', '...wwwwwwww...', '...wWwwwwWw...'].concat(TALLY.slice(2));
-  npc('qwist', { h: C.y1, H: C.l0, x: C.K, r: C.o1, R: C.r2, b: C.o0, B: C.n0, w: C.W, W: C.g1 }, QWIST, { f1: setPx(QWIST, [[7, 5], [11, 5]], 'h') });
+  npc('qwist', { h: C.y1, H: C.l0, x: C.K, r: C.o1, R: C.r2, b: C.o0, B: C.n0, w: C.W, W: C.g1 }, QWIST, { f1: setPx(QWIST, [[6, 5], [7, 5], [10, 5], [11, 5]], 'h') });
 
   // ---- RORY + LORELAI: goblin shamanka sisters. Jet-black robes, pineapple-topped staffs. Rory:
   //      muscular, a face full of piercings, filed teeth. Lorelai: younger, a few piercings, bone necklace ----
@@ -1485,10 +1485,10 @@
     '....hhhhh.......',
     '...hhhhhhh......',
     '...hhssssss.....',
-    '..hhsxxsxxs.....',
-    '..hSsssxsssx....',
+    '..hhsxssxsss....',
     '..hSsssssssS....',
-    '...SsssxxxsS....',
+    '..hSssssssSs....',
+    '...SssxxxssS....',
     '....SsssssS.....',
     '.....SSSS.......',
     '...llltttlll....',
@@ -1557,7 +1557,7 @@
     '....Ssssxsssx...',
     '....Ssssssssss..',
     '.....sssssssS...',
-    '.....ssssxxxs...',
+    '.....sssxxxss...',
     '......sssss.....',
     '....jjjjjjjj....',
     '...jjjjjjjjjj...',
@@ -1800,8 +1800,17 @@
     '....dddd.dddd...'];
   npc('maestro', MAE_PAL, MAESTRO, { f1: breathe(MAESTRO, 16) });
 
+  // allies duck when hit: <id>_duck = the idle pose squatted 3px (legs shortened, feet planted)
+  ['brandon', 'chris', 'imani', 'yolanda', 'agatha'].forEach(function (id) {
+    var d = defs[id + '_idle']; if (!d) return;
+    var h = d.h, cut = { }; cut[h - 7] = 1; cut[h - 5] = 1; cut[h - 3] = 1;
+    var fr = d.frames[0].filter(function (r, y) { return !cut[y]; });
+    while (fr.length < h) fr.unshift(rep('.', d.w));
+    var o = { w: d.w, h: h, pal: d.pal, frames: [fr] }; if (d.ox) o.ox = d.ox;
+    defs[id + '_duck'] = o;
+  });
   // legacy names other modules may still ask for
-  ['mordecai_f1_idle'].forEach(function () { defs.mordecai = defs.mordecai_f1_idle; defs.mordecai_f1 = defs.mordecai_f1_idle; defs.mordecai_f2 = defs.mordecai_f2_idle; defs.bopca = defs.tally_idle; });
+  defs.mordecai = defs.mordecai_f1_idle; defs.mordecai_f1 = defs.mordecai_f1_idle; defs.mordecai_f2 = defs.mordecai_f2_idle; defs.bopca = defs.tally_idle;
 
   /* ================================================================== *
    *  ENEMIES  (<id>_walk x2, <id>_attack, <id>_hurt) - fill-only, auto outline
@@ -2100,27 +2109,27 @@
     })();
 
     // ---- tuskling (knight): pink warthog-headed orc aristocrat, dented helmet, navy tux, dazed ----
-    var tkp = { p: C.r3, P: C.r2, w: C.W, n: C.b1, x: C.K };
+    var tkp = { p: C.r3, P: C.r2, w: C.W, n: C.b1, x: C.K, g: C.g1 };
     w0 = [
-      '...wwwwww...',
-      '..wwwwwwxw..',
-      '..wwwxwwww..',
-      '.wwwwwwwwwww',
-      '.pppppppp...',
-      'pppwxppppp..',
-      'pppppppppPPP',
-      'ppppppppwPxP',
-      '.ppppppw.w..',
-      'nnnnnnnnnnnn',
+      '...gggggg...',
+      '..ggggggxg..',
+      '..gggxgggg..',
+      '.gggggggggg.',
+      'Pppppppppp..',
+      'PPpppwxppp..',
+      '.pppppppPPPP',
+      '.ppppppwPxPx',
+      '.pppppwwPPPP',
+      'nnnnnnwwnnnn',
       'nnnnnwwwnnnn',
       'pnnnnnwnnnnp',
       'pnnnnnwnnnnp',
       '.nnnnnnnnnn.',
       '..pp....pp..',
       '.xxx...xxx..'];
-    w1 = alt(legs(w0, ['..pp...pp...', '..xxx.xxx...']), 5, ['pppxwppppp..']);
-    at = alt(w0, 5, ['pppwxppppp..', 'pppppppppPPP', 'ppppppppwPxP', '.ppppxxxwxw.', 'nnnnnnnnnnpp', 'nnnnnwwwnnpp']);
-    var tkHurt = alt(w0, 5, ['pppxpppppp..']);
+    w1 = alt(legs(w0, ['..pp...pp...', '..xxx.xxx...']), 5, ['PPppxwpppp..']);
+    at = alt(w0, 5, ['PPpppwxppp..', '.pppppppPPPP', '.ppppppwPxPx', '.ppppxwwxxx.', 'nnnnnnwwnnpp', 'nnnnnwwwnnpp']);
+    var tkHurt = alt(w0, 5, ['PPpppxpppp..']);
     enemy('tuskling', tkp, w0, w1, at, tkHurt);
 
     // ---- brindle grub: fuzzy fat worm, tortoiseshell black / brown / orange ----
@@ -2597,11 +2606,12 @@
     o = o || {};
     var cx = o.cx || 28, cy = o.cy || 28, rx = o.rx || 25, ry = o.ry || 25;
     // limbs poking out of the rim: stubby legs with black hooves, arms with pink hands
-    for (var k = 0; k < 7; k++) {
-      var an = rot + k * Math.PI * 2 / 7 + 0.2;
-      var a = [cx + Math.cos(an) * (rx - 3), cy + Math.sin(an) * (ry - 3)], e = [cx + Math.cos(an) * (rx + 2.5), cy + Math.sin(an) * (ry + 2.5)];
+    for (var k = 0; k < 10; k++) {
+      var an = rot + k * Math.PI * 2 / 10 + 0.2, L = k % 3 === 1 ? 3.5 : 2;
+      var a = [cx + Math.cos(an) * (rx - 3), cy + Math.sin(an) * (ry - 3)], e = [cx + Math.cos(an + (k % 2 ? 0.08 : -0.08)) * (rx + L), cy + Math.sin(an + (k % 2 ? 0.08 : -0.08)) * (ry + L)];
       line(g, a[0], a[1], e[0], e[1], 'p', 3);
       rect(g, Math.round(e[0]) - 1, Math.round(e[1]) - 1, 2, 2, k % 2 ? 'K' : 'P');
+      if (k % 3 === 0) { var t2 = pol(cx, cy, rx - 1, an + 0.3); px(g, t2[0], t2[1], 'w'); }
     }
     oval(g, cx, cy, rx, ry, 'p');
     // shading crescent (lower right) + highlight (upper left)
@@ -3226,6 +3236,7 @@
     for (x = 12; x < 21; x += 2) { px(g, x, 23, 'K'); px(g, x + 1, 25, 'K'); }
     px(g, 15, 21, 'K'); px(g, 17, 21, 'K');
   });
+  defs.p_mordecai = defs.p_mordecai_f1; defs.p_bopca = defs.p_tally;
 
   /* ================================================================== *
    *  shared vehicle helpers
@@ -3241,6 +3252,101 @@
     px(g, cx, cy, c.c || c.T);
   }
   function sparkle(g, x, y, c, c2) { px(g, x, y, c2 || c); px(g, x - 1, y, c); px(g, x + 1, y, c); px(g, x, y - 1, c); px(g, x, y + 1, c); }
+
+
+  /* ================================================================== *
+   *  BOOK ONE VEHICLE + ACTOR OBJECTS
+   * ================================================================== */
+  // disc wheel: sturdy black disc, copper hub, a rim mark that turns between frames
+  function discWheel(g, cx, cy, r, f) {
+    oval(g, cx, cy, r, r, 'K');
+    oval(g, cx, cy, r - 1.5, r - 1.5, 'g');
+    oval(g, cx, cy, r - 2.5, r - 2.5, 'K');
+    oval(g, cx, cy, 1.2, 1.2, 'C');
+    var an = f ? Math.PI / 4 : 0;
+    for (var k = 0; k < 2; k++) { var q = pol(cx, cy, r - 1.5, an + k * Math.PI); px(g, q[0], q[1], 'G'); }
+  }
+  // ---- THE GOBLIN COPPER CHOPPER: mismatched copper scrap frame, thumping steam engine, alligator-
+  //      skull seat with white fur, disc wheels, ape-hanger bars. Carl drives with his legs held out
+  //      off the hot engine; Princess Donut rides the sidecar on her orc-skull seat (purple backrest) ----
+  var CHOP_PAL = { c: C.n1, C: C.n2, d: C.n0, K: C.K, g: C.g0, G: C.g1, w: C.W, s: C.n3, S: C.n2, h: C.y0, j: C.n0, J: C.y0, r: C.o1,
+    o: C.n2, O: C.n1, e: C.G1, y: C.y2, p: C.p1, P: C.m2, f: C.g1 };
+  function chopper(g, f, hurt) {
+    var bob = f;          // the engine thumps: chassis bounces 1px
+    // exhaust stack curling up behind the rider, smoke puffs
+    line(g, 17, 16 + bob, 6, 12 + bob, 'c', 2); line(g, 6, 12 + bob, 4, 4 + bob, 'c', 2); rect(g, 3, 3 + bob, 3, 1, 'C');
+    if (f) { puff(g, 3, 1, 2, 'G', 'w'); } else { puff(g, 5, 1, 1.6, 'G', 'w'); puff(g, 1, 3, 1.4, 'G'); }
+    // wheels
+    discWheel(g, 9, 23, 6, f);
+    discWheel(g, 47, 23, 6, f);
+    // frame: copper tubes, mismatched
+    line(g, 9, 23, 14, 14 + bob, 'c', 2); line(g, 14, 14 + bob, 36, 11 + bob, 'C', 2); line(g, 12, 21, 30, 20 + bob, 'd', 2);
+    line(g, 36, 9 + bob, 47, 23, 'c', 2); line(g, 37, 9 + bob, 47, 22, 'C');
+    // boiler (the thumping engine), rivets + pressure gauge
+    rect(g, 16, 14 + bob, 10, 7, 'c'); rect(g, 16, 14 + bob, 10, 1, 'C'); for (var x = 17; x < 26; x += 2) px(g, x, 20 + bob, 'd');
+    oval(g, 19, 17 + bob, 1.5, 1.5, 'w'); px(g, 19, 17 + bob, 'K');
+    // alligator-skull seat with white fur
+    rect(g, 8, 12 + bob, 10, 3, 'G'); tri(g, 4, 13 + bob, 9, 12 + bob, 9, 15 + bob, 'G'); for (x = 5; x < 12; x += 2) px(g, x, 15 + bob, 'w');
+    px(g, 9, 13 + bob, 'K'); rect(g, 10, 10 + bob, 8, 2, 'w');
+    // ape-hanger bars
+    line(g, 36, 9 + bob, 35, 3 + bob, 'g'); line(g, 35, 3 + bob, 32, 3 + bob, 'g'); rect(g, 31, 3 + bob, 2, 1, 'K');
+    // CARL: seated, leather jacket, arms up to the bars, bare legs held straight out
+    var cb = bob;
+    rect(g, 12, 6 + cb, 6, 6, 'j'); rect(g, 14, 6 + cb, 2, 5, 's'); line(g, 12, 6 + cb, 12, 11 + cb, 'J');
+    line(g, 16, 7 + cb, 31, 4 + cb, 'j', 2); px(g, 31, 3 + cb, 's'); px(g, 32, 4 + cb, 's');
+    rect(g, 14, 11 + cb, 5, 2, 'w'); px(g, 15, 11 + cb, 'r'); px(g, 17, 12 + cb, 'r');
+    line(g, 19, 12 + cb, 27, 11 + cb, 's', 2); rect(g, 27, 9 + cb, 2, 3, 's'); px(g, 28, 9 + cb, 'S');
+    oval(g, 15, 3 + cb, 3.5, 3.5, 's'); oval(g, 14, 1 + cb, 4, 2.2, 'h'); rect(g, 11, 1 + cb, 3, 4, 'h');
+    px(g, 17, 3 + cb, 'K'); px(g, 19, 4 + cb, 'S'); line(g, 16, 5 + cb, 18, 5 + cb, 'S');
+    // the sidecar (near side): copper tub, fur trim, purple backrest; the wheel rides a massive spring
+    for (var k = 0; k < 3; k++) { px(g, 31 + (k & 1) * 2, 23 + k, 'g'); px(g, 32, 23 + k, 'g'); }
+    discWheel(g, 32, 26, 3.5, f);
+    rect(g, 23, 21, 1, 3, 'K'); line(g, 23, 23, 32, 23, 'G');
+    rect(g, 22, 15, 3, 7, 'p'); px(g, 23, 15, 'P'); for (k = 15; k < 22; k += 2) px(g, 22, k, 'w');
+    // DONUT: tiara, haughty face, fluff over the rim
+    var dy = 0;
+    oval(g, 31, 13 + dy, 4, 3.5, 'o'); tri(g, 28, 11 + dy, 29, 7 + dy, 31, 10 + dy, 'o'); tri(g, 32, 10 + dy, 34, 7 + dy, 35, 11 + dy, 'o');
+    px(g, 29, 9 + dy, 'P'); px(g, 34, 9 + dy, 'P');
+    rect(g, 29, 9 + dy, 6, 1, 'y'); px(g, 30, 8 + dy, 'y'); px(g, 32, 7 + dy, 'p'); px(g, 33, 8 + dy, 'y');
+    px(g, 31, 12 + dy, 'e'); px(g, 33, 12 + dy, 'e'); px(g, 34, 14 + dy, 'P'); oval(g, 33, 15 + dy, 2, 1, 's');
+    if (f) px(g, 28, 10 + dy, 'O');
+    rect(g, 24, 17, 18, 6, 'c'); oval(g, 41, 19.5, 2, 3, 'c'); rect(g, 24, 17, 18, 1, 'C'); line(g, 25, 22, 41, 22, 'd');
+    for (x = 25; x < 41; x += 3) px(g, x, 17, 'w');
+    px(g, 27, 19, 'd'); px(g, 33, 20, 'd'); px(g, 38, 19, 'd');
+    if (hurt) { [[20, 9], [40, 14], [8, 18]].forEach(function (q) { sparkle(g, q[0], q[1], 'y', 'w'); }); rect(g, 16, 2, 2, 1, 'K'); }
+  }
+  def('chopper', withK(CHOP_PAL), [0, 1].map(function (f) { var g = blank(56, 30); chopper(g, f); return outlined(g); }));
+  def('chopper_hurt', withK(hurtPal(CHOP_PAL)), [(function () { var g = blank(56, 30); chopper(g, 0, true); return outlined(g); })()]);
+
+  // ---- KOBOLD POUND CAGES (24x24): frame 0 a snarling danger dingo behind the bars, frame 1 the same
+  //      dingo fed and asleep. cage_open: the door hangs open, nobody home ----
+  var CAGE_PAL = { b: C.g1, B: C.g0, n: C.y1, f: C.n1, F: C.n0, w: C.W, x: C.K, r: C.o1, z: C.b4, l: C.y2 };
+  function cageFrame(g, open) {
+    rect(g, 0, 0, 24, 2, 'B'); rect(g, 0, 22, 24, 2, 'B'); line(g, 0, 0, 23, 0, 'b');
+    for (var x = 1; x < 24; x += 4) if (!open || x < 12) line(g, x, 2, x, 21, 'b');
+    if (open) { // door swung out to the right, foreshortened
+      for (var k = 0; k < 3; k++) line(g, 18 + k * 2, 2 + k, 18 + k * 2, 21 - k, 'b');
+      line(g, 17, 2, 22, 4, 'B'); line(g, 17, 21, 22, 19, 'B');
+      rect(g, 13, 2, 1, 20, 'B');
+    } else { rect(g, 15, 10, 3, 3, 'n'); px(g, 16, 9, 'B'); px(g, 16, 11, 'x'); }
+  }
+  function dingoIn(g, calm) {
+    if (calm) { // curled up asleep on the floor, tail round the nose
+      oval(g, 11, 18, 8, 3.5, 'f'); line(g, 4, 20, 18, 20, 'F');
+      oval(g, 16, 17, 3.5, 2.5, 'w'); px(g, 17, 17, 'x'); px(g, 15, 17, 'x'); line(g, 16, 18, 18, 18, 'x');
+      line(g, 3, 18, 6, 21, 'f'); px(g, 7, 15, 'f'); px(g, 9, 14, 'f');
+      px(g, 20, 12, 'z'); px(g, 21, 11, 'z'); px(g, 20, 10, 'z'); rect(g, 22, 7, 1, 1, 'z');
+    } else { // up on its legs, corpse-paint snarl, fangs
+      oval(g, 9, 13, 6, 4, 'f'); rect(g, 4, 15, 2, 6, 'f'); rect(g, 12, 15, 2, 6, 'f'); line(g, 3, 12, 1, 8, 'f');
+      oval(g, 17, 10, 4, 3.5, 'w'); rect(g, 16, 6, 2, 2, 'f'); px(g, 19, 6, 'f');
+      px(g, 16, 9, 'x'); px(g, 19, 9, 'x'); rect(g, 17, 12, 5, 1, 'x'); px(g, 21, 11, 'x');
+      px(g, 18, 13, 'w'); px(g, 20, 13, 'w'); px(g, 18, 14, 'w'); px(g, 20, 14, 'w'); px(g, 19, 12, 'r');
+    }
+  }
+  def('cage_dingo', withK(CAGE_PAL), [false, true].map(function (calm) {
+    var g = blank(24, 24); dingoIn(g, calm); g = outlined(g); cageFrame(g, false); return g;
+  }));
+  def('cage_open', withK(CAGE_PAL), [(function () { var g = blank(24, 24); cageFrame(g, true); return g; })()]);
 
   DCW.artActorsKit.def = def;
 })();

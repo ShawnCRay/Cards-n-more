@@ -87,7 +87,6 @@
     return fl[(r.floor || 1) - 1] || null;
   }
   function hasItem(id) { if (has(G(), 'hasItem')) return !!call(G(), 'hasItem', id); var r = getRun(); return !!(r.items && r.items[id]); }
-  function hasComp(id) { if (has(G(), 'hasCompanion')) return !!call(G(), 'hasCompanion', id); return id === 'donut'; }
   function itemName(id) { var q = (D().questItems || {})[id]; return (q && q.name) || String(id || '').toUpperCase(); }
   function xpNeed(lv) { var n = call(G(), 'xpNeed', lv); return n || Math.round(18 * Math.pow(lv, 1.5)); }
   function num(v, d) { return (typeof v === 'number' && !isNaN(v)) ? v : d; }
@@ -179,7 +178,7 @@
       do { pick = pool[Math.floor(rnd() * pool.length)]; } while (pool.length > 1 && pick === last && ++tries < 12);
       ids.push(pick); last = pick;
     }
-    // quest / rescue / puzzle chunks that must appear: spliced evenly into the middle
+    // quest / story / puzzle chunks that must appear: spliced evenly into the middle
     var ins = (cd.insert || []).filter(function (id) { return !!chunkRows(id); });
     ins.forEach(function (id, k) { var pos = 1 + Math.round((k + 1) * (ids.length - 1) / (ins.length + 1)); ids.splice(Math.max(1, pos), 0, id); });
     var isBoss = def.kind === 'boss' || !!def.boss;
@@ -222,7 +221,7 @@
       combo: 0, comboT: 0, special: 0, flashT: 0, flashColor: '#fcfcfc',
       kills: 0, damageTaken: 0, maxCombo: 0, views: 0, gold: 0, secrets: 0,
       god: !!run.god, done: false, endT: -1, endKind: null, deathT: -1, diedSent: false, clearedSent: false,
-      introPending: def.intro || null, doubleViewsT: 0, lowHpQuipped: false, quipT: 0, dark: !!def.dark,
+      introPending: def.intro || null, lowHpQuipped: false, quipT: 0, dark: !!def.dark,
       lastSafe: null, checkpoint: null, gates: [], finishX: null,
       fires: [], taintT: 0, taintMsgT: 0, regenT: 0, lastKillT: -9, specialMsgT: 0, pursuer: null, ride: null, comp2: null, wobble: false
     };
@@ -548,13 +547,13 @@
     return num(got, v);
   }
   function updPickups(dt) {
-    var P = S.player, magnetR = 0;
+    var P = S.player;
     for (var i = S.pickups.length - 1; i >= 0; i--) {
       var p = S.pickups[i];
       if (p.delay > 0) p.delay -= dt;
       if (p.life > 0) { p.life -= dt; if (p.life <= 0) { S.pickups.splice(i, 1); continue; } }
       var dx = cx(P) - cx(p), dy = cy(P) - cy(p), d2 = dx * dx + dy * dy;
-      if (p.delay <= 0 && (p.magnet || (magnetR && d2 < magnetR * magnetR && p.kind !== 'box'))) {
+      if (p.delay <= 0 && p.magnet) {
         var d = Math.sqrt(d2) || 1, sp = p.magnet ? 260 : 170;
         p.vx = dx / d * sp; p.vy = dy / d * sp; p.phys = false;
         p.x += p.vx * dt; p.y += p.vy * dt;
@@ -1057,7 +1056,8 @@
       if (P.st > 0.04 && P.st < 0.13) {
         var bx = P.face > 0 ? P.x + P.w - 2 : P.x - 14;
         var d = P.pIdx === 2 ? st.dmg * 1.35 : st.dmg;
-        meleeHit({ x: bx, y: P.y + 3, w: 16, h: 11 }, Math.round(d), { kind: 'punch', kb: P.pIdx === 2 ? 170 : 75, dir: P.face, hitList: P.hitList });
+        // reaches down to the floor so rats, grubs and scatterers can be punched too
+        meleeHit({ x: bx, y: P.y + 3, w: 16, h: Math.max(11, P.h - 5) }, Math.round(d), { kind: 'punch', kb: P.pIdx === 2 ? 170 : 75, dir: P.face, hitList: P.hitList });
       }
       if (I.pressed('attack') && P.st > 0.05) P.queued = true;
       if (P.st >= dur) {
@@ -2761,7 +2761,6 @@
   function updPlatforms(dt) {
     for (var i = 0; i < S.platforms.length; i++) {
       var p = S.platforms[i];
-      if (p.parade) { p.prevY = p.y; continue; }
       var ox = p.x, oy = p.y;
       p.prevY = p.y;
       if (p.axis === 'x') {
@@ -3801,6 +3800,7 @@
     hitEnemy: function (e, dmg, kind) { return S ? damageActor(e, dmg, { kind: kind || 'punch', noCombo: true }) : false; },
     applyTaint: function (s) { if (S) applyTaint(s); },
     releaseCages: function () { return S ? releaseCages() : 0; },
+    setComp: function (id) { if (S && S.player) S.comp = id ? makeCompanion(S.player, id === true ? null : id) : null; },
     explode: function (x, y, jug) { if (S) explode(x, y, blastRadius(jug), num(stats().bombDmg, 10), true, { jug: !!jug }); }
   };
 })();

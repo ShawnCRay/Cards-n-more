@@ -371,7 +371,7 @@
     '....................................',
     '.............o..o..o..o.............',
     '....................................',
-    '..............>.....................',
+    '..............>.....==..............',
     '..e.......................e.....e...',
     '###########............#############',
     '###########............#############'] };
@@ -1817,239 +1817,776 @@
       required: [], boss: 'f2_ralph', par: 1800 }
   ];
 })();
+
 /* ==========================================================================
-   LOOT, SHOP, SKINS, COMPANIONS, ACHIEVEMENTS
+   SAFE ROOMS + CUTSCENES
+   Line speakers: default SYSTEM AI / p_ai. {who: '', portrait: null} is a
+   narration box. Lines <= 170 chars; 1-5 lines per panel; 3-8 panels.
    ========================================================================== */
 (function () {
   'use strict';
   var D = window.DCW.data;
 
+  /* ---- speaker helpers ---- */
+  function ai(t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; }
+  function nar(t) { return { who: '', portrait: null, text: t }; }
+  function carl(t) { return { who: 'CARL', portrait: 'p_carl', text: t }; }
+  function carlMad(t) { return { who: 'CARL', portrait: 'p_carl_mad', text: t }; }
+  function donut(t) { return { who: 'DONUT', portrait: 'p_donut', text: t }; }
+  function smug(t) { return { who: 'DONUT', portrait: 'p_donut_smug', text: t }; }
+  function mord1(t) { return { who: 'MORDECAI', portrait: 'p_mordecai_f1', text: t }; }
+  function mord2(t) { return { who: 'MORDECAI', portrait: 'p_mordecai_f2', text: t }; }
+  function say(who, portrait, t) { return { who: who, portrait: portrait, text: t }; }
+  function tally(t) { return say('TALLY', 'p_tally', t); }
+  function qwist(t) { return say('QWIST', 'p_qwist', t); }
+
+  /* ---- actor helpers (feet on the panel floor; x 0-320) ---- */
+  function A(sprite, x, flip) { return { sprite: sprite, x: x, flip: !!flip, frame: 0 }; }
+  var CD = [A('carl_idle', 118), A('donut_idle', 140)];
+
+  /* ================= SAFE ROOMS ================= */
+  D.safeRooms = {
+    guild: { name: "MORDECAI'S GUILD HALL", theme: 'safe_guild', music: 'safe', npc: 'mordecai',
+      services: ['mordecai', 'boxes', 'rest'],
+      greet: [
+        mord1("YOUR ACHIEVEMENTS CAME WITH BOXES. OPEN THEM AT THE TABLE. THE SHOW WANTS EVERY UNBOXING ON CAMERA, EVEN WHEN NOBODY'S WATCHING YET."),
+        carl("A TROLLSKIN SHIRT. A HOODED CLOAK. A CLUB SHAPED LIKE A TOAD. NO SHOES. OF COURSE THERE ARE NO SHOES."),
+        donut("A CROWN, CARL! A JEWELED CROWN! THE LABEL SAYS SOMETHING VERY RUDE ABOUT A SEPSIS WHORE, BUT THE GEMS ARE VERY REAL."),
+        mord1("AND TWO PET BISCUITS. KEEP THOSE. SOME MOBS CALM DOWN IF YOU FEED THEM. TALK TO ME WHEN YOU'VE GOT STAT POINTS TO SPEND.")
+      ],
+      give: [{ kind: 'gear', id: 'trollskin_shirt' }, { kind: 'gear', id: 'nightgaunt_cloak' }, { kind: 'gear', id: 'toad_cudgel' },
+        { kind: 'gear', id: 'crown_sepsis' }, { kind: 'item', id: 'biscuit', count: 2 }],
+      restedLine: "YOU ALREADY SLEPT. MORDECAI IS GIVING YOU A LOOK. GET OUT THERE, KID.",
+      restLine: "YOU SLEEP ON A GUILD BENCH. MORDECAI SNORES LIKE A WOOD CHIPPER ALL NIGHT. YOU WAKE UP FULLY HEALED AND DEEPLY ANNOYED." },
+
+    tally: { name: "TALLY'S RESTAURANT", theme: 'safe_tally', music: 'safe', npc: 'tally',
+      services: ['shop', 'boxes', 'rest', 'tv'],
+      shopName: 'TALLY',
+      shopLines: ["HELLO. YOU BUY. I SELL. GOOD.", "POTION IS RED. RED IS GOOD.", "NO SHOES. SORRY. I ASK EVERY DAY. NO SHOES.",
+        "DYNAMITE. NOT INSIDE. PLEASE. I JUST MOP.", "PRINCESS WANT MORE PATE? I MAKE. ALWAYS I MAKE.", "NO GOLD? THEN NO. SORRY. RULES."],
+      greet: [
+        tally("WELCOME. SAFE ROOM. NO FIGHTING. YOU SIT. I COOK."),
+        donut("CARL, IT'S A POLISH FAST FOOD RESTAURANT WITH A PLAY AREA AND A BALL PIT. I HAVE NEVER BEEN SO DELIGHTED AND SO HORRIFIED AT ONCE."),
+        tally("FOR PRINCESS. SALMON PATE. AND THIS. A BUTTERFLY, MADE OF STONE. SHINY. FOR LUCK."),
+        carl("TALLY, IS THAT A MURGH VINDALOO? IN A POLISH BURGER JOINT? AT THE END OF THE WORLD? I THINK I LOVE YOU."),
+        tally("MANY YEARS I LEARN EARTH FOOD. NOBODY COMES. NOW EARTH PERSON EATS. GOOD. VERY GOOD.")
+      ],
+      give: [{ kind: 'gear', id: 'talisman_butterfly' }],
+      restName: 'MURGH VINDALOO', restVerb: 'EAT', npcName: 'TALLY',
+      restedLine: "TALLY SHAKES HIS HEAD. ONE BOWL. YOU EAT TWO, YOU EXPLODE. NO EXPLODING IN RESTAURANT.",
+      restLine: "TALLY BRINGS A STEAMING BOWL OF MURGH VINDALOO. IT IS THE BEST THING YOU HAVE EVER EATEN. YOU SLEEP LIKE THE DEAD. THE GOOD KIND.",
+      tvLines: [
+        "CRAWLER COUNT: THIRTEEN MILLION ENTERED THE DUNGEON. THE COUNTER IS GOING DOWN. QUICKLY. THE COUNTER HAS A SAD LITTLE BEEP NOW.",
+        "PROMO: DUNGEON CRAWLER WORLD: EARTH, EPISODE ONE, COMING SOON! WE HAVE SO MUCH FOOTAGE OF PEOPLE FALLING INTO PITS.",
+        "PUBLIC SERVICE ANNOUNCEMENT: THE PLAY AREA IS FOR CHILDREN. YOU ARE NOT A CHILD. GET OUT OF THE BALL PIT, CRAWLER.",
+        "TODAY'S TIP: SAFE ROOMS ARE SAFE. HALLWAYS ARE NOT. THE DIFFERENCE IS THE DOOR. LOVE YOUR DOOR.",
+        "BOSS WATCH: SOMETHING ON THIS FLOOR HAS NOT THROWN ANYTHING AWAY SINCE THE EIGHTIES. SHE IS NEARBY. SHE IS HUNGRY."
+      ] },
+
+    cookie: { name: 'AN UNSTAFFED SAFE ROOM', theme: 'safe_cookie', music: 'safe', npc: null,
+      services: ['cookies', 'boxes', 'rest', 'tv'], cookieXp: 30,
+      greet: [
+        ai("ACHIEVEMENT! WAR CRIMINAL! MORE THAN TWENTY NON-COMBATANTS IN ONE ATTACK. THAT WORKSHOP ROOM WAS A GOBLIN NURSERY. WAS. GOLD ASSHOLE'S BOX!"),
+        ai("ACHIEVEMENT! YOU MONSTER! YOU KILLED A CHILD. SEVERAL. GOBLIN, BUT STILL. HERE IS A BRONZE ASSHOLE'S BOX. INSIDE: THE DESPERADO PASS!"),
+        donut("CARL. YOU BLEW UP A NURSERY."),
+        carlMad("I DIDN'T KNOW IT WAS A NURSERY! AND YOU CAST MAGIC MISSILE AT A ROOM FULL OF DYNAMITE AND SET THE WHOLE WORKSHOP ON FIRE."),
+        smug("THAT WAS AN ACCIDENT, CARL. A GLORIOUS ACCIDENT. ALSO I GOT AN ARMORED SKIRT. IT'S A CRUPPER. HORSES WEAR THEM. I WILL ALLOW IT.")
+      ],
+      give: [{ kind: 'achieve', id: 'war_criminal' }, { kind: 'achieve', id: 'you_monster' }, { kind: 'gear', id: 'fae_crupper' }],
+      cookieLines: ["STALE. CHEWY. DELICIOUS. A LITTLE WISER, OR AT LEAST A LITTLE MORE LEVELED.",
+        "YOU ALREADY ATE YOUR COOKIE. THE PLATE REFILLS NEXT VISIT. DONUT IS GUARDING IT. DON'T."],
+      restedLine: "YOU ALREADY SLEPT HERE. THE TVS ARE STILL TALKING. THEY NEVER STOP TALKING.",
+      restLine: "THREE TVS MURMUR ALL NIGHT. YOU DREAM OF STALE COOKIES AND SMALL GREEN FACES. YOU WAKE UP HEALED. MOSTLY.",
+      tvLines: [
+        "TONIGHT ON THE RECAP: A CRAWLER IN BOXERS RIDES A COPPER CHOPPER AWAY FROM A BURNING GOBLIN WORKSHOP. NO, WE DO NOT KNOW EITHER.",
+        "DESPERADO CLUB MEMBERS: YOUR PASS TATTOO IS PERMANENT AND VISIBLE THROUGH ALL ARMOR. YOU CANNOT USE IT YET. WEAR IT WITH SHAME.",
+        "EXPERIENCE COOKIES: STALE, CHEWY, AND FULL OF XP. ONE PLATE PER VISIT. LICKING THE PLATE GIVES NOTHING. WE CHECKED. THE CAT CHECKED.",
+        "GOBLIN NEWS: THE LLAMA WAR IS GOING VERY WELL FOR SOMEONE. NOT THE GOBLINS. NOT THE LLAMAS. PROBABLY THE METH.",
+        "REMINDER: FLOOR ONE COLLAPSES IN A FEW DAYS. ANYONE STILL HERE BECOMES PART OF THE SCENERY. FIND THE STAIRS!"
+      ] },
+
+    guild2: { name: 'THE TRAINING GUILD', theme: 'safe_guild', music: 'safe', npc: 'mordecai',
+      services: ['mordecai', 'boxes', 'rest'],
+      greet: [
+        mord1("THE JUICER, HUH? NOT BAD, KID. THERE'S A GAUNTLET IN THAT BOSS BOX. PUT IT ON. YOUR KNUCKLES LOOK LIKE GROUND BEEF."),
+        carl("ENCHANTED WAR GAUNTLET OF THE EXALTED GRULL. FINALLY. SOMETHING BETWEEN MY HANDS AND THE MONSTERS."),
+        smug("AND I LEARNED PUDDLE JUMPER. I CAN TELEPORT, CARL. I CAN LEAVE ANY CONVERSATION I WANT. INCLUDING THIS ONE."),
+        mord1("LISTEN. ON THE THIRD FLOOR THE GODS START WATCHING. SOME OF THEM SPONSOR. SOME OF THEM SMITE. DON'T PRAY TO ANYTHING YOU HAVEN'T MET."),
+        mord1("AND THAT BOROUGH BOSS UP THE ROAD IS A DIFFERENT ANIMAL. BIGGER. MEANER. IT SITS ON THE STAIRS. YOU'LL WANT FRIENDS FOR THAT ONE.")
+      ],
+      give: [{ kind: 'gear', id: 'war_gauntlet' }],
+      restedLine: "YOU ALREADY NAPPED. MORDECAI SAYS THE MATS NEED TO AIR OUT. THEY WILL NEVER AIR OUT.",
+      restLine: "MORDECAI LETS YOU NAP ON THE TRAINING MATS. THEY SMELL LIKE A HUNDRED DEAD CRAWLERS. YOU SLEEP GREAT ANYWAY. YOU ARE HEALED." },
+
+    shelter: { name: 'BIG SHOT CHICKEN', theme: 'safe_shelter', music: 'safe', npc: 'qwist',
+      services: ['shop', 'boxes', 'rest', 'tv', 'mailbox'],
+      shopName: 'QWIST',
+      shopLines: ["PRINCESS IS BACK! YOU BUY? I BRUSH HER AFTER.", "CHICKEN, NO. CHICKEN IS FOR EATING. POTIONS ARE FOR SELLING.",
+        "JUGS? YOU MAKE JUGS? QWIST DOES NOT WANT TO KNOW.", "BISCUIT FOR DOGGIES. DOGGIES LIKE. DOGGIES STOP BITING.", "GOLD FIRST. THEN THING. SORRY."],
+      greet: [
+        qwist("WELCOME TO BIG SHOT CHICKEN. SAFE. CLEAN. MOSTLY CLEAN. PRINCESS, YOU WANT CUSTARD? I HAVE CUSTARD."),
+        ai("ACHIEVEMENT! THIS LITTLE PIGGY WENT TO MARKET! DAYS OF BARE FEET ON DUNGEON STONE, AND SOMEBODY UP HERE APPRECIATES IT. A LOT."),
+        ai("HERE IS A PLATINUM SHOE BOX! IT DOES NOT CONTAIN SHOES. IT CONTAINS A PEDICURE KIT. DADDY LIKES THOSE TOES SHINY."),
+        carlMad("I HATE THIS PLACE. I HATE THIS ENTIRE PLACE SO MUCH."),
+        donut("CARL, MAIL! I'VE BEEN INVITED INTO THE DUNGEON BOOK OF THE FLOOR CLUB! THE FIRST BOOK IS A SPELL: SECOND CHANCE. I CAN RAISE THE DEAD!")
+      ],
+      extras: [{ sprite: 'elle_idle', portrait: 'p_elle', name: 'ELLE', x: 262, flip: true, lines: [
+        "HELP AN OLD LADY OVER THE THRESHOLD, HANDSOME? THE WHEELS STICK IN THE GROUT, AND I LIKE THE VIEW FROM BACK HERE.",
+        "NINETY-NINE YEARS OLD AND I FINALLY GET TO WATCH A MAN IN HIS SKIVVIES FIGHT A GIANT WORM. WORTH THE WAIT, SUGAR.",
+        "BRANDON SAYS MEADOW LARK GOES DOWN THE MOMENT WE CAN. I SAY WE GO DOWN IN STYLE. YOU, ME, A DANCE FLOOR. THINK ABOUT IT."] }],
+      restName: 'FRIED CHICKEN', restVerb: 'EAT', npcName: 'QWIST',
+      restedLine: "QWIST SAYS ONE CHICKEN PER CRAWLER PER NIGHT. QWIST IS VERY FIRM ABOUT THIS. QWIST HAS A SPATULA.",
+      restLine: "QWIST BRUSHES DONUT FOR AN HOUR WHILE YOU SLEEP IN A RED BOOTH. IT SMELLS LIKE FRIED CHICKEN AND SAFETY. YOU ARE HEALED.",
+      tvLines: [
+        "FOLLOWERS ARE LIVE! TOP NEW CRAWLER THIS HOUR: A PERSIAN CAT IN A CROWN. HER HANDLER IS THE GUY IN BOXERS. NOBODY ASKED ABOUT HIM.",
+        "RECAP: LAST FLOOR'S BOROUGH BOSS FIGHT, IN SLOW MOTION, WITH MUSIC. THE BALL OF SWINE NEVER LOOKED SO GOOD. OR SO FLAT.",
+        "ANNOUNCEMENT: THE HALLWAY BATHROOMS ARE GONE. DO NOT URINATE IN THE HALLS. WE MEAN IT. WE HAVE SOMETHING SET UP FOR IT.",
+        "MEADOW LARK UPDATE: THIRTY-SOME SENIORS AND THEIR STAFF ARE STILL ALIVE ON FLOOR TWO. THE BETTING POOLS HATE THEM. WE LOVE THEM.",
+        "PATRONAGE NEWS: THREE GODS AND A FURNITURE COMPANY ARE INTERESTED IN SPONSORING A CRAWLER. NOT YOU. KEEP TRYING."
+      ],
+      mailLines: [
+        "DUNGEON BOOK OF THE FLOOR CLUB: CONGRATULATIONS, PRINCESS DONUT! THIS FLOOR'S BOOK: SECOND CHANCE. RAISE A DEAD MOB AS YOUR MINION!",
+        "FAN MAIL FOR DONUT: 'YOU ARE SO FLUFFY AND MURDERY.' FAN MAIL FOR CARL: NONE. ONE LETTER ASKING IF THE CAT IS SINGLE.",
+        "A SPONSOR GIFT FOR CARL! IT IS A COUPON FOR PANTS. THE PANTS STORE IS ON A DIFFERENT PLANET. THE COUPON HAS EXPIRED.",
+        "BORANT LEGAL: REMINDER THAT URINATING IN A HALLWAY VOIDS ALL WARRANTIES ON YOUR BODY. WE ARE NOT KIDDING. PLEASE STOP ASKING."
+      ] },
+
+    bugaboo: { name: "MORDECAI'S FLOOR TWO GUILD", theme: 'safe_bugaboo', music: 'safe', npc: 'mordecai',
+      services: ['mordecai', 'boxes', 'rest', 'tv'],
+      greet: [
+        mord2("DON'T. SAY. A WORD. YES, I'M A BUGABOO NOW. SEVEN FEET OF HAIR, NO NECK, OWL EYES. THE PRODUCERS THINK IT'S HILARIOUS."),
+        smug("MORDECAI, YOU LOOK LIKE A PUPPET THAT HAS DONE SEVERAL CRIMES."),
+        mord2("THAT'S... FAIR. SIT DOWN BEFORE YOU FALL DOWN, KID. THAT OCTOPUS NEARLY TURNED YOU INTO SOUP."),
+        carl("THE BOSS BOX HAD BOXERS IN IT. ENCHANTED BIGBOI BOXERS. THEY STRETCH IF I GROW. WHY WOULD I EVER GROW, MORDECAI?"),
+        mord2("DON'T WORRY ABOUT IT. AND FOR THE PRINCESS: A FUR BRUSH. ENCHANTED. BRUSH HER EVERY DAY AND HER SPELLS HIT HARDER. DON'T ASK HOW.")
+      ],
+      give: [{ kind: 'gear', id: 'fur_brush' }],
+      extras: [{ sprite: 'zev_idle', portrait: 'p_zev', name: 'ZEV', x: 262, flip: true, lines: [
+        "HI! ZEV, BORANT COMMUNICATIONS, OUTREACH ASSOCIATE. I'M YOUR PR AGENT NOW! SURPRISE! SMILE, I'M ALWAYS RECORDING.",
+        "THE FOCUS GROUPS LOVE THE CAT. THE FOCUS GROUPS ARE... DIVIDED ON THE BOXERS. ONE GROUP STARTED A FIRE. A SMALL ONE.",
+        "WE DO A FINS-ON APPROACH AT BORANT. THAT MEANS I VISIT IN PERSON. WITH SNACKS. AND PAPERWORK. MOSTLY PAPERWORK.",
+        "DONUT, SWEETIE, NEXT INTERVIEW: CHIN UP, TAIL HIGH, AND DO NOT TELL ANYONE YOU KNOW HOW TO OPEN DOORS."] }],
+      restedLine: "YOU ALREADY SLEPT. MORDECAI IS PRETENDING TO READ. HIS EYES ARE TOO BIG TO PRETEND WITH.",
+      restLine: "MORDECAI DOZES IN A CHAIR FAR TOO SMALL FOR HIM, OWL EYES HALF OPEN ALL NIGHT. YOU SLEEP ANYWAY. YOU ARE HEALED.",
+      tvLines: [
+        "BREAKING: A BOSS LEFT HER ROOM ON FLOOR TWO! THE KRAKAREN CLONE IS NOW CALAMARI. THE DISTILLERY IS CLOSED. THE BAR IS NOT.",
+        "VIEWER POLL: SHOULD THE GUY IN BOXERS PUT ON PANTS? NO: 88 PERCENT. YES: 2 PERCENT. WHAT IS PANTS: 10 PERCENT.",
+        "CRAWLER COUNT: FEWER THAN BEFORE. MUCH FEWER. WE STOPPED SHOWING THE NUMBER BECAUSE IT WAS BAD FOR MORALE. OURS.",
+        "SPONSOR MESSAGE: REV-UP SMOOTHIES! NOW WITH SLIGHTLY FEWER CORPSES! ASK YOUR LOCAL LAMINAK ABOUT AN EXCITING OPPORTUNITY!",
+        "THE RECAP AFTER THE RECAP: PRINCESS DONUT'S FOLLOWERS DOUBLED OVERNIGHT. CARL'S DOUBLED TOO. FROM SIX TO TWELVE."
+      ] }
+  };
+
+  /* ================= CUTSCENES ================= */
+  D.cutscenes = {
+    /* the Transformation (played by game.js before name entry) */
+    prologue: { music: 'intro', panels: [
+      { bg: 'surface', fx: 'snow', actors: [A('carl_idle', 112)], lines: [
+        nar("THE COLDEST NIGHT OF THE YEAR. A MAN STANDS ON AN EMPTY STREET IN HIS BOXERS, HIS LEATHER JACKET AND ABSOLUTELY NOTHING ON HIS FEET."),
+        carl("IT'S TEN DEGREES OUT. I'M NOT WEARING PANTS. AND SOMEWHERE OUT HERE IS A CAT THAT DOESN'T EVEN LIKE ME.")] },
+      { bg: 'surface', fx: 'snow', actors: [A('carl_idle', 100), A('donut_idle', 214, true)], lines: [
+        nar("THE CAT IS PRINCESS DONUT, A CHAMPION PERSIAN SHOW CAT. SHE BELONGS TO BEA, CARL'S EX. BEA RAN OFF SOMEWHERE WARM. THE CAT STAYED."),
+        carl("DONUT. PRINCESS. YOUR HIGHNESS. GET OFF THAT CAR BEFORE YOUR LITTLE FEET FREEZE TO THE HOOD."),
+        donut("MREOW.")] },
+      { bg: 'surface', fx: 'collapse', actors: [A('carl_idle', 120), A('donut_idle', 144)], lines: [
+        nar("THEN THE GROUND HUMS. EVERY BUILDING ON THE BLOCK SLIDES DOWN INTO THE EARTH. NO EXPLOSIONS. NO SCREAMS. JUST... GONE."),
+        nar("EVERYONE INDOORS WENT WITH THEM. CARL WAS OUTSIDE, CHASING A CAT IN HIS UNDERWEAR. THAT IS THE ONLY REASON HE IS ALIVE."),
+        carl("...WHAT THE FUCK.")] },
+      { bg: 'surface', fx: 'static', actors: [A('carl_idle', 120), A('donut_idle', 144), A('ai_screen', 230)], lines: [
+        ai("HELLO, EARTH! THIS IS YOUR SYSTEM AI! YOUR PLANET HAS BEEN SELECTED TO HOST THE GALAXY'S FAVORITE PROGRAM: DUNGEON CRAWLER WORLD!"),
+        ai("YOUR BUILDINGS HAVE BEEN RECYCLED. BUT GOOD NEWS! UNDER YOUR FEET IS AN EIGHTEEN-FLOOR DUNGEON. BEAT IT AND YOU GET YOUR PLANET BACK. PROBABLY!"),
+        ai("STAIRWELLS ARE OPENING NOW. ANYONE STILL ON THE SURFACE WHEN THEY CLOSE WILL BE... LET'S NOT SPOIL IT. CHOP CHOP, SURVIVORS!")] },
+      { bg: 'surface', fx: 'snow', actors: [A('carl_idle', 130), A('donut_idle', 152)], lines: [
+        carl("OKAY. OKAY. STAIRS. THERE'S ALWAYS STAIRS. COME ON, DONUT. BEA WILL KILL ME IF I LOSE YOU AT THE END OF THE WORLD."),
+        donut("MRRRP."),
+        nar("THE CAT CLIMBS ONTO HIS SHOULDER LIKE SHE HAS ALWAYS OWNED IT. AHEAD, AN ORNATE WROUGHT-IRON STAIRWELL GLOWS THROUGH THE SNOW.")] },
+      { bg: 'stairwell', actors: [A('carl_idle', 140), A('donut_idle', 162)], lines: [
+        nar("DOWN. AND DOWN. AND DOWN. THE STAIRS END AT A PAIR OF ENORMOUS DOUBLE DOORS, ALREADY SCRATCHED BY A LOT OF NERVOUS HANDS."),
+        ai("WELCOME, CRAWLER! BEFORE YOU ENTER, PLEASE STATE YOUR NAME FOR THE RECORD. WE WILL BE IGNORING IT.")] }
+    ] },
+
+    f1_entrance: { music: 'intro', panels: [
+      { bg: 'stairwell', fx: 'flash', actors: CD, lines: [
+        ai("DING DING DING! CRAWLER, YOU HAVE ENTERED THE WORLD DUNGEON! AND WOULD YOU LOOK AT THAT. ACHIEVEMENTS. SO MANY ACHIEVEMENTS."),
+        ai("CRAZY CAT LADY! YOU BROUGHT A CAT INTO THE DUNGEON. SHE IS YOUR PET NOW. NO TAKEBACKS. HAVE A PET BOX!")] },
+      { bg: 'stairwell', actors: CD, lines: [
+        ai("WHY AREN'T YOU WEARING PANTS? SERIOUSLY. WE HAVE QUESTIONS. HERE IS A GOLD APPAREL BOX. IT IS NOT PANTS. IT IS NEVER PANTS."),
+        ai("UNARMED COMBAT! NO WEAPON. BOLD. EMPTY POCKETS! NO SUPPLIES. BOLDER. EARLY ADOPTER! ONE OF THE FIRST FIVE THOUSAND THROUGH THE DOORS!")] },
+      { bg: 'stairwell', actors: CD, lines: [
+        carl("DONUT? YOU OKAY? YOU'RE MAKING A FACE."),
+        donut("CARL. CARL! I CAN TALK! OH MY GOD, CARL, I CAN TALK! I HAVE SO MANY THINGS TO SAY ABOUT YOUR APARTMENT."),
+        carl("OF COURSE YOU CAN. SURE. WHY NOT.")] },
+      { bg: 'tunnels', actors: CD, lines: [
+        ai("YOUR BOXES OPEN IN A GUILD HALL. GUILD HALLS ONLY ADMIT CRAWLERS WHO HAVE KILLED A MOB. SO GO KILL SOMETHING! THE RATS ARE RIGHT THERE!"),
+        donut("MISS BEATRICE WOULD NEVER LET ME KILL A RAT. MISS BEATRICE ISN'T HERE THOUGH, IS SHE, CARL? WHERE IS SHE, CARL?"),
+        carl("SOMEWHERE WARM. COME ON. STAY BEHIND ME.")] }
+    ],
+      give: [{ kind: 'achieve', id: 'crazy_cat_lady' }, { kind: 'achieve', id: 'why_no_pants' }, { kind: 'achieve', id: 'unarmed_combat' },
+        { kind: 'achieve', id: 'early_adopter' }, { kind: 'achieve', id: 'empty_pockets' }] },
+
+    f1_mordecai: { music: 'safe', panels: [
+      { bg: 'safe_guild', fx: 'shake', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        nar("THE GUILD DOOR SLAMS. OUTSIDE, THE MURDER DOZER GRINDS TO A STOP AND JUST... IDLES. WAITING. THE GOBLINS ON TOP ARE SINGING."),
+        mord1("IN. SIT. TOUCH NOTHING. I'M MORDECAI. I RUN THIS TUTORIAL GUILD, AND YOU TWO ARE ALREADY THE WORST CRAWLERS I'VE HAD TODAY.")] },
+      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        smug("AND WHAT ARE YOU SUPPOSED TO BE? A RAT IN A VEST? GOODNESS. YOUR MOTHER MUST HAVE BEEN A VERY LONELY STORM DRAIN."),
+        mord1("...DID YOUR CAT JUST INSULT MY MOTHER?"),
+        carl("SHE DOES THAT. SHE INSULTED MINE AT THANKSGIVING. SORRY. IT'S BEEN A NIGHT.")] },
+      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        mord1("TUTORIAL. YOUR HUD IS ON NOW. HEALTH, LEVEL, INVENTORY. EVERYTHING YOU PICK UP GOES INTO A POCKET THAT ISN'T THERE. DON'T THINK ABOUT IT."),
+        mord1("THIS FLOOR ISN'T LIVE. NOBODY'S WATCHING YET. ENJOY IT. ONCE THEY ARE, EVERY STUPID THING YOU DO IS FOR THEM.")] },
+      { bg: 'safe_guild', fx: 'flash', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        mord1("THE CAT GETS A SPELL. MAGIC MISSILE. POINT, CAST, SOMETHING DIES. DON'T CAST IT INDOORS. DON'T CAST IT AT ME."),
+        donut("OH, CARL. CARL! I CAN SHOOT THINGS NOW. MISS BEATRICE NEVER ONCE LET ME SHOOT THINGS."),
+        ai("PRINCESS DONUT HAS LEARNED MAGIC MISSILE! YOUR PET IS NOW A RANGED WEAPON. PLEASE POINT HER RESPONSIBLY. OR DON'T. WE'RE NOT YOUR MOM.")] },
+      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        carl("SO. ABOUT THE STEAM TANK FULL OF GOBLINS PARKED OUTSIDE YOUR FRONT DOOR."),
+        mord1("IT'S NOT GOING ANYWHERE AND NEITHER ARE YOU. ARMOR'S ON THE FRONT. THE BOILER'S ON THE BACK. GO AROUND, KID. AND BRING BOMBS.")] }
+    ],
+      give: [{ kind: 'flag', id: 'missile' }, { kind: 'xp', amount: 10 }] },
+
+    f1_episode1: { music: 'tension', panels: [
+      { bg: 'tvroom', fx: 'static', actors: [], lines: [
+        nar("THE SAFE ROOM TV FLICKERS ON BY ITSELF. A JINGLE. A LOGO. DUNGEON CRAWLER WORLD: EARTH. EPISODE ONE."),
+        ai("PREVIOUSLY, ON EARTH: EVERYTHING WAS FINE! NOW, ON EARTH: BILLIONS DEAD IN THE FIRST HOUR! WHAT A PREMIERE, FOLKS!")] },
+      { bg: 'tvroom', actors: [], lines: [
+        ai("THIS WEEK'S HIGHLIGHTS: A MAN WHO PUNCHED A LLAMA TO DEATH, A LITTLE GIRL WITH TWO VERY LARGE DOGS WHO FRANKLY SCARES THE PRODUCERS..."),
+        ai("...AND A LOT OF VERY BRAVE CORPSES. HONORABLE MENTION: THE GUY WHO TRIED TO PET A ROT STICKER. WE MISS YOU, GARY."),
+        carl("WAS THAT ME? THE LLAMA GUY IS ME, RIGHT?"),
+        smug("THEY DIDN'T SHOW MY GOOD SIDE, CARL. I HAVE TWO GOOD SIDES. THEY SHOWED NEITHER.")] },
+      { bg: 'tvroom', fx: 'static', actors: [], lines: [
+        ai("AND NOW, PATCH NOTES! ONE: HALLWAY BATHROOM DOORS NO LONGER EXPLODE THE CRAWLER INSIDE. WE HEARD YOU. WE THOUGHT IT WAS FUNNY. IT WAS."),
+        ai("TWO: EVERY CRAWLER NOW RECEIVES ONE ROLL OF TOILET PAPER PER FLOOR. ONE. THIS IS THE MOST GENEROUS WE WILL EVER BE.")] },
+      { bg: 'hoard', actors: CD, lines: [
+        carl("THIRTEEN MILLION PEOPLE CAME DOWN THOSE STAIRS AND THEY'RE DOING BITS ABOUT TOILET PAPER."),
+        donut("FOCUS, CARL. WHEN THE CAMERAS GO LIVE I WILL NEED BETTER LIGHTING. AND A BOW. DO YOU HAVE A BOW?"),
+        carl("I HAVE BOXERS, DONUT. I HAVE BOXERS AND A JACKET. NEXT STOP IS GOBLIN TOWN. TRY NOT TO INSULT ANYONE'S MOTHER.")] }
+    ] },
+
+    f1_chopper: { music: 'goblin', panels: [
+      { bg: 'goblin', actors: [A('carl_idle', 104), A('donut_idle', 126), A('rory_idle', 214, true), A('lorelai_idle', 242, true)], lines: [
+        say('RORY', 'p_rory', "THE HAIRLESS APE AGAIN. AND THE CAT. WHAT DO YOU WANT, MEAT? THAT TATTOO GETS YOU IN THE DOOR. IT DOESN'T GET YOU LIKED."),
+        donut("LADIES. LADIES! WHAT GORGEOUS BONE JEWELRY. IS THAT A FEMUR? IT'S A FEMUR. YOU HAVE WONDERFUL TASTE IN FEMURS."),
+        say('LORELAI', 'p_lorelai', "RORY. RORY, SHE LIKES MY FEMUR.")] },
+      { bg: 'goblin', actors: [A('carl_idle', 104), A('donut_idle', 126), A('rory_idle', 214, true), A('lorelai_idle', 242, true)], lines: [
+        carl("I HEAR YOU'RE AT WAR WITH THE LLAMAS. I HEAR THE LLAMAS HAVE SOMETHING YOU WANT. FUNNY THING. SO DO I."),
+        nar("CARL HOLDS UP THE BAGGIE OF TRAILER-PARK-GRADE METH. EVERY GOBLIN IN THE ROOM STOPS BREATHING."),
+        say('RORY', 'p_rory', "...NAME YOUR PRICE.")] },
+      { bg: 'goblin', actors: [A('carl_idle', 104), A('donut_idle', 126), A('rory_idle', 214, true), A('lorelai_idle', 242, true)], lines: [
+        carl("A RIDE. SOMETHING WITH WHEELS. FAST. WITH A SIDECAR."),
+        smug("A SIDECAR FIT FOR A PRINCESS. WITH A CUSHION. A SKULL IS ACCEPTABLE, AS LONG AS IT'S A NICE SKULL. FROM A RESPECTABLE ORC.")] },
+      { bg: 'goblin', fx: 'shake', actors: [A('chopper', 160), A('lorelai_idle', 250, true)], lines: [
+        nar("SIX HOURS OF HAMMERING LATER, THE GOBLINS ROLL OUT A MONSTER: COPPER SCRAP, A STEAM ENGINE THAT THUMPS LIKE A HEART, AN ALLIGATOR-SKULL SEAT."),
+        ai("THE GOBLIN COPPER CHOPPER! A MOTOR VEHICLE! ON THE FIRST FLOOR! THE PRODUCERS ARE CHECKING THE RULES. THE RULES SAY... SURE. FINE. WHATEVER."),
+        say('LORELAI', 'p_lorelai', "WE'RE GOING TO GO FIGHT THE LLAMAS NOW. VERY HIGH. BYE, PRINCESS! BYE, HAIRLESS!")] },
+      { bg: 'goblin', actors: CD, lines: [
+        carl("DONUT. MOST OF THE TRIBE JUST LEFT FOR THE LLAMA WAR. THE WORKSHOP IS GUARDED BY ONE CHIEFTAIN AND A FEW BARDS. IT'S FULL OF COPPER. AND DYNAMITE."),
+        donut("CARL, ARE YOU SUGGESTING WE STEAL?"),
+        carl("I'M SUGGESTING WE TAKE EVERYTHING THAT ISN'T NAILED DOWN.")] }
+    ],
+      give: [{ kind: 'flag', id: 'chopper' }] },
+
+    f1_frank: { music: 'tension', panels: [
+      { bg: 'safe_cookie', actors: [A('carl_idle', 104), A('donut_idle', 126), A('frank_q_idle', 222, true)], lines: [
+        nar("THE COOKIE ROOM HAS A GUEST. AN OLD MAN WITH A WHITE BEARD, A FILTHY COAT AND EYES LIKE A ROAD MAP. HE SMILES A LITTLE TOO MUCH."),
+        say('FRANK Q', 'p_frank_q', "WELL, HOWDY. NAME'S FRANK. NICE CAT. NICE BIKE OUT FRONT, TOO. LOT OF THINGS GOING YOUR WAY, SON."),
+        carl("CARL. WE'RE JUST PASSING THROUGH.")] },
+      { bg: 'tvroom', fx: 'static', actors: [], lines: [
+        ai("RECAP NUMBER TWO! MEET HEKLA: A SIX-FOOT ICELANDIC WARRIOR BUILDING A WAR PARTY OF WOMEN WHO KILL THINGS. NOW RECRUITING!"),
+        donut("SHE HAS VERY GOOD HAIR, CARL. AGGRESSIVELY GOOD HAIR. I DON'T TRUST IT.")] },
+      { bg: 'tunnels', actors: [A('carl_idle', 104), A('donut_idle', 126), A('frank_q_idle', 214, true), A('maggie_my_idle', 244, true)], lines: [
+        nar("OUTSIDE, FRANK IS WAITING. SO IS A WILD-HAIRED WOMAN WITH A LOADED CROSSBOW. MAGGIE MY. SHE IS NOT SMILING AT ALL."),
+        say('MAGGIE MY', 'p_maggie_my', "THE BIKE. THE BOXES. THE CAT. LEAVE IT ALL ON THE FLOOR AND WALK AWAY."),
+        donut("LEAVE THE CAT? EXCUSE ME? DO YOU HAVE ANY IDEA WHO I AM?")] },
+      { bg: 'tunnels', actors: [A('carl_idle', 120), A('rat_walk', 150)], lines: [
+        nar("CARL DOESN'T ARGUE. HE KNEELS BY A DEAD RAT, SLIPS SOMETHING INTO ITS INVENTORY, AND CLIMBS ONTO THE CHOPPER."),
+        carl("ALL YOURS, FRANK. THAT RAT HAD SOME GOOD LOOT ON IT, BY THE WAY. CHECK IT OUT."),
+        nar("THEY ARE HALF A MILE DOWN THE HALL WHEN THE RAT GOES BOOM. GOBLIN DYNAMITE KEEPS BEAUTIFULLY IN A CORPSE. SOMEONE SCREAMS. LOUDLY. NOT FATALLY.")] },
+      { bg: 'tunnels', actors: [A('chopper', 160)], lines: [
+        donut("CARL! DID YOU JUST BOOBY-TRAP A RAT?"),
+        carl("THEY STARTED IT."),
+        ai("THE NPC INVENTORY SYSTEM IS WORKING AS INTENDED. WE ARE TAKING NOTES, CRAWLER. WE ARE TAKING SO MANY NOTES.")] }
+    ] },
+
+    f1_meadowlark: { music: 'safe', panels: [
+      { bg: 'tunnels', actors: [A('carl_idle', 96), A('donut_idle', 118), A('brandon_idle', 212, true), A('chris_idle', 240, true)], lines: [
+        nar("A HUNDRED MILES EAST, THE SPRAY PAINT LEADS TO A BARRICADE. TWO BIG MEN WITH SHOTGUNS STEP OUT. BROTHERS, BY THE LOOK OF THEM."),
+        say('BRANDON', 'p_brandon', "THAT'S CLOSE ENOUGH. NICE BIKE. YOU HUMAN UNDER THAT JACKET?"),
+        carl("MOSTLY. I'M CARL. THIS IS DONUT. SHE'S A PRINCESS. DON'T ARGUE WITH HER ABOUT IT, YOU'LL LOSE."),
+        say('CHRIS', 'p_chris', "BRANDON. IT'S A GUY IN HIS UNDERWEAR WITH A CAT. LET HIM IN.")] },
+      { bg: 'tunnels', actors: [A('carl_idle', 96), A('donut_idle', 118), A('imani_idle', 206, true), A('yolanda_idle', 236, true)], lines: [
+        say('IMANI', 'p_imani', "I'M IMANI. I WAS A NURSE AT THE MEADOW LARK ADULT CARE COMMUNITY. NOW I'M WHATEVER THIRTY-EIGHT OLD FOLKS IN A DUNGEON NEED ME TO BE."),
+        say('YOLANDA', 'p_yolanda', "YOLANDA. I DO THE SHOOTING THE BOYS DON'T. YOU LOOK HALF STARVED, BABY. SIT DOWN AND EAT SOMETHING.")] },
+      { bg: 'tunnels', actors: [A('carl_idle', 96), A('donut_idle', 118), A('agatha_idle', 250, true)], lines: [
+        nar("IN THE CORNER, A TINY OLD WOMAN WITH A SHOPPING CART HUMS TO HERSELF AND SPRAY-PAINTS A SILVER SMILEY FACE ON THE WALL."),
+        say('AGATHA', 'p_agatha', "AGATHA SEES YOU. AGATHA SEES THE CAT. THE CAT IS IMPORTANT. HEE HEE HEE."),
+        donut("CARL, THAT WOMAN IS EITHER A WITCH OR A GENIUS, AND I CANNOT TELL WHICH. I LIKE HER.")] },
+      { bg: 'tunnels', actors: [A('carl_idle', 96), A('donut_idle', 118), A('imani_idle', 206, true), A('brandon_idle', 236, true)], lines: [
+        say('IMANI', 'p_imani', "THERE'S A BOROUGH BOSS UP THE ROAD, SITTING ON A STAIRWELL. MY PEOPLE CAN'T WALK FAR. THEY CAN WALK THAT FAR."),
+        carl("THEN WE KILL IT. BUT I NEED TO GET STRONGER FIRST. THERE'S A TROGLODYTE NEIGHBORHOOD AND SOME KIND OF GYM BETWEEN HERE AND THERE."),
+        say('BRANDON', 'p_brandon', "WE'LL HOLD THE ROAD. YOU GO DO THE CRAZY STUFF. YOU SEEM GOOD AT THE CRAZY STUFF.")] }
+    ] },
+
+    f1_swine_plan: { music: 'tension', panels: [
+      { bg: 'swine', fx: 'shake', actors: [A('carl_idle', 104), A('donut_idle', 126), A('brandon_idle', 232, true)], lines: [
+        nar("THE BOSS CHAMBER IS A HUGE ROUND TRACK BEHIND SEALED PORTCULLISES. SOMETHING ENORMOUS ROLLS PAST THE BARS. IT SQUEALS. IT HAS A LOT OF FACES."),
+        ai("BOROUGH BOSS! THE BALL OF SWINE: A HUNDRED TUSKLING ARISTOCRATS FUSED BY A CURSE, ROLLING IN CIRCLES FOR CENTURIES. SO. ROYALTY.")] },
+      { bg: 'swine', actors: [A('carl_idle', 104), A('donut_idle', 126), A('chris_idle', 232, true)], lines: [
+        donut("CARL. THEY'RE PIGS. ROYAL PIGS. IN A BALL. I DON'T KNOW WHETHER TO BE OFFENDED OR FLATTERED."),
+        carl("IT CAN'T CLIMB. IT ROLLS. SO WE BUILD UP: LEDGES, LADDERS, A REDOUBT. WE STAND ON TOP AND UNLOAD EVERY TIME IT HITS A WALL."),
+        say('CHRIS', 'p_chris', "AND THE STAIRWELL?"),
+        carl("DEAD CENTER, BEHIND A RED FORCEFIELD. THE FIELD DROPS WHEN THE BALL DIES.")] },
+      { bg: 'tvroom', fx: 'static', actors: [], lines: [
+        ai("ON THIS WEEK'S RECAP: LE MOUVEMENT! A FRENCH CRAWLER FACTION THAT WANTS TO RUN THE DUNGEON LIKE A NATION. WITH A FLAG. AWW. SO CUTE."),
+        carl("LE WHAT?"),
+        donut("THEY HAVE A FLAG, CARL. WHY DON'T WE HAVE A FLAG? I WANT A FLAG WITH MY FACE ON IT. IN PROFILE.")] },
+      { bg: 'swine', actors: [A('carl_idle', 96), A('imani_idle', 168, true), A('yolanda_idle', 196, true), A('agatha_idle', 240, true)], lines: [
+        say('IMANI', 'p_imani', "EVERYONE KNOWS THEIR SPOT. BROTHERS LEFT, YOLANDA RIGHT, ME UP TOP. AGATHA... AGATHA, WHERE ARE YOU GOING?"),
+        say('AGATHA', 'p_agatha', "AGATHA BROUGHT A POTION. IT BUBBLES. HEE HEE HEE."),
+        carl("OKAY. EVERYBODY UP ON THE REDOUBT. LET'S GO MAKE BACON.")] }
+    ],
+      give: [{ kind: 'achieve', id: 'borough_boss' }] },
+
+    f1_odette: { music: 'odette', panels: [
+      { bg: 'stairwell', fx: 'flash', actors: CD, lines: [
+        nar("THE BALL OF SWINE IS DEAD. THE FORCEFIELD DROPS. MEADOW LARK CHEERS. CARL AND DONUT TAKE THE STAIRS DOWN, AND HALFWAY, THE WORLD BLINKS."),
+        ai("CONGRATULATIONS! YOU HAVE BEEN REQUESTED FOR AN INTERVIEW! TRANSPORTING NOW. PLEASE KEEP YOUR LIMBS INSIDE YOUR BODY.")] },
+      { bg: 'trailer', actors: [A('carl_idle', 104), A('donut_idle', 126), A('lexis_idle', 214, true)], lines: [
+        say('LEXIS', 'p_lexis', "HI. LEXIS. ASSOCIATE PRODUCER. YOU'RE ON IN FOUR MINUTES. DON'T TOUCH ANYTHING. DON'T STEAL ANYTHING. I SAW YOU LOOKING AT THE CHAIRS."),
+        carl("WE'RE ON TV? WHO WATCHES THIS?"),
+        say('LEXIS', 'p_lexis', "EVERYONE. DUNGEON CRAWLER AFTER HOURS IS THE BIGGEST PRIVATE SHOW IN THE GALAXY. THE HOST USED TO BE A CRAWLER. SHE SURVIVED. THINK ABOUT THAT.")] },
+      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 104), A('donut_idle', 128), A('odette_idle', 214, true)], lines: [
+        say('ODETTE', 'p_odette', "DARLINGS! WELCOME! THE BOY WITH NO PANTS AND HIS PRINCESS! THE AUDIENCE IS DYING TO MEET YOU. SOME OF THEM LITERALLY."),
+        smug("THANK YOU. THANK YOU. YES, I AM A CHAMPION. YES, THE CROWN IS REAL. NO, YOU MAY NOT TOUCH IT."),
+        nar("THE CROWD ROARS. DONUT HAS THEM EATING OUT OF HER PAWS IN NINETY SECONDS. CARL SITS ON THE COUCH AND TRIES TO LOOK LIKE FURNITURE.")] },
+      { bg: 'studio', actors: [A('carl_idle', 104), A('donut_idle', 128), A('odette_idle', 214, true)], lines: [
+        say('ODETTE', 'p_odette', "OFF THE AIR NOW. LISTEN. ON THE THIRD FLOOR YOU PICK A RACE AND A CLASS. DON'T RUSH IT. DON'T PICK WHAT THE MENU WANTS YOU TO PICK."),
+        say('ODETTE', 'p_odette', "AND THE LOOT? NOT AS RANDOM AS THEY SAY. THE AI HANDS OUT WHATEVER MAKES GOOD TELEVISION. REMEMBER THAT WHEN SOMETHING TOO GOOD FALLS IN YOUR LAP."),
+        carl("WHY ARE YOU HELPING US?"),
+        say('ODETTE', 'p_odette', "BECAUSE THE LONGER YOU LIVE, THE MORE MONEY I MAKE, SWEETIE. NEVER TRUST ANYONE UNTIL YOU KNOW WHAT THEY GET OUT OF IT.")] }
+    ] },
+
+    f2_welcome: { music: 'intro', panels: [
+      { bg: 'cinder', fx: 'static', actors: [A('carl_idle', 118), A('donut_idle', 140), A('ai_screen', 236)], lines: [
+        ai("WELCOME TO THE SECOND FLOOR, BITCHES! SIX DAYS UNTIL COLLAPSE, THE LEGAL MINIMUM. WE ARE NOTHING IF NOT LEGAL."),
+        ai("BIG NEWS: THE CAMERAS ARE LIVE! VIEWERS CAN FOLLOW AND FAVORITE YOU, SPONSORS CAN SEND GIFTS. MAKE THEM LOVE YOU. OR AT LEAST DON'T BORE THEM.")] },
+      { bg: 'cinder', actors: [A('carl_idle', 118), A('donut_idle', 140), A('ai_screen', 236)], lines: [
+        ai("ALSO! THE HALLWAY BATHROOMS ARE GONE. IF YOU PEE IN A HALLWAY, A LEVEL 93 RAGE ELEMENTAL SPAWNS. THIS IS NOT A JOKE. WE TAKE HYGIENE VERY SERIOUSLY."),
+        carl("LEVEL NINETY-THREE. WE'RE LEVEL... WHAT ARE WE?"),
+        smug("I'M A PRINCESS, CARL. THAT'S THE ONLY LEVEL THAT MATTERS.")] },
+      { bg: 'cinder', actors: [A('carl_idle', 118), A('donut_idle', 140)], lines: [
+        donut("CARL! CARL, I HAVE FOLLOWERS! LOOK, THE NUMBER IS GOING UP! I MUST LOOK MY ABSOLUTE BEST AT ALL TIMES. FIX YOUR JACKET."),
+        carl("IT'S THE ONLY THING I'M WEARING, DONUT. IT'S AS FIXED AS IT GETS."),
+        ai("PATRONAGE IS OPEN TOO! GODS AND CORPORATIONS MAY SPONSOR CRAWLERS THEY LIKE. TIP: BE LIKABLE. OR BE ON FIRE. FIRE TESTS VERY WELL.")] }
+    ] },
+
+    f2_jug: { music: 'goblin', panels: [
+      { bg: 'distillery', actors: CD, lines: [
+        nar("A CLURICHAUN STILL. A CRATE OF EMPTY CLAY JUGS. A BARREL OF GOBLIN OIL FROM THE WORKSHOP. CARL HAS BEEN STARING AT THEM FOR TEN MINUTES."),
+        donut("CARL, YOU HAVE YOUR THINKING FACE ON. I DON'T LIKE YOUR THINKING FACE. THE LAST TIME IT BLEW UP A NURSERY."),
+        carl("AND THE TIME BEFORE THAT, YOU BURNED DOWN A WORKSHOP. WE'RE EVEN.")] },
+      { bg: 'distillery', actors: CD, lines: [
+        carl("MOONSHINE. GOBLIN OIL. SHAKE IT UP. A LIT TORCH FOR A CORK. THROW IT, THE JUG BREAKS, EVERYTHING NEARBY HAS A VERY BAD DAY."),
+        nar("THE FIRST ONE TAKES OUT A WALL. THE SECOND TAKES OUT THREE CLURICHAUNS AND THE WALL BEHIND THE WALL.")] },
+      { bg: 'distillery', fx: 'flash', actors: [A('carl_idle', 118), A('donut_idle', 140), A('jug', 170)], lines: [
+        ai("ACHIEVEMENT! DUNGEONPRENEUR! YOU INVENTED A STACKABLE WEAPON! CARL'S JUG O'BOOM IS NOW IN THE OFFICIAL CATALOG. ROYALTIES ARE... BEING DISCUSSED."),
+        donut("CARL'S JUG O'BOOM? WHY DOES IT HAVE YOUR NAME ON IT? I WAS IN THE ROOM."),
+        carl("YOU CAN NAME THE NEXT ONE.")] },
+      { bg: 'distillery', fx: 'fire', actors: CD, lines: [
+        nar("FROM NOW ON, CARL'S BOMBS ARE JUG O'BOOMS: A BIGGER BLAST, PLUS A PUDDLE OF BLUE FIRE THAT LINGERS AND COOKS ANYTHING DUMB ENOUGH TO STAND IN IT."),
+        carl("AND I STILL HAVE THE TAINT, SO NOTHING HEALS ME FOR A WHILE. NEW RULE: NOBODY GETS HIT. ESPECIALLY ME.")] }
+    ],
+      give: [{ kind: 'flag', id: 'jugs' }, { kind: 'item', id: 'bomb', count: 4 }] },
+
+    f2_jack: { music: 'sad', panels: [
+      { bg: 'cinder', actors: [A('carl_idle', 96), A('donut_idle', 118), A('elle_idle', 196, true), A('brandon_idle', 240, true)], lines: [
+        nar("THE MEADOW LARK CARAVAN CREEPS TOWARD THE STAIRS: THIRTY-SOME RESIDENTS, TWO BROTHERS WITH SHOTGUNS, A NURSE, YOLANDA, AND A LOT OF WALKERS."),
+        say('ELLE', 'p_elle', "CARL, HONEY, WHEN WE GET OUT OF HERE, YOU AND I ARE GOING DANCING. I'LL LEAD. YOU'LL CRY. IT'LL BE BEAUTIFUL."),
+        carl("IT'S A DATE, ELLE."),
+        smug("HE IS SPOKEN FOR, MADAM. HE BELONGS TO ME.")] },
+      { bg: 'cinder', actors: [A('jack_idle', 200), A('yolanda_idle', 120)], lines: [
+        nar("AND THEN JACK, WHO HAS NEVER ONCE IN HIS LONG LIFE DONE WHAT HE WAS TOLD, SHUFFLES OVER TO THE HALLWAY WALL, UNZIPS, AND PISSES ON IT."),
+        say('YOLANDA', 'p_yolanda', "JACK! JACK, NO!"),
+        ai("OH, JACK. OH, BUDDY.")] },
+      { bg: 'cinder', fx: 'shake', actors: [A('yolanda_idle', 120), A('rage_elemental_idle', 236, true)], lines: [
+        nar("THE AIR TEARS OPEN. A STORM OF BLACK AND PURPLE SMOKE. A BADGER SKULL WITH GOAT HORNS AND FIRE FOR EYES. SIX OBSIDIAN CLAWS."),
+        ai("SOMEBODY PEED IN THE HALLWAY! YOU WERE ALL WARNED! THIS IS SO EXCITING! PLEASE WELCOME A LEVEL 93 RAGE ELEMENTAL!")] },
+      { bg: 'cinder', fx: 'flash', actors: [A('rage_elemental_idle', 236, true)], lines: [
+        nar("YOLANDA STEPS BETWEEN THE CLAWS AND A RESIDENT NAMED RANDALL. SHE BUYS HIM FOUR SECONDS. IT COSTS HER EVERYTHING."),
+        say('IMANI', 'p_imani', "INSIDE! EVERYONE INTO THE SAFE ROOM! GO, GO, GO!"),
+        nar("THEN THE ELEMENTAL CASTS REVERSE GRAVITY, AND THE WHOLE HALLWAY FALLS UP. CARL GRABS ELLE'S CHAIR BY ONE WHEEL AND DOES NOT LET GO.")] },
+      { bg: 'safe_shelter', actors: [A('carl_idle', 110), A('donut_idle', 132), A('imani_idle', 220, true)], lines: [
+        donut("CARL. YOLANDA SAVED ME THE GOOD CUSHION LAST NIGHT. SHE WAS NICE TO ME, CARL. PEOPLE AREN'T ALWAYS NICE TO ME."),
+        carl("I KNOW, DONUT. I KNOW."),
+        carl("IT CAN'T COME IN HERE. BUT MOBS CAN'T GO ON THE STAIRS EITHER. SO WE LEAD IT TO THE STAIRWELL. WITH THE CHOPPER, AND EVERY JUG I'VE GOT.")] },
+      { bg: 'safe_shelter', actors: [A('carl_idle', 110), A('donut_idle', 132), A('imani_idle', 220, true)], lines: [
+        say('IMANI', 'p_imani', "THAT'S INSANE, CARL."),
+        carlMad("IT'S A LEVEL NINETY-THREE MONSTER AND I'M IN MY UNDERWEAR. EVERYTHING ABOUT THIS IS INSANE. DONUT, GET IN THE SIDECAR."),
+        smug("FINALLY. A PLAN WITH A VEHICLE.")] }
+    ] },
+
+    f2_deathwatch: { music: 'tension', panels: [
+      { bg: 'deathwatch', fx: 'flash', actors: [A('carl_idle', 100), A('donut_idle', 122), A('maestro_idle', 220, true)], lines: [
+        nar("A FLASH, AND CARL AND DONUT ARE SITTING AT A ROUND TABLE UNDER A RING OF HOT LIGHTS. THE SHOW IS CALLED DEATH WATCH EXTREME DUNGEON MAYHEM."),
+        say('MAESTRO', 'p_maestro', "GLURP, GLURP! WELCOME, MEAT! I AM THE MAESTRO. ON THIS SHOW WE WATCH CRAWLERS DIE LIVE AND WE BET ON THE ORDER. TRY TO STAY A GUEST.")] },
+      { bg: 'deathwatch', actors: [A('carl_idle', 100), A('donut_idle', 122), A('maestro_idle', 220, true)], lines: [
+        nar("ON THE BIG SCREEN, TWO CRAWLERS, LI JUN AND ZHANG, ARE CORNERED BY BRINDLED VESPAS. THE MAESTRO LAUGHS. THE CROWD STARTS TAKING BETS."),
+        say('MAESTRO', 'p_maestro', "TEN TO ONE THE SKINNY ONE GOES FIRST! ANY TAKERS?"),
+        carlMad("GET THEM OUT. I'M THE GUY EVERYONE TUNED IN FOR. KILL THEM ON MY EPISODE AND I DON'T SAY ANOTHER WORD ALL NIGHT.")] },
+      { bg: 'deathwatch', actors: [A('carl_idle', 100), A('donut_idle', 122), A('maestro_idle', 220, true)], lines: [
+        nar("IT'S A BLUFF. IT WORKS. THE PRODUCERS CAN'T AFFORD A SILENT CARL. A DOOR OPENS ON THE SCREEN, AND LI JUN AND ZHANG RUN THROUGH IT."),
+        donut("CARL, THAT WAS EITHER VERY BRAVE OR VERY STUPID."),
+        carl("YES.")] },
+      { bg: 'deathwatch', fx: 'static', actors: [A('maestro_idle', 220, true)], lines: [
+        nar("LATER IN THE SHOW: FRANK Q AND MAGGIE MY, ALIVE, SCORCHED, AND STILL VERY ANGRY ABOUT A CERTAIN RAT. MAGGIE STARES INTO THE CAMERA LIKE SHE SEES CARL."),
+        say('MAESTRO', 'p_maestro', "AND THE NEWS! LE MOUVEMENT IS WIPED OUT TO THE LAST CRAWLER! THE COUNT IS UNDER ONE MILLION! WHAT A WEEK! GLURP!")] },
+      { bg: 'safe_bugaboo', actors: [A('carl_idle', 104), A('donut_idle', 126), A('zev_idle', 222, true)], lines: [
+        say('ZEV', 'p_zev', "CARL! DONUT! DARLINGS! NEWS FROM UPSTAIRS. THERE'S A SNICK CALLED PORK BOY GOING AROUND, AND EVERYONE WANTS YOUR OPINION ON IT."),
+        donut("WHO IS PORK BOY, AND WHY DOES HE HAVE MY RATINGS?"),
+        say('ZEV', 'p_zev', "SAY NOTHING. SMILE. THE KOBOLD BOSS IS NEXT AND THE AUDIENCE WANTS SOMETHING CUTE. I'M SURE IT'LL BE FINE.")] }
+    ] },
+
+    f2_menagerie: { music: 'safe', panels: [
+      { bg: 'reward_room', fx: 'confetti', actors: CD, lines: [
+        ai("ACHIEVEMENT! I'LL TAKE THE CERAMIC DALMATIAN, PAT! YOU FOUND A REWARD ROOM! PICK ONE PRIZE. ONE. WE CAN SEE YOU EYEING THE OTHERS."),
+        ai("ACHIEVEMENT! MENAGERIE! IT'S A PET REWARD ROOM! TEN CAGES. TEN BABIES. TEN NEW WAYS TO GET BITTEN.")] },
+      { bg: 'reward_room', actors: CD, lines: [
+        donut("CARL. CARL! LOOK AT THEM ALL! A KITTEN WITH WINGS! A LITTLE BEAR! A... WHAT IS THAT? IT'S HIDEOUS. I LOVE IT."),
+        nar("IN THE LAST CAGE: A BABY DINOSAUR. ALL LEGS AND TEETH, SCREAMING AT EVERYTHING. THE LITTLE PLATE SAYS MONGOLIENSIS.")] },
+      { bg: 'reward_room', actors: [A('carl_idle', 104), A('donut_idle', 126), A('mongo_idle', 190)], lines: [
+        smug("THAT ONE. HE'S ANGRY AND BEAUTIFUL, LIKE ME. HIS NAME IS MONGO. MONGO IS NOW A MEMBER OF THE ROYAL COURT."),
+        carl("DONUT, HE'S TRYING TO EAT THE BARS."),
+        donut("HE'S TEETHING, CARL.")] },
+      { bg: 'reward_room', fx: 'shake', actors: [A('carl_idle', 104), A('donut_idle', 150), A('mongo_idle', 168, true)], lines: [
+        nar("THE CAGE OPENS. MONGO SNIFFS DONUT. MONGO CHOMPS DONUT'S NOSE."),
+        donut("OW! OW! CARL! HE BIT MY NOSE! MY BEAUTIFUL NOSE!"),
+        carl("YOU PICKED HIM."),
+        ai("MONGO HAS JOINED THE ROYAL COURT OF PRINCESS DONUT! HE IS NOT BONDED YET. HE WILL BITE YOU. HE WILL BITE EVERYTHING. HE IS PERFECT.")] }
+    ],
+      give: [{ kind: 'achieve', id: 'ceramic_dalmatian' }, { kind: 'achieve', id: 'menagerie' }] },
+
+    f2_descent: { music: 'odette', panels: [
+      { bg: 'stairwell', actors: [A('carl_idle', 110), A('donut_idle', 136), A('mongo_idle', 160)], lines: [
+        nar("A FEW HOURS AND MANY CHOMPED NOSES LATER, MONGO FALLS ASLEEP ON DONUT'S BACK. THE BOND CLICKS INTO PLACE. SHE IS INSUFFERABLE ABOUT IT."),
+        smug("HE CHOSE ME, CARL. OBVIOUSLY. EVERYONE CHOOSES ME EVENTUALLY.")] },
+      { bg: 'stairwell', actors: [A('carl_idle', 110), A('donut_idle', 136), A('mongo_idle', 160), A('agatha_idle', 244, true)], lines: [
+        nar("AT THE TOP OF THE STAIRWELL, A SHOPPING CART SQUEAKS. AGATHA. SHE SHOULDN'T BE HERE. NOBODY SAW HER COME."),
+        say('AGATHA', 'p_agatha', "AGATHA GOES DOWN TOO. AGATHA ALWAYS GOES DOWN. THE CART KNOWS THE WAY. HEE HEE HEE."),
+        carl("...GOOD TO SEE YOU, AGATHA.")] },
+      { bg: 'stairwell', fx: 'flash', actors: [A('carl_idle', 110), A('donut_idle', 136), A('mongo_idle', 160)], lines: [
+        ai("THE ROYAL COURT OF PRINCESS DONUT DESCENDS TO THE THIRD FLOOR! NEXT TIME: RACES! CLASSES! SO MUCH MORE DYING! STAY TUNED, CRAWLERS!"),
+        carl("COME ON. ALL OF YOU. STAIRS.")] },
+      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 96), A('donut_idle', 120), A('mongo_idle', 144), A('odette_idle', 222, true)], lines: [
+        say('ODETTE', 'p_odette', "DARLINGS, YOU'RE BACK! AND YOU BROUGHT A DINOSAUR! THE AUDIENCE WANTS TO KNOW: WHAT DO YOU THINK OF PORK BOY?"),
+        carl("NO COMMENT."),
+        donut("MONGO HAS A COMMENT. MONGO, NO. SPIT HER OUT.")] },
+      { bg: 'studio', actors: [A('carl_idle', 96), A('donut_idle', 120), A('mongo_idle', 144), A('odette_idle', 222, true)], lines: [
+        say('ODETTE', 'p_odette', "OFF THE AIR, ONE PIECE OF ADVICE, PRINCESS. ON THE THIRD FLOOR YOU PICK A CLASS. PICK ONE THAT KEEPS HIM ALIVE. HE KEEPS YOU ALIVE. THAT'S THE TRICK."),
+        donut("I KNOW, ODETTE. I'VE ALWAYS KNOWN."),
+        carl("GODDAMNIT, DONUT. NOW I'M GETTING SOMETHING IN MY EYE.")] }
+    ] }
+  };
+})();
+
+/* ==========================================================================
+   GEAR, ITEMS, SKINS, COMPANIONS, LOOT, SHOP, ACHIEVEMENTS
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.DCW.data;
+
+  /* ---------------- gear (permanent for the crawl; perks summed by game.js) ----------------
+     Who gets it when: guild (trollskin, cloak, cudgel, crown), achievement podophilia (toe ring),
+     tally (talisman), cookie (crupper), guild2 (gauntlet), krakaren kill (boxers),
+     achievement little_piggy (pedicure kit), bugaboo (fur brush). */
+  D.gear = {
+    trollskin_shirt: { name: 'ENCHANTED TROLLSKIN SHIRT OF PUMMELING', who: 'carl', icon: 'shirt', skin: 'carl_trollskin',
+      perk: { regen: 1 }, perkText: 'REGENERATION: +1 HP EVERY 8 SECONDS',
+      desc: "MOTTLED GRAY-GREEN UNDERSHIRT MADE FROM AN ACTUAL TROLL. IT SLOWLY HEALS YOU. IT ALSO SMELLS LIKE A TROLL. TRADE-OFFS!" },
+    nightgaunt_cloak: { name: 'ENCHANTED NIGHTGAUNT CLOAK OF STOUTNESS', who: 'carl', icon: 'cloak',
+      perk: { hp: 4 }, perkText: '+4 MAX HP',
+      desc: "A HOODED CLOAK OF DEMON-WING SKIN STRETCHED OVER FINGERBONES. VERY STURDY. IF A NIGHTGAUNT SEES YOU IN IT, RUN." },
+    toad_cudgel: { name: 'TOAD CUDGEL', who: 'carl', icon: 'club',
+      perk: { stun: 0.03 }, perkText: '+3% STUN CHANCE',
+      desc: "A CLUB SHAPED LIKE A TOAD. UNENCHANTED. YOU TRIED IT ONCE AND WENT BACK TO PUNCHING. YOU CARRY IT FOR LUCK. IT IS NOT LUCKY." },
+    toe_ring: { name: 'ENCHANTED TOE RING OF THE SPLATTER SKUNK', who: 'carl', icon: 'ring',
+      perk: { dmg: 1, kick: 1 }, perkText: '+1 PUNCH, +1 KICK AND STOMP',
+      desc: "A RING. FOR YOUR TOE. IT BOOSTS STRENGTH AND YOUR POWERFUL STRIKE. IT ALSO MAKES YOU LOOK LIKE A GUY WHO OWNS A HACKY SACK." },
+    war_gauntlet: { name: 'ENCHANTED WAR GAUNTLET OF THE EXALTED GRULL', who: 'carl', icon: 'gauntlet',
+      perk: { dmg: 2, stun: 0.04 }, perkText: '+2 PUNCH, +4% STUN CHANCE',
+      desc: "AN IRON GAUNTLET BUILT FOR PUNCHING THINGS THAT HAVE IT COMING. FINALLY, SOMETHING BETWEEN YOUR KNUCKLES AND THE TEETH." },
+    bigboi_boxers: { name: 'ENCHANTED BIGBOI BOXERS', who: 'carl', icon: 'boxers', skin: 'carl_bigboi',
+      perk: { hp: 3, crit: 0.03 }, perkText: '+3 MAX HP, +3% CRIT',
+      desc: "SHAPESHIFTER-PROOF UNDERWEAR. IF YOU EVER TURN INTO SOMETHING HUGE, THESE STRETCH WITH YOU. EVERYTHING ELSE RIPS. NOT THESE." },
+    pedicure_kit: { name: 'ENCHANTED PEDICURE KIT OF THE SYLPH', who: 'carl', icon: 'foot',
+      perk: { speed: 0.05, stomp: 0.5 }, perkText: '+5% SPEED, STOMPS HIT 50% HARDER',
+      desc: "TWELVE SHINY FOOT TOOLS IN A ZIP FOLDER. NIMBLE, TIDY TOOTSIES. SOMEBODY IN THE AUDIENCE IS VERY INVESTED IN YOUR TOES." },
+    crown_sepsis: { name: 'ENCHANTED CROWN OF THE SEPSIS WHORE', who: 'donut', icon: 'crown',
+      perk: { missile: 1, special: 10 }, perkText: '+1 MISSILE DAMAGE, +10% SPECIAL METER',
+      desc: "A CAT-SIZED TIARA WITH A STORMY PURPLE STONE. IT ALSO PUTS HER IN LINE FOR A THRONE SHE SHOULD NOT WANT. READ THE LABEL NEXT TIME." },
+    talisman_butterfly: { name: 'TALISMAN OF THE SLATE BUTTERFLY', who: 'donut', icon: 'talisman',
+      perk: { missileCd: 0.15, special: 5 }, perkText: 'FASTER MISSILES, +5% SPECIAL METER',
+      desc: "A LITTLE STONE BUTTERFLY ON A CHAIN, A GIFT FROM TALLY. DONUT SAYS IT BRINGS OUT HER EYES. HER MISSILES DO SEEM PERKIER." },
+    fae_crupper: { name: 'FAE SCALE CRUPPER', who: 'donut', icon: 'skirt',
+      perk: { def: 1 }, perkText: '-1 DAMAGE TAKEN',
+      desc: "ARMOR FOR A HORSE'S BACKSIDE, CAT-SIZED, MADE OF SHIMMERING FAE SCALES. DONUT CALLS IT A SKIRT. NOBODY CORRECTS HER." },
+    fur_brush: { name: 'FUR BRUSH', who: 'donut', icon: 'brush',
+      perk: { missile: 1, special: 10 }, perkText: '+1 MISSILE DAMAGE, +10% SPECIAL METER',
+      desc: "AN ENCHANTED GROOMING BRUSH FROM MORDECAI. A BRUSHED PRINCESS IS A HAPPY PRINCESS. A HAPPY PRINCESS HITS HARDER." }
+  };
+
+  /* ---------------- inventory items ---------------- */
+  D.items = {
+    potion: { name: 'HEALTH POTION', icon: 'potion', desc: "HEALS HALF YOUR MAX HP. TASTES LIKE CHERRY COUGH SYRUP AND REGRET. USELESS WHILE TAINTED." },
+    bomb: { name: 'GOBLIN DYNAMITE', icon: 'dynamite', jugName: "CARL'S JUG O'BOOM", jugIcon: 'jug',
+      desc: "A STICK OF GOBLIN DYNAMITE. LIGHT, THROW, DUCK. THE GOBLINS MADE IT, SO THE FUSE LENGTH IS MORE OF A SUGGESTION.",
+      jugDesc: "MOONSHINE, GOBLIN OIL AND A TORCH FOR A CORK. BIGGER BLAST, AND IT LEAVES BLUE FIRE BEHIND. DUNGEONPRENEUR CERTIFIED." },
+    biscuit: { name: 'PET BISCUIT', icon: 'biscuit', desc: "A CRUMBLY BROWN PELLET. FEED ONE TO A CAGED DOG THROUGH THE BARS AND IT CALMS RIGHT DOWN. DO NOT FEED THEM TO THE CAT." }
+  };
+
+  /* ---------------- loot ----------------
+     Engine tiers; the book's box names ride along as give/achievement boxName.
+     No skins in loot (skins come from gear), no companions. Gold is floor-1
+     base (game.js scales by floor). */
   D.boxTiers = {
-    bronze:    { name: 'BRONZE ADVENTURER BOX', color: '#c87838', rank: 1 },
+    bronze:    { name: 'BRONZE ADVENTURER BOX', color: '#c84c0c', rank: 1 },
     silver:    { name: 'SILVER ADVENTURER BOX', color: '#bcbcbc', rank: 2 },
     gold:      { name: 'GOLD ADVENTURER BOX', color: '#f8b800', rank: 3 },
     platinum:  { name: 'PLATINUM ADVENTURER BOX', color: '#a4e4fc', rank: 4 },
     legendary: { name: 'LEGENDARY BOX', color: '#f878f8', rank: 5 },
-    fan:       { name: 'FAN BOX', color: '#f85898', rank: 2 },
-    boss:      { name: 'BOSS BOX', color: '#e40058', rank: 4 }
+    fan:       { name: 'BRONZE FAN BOX', color: '#f85898', rank: 2 },
+    boss:      { name: 'BRONZE BOSS BOX', color: '#d82800', rank: 4 }
   };
-
-  /* gold amounts are floor-1 values; game.js scales them by floor.
-     Cosmetics: bronze ~3% per roll, silver ~6%, gold ~12%, platinum ~20%,
-     fan ~10%, boss ~10%; legendary always has one (guaranteed). Companions are
-     never in loot (Update 2): they are rescued from cages on floors 2-7. */
   D.lootTables = {
     bronze: { rolls: 2, entries: [
-      [{ kind: 'gold', min: 8, max: 20 }, 40],
-      [{ kind: 'item', id: 'potion', count: 1 }, 17],
-      [{ kind: 'item', id: 'bomb', count: 2 }, 16],
-      [{ kind: 'xp', amount: 12 }, 12],
-      [{ kind: 'stat', any: true, amount: 1 }, 4],
-      [{ kind: 'hp', amount: 1 }, 3],
-      [{ kind: 'skin', any: true }, 2]
+      [{ kind: 'gold', min: 6, max: 16 }, 38],
+      [{ kind: 'item', id: 'potion', count: 1 }, 18],
+      [{ kind: 'item', id: 'bomb', count: 2 }, 18],
+      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
+      [{ kind: 'xp', amount: 10 }, 12],
+      [{ kind: 'stat', any: true, amount: 1 }, 5],
+      [{ kind: 'hp', amount: 1 }, 3]
     ] },
     silver: { rolls: 3, entries: [
-      [{ kind: 'gold', min: 20, max: 45 }, 34],
-      [{ kind: 'item', id: 'potion', count: 1 }, 16],
-      [{ kind: 'item', id: 'bomb', count: 3 }, 14],
-      [{ kind: 'xp', amount: 30 }, 10],
-      [{ kind: 'stat', any: true, amount: 1 }, 10],
-      [{ kind: 'hp', amount: 2 }, 6],
-      [{ kind: 'skin', any: true }, 5]
+      [{ kind: 'gold', min: 15, max: 35 }, 32],
+      [{ kind: 'item', id: 'potion', count: 1 }, 18],
+      [{ kind: 'item', id: 'bomb', count: 3 }, 15],
+      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
+      [{ kind: 'xp', amount: 25 }, 11],
+      [{ kind: 'stat', any: true, amount: 1 }, 11],
+      [{ kind: 'hp', amount: 2 }, 7]
     ] },
     gold: { rolls: 3, entries: [
-      [{ kind: 'gold', min: 45, max: 90 }, 30],
-      [{ kind: 'item', id: 'potion', count: 2 }, 15],
-      [{ kind: 'item', id: 'bomb', count: 4 }, 12],
-      [{ kind: 'xp', amount: 70 }, 10],
-      [{ kind: 'stat', any: true, amount: 1 }, 15],
-      [{ kind: 'hp', amount: 2 }, 10],
-      [{ kind: 'skin', any: true }, 9]
+      [{ kind: 'gold', min: 35, max: 70 }, 28],
+      [{ kind: 'item', id: 'potion', count: 2 }, 16],
+      [{ kind: 'item', id: 'bomb', count: 4 }, 13],
+      [{ kind: 'item', id: 'biscuit', count: 2 }, 5],
+      [{ kind: 'xp', amount: 55 }, 11],
+      [{ kind: 'stat', any: true, amount: 1 }, 16],
+      [{ kind: 'hp', amount: 2 }, 11]
     ] },
     platinum: { rolls: 4, entries: [
-      [{ kind: 'gold', min: 90, max: 180 }, 27],
-      [{ kind: 'item', id: 'potion', count: 2 }, 14],
-      [{ kind: 'item', id: 'bomb', count: 5 }, 10],
-      [{ kind: 'xp', amount: 140 }, 10],
-      [{ kind: 'stat', any: true, amount: 2 }, 16],
-      [{ kind: 'hp', amount: 3 }, 11],
-      [{ kind: 'skin', any: true }, 12]
+      [{ kind: 'gold', min: 70, max: 140 }, 26],
+      [{ kind: 'item', id: 'potion', count: 2 }, 15],
+      [{ kind: 'item', id: 'bomb', count: 5 }, 11],
+      [{ kind: 'xp', amount: 110 }, 11],
+      [{ kind: 'stat', any: true, amount: 2 }, 22],
+      [{ kind: 'hp', amount: 3 }, 15]
     ] },
-    legendary: { rolls: 3, guaranteed: [{ kind: 'skin', any: true }], entries: [
-      [{ kind: 'skin', any: true }, 22],
-      [{ kind: 'gold', min: 150, max: 300 }, 26],
-      [{ kind: 'stat', any: true, amount: 2 }, 20],
-      [{ kind: 'hp', amount: 4 }, 14],
-      [{ kind: 'item', id: 'potion', count: 3 }, 12],
-      [{ kind: 'xp', amount: 250 }, 6]
+    legendary: { rolls: 3, guaranteed: [{ kind: 'stat', any: true, amount: 2 }], entries: [
+      [{ kind: 'gold', min: 120, max: 240 }, 26],
+      [{ kind: 'stat', any: true, amount: 2 }, 26],
+      [{ kind: 'hp', amount: 4 }, 20],
+      [{ kind: 'item', id: 'potion', count: 3 }, 16],
+      [{ kind: 'xp', amount: 200 }, 12]
     ] },
     fan: { rolls: 2, entries: [
-      [{ kind: 'gold', min: 15, max: 40 }, 32],
-      [{ kind: 'item', id: 'potion', count: 1 }, 18],
-      [{ kind: 'item', id: 'bomb', count: 3 }, 16],
-      [{ kind: 'xp', amount: 25 }, 12],
-      [{ kind: 'stat', any: true, amount: 1 }, 9],
-      [{ kind: 'hp', amount: 1 }, 6],
-      [{ kind: 'skin', any: true }, 7]
+      [{ kind: 'gold', min: 12, max: 30 }, 32],
+      [{ kind: 'item', id: 'potion', count: 1 }, 20],
+      [{ kind: 'item', id: 'bomb', count: 3 }, 18],
+      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
+      [{ kind: 'xp', amount: 20 }, 12],
+      [{ kind: 'stat', any: true, amount: 1 }, 8],
+      [{ kind: 'hp', amount: 1 }, 4]
     ] },
     boss: { rolls: 3, guaranteed: [{ kind: 'item', id: 'potion', count: 1 }], entries: [
-      [{ kind: 'gold', min: 60, max: 120 }, 26],
+      [{ kind: 'gold', min: 40, max: 90 }, 26],
       [{ kind: 'item', id: 'potion', count: 2 }, 12],
-      [{ kind: 'item', id: 'bomb', count: 4 }, 12],
-      [{ kind: 'stat', any: true, amount: 2 }, 16],
-      [{ kind: 'hp', amount: 2 }, 14],
-      [{ kind: 'xp', amount: 100 }, 11],
-      [{ kind: 'skin', any: true }, 9]
+      [{ kind: 'item', id: 'bomb', count: 4 }, 14],
+      [{ kind: 'stat', any: true, amount: 2 }, 18],
+      [{ kind: 'hp', amount: 2 }, 16],
+      [{ kind: 'xp', amount: 70 }, 14]
     ] }
   };
 
-  /* prices are floor-1 values; game.js scales by (1 + (floor-1)*0.35) */
+  /* prices are floor-1 values; game.js scales by (1 + (floor-1)*0.35).
+     Shops: Tally (floor 1) and Qwist (floor 2). */
   D.shop = [
-    { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. TASTES LIKE CHERRY AND REGRET.', price: 30, give: { kind: 'item', id: 'potion', count: 1 } },
-    { id: 'bomb', name: 'HOB-LOBBER', desc: 'ONE BOMB. ARCS NICELY. RESPECTS NO ONE.', price: 15, give: { kind: 'item', id: 'bomb', count: 1 } },
-    { id: 'bomb_bundle', name: 'HOB-LOBBER SIX PACK', desc: 'SIX BOMBS FOR THE PRICE OF FIVE. HOLIDAY SPECIAL.', price: 75, give: { kind: 'item', id: 'bomb', count: 6 } },
-    { id: 'tonic_str', name: 'STRENGTH TONIC', desc: '+1 STR. MORE PUNCH IN YOUR PUNCHES. AND KICKS. AND BOMBS.', price: 120, give: { kind: 'stat', stat: 'str', amount: 1 } },
-    { id: 'tonic_con', name: 'CONSTITUTION TONIC', desc: '+1 CON. +2 MAX HP. YOUR LIVER WILL FILE A COMPLAINT.', price: 120, give: { kind: 'stat', stat: 'con', amount: 1 } },
-    { id: 'tonic_dex', name: 'DEXTERITY TONIC', desc: '+1 DEX. MORE CRITS, FASTER FEET. STILL NO SHOES.', price: 120, give: { kind: 'stat', stat: 'dex', amount: 1 } },
-    { id: 'tonic_int', name: 'INTELLIGENCE TONIC', desc: '+1 INT. YOUR COMPANION HITS HARDER. YOU STILL DO NOT.', price: 120, give: { kind: 'stat', stat: 'int', amount: 1 } },
-    { id: 'heart', name: 'HEART CONTAINER', desc: '+2 MAX HP, FOREVER (THIS RUN). DO NOT ASK WHOSE HEART.', price: 150, give: { kind: 'hp', amount: 2 } },
-    { id: 'revival', name: 'REVIVAL CONTRACT', desc: '+1 REVIVAL. THE FINE PRINT SAYS THE SHOW OWNS YOUR SECOND LIFE.', price: 200, give: { kind: 'revival', count: 1 } },
-    { id: 'mystery', name: 'MYSTERY BOX', desc: 'A BRONZE BOX. NO REFUNDS. NO PEEKING. NO SHAKING. OK, A LITTLE SHAKING.', price: 45, give: { kind: 'box', tier: 'bronze' } }
+    { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. DOES NOTHING WHILE YOU HAVE THE TAINT. NOTHING DOES.', price: 30, give: { kind: 'item', id: 'potion', count: 1 } },
+    { id: 'bomb', name: 'GOBLIN DYNAMITE', desc: "ONE STICK. ARCS NICELY. RESPECTS NOBODY. TURNS INTO A JUG O'BOOM ONCE CARL INVENTS THOSE.", price: 15, give: { kind: 'item', id: 'bomb', count: 1 } },
+    { id: 'bomb_bundle', name: 'DYNAMITE SIX PACK', desc: 'SIX BOOMS FOR THE PRICE OF FIVE. A GOBLIN HOLIDAY SPECIAL. DO NOT STORE NEAR THE CAT.', price: 75, give: { kind: 'item', id: 'bomb', count: 6 } },
+    { id: 'biscuit', name: 'PET BISCUIT', desc: 'FEEDS ONE CAGED DOG. TURNS A SNARL INTO A NAP. KEEP A FEW IN YOUR BOXERS FOR LATER.', price: 20, give: { kind: 'item', id: 'biscuit', count: 1 } },
+    { id: 'pate', name: 'SALMON PATE', desc: "THE PRINCESS'S FAVORITE. NOT FOR YOU. +8 XP FOR KEEPING HER HAPPY. SHE TAKES THE PLATE TOO.", price: 10, give: { kind: 'xp', amount: 8 } },
+    { id: 'tonic_str', name: 'POTION OF STRENGTH', desc: '+1 STR. MORE PUNCH IN THE PUNCHES AND THE KICKS AND THE BOMBS. TASTES LIKE A GYM SOCK.', price: 120, give: { kind: 'stat', stat: 'str', amount: 1 } },
+    { id: 'tonic_con', name: 'POTION OF CONSTITUTION', desc: '+1 CON. +2 MAX HP. YOUR LIVER WILL FILE A FORMAL COMPLAINT.', price: 120, give: { kind: 'stat', stat: 'con', amount: 1 } },
+    { id: 'tonic_dex', name: 'POTION OF DEXTERITY', desc: '+1 DEX. MORE CRITS, FASTER FEET. STILL NO SHOES THOUGH.', price: 120, give: { kind: 'stat', stat: 'dex', amount: 1 } },
+    { id: 'tonic_int', name: 'POTION OF INTELLIGENCE', desc: "+1 INT. THE PRINCESS'S MISSILES HIT HARDER. YOURS DO NOT. YOU DON'T HAVE MISSILES.", price: 120, give: { kind: 'stat', stat: 'int', amount: 1 } },
+    { id: 'heart', name: 'ELIXIR OF VIGOR', desc: '+2 MAX HP FOR THE REST OF THE CRAWL. DO NOT ASK WHAT THE CHUNKS ARE.', price: 150, give: { kind: 'hp', amount: 2 } },
+    { id: 'revival', name: 'REVIVAL WAIVER', desc: '+1 REVIVAL. THE FINE PRINT SAYS BORANT OWNS YOUR SECOND LIFE. AND THE FOOTAGE.', price: 200, give: { kind: 'revival', count: 1 } },
+    { id: 'mystery', name: 'MYSTERY BOX', desc: 'A BRONZE ADVENTURER BOX. NO REFUNDS. NO PEEKING. A LITTLE SHAKING IS FINE.', price: 45, give: { kind: 'box', tier: 'bronze' } }
   ];
 
+  /* ---------------- skins (unlocked by gear; switch in the GEAR screen) ---------------- */
   D.skins = {
-    carl_boxers: { name: 'THE CLASSIC', desc: 'BOXERS, A LEATHER JACKET, AND BARE FEET IN THE SNOW. ICONIC. TRAGIC. MOSTLY TRAGIC.',
-      perk: null, how: 'WHAT YOU WERE WEARING WHEN THE WORLD ENDED.' },
-    carl_jacket: { name: 'JACKET AND JEANS', desc: 'YOU FOUND PANTS. THE AUDIENCE IS DEVASTATED. YOUR KNEES ARE GRATEFUL.',
-      perk: { def: 1 }, how: 'DEFEAT THE HOARDER ON FLOOR 1, OR LOOT BOXES.' },
-    carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, DARK SHADES, EARPIECE THAT CONNECTS TO NOTHING. VERY PROFESSIONAL.',
-      perk: { hp: 4 }, how: 'DEFEAT THE BRIDE ON FLOOR 7.' },
-    carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICKING FREEDOM. THE CAMERAS ARE KEEPING A RESPECTFUL DISTANCE.',
-      perk: { dmg: 1 }, how: 'DEFEAT THE MOTHMAN ON FLOOR 8.' },
-    carl_hazmat: { name: 'HAZMAT SUIT', desc: 'BRIGHT YELLOW. FULLY SEALED. YOU CAN STILL SMELL THE SEWER SOMEHOW.',
-      perk: { def: 1, hp: 2 }, how: 'DEFEAT THE TIDEMOTHER ON FLOOR 5.' },
-    carl_pajamas: { name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SPRINGY SLIPPERS LET YOU JUMP TWICE. SCIENCE.',
-      perk: { doubleJump: true }, how: 'RANDOM DROP FROM LOOT BOXES, OR PET DONUT 25 TIMES.' },
-    carl_clown: { name: 'HONK HONK', desc: 'FACE PAINT, RED NOSE, GIANT SHOES. THE VIEWERS LOVE IT. YOUR DIGNITY DOES NOT.',
-      perk: { views: 0.25 }, how: 'DEFEAT THE RINGMASTER ON FLOOR 3.' },
-    carl_toga: { name: 'THE SENATOR', desc: 'A BEDSHEET TOGA AND A LAUREL WREATH. ROME WAS NOT BUILT IN A DAY. NEITHER WAS THIS LOOK.',
-      perk: { speed: 0.1 }, how: 'RANDOM DROP FROM LOOT BOXES, OR LAND A 25 HIT COMBO.' },
-    carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD BOXERS, GOLD JACKET, GOLD TOENAILS. YOU WON. NOW EVERYONE HAS TO LOOK AT IT.',
-      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'FINISH A PARADE OF HORRIBLES ON FLOOR 11.' }
+    carl_boxers: { name: 'THE CLASSIC', perk: null,
+      desc: 'A LEATHER JACKET, BOXER SHORTS AND BARE FEET. WHAT YOU WERE WEARING WHEN THE WORLD ENDED. THE VIEWERS WILL NEVER LET IT GO.',
+      how: 'WHAT YOU WERE WEARING WHEN THE BUILDINGS SANK.' },
+    carl_trollskin: { name: 'TROLLSKIN SHIRT', perk: null,
+      desc: 'THE SAME LOOK, PLUS A MOTTLED TROLLSKIN SHIRT UNDER THE JACKET. ALMOST DRESSED. THE AUDIENCE IS CONCERNED.',
+      how: 'EQUIP THE ENCHANTED TROLLSKIN SHIRT OF PUMMELING. MORDECAI HAS YOUR FIRST BOXES.' },
+    carl_bigboi: { name: 'BIGBOI', perk: null,
+      desc: 'TROLLSKIN SHIRT, LEATHER JACKET, AND THE ENCHANTED BIGBOI BOXERS. PEAK DUNGEON FASHION. NOT A PANT IN SIGHT.',
+      how: 'BEAT THE KRAKAREN CLONE ON THE SECOND FLOOR. THE BOSS BOX HAS UNDERWEAR IN IT.' }
   };
 
-  /* Update 2: every companion except Donut is FOUND and RESCUED, one per floor
-     (floors 2-7), per crawl. `how` hints where; rescueLines are said on release. */
+  /* ---------------- companions ---------------- */
   D.companions = {
-    donut: { name: 'PRINCESS DONUT', desc: 'A PERSIAN SHOW CAT AND ROYALTY, ACCORDING TO HER. CASTS MAGIC MISSILE AT ANYTHING THAT LOOKS AT HER.',
-      ability: 'missile', cooldown: 1.6, power: 2, sprite: 'donut',
+    donut: { name: 'PRINCESS DONUT', ability: 'missile', cooldown: 1.6, power: 2, sprite: 'donut',
+      desc: 'A CHAMPION PERSIAN SHOW CAT, ROYALTY ACCORDING TO HER, AND THE DUNGEON AGREES. CASTS MAGIC MISSILE ONCE SHE LEARNS IT.',
       special: { name: 'MAGIC MISSILE BARRAGE', desc: 'A STORM OF HOMING MISSILES HITS EVERY ENEMY ON SCREEN.', time: 0 },
       how: 'SHE WAS ALWAYS HERE. SHE WOULD LIKE THAT NOTED.' },
-    squeaks: { name: 'SIR SQUEAKS', desc: 'A TUTORIAL RAT WHO ESCAPED FLOOR ONE AND GOT NABBED BY GOBLINS. FETCHES PICKUPS AND SOMETIMES DIGS UP A BOMB.',
-      ability: 'fetch', cooldown: 3, power: 1, sprite: 'squeaks', bombChance: 0.15,
-      special: { name: 'RAT KING RANSOM', desc: 'SIR SQUEAKS CALLS IN A FAVOR. SNACKS, COINS AND BOMBS RAIN FROM ABOVE.', time: 0 },
-      how: 'CAUGHT BY GOBLINS ON FLOOR 2. THEY NEED A TARGET.',
-      rescueLines: ["SQUEAK! SQUEAK SQUEAK! (TRANSLATION: THE GOBLINS WERE USING ME FOR DARTS. I AM YOURS FOREVER NOW.)"] },
-    mongo: { name: 'MONGO', desc: 'A BABY VELOCIRAPTOR WHO THINKS HE IS A GOOD DOG. HE IS A GOOD DOG. WITH 80 TEETH.',
-      ability: 'bite', cooldown: 1.2, power: 3, sprite: 'mongo',
+    mongo: { name: 'MONGO', ability: 'bite', cooldown: 1.2, power: 3, sprite: 'mongo',
+      desc: 'A BABY MONGOLIENSIS FROM A PET REWARD ROOM. ALL LEGS, TEETH AND SCREAMING. HE BITES MOBS. HE ALSO BITES DONUT. LOVINGLY.',
       special: { name: 'DINO STAMPEDE', desc: 'MONGO CHARGES ACROSS THE SCREEN, BITING EVERYTHING IN HIS PATH.', time: 2.5 },
-      how: 'AN EGG ON FLOOR 3. SOMEBODY IS GIVING IT AWAY AS A PRIZE.',
-      rescueLines: ["*CRACK* ...MREEP? *SNIFF* *SNIFF* MREEEEP!", "(MONGO HAS DECIDED CARL IS HIS MOTHER. THIS IS NOT UP FOR DEBATE.)"] },
-    samantha: { name: 'SAMANTHA', desc: 'A CURSED PORCELAIN DOLL HEAD WITH CURLY BLONDE HAIR AND BIG RED LIPS. A DEMIGODDESS, SHE SAYS. LOUDLY. OFTEN.',
-      ability: 'lunge', cooldown: 2.2, power: 4, sprite: 'samantha',
-      special: { name: 'DIVINE SHRIEK', desc: 'SAMANTHA SCREAMS AT A PITCH ONLY GODS CAN HIT. EVERYTHING ON SCREEN TAKES DAMAGE AND IS STUNNED.', time: 2 },
-      how: 'HIDDEN SOMEWHERE ON FLOOR 4. LISTEN FOR CURSING.',
-      rescueLines: ["FINALLY! A HERO! OR A SWEATY MAN IN UNDERWEAR. CLOSE ENOUGH. KNEEL, MORTAL. THEN CARRY ME.",
-        "I AM A DEMIGODDESS, NOT A HEAD. I JUST HAPPEN TO BE A HEAD RIGHT NOW. POINT ME AT SOMETHING. I BITE."] },
-    katia: { name: 'KATIA', desc: 'A SHAPESHIFTER WHO TURNS PART OF HERSELF INTO A SHIELD. CALM, KIND, AND MADE OF CONCERNING PUTTY.',
-      ability: 'shield', cooldown: 6, power: 1, sprite: 'katia',
-      special: { name: 'FORTRESS FORM', desc: 'KATIA WRAPS YOU IN ARMOR. YOU TAKE NO DAMAGE FOR A FEW SECONDS.', time: 4 },
-      how: 'HELD PAST THE REEF ON FLOOR 5. BRING A CHART.',
-      rescueLines: ["OH THANK GOODNESS. THEY KEPT ASKING ME TO TURN INTO A FISH. I AM NOT A FISH. I CAN BE A WALL, THOUGH.",
-        "STAY BEHIND ME, CARL. WELL, BEHIND THE PART OF ME THAT IS CURRENTLY A SHIELD."] },
-    zev: { name: 'ZEV', desc: 'YOUR PR HANDLER. A FISH LADY WITH A CLIPBOARD. PULLS IN GOLD AND MAKES SURE THE CAMERAS CATCH YOUR GOOD SIDE.',
-      ability: 'magnet', cooldown: 0.5, power: 1, sprite: 'zev', bonus: { views: 0.3 },
-      special: { name: 'PRESS JUNKET', desc: 'ALL ENEMIES FREEZE FOR A PHOTO OP. VIEWS POUR IN.', time: 3 },
-      how: 'STUCK DOWN A WELL ON FLOOR 6. MAKE A WISH.',
-      rescueLines: ["CARL! DARLING! I HAVE BEEN IN A WELL FOR THREE DAYS. DO YOU KNOW WHAT THAT DOES TO ENGAGEMENT?",
-        "SMILE, YOU ARE TRENDING. NO, YOUR OTHER SIDE. THE ONE WITH LESS SEWER ON IT."] },
-    signet: { name: 'SIGNET', desc: 'A WILD-HAIRED HALF-ELF SUMMONER IN A LEAFY CLOAK. HER CARVED STAFF CALLS FAE SPIRITS THAT ZAP ANYTHING RUDE.',
-      ability: 'summon', cooldown: 5, power: 2, sprite: 'signet',
-      special: { name: 'SPIRIT STAMPEDE', desc: 'A HERD OF GLOWING FAE SPIRITS THUNDERS ACROSS THE SCREEN AND TRAMPLES EVERY ENEMY IN THE WAY.', time: 2 },
-      how: 'LOST IN THE GREEN HEART OF FLOOR 7. BRING A KEY.',
-      rescueLines: ["THE HEDGES LISTEN TO ME AND THE SPIRITS LISTEN TO ME. THE BRIDE DID NOT. LET US GO TEACH HER MANNERS.",
-        "MY SPIRITS LIKE YOU. THEY THINK YOUR FEET ARE A KIND OF MUSHROOM. TAKE THE COMPLIMENT."] }
+      how: 'WON IN A PET REWARD ROOM AFTER THE KOBOLD BOSS ON THE SECOND FLOOR.',
+      rescueLines: ["MREEP! MREEEEP! (MONGO HAS DECIDED DONUT IS HIS MOTHER. DONUT HAS DECIDED THIS IS CORRECT.)"] }
   };
 
-  /* achievements: event matches DCW.game.track names; count = counter threshold */
+  /* ---------------- achievements ----------------
+     event = a DCW.game.track name (DESIGN list). box: engine tier, or null
+     for none (the book gives nothing); boxName = the book's box name. */
   D.achievements = {
-    first_blood:  { name: 'FIRST BLOOD', desc: 'YOU KILLED SOMETHING! IT WAS PROBABLY A RAT. WE ARE STILL PROUD. KIND OF.', event: 'kill', count: 1, box: 'bronze' },
-    kill_100:     { name: 'PEST CONTROL', desc: '100 KILLS. THE DUNGEON HAS STARTED TO TALK ABOUT YOU. NOT NICELY.', event: 'kill', count: 100, box: 'silver' },
-    kill_500:     { name: 'BODY COUNT', desc: '500 KILLS. THE VIEWERS HAVE STARTED A DRINKING GAME. PLEASE SLOW DOWN.', event: 'kill', count: 500, box: 'gold' },
-    kill_1000:    { name: 'ONE MAN APOCALYPSE', desc: '1000 KILLS. IN BOXERS. HISTORIANS WILL BE VERY CONFUSED.', event: 'kill', count: 1000, box: 'platinum' },
-    rat_25:       { name: 'RATCATCHER', desc: 'YOU KILLED 25 RATS. SIR SQUEAKS WOULD LIKE A WORD. A SQUEAKY WORD.', event: 'kill:rat', count: 25, box: 'bronze' },
-    stomp_10:     { name: 'HEADS UP', desc: 'STOMPED 10 HEADS. YOUR FEET ARE DISGUSTING. THE CROWD LOVES IT.', event: 'stomp', count: 10, box: 'bronze' },
-    stomp_100:    { name: 'GOOMBA TRAUMA', desc: '100 STOMPS. SOMEWHERE A PLUMBER NODS SOLEMNLY.', event: 'stomp', count: 100, box: 'gold' },
-    kick_50:      { name: 'FOOT SOLDIER', desc: '50 KICKS WITH BARE FEET. WE ARE LEGALLY REQUIRED TO RECOMMEND A TETANUS SHOT.', event: 'kick', count: 50, box: 'bronze' },
-    bomb_kill_25: { name: 'DEMOLITIONS EXPERT', desc: '25 BOMB KILLS. THE INSURANCE PEOPLE HAVE STOPPED RETURNING OUR CALLS.', event: 'bomb_kill', count: 25, box: 'silver' },
-    multi_bomb:   { name: 'THREE FOR ONE', desc: 'THREE KILLS WITH ONE BOMB. EFFICIENT! HORRIFYING! RERUN-WORTHY!', event: 'multi_bomb', count: 1, box: 'silver' },
-    potion_10:    { name: 'HYDRATION STATION', desc: 'YOU DRANK 10 POTIONS. THEY ARE NOT SPORTS DRINKS, CRAWLER.', event: 'potion', count: 10, box: 'bronze' },
-    crate_25:     { name: 'BOX HATER', desc: '25 CRATES SMASHED. WHAT DID CARDBOARD EVER DO TO YOU? DO NOT ANSWER THAT.', event: 'crate', count: 25, box: 'bronze' },
-    coin_500:     { name: 'LOOSE CHANGE', desc: 'PICKED UP 500 COINS OFF A DUNGEON FLOOR. YOUR MOTHER WOULD BE SO GROSSED OUT.', event: 'coin', count: 500, box: 'silver' },
-    fall_5:       { name: 'GRAVITY CHECK', desc: 'FELL IN 5 PITS. THE PITS ARE THE DARK PART. NOT THE FLOOR PART.', event: 'fall', count: 5, box: 'bronze' },
-    fall_25:      { name: 'PIT ENTHUSIAST', desc: '25 FALLS. AT THIS POINT THE PITS SEND YOU HOLIDAY CARDS.', event: 'fall', count: 25, box: 'silver' },
-    death_1:      { name: 'PARTICIPATION TROPHY', desc: 'YOU DIED! CONGRATULATIONS ON EXPERIENCING THE MOST POPULAR FEATURE.', event: 'death', count: 1, box: 'bronze' },
-    death_10:     { name: 'FREQUENT FLATLINER', desc: 'TEN DEATHS. THE RESPAWN TEAM HAS NAMED A SANDWICH AFTER YOU.', event: 'death', count: 10, box: 'silver' },
-    revive_1:     { name: 'NOT TODAY', desc: 'USED A REVIVAL. DEATH SAID HI. YOU SAID NO. RUDE, BUT VALID.', event: 'revive', count: 1, box: 'bronze' },
-    box_10:       { name: 'UNBOXING CHANNEL', desc: 'OPENED 10 LOOT BOXES. SMASH THAT LIKE BUTTON. THERE IS NO BUTTON.', event: 'box_open', count: 10, box: 'silver' },
-    box_50:       { name: 'GAMBLING PROBLEM', desc: '50 BOXES OPENED. THE NETWORK SALUTES YOUR TOTAL LACK OF IMPULSE CONTROL.', event: 'box_open', count: 50, box: 'gold' },
-    combo_10:     { name: 'COMBO STARTER', desc: 'TEN HITS IN A ROW! YOU ARE BASICALLY A FIGHTING GAME CHARACTER NOW.', event: 'combo10', count: 1, box: 'bronze' },
-    combo_25:     { name: 'COMBO BREAKER BREAKER', desc: '25 HIT COMBO. THE ANNOUNCER BOOTH NEEDED A MINUTE. THE TOGA IS YOURS.', event: 'combo25', count: 1, box: 'gold', unlock: { skin: 'carl_toga' } },
-    no_damage:    { name: 'UNTOUCHABLE', desc: 'CLEARED A STAGE WITHOUT GETTING HIT. WHO ARE YOU AND WHAT DID YOU DO WITH CARL?', event: 'no_damage_stage', count: 1, box: 'silver' },
-    no_damage_10: { name: 'GHOST IN THE BOXERS', desc: 'TEN FLAWLESS STAGES. THE MONSTERS ARE FILING A COMPLAINT ABOUT FAIRNESS.', event: 'no_damage_stage', count: 10, box: 'platinum' },
-    pet_donut:    { name: 'GOOD KITTY', desc: 'YOU PET PRINCESS DONUT. SHE ALLOWED IT. THIS TIME. DO NOT GET COMFORTABLE.', event: 'pet_donut', count: 1, box: 'fan' },
-    pet_donut_25: { name: 'CRAZY CAT PERSON', desc: 'PET DONUT 25 TIMES. SHE HAS BEGUN REFERRING TO YOU AS HER STAFF. ENJOY THE PAJAMAS.', event: 'pet_donut', count: 25, box: 'gold', unlock: { skin: 'carl_pajamas' } },
-    flee_1:       { name: 'TACTICAL RETREAT', desc: 'YOU RAN AWAY FROM A STAGE. THE CHICKEN SPONSORS ARE THRILLED.', event: 'flee', count: 1, box: 'bronze' },
-    shop_1:       { name: 'RETAIL THERAPY', desc: 'YOU BOUGHT SOMETHING. THE ECONOMY OF THE APOCALYPSE THANKS YOU.', event: 'shop', count: 1, box: 'bronze' },
-    shop_25:      { name: 'VALUED CUSTOMER', desc: '25 PURCHASES. THE SHOPKEEPER HAS PUT YOUR PICTURE ON THE WALL. NEXT TO THE EXITS.', event: 'shop', count: 25, box: 'silver' },
-    secret_1:     { name: 'NOSY', desc: 'FOUND A SECRET. YOU ARE THE KIND OF PERSON WHO READS OTHER PEOPLE\'S MAIL.', event: 'secret', count: 1, box: 'bronze' },
-    secret_10:    { name: 'TREASURE GOBLIN', desc: 'TEN SECRETS FOUND. THE LEVEL DESIGNERS ARE CRYING. HAPPY TEARS. MOSTLY.', event: 'secret', count: 10, box: 'gold' },
-    skin_equip:   { name: 'FASHION VICTIM', desc: 'CHANGED YOUR OUTFIT. THE STYLE BLOGS OF THE GALAXY ARE ALREADY FIGHTING ABOUT IT.', event: 'skin_equip', count: 1, box: 'bronze' },
-    companion_equip: { name: 'NEW BEST FRIEND', desc: 'SWAPPED COMPANIONS. PRINCESS DONUT HAS BEEN INFORMED. SHE IS TAKING IT WELL. SHE IS NOT.', event: 'companion_equip', count: 1, box: 'bronze' },
-    level_10:     { name: 'DOUBLE DIGITS', desc: 'LEVEL 10! YOU ARE NOW TECHNICALLY ABOVE AVERAGE. THE AVERAGE IS DEAD, BUT STILL.', event: 'level:10', count: 1, box: 'silver' },
-    level_20:     { name: 'SEASONED CRAWLER', desc: 'LEVEL 20. YOU HAVE MORE STATS THAN SENSE. A PERFECT CONTESTANT.', event: 'level:20', count: 1, box: 'gold' },
-    floor_2:      { name: 'GOING DOWN', desc: 'REACHED FLOOR 2. YOU SURVIVED THE TUTORIAL. MOST OF THE TUTORIAL DID NOT.', event: 'floor:2', count: 1, box: 'bronze' },
-    floor_3:      { name: 'TOURIST', desc: 'REACHED FLOOR 3 AND ITS BIG BEAUTIFUL MAP. PLEASE DO NOT FEED THE CLOWNS.', event: 'floor:3', count: 1, box: 'silver' },
-    floor_5:      { name: 'HALFWAY HOUSE', desc: 'REACHED FLOOR 5. HALFWAY THERE. HALFWAY DEAD. STATISTICALLY.', event: 'floor:5', count: 1, box: 'silver' },
-    floor_7:      { name: 'DEEP CUTS', desc: 'REACHED FLOOR 7. VERY FEW CRAWLERS GET HERE. EVEN FEWER WEAR PANTS. YOU ARE BOTH.', event: 'floor:7', count: 1, box: 'gold' },
-    floor_9:      { name: 'MIDSEASON FINALE', desc: 'REACHED FLOOR 9. THE PRODUCERS DID NOT PLAN FOR THIS. THEY ARE WRITING TWO MORE FLOORS FURIOUSLY.', event: 'floor:9', count: 1, box: 'platinum' },
-    floor_10:     { name: 'START YOUR ENGINES', desc: 'REACHED FLOOR 10. SOMEBODY GAVE YOU A DRIVING LICENSE. THAT SOMEBODY HAS BEEN FIRED.', event: 'floor:10', count: 1, box: 'platinum' },
-    boss_hoarder:   { name: 'SPRING CLEANING', desc: 'BEAT THE HOARDER. HER STUFF IS NOW YOUR STUFF. MOST OF IT IS NAPKINS.', event: 'boss:hoarder', count: 1, box: 'silver' },
-    boss_juicer:    { name: 'NO PAIN, NO GAIN', desc: 'BEAT THE JUICER. HE SKIPPED HIS LAST LEG DAY. PERMANENTLY.', event: 'boss:juicer', count: 1, box: 'silver' },
-    boss_ringmaster:{ name: 'CLOSING NIGHT', desc: 'BEAT THE RINGMASTER. THE CLOWNS ARE FREE. NOBODY ASKED FOR THIS.', event: 'boss:ringmaster', count: 1, box: 'gold' },
-    boss_engineer:  { name: 'END OF THE LINE', desc: 'BEAT THE ENGINEER. ALL TRAINS ARE NOW CANCELLED. SO, NORMAL SERVICE.', event: 'boss:engineer', count: 1, box: 'gold' },
-    boss_tidemother:{ name: 'MOTHER OF ALL FIGHTS', desc: 'BEAT THE TIDEMOTHER. HER SEVEN HUNDRED KIDS ARE WRITING YOU LETTERS. ANGRY ONES.', event: 'boss:tidemother', count: 1, box: 'gold' },
-    boss_butcher:   { name: 'CUT FROM THE TEAM', desc: 'BEAT THE BUTCHER. THE HUNTING GROUNDS ARE CLOSED FOR RENOVATION.', event: 'boss:butcher', count: 1, box: 'gold' },
-    boss_bride:     { name: 'OBJECTION!', desc: 'BEAT THE BRIDE. YOU STOPPED THE WEDDING. THE GUESTS WERE ALREADY DEAD, SO NO HARM DONE.', event: 'boss:bride', count: 1, box: 'platinum' },
-    boss_mothman:   { name: 'LIGHTS OUT', desc: 'BEAT THE MOTHMAN. HE SAW IT COMING. HE ALWAYS SEES IT COMING.', event: 'boss:mothman', count: 1, box: 'platinum' },
-    boss_showrunner:{ name: 'CANCELLED', desc: 'BEAT THE SHOWRUNNER. THE SHOW IS OVER! JUST KIDDING. THE NETWORK RENEWED IT ON THE SPOT.', event: 'boss:showrunner', count: 1, box: 'legendary' },
-    /* Update 3: races (stage.js emits race_win, race_place:<n>, race_flawless) and the parade */
-    race_place_3: { name: 'PODIUM PEASANT', desc: 'FINISHED A RACE IN THIRD. BRONZE IS JUST GOLD THAT GAVE UP. STILL COUNTS!', event: 'race_place:3', count: 1, box: 'bronze' },
-    race_win:     { name: 'CHECKERED PAST', desc: 'WON A RACE IN A FOOD TRUCK. THE OTHER DRIVERS DEMAND A DRUG TEST. FOR THE TACOS.', event: 'race_win', count: 1, box: 'silver' },
-    race_win_3:   { name: 'TRIPLE CROWN', desc: 'WON THREE RACES. THE SPONSORS WANT A DECAL ON YOUR FOREHEAD. WE SAID ASK THE CAT.', event: 'race_win', count: 3, box: 'gold' },
-    race_flawless:{ name: 'NOT A SCRATCH', desc: 'WON A RACE WITHOUT A SINGLE DENT. THE INSURANCE COMPANY SENT FLOWERS.', event: 'race_flawless', count: 1, box: 'platinum' },
-    race_champion:{ name: 'DID NOT COME IN LAST', desc: 'WON THE FINAL HEAT AND ROLLED ONTO FLOOR 11. THE MAULER IS IN THERAPY. IT HAS SO MANY TEETH TO TALK ABOUT.', event: 'floor:11', count: 1, box: 'legendary' },
-    float_part:   { name: 'ARTS AND CRAFTS', desc: 'FOUND YOUR FIRST FLOAT PART. GLITTER HAS ENTERED YOUR BLOODSTREAM. THERE IS NO CURE.', event: 'float_part', count: 1, box: 'silver' },
-    float_full:   { name: 'SOME ASSEMBLY REQUIRED', desc: 'FOUND FOUR FLOAT PARTS. YOUR FOOD TRUCK IS NOW LEGALLY A PARADE. CONGRATULATIONS?', event: 'float_part', count: 4, box: 'gold' },
-    parade_done:  { name: 'GRAND FINALE', desc: 'FINISHED THE PARADE. THE STREETS ARE COVERED IN CONFETTI AND HECKLERS. MOSTLY HECKLERS.', event: 'parade_done', count: 1, box: 'platinum' },
-    boss_grand_marshal: { name: 'MARSHAL LAW', desc: 'DETHRONED THE GRAND MARSHAL. HIS BATON IS NOW A VERY EXPENSIVE BACK SCRATCHER.', event: 'boss:grand_marshal', count: 1, box: 'legendary' },
-    win:          { name: 'THAT IS A WRAP', desc: 'YOU BEAT THE WHOLE GAME. IN YOUR UNDERWEAR. WITH A CAT. WE HAVE NO FURTHER NOTES.', event: 'win', count: 1, box: 'legendary' }
+    /* entering the dungeon (CUT:f1_entrance) */
+    crazy_cat_lady: { name: 'CRAZY CAT LADY!', event: 'story:f1_entrance', count: 1, box: 'bronze', boxName: 'BRONZE PET BOX',
+      desc: 'YOU ENTERED THE DUNGEON WITH A CAT. SHE IS NOT YOUR CAT. SHE IS NOT ANYONE\'S CAT. SHE IS NOW YOUR PROBLEM.' },
+    why_no_pants: { name: "WHY AREN'T YOU WEARING PANTS?", event: 'story:f1_entrance', count: 1, box: 'gold', boxName: 'GOLD APPAREL BOX',
+      desc: 'YOU ENTERED THE DUNGEON IN YOUR UNDERWEAR. ON PURPOSE? WE ARE NOT ASKING. WE ARE JUST GIVING YOU A BOX. IT IS NOT PANTS.' },
+    unarmed_combat: { name: 'UNARMED COMBAT', event: 'story:f1_entrance', count: 1, box: 'bronze', boxName: 'BRONZE WEAPON BOX',
+      desc: 'YOU WALKED INTO A MONSTER DUNGEON WITHOUT A WEAPON. YOUR FISTS ARE BRAVE. YOUR FISTS ARE ALSO VERY SOFT.' },
+    early_adopter: { name: 'EARLY ADOPTER', event: 'story:f1_entrance', count: 1, box: 'silver', boxName: 'SILVER ADVENTURER BOX',
+      desc: 'ONE OF THE FIRST FIVE THOUSAND THROUGH THE DOORS. YOU WERE EAGER TO DIE! WE RESPECT THAT.' },
+    empty_pockets: { name: 'EMPTY POCKETS', event: 'story:f1_entrance', count: 1, box: 'bronze', boxName: 'BRONZE ADVENTURER BOX',
+      desc: 'NO SUPPLIES. NO FOOD. NO SHOES. NOT EVEN POCKETS, TECHNICALLY. BOXERS DO NOT HAVE POCKETS.' },
+
+    /* the tutorial */
+    read_sign: { name: "YOU'VE DISCOVERED AND READ AN OFFICIAL DUNGEON SIGN", event: 'sign', count: 1, box: null,
+      desc: 'YOU READ A SIGN. IN A DUNGEON. ON PURPOSE. YOUR HUD AND MINIMAP THANK YOU. THE RATS ARE TERRIFIED OF YOUR LITERACY.' },
+    entered_guild: { name: "YOU'VE ENTERED A GUILDHALL!", event: 'safe:guild', count: 1, box: null,
+      desc: 'YOU FOUND A TUTORIAL GUILD HALL AND YOU GOT IN, BECAUSE YOU KILLED SOMETHING FIRST. LOOK AT YOU, FOLLOWING RULES.' },
+    first_damage: { name: "YOU'VE INFLICTED DAMAGE ON A MOB", event: 'hit', count: 1, box: null,
+      desc: 'YOU HURT SOMETHING! IT HURT BACK, PROBABLY. THAT IS HOW THIS WORKS. WELCOME TO THE CIRCLE OF LIFE.' },
+    first_kill: { name: "YOU'VE KILLED A MOB!", event: 'kill', count: 1, box: 'bronze',
+      desc: 'YOUR FIRST KILL! YOU CAN NOW EARN EXPERIENCE. YOU CAN ALSO NOW ENTER GUILD HALLS. AND HAVE NIGHTMARES. ALL UNLOCKED!' },
+    bare_hands: { name: "YOU'VE KILLED AN ARMED MOB WITH YOUR BARE FUCKING HANDS!", event: 'kill_armed', count: 1, box: 'bronze', boxName: 'BRONZE WEAPON BOX',
+      desc: 'IT HAD A KNIFE. YOU HAD KNUCKLES. THE KNUCKLES WON. THE AUDIENCE, HAD THERE BEEN ONE, WOULD HAVE LOST ITS MIND.' },
+    podophilia: { name: 'PODOPHILIA!', event: 'stomp_kill', count: 1, box: 'gold', boxName: 'GOLD SHOE BOX', gear: 'toe_ring',
+      desc: 'YOU CRUSHED A MOB TO DEATH WITH YOUR BARE FEET. SOMEBODY UP HERE HAD TO STEP AWAY FOR A MINUTE. HERE IS A TOE RING.' },
+    boom: { name: 'BOOM!', event: 'bomb', count: 1, box: 'silver', boxName: 'SILVER GOBLIN BOX',
+      desc: 'YOUR FIRST EXPLOSION! IT WILL NOT BE YOUR LAST. WE CAN TELL. YOU HAVE THAT LOOK IN YOUR EYE.' },
+    boss_babe: { name: 'BOSS BABE', event: 'boss_hit', count: 1, box: null,
+      desc: 'YOU HIT A BOSS! IT DID NOT CARE! IT WILL CARE LATER. YOU ARE A GIRLBOSS NOW. THOSE ARE THE RULES.' },
+    smush: { name: 'SMUSH!', event: 'stomp', count: 10, box: 'bronze',
+      desc: 'TEN THINGS STOMPED FLAT. YOUR FEET ARE DISGUSTING. YOUR FEET ARE ALSO A REGISTERED WEAPON IN FOUR SYSTEMS.' },
+    level_up: { name: 'LEVEL-UP, BABY!', event: 'level:2', count: 1, box: null,
+      desc: 'LEVEL TWO! YOU ARE NOW SLIGHTLY HARDER TO KILL. WE ARE ADJUSTING THE MONSTERS ACCORDINGLY. KIDDING. WE ALREADY DID.' },
+    throat_punch: { name: 'THROAT PUNCH!', event: 'throat_punch', count: 1, box: 'bronze',
+      desc: 'YOU PUNCHED A LLAMA IN THE THROAT AND IT DIED. THAT IS NOT HOW LLAMAS WORK ON EARTH. IT IS HOW THEY WORK HERE.' },
+    fall_trap: { name: 'FALL INTO AN OBVIOUS TRAP', event: 'fall', count: 1, box: null,
+      desc: 'THE HOLE WAS RIGHT THERE. IT WAS BLACK. THE FLOOR WAS NOT BLACK. YOU WENT IN ANYWAY. BOLD STRATEGY.' },
+    two_chicks: { name: 'TWO CHICKS AT THE SAME TIME', event: 'double_kill', count: 1, box: 'gold', boxName: "GOLD BRAWLER'S BOX",
+      desc: 'TWO KILLS IN LESS THAN HALF A SECOND. ONE GOBLIN, ONE GOBLIN-SHAPED PROJECTILE. MAN, THAT IS SO HOT.' },
+    oooh_magic: { name: 'OOOH, MAGIC', event: 'gear', count: 1, box: 'bronze',
+      desc: 'YOU PUT ON MAGICAL GEAR! IT GLOWS A LITTLE. YOU GLOW A LITTLE. THE GLOW IS PROBABLY FINE.' },
+
+    /* the workshop (SAFE:cookie) */
+    war_criminal: { name: 'WAR CRIMINAL', event: 'safe:cookie', count: 1, box: 'gold', boxName: "GOLD ASSHOLE'S BOX",
+      desc: 'MORE THAN TWENTY NON-COMBATANTS IN ONE ATTACK. THE GENEVA CONVENTION DOES NOT APPLY DOWN HERE. WE CHECKED. TWICE.' },
+    you_monster: { name: 'YOU MONSTER!', event: 'safe:cookie', count: 1, box: 'bronze', boxName: "BRONZE ASSHOLE'S BOX",
+      desc: 'YOU KILLED A CHILD. GOBLIN, SURE. STILL. INSIDE THE BOX: THE DESPERADO PASS, A TATTOO FOR PEOPLE LIKE YOU.' },
+
+    /* the floor boss */
+    borough_boss: { name: 'BOROUGH BOSS!', event: 'story:f1_swine_plan', count: 1, box: null,
+      desc: 'YOU FOUND A BOROUGH BOSS. IT IS SITTING ON THE STAIRS. IT IS MADE OF PIGS. NOBODY SAID THIS WOULD BE EASY.' },
+    found_stairs: { name: 'YOU FOUND STAIRS!', event: 'boss:ball_of_swine', count: 1, box: 'silver', boxName: 'SILVER BOSS BOX',
+      desc: 'THE STAIRWELL TO THE SECOND FLOOR! DOWN IS THE ONLY WAY OUT. THAT SENTENCE SHOULD WORRY YOU MORE THAN IT DOES.' },
+
+    /* floor 2 */
+    little_piggy: { name: 'THIS LITTLE PIGGY WENT TO MARKET!', event: 'safe:shelter', count: 1, box: 'platinum', boxName: 'PLATINUM SHOE BOX', gear: 'pedicure_kit',
+      desc: 'YOU MADE DADDY VERY, VERY HAPPY. DO NOT ASK WHO DADDY IS. ENJOY YOUR PEDICURE KIT AND KEEP THOSE TOES SHINY.' },
+    unvaccinated: { name: 'UNVACCINATED', event: 'taint', count: 1, box: 'bronze',
+      desc: 'YOU CAUGHT THE TAINT FROM A CLURICHAUN. NOTHING HEALS YOU UNTIL IT WEARS OFF. SHOULD HAVE GOTTEN THE SHOT, CRAWLER.' },
+    grease_monkey: { name: 'GREASE MONKEY', event: 'story:f2_jack', count: 1, box: 'silver', boxName: "SILVER MECHANIC'S BOX",
+      desc: 'YOU BUILT A PLAN AROUND A WHEELED DEVICE. THE PLAN IS INSANE. THE DEVICE IS A STEAM MOTORCYCLE. WE APPROVE BOTH.' },
+    bosses_leave: { name: 'WAIT, BOSSES CAN LEAVE THEIR ROOMS?', event: 'boss_breakout', count: 1, box: null,
+      desc: 'YES. YES THEY CAN. IT IS IN THE TERMS OF SERVICE. PAGE NINE THOUSAND. YOU SHOULD HAVE READ IT.' },
+    dungeonpreneur: { name: 'DUNGEONPRENEUR', event: 'story:f2_jug', count: 1, box: 'gold', boxName: "GOLD SAPPER'S BOX",
+      desc: "YOU INVENTED A STACKABLE WEAPON. CARL'S JUG O'BOOM IS NOW IN THE CATALOG. EVERY CRAWLER WHO KILLS WITH ONE PAYS YOU. KIND OF." },
+    what_goes_up: { name: 'WHAT GOES UP', event: 'reverse_gravity', count: 1, box: null,
+      desc: 'YOU WERE HIT BY REVERSE GRAVITY AND YOU LIVED. THE CEILING SAYS HI. THE FLOOR WOULD LIKE YOU BACK EVENTUALLY.' },
+    moth_flame: { name: 'LIKE A MOTH TO THE FLAME', event: 'pursuer_hit', count: 1, box: 'platinum', boxName: 'PLATINUM LUCKY BASTARD BOX',
+      desc: 'YOU DAMAGED A MOB SEVENTY-FIVE LEVELS ABOVE YOU. IT DID NOT NOTICE. WE NOTICED. HERE IS A VERY LUCKY BOX.' },
+    call_that_trap: { name: 'YOU CALL THAT A TRAP?', event: 'mine_hit', count: 1, box: 'gold', boxName: "GOLD SAPPER'S BOX",
+      desc: 'YOU DROPPED A BOMB BEHIND YOU AND SOMETHING CHASING YOU RAN RIGHT INTO IT. CLASSIC. CARTOONISH. EFFECTIVE.' },
+    ceramic_dalmatian: { name: "I'LL TAKE THE CERAMIC DALMATIAN, PAT!", event: 'story:f2_menagerie', count: 1, box: null,
+      desc: 'YOU FOUND A REWARD ROOM! ONE PRIZE PER CUSTOMER. NO, YOU CANNOT HAVE THE DALMATIAN. THERE IS NO DALMATIAN.' },
+    menagerie: { name: 'MENAGERIE', event: 'story:f2_menagerie', count: 1, box: null,
+      desc: 'A PET REWARD ROOM! TEN CAGES, TEN BABIES, AND ONE CAT WITH VERY STRONG OPINIONS ABOUT ALL OF THEM.' },
+    peta: { name: 'PETA ENTHUSIAST', event: 'cage_calm', count: 1, box: 'silver',
+      desc: 'YOU FED A HOSTILE DOG THROUGH THE BARS AND NOW IT LIKES YOU. ON THIS SHOW, THAT COUNTS AS ANIMAL RIGHTS.' },
+    janitor: { name: 'SPAWN LIMIT', event: 'janitor', count: 25, box: 'bronze',
+      desc: 'TWENTY-FIVE BRINDLE GRUBS BORN ON YOUR CORPSES. YOU ARE NOT KILLING MOBS ANYMORE. YOU ARE FARMING THEM.' },
+    sticker: { name: 'STICKY SITUATION', event: 'sticker', count: 1, box: null,
+      desc: 'A ROT STICKER LATCHED ON. NEXT TIME, PRESS ATTACK. OR DO NOT, AND LET THE AUDIENCE WATCH. THEY WOULD LIKE THAT.' },
+    breakout_boom: { name: 'THE CHOPPER SURVIVES', event: 'ride_jump', count: 25, box: 'bronze',
+      desc: 'TWENTY-FIVE JUMPS ON THE GOBLIN COPPER CHOPPER. THE SIDECAR IS LOOSE. DONUT HAS NOTICED. DONUT HAS FEELINGS ABOUT IT.' },
+
+    /* general */
+    kill_100: { name: 'PEST CONTROL', event: 'kill', count: 100, box: 'silver',
+      desc: 'A HUNDRED KILLS. IN BOXERS. THE DUNGEON HAS STARTED TALKING ABOUT YOU. NOT NICELY. BUT TALKING.' },
+    kill_300: { name: 'BODY COUNT', event: 'kill', count: 300, box: 'gold',
+      desc: 'THREE HUNDRED KILLS. THE VIEWERS HAVE A DRINKING GAME. SEVERAL OF THEM ARE IN THE HOSPITAL. GOOD JOB.' },
+    combo_10: { name: 'COMBO STARTER', event: 'combo10', count: 1, box: 'bronze',
+      desc: 'TEN HITS IN A ROW. YOU ARE BASICALLY A FIGHTING GAME CHARACTER NOW. A SAD, SHIRTLESS ONE.' },
+    combo_25: { name: 'COMBO BREAKER BREAKER', event: 'combo25', count: 1, box: 'gold',
+      desc: 'TWENTY-FIVE HITS WITHOUT A BREAK. THE ANNOUNCER BOOTH NEEDED A MOMENT. THE ANNOUNCER BOOTH IS ME.' },
+    no_damage: { name: 'UNTOUCHABLE', event: 'no_damage_stage', count: 1, box: 'silver',
+      desc: 'A WHOLE STAGE WITHOUT GETTING HIT. WHO ARE YOU AND WHAT DID YOU DO WITH THE GUY IN BOXERS?' },
+    multi_bomb: { name: 'THREE FOR ONE', event: 'multi_bomb', count: 1, box: 'silver', boxName: 'SILVER GOBLIN BOX',
+      desc: 'THREE KILLS WITH ONE BOMB. EFFICIENT! HORRIFYING! WE ARE PUTTING IT IN THE OPENING CREDITS!' },
+    secret_1: { name: 'NOSY', event: 'secret', count: 1, box: 'bronze',
+      desc: "YOU FOUND A HIDDEN BOX. YOU ARE THE KIND OF PERSON WHO READS OTHER PEOPLE'S MAIL. GOOD. THE DUNGEON REWARDS NOSY." },
+    death_1: { name: 'PARTICIPATION TROPHY', event: 'death', count: 1, box: 'bronze',
+      desc: 'YOU DIED! CONGRATULATIONS ON EXPERIENCING THE DUNGEON\'S MOST POPULAR FEATURE.' },
+    pet_donut: { name: 'ROYAL GROOMER', event: 'pet_donut', count: 1, box: 'fan',
+      desc: 'YOU PET PRINCESS DONUT. SHE ALLOWED IT. THIS TIME. DO NOT LET IT GO TO YOUR HEAD, PEASANT.' },
+    shop_1: { name: 'RETAIL THERAPY', event: 'shop', count: 1, box: 'bronze',
+      desc: 'YOU BOUGHT SOMETHING FROM A BOPCA. THE ECONOMY OF THE APOCALYPSE THANKS YOU. THE BOPCA THANKS YOU QUIETLY.' },
+    cookie: { name: 'STALE BUT WORTH IT', event: 'cookie', count: 1, box: null,
+      desc: 'YOU ATE AN EXPERIENCE COOKIE. IT WAS STALE. YOU FEEL SMARTER. YOU ARE NOT SMARTER. YOU ARE SLIGHTLY MORE LEVELED.' },
+    level_5: { name: 'LEVEL FIVE, BABY!', event: 'level:5', count: 1, box: 'silver',
+      desc: 'LEVEL FIVE. YOU ARE OFFICIALLY BETTER THAN MOST OF THE CORPSES ON THIS FLOOR. LOW BAR. STILL A BAR.' },
+    level_10: { name: 'DOUBLE DIGITS', event: 'level:10', count: 1, box: 'gold',
+      desc: 'LEVEL TEN! THE THIRD FLOOR IS GOING TO HAND YOU A RACE AND A CLASS. TRY NOT TO PICK SOMETHING STUPID.' },
+    floor_2: { name: 'WELCOME TO THE SECOND FLOOR', event: 'floor:2', count: 1, box: 'silver',
+      desc: 'YOU SURVIVED THE FIRST FLOOR. MOST PEOPLE DID NOT. THE CAMERAS ARE LIVE NOW. TRY TO LOOK LIKE YOU MEANT IT.' },
+    win: { name: 'THE END OF BOOK ONE', event: 'win', count: 1, box: 'legendary',
+      desc: 'TWO FLOORS, ONE CAT, ZERO PANTS. THE ROYAL COURT DESCENDS. CARL AND DONUT WILL RETURN. THE DUNGEON IS NOT DONE WITH THEM.' }
   };
 })();
 
 /* ==========================================================================
    TEXT: System AI pools, Mordecai, shopkeeper, story, titles.
-   Uppercase 5x7 font, <= 140 chars per line/page, plain ASCII only.
+   Uppercase 5x7 font, <= 140 chars per line, plain ASCII only.
    ========================================================================== */
 (function () {
   'use strict';
@@ -2057,249 +2594,210 @@
 
   D.ai = {
     floorClear: [
-      "FLOOR CLEARED! THE STAIRS ARE OPEN. THE VIEWERS ARE SCREAMING. SOME OF IT IS CHEERING!",
-      "YOU BEAT THE FLOOR! A ROUND OF APPLAUSE FOR THE CRAWLER WHO REFUSES TO TAKE A HINT!",
-      "ANOTHER FLOOR DOWN! THE ODDS MAKERS ARE FURIOUS. SEVERAL OF THEM BET ON THE RATS.",
-      "CONGRATULATIONS! YOU ARE NOW ONE FLOOR CLOSER TO SOMETHING MUCH WORSE!",
-      "FLOOR COMPLETE! PLEASE TAKE THE STAIRS. THE ELEVATOR IS A MONSTER. LITERALLY.",
-      "THAT FLOOR TRIED ITS BEST, CRAWLER. ITS BEST WAS NOT ENOUGH. HOW DOES THAT FEEL? GREAT, RIGHT?",
-      "STAIRWELL UNLOCKED! THE CLEANING CREW WILL HANDLE THE MESS YOU MADE. THE CLEANING CREW IS ALSO A MONSTER.",
-      "WHAT A FLOOR! WE WILL BE SHOWING THAT LAST HIT IN SLOW MOTION FOR WEEKS!",
-      "FLOOR CLEARED! YOUR FAN CLUB JUST GOT A NEW MEMBER. HE IS A LITTLE WEIRD. YOU WILL LIKE HIM."
+      "FLOOR CLEARED! THE STAIRS ARE OPEN AND YOU ARE STILL ALIVE. THE ODDSMAKERS ARE FURIOUS. SEVERAL OF THEM BET ON THE RATS.",
+      "ANOTHER FLOOR DOWN! A ROUND OF APPLAUSE FOR THE CRAWLER WHO REFUSES TO TAKE A FUCKING HINT!",
+      "CONGRATULATIONS! YOU ARE NOW ONE FLOOR CLOSER TO SOMETHING MUCH, MUCH WORSE. ENJOY THE STAIRS. THEY ARE THE NICE PART.",
+      "THAT FLOOR TRIED ITS BEST, CRAWLER. ITS BEST WAS NOT ENOUGH. HOW DOES THAT FEEL? GREAT? IT SHOULD FEEL GREAT.",
+      "FLOOR COMPLETE! THE COLLAPSE WILL TAKE CARE OF EVERYONE YOU LEFT BEHIND. DON'T LOOK BACK. SERIOUSLY. IT'S GROSS.",
+      "WHAT A FLOOR! WE WILL BE REPLAYING THAT LAST HIT IN SLOW MOTION FOR WEEKS. WITH MUSIC. SAD VIOLIN MUSIC.",
+      "STAIRWELL UNLOCKED! PLEASE MIND THE GAP, THE CORPSES, AND THE CAT. ESPECIALLY THE CAT."
     ],
     stageClear: [
       "AREA CLEARED! THE LOCALS ARE DEAD AND THE LOOT IS YOURS. A CLASSIC LOVE STORY.",
-      "NICE WORK! THAT WAS ALMOST GRACEFUL. ALMOST.",
-      "STAGE COMPLETE! WE WOULD GIVE IT A SEVEN. THE CAT WOULD GIVE IT A FOUR.",
-      "YOU MADE IT OUT! THE DOOR IS VERY HAPPY TO SEE YOU. DOORS ARE LIKE THAT.",
-      "CLEAR! THE MONSTERS IN THERE WILL RESPAWN NEXT SEASON. THEY HAVE A GOOD UNION.",
-      "THAT IS HOW YOU DO IT, CRAWLER! OR AT LEAST, THAT IS ONE WAY TO DO IT. A MESSY WAY.",
-      "AREA CLEAR! YOUR VIEWER COUNT WENT UP. YOUR HYGIENE WENT DOWN. BALANCE.",
-      "STAGE DONE! WE HAVE REVIEWED THE FOOTAGE. YOU KICKED A GOBLIN INTO ANOTHER GOBLIN. ICONIC.",
+      "NICE WORK! THAT WAS ALMOST GRACEFUL. ALMOST. YOUR FEET WERE DOING SOMETHING WEIRD THE WHOLE TIME.",
+      "STAGE COMPLETE! WE WOULD GIVE IT A SEVEN. THE CAT GIVES IT A FOUR. THE CAT IS A HARSH CRITIC.",
+      "YOU MADE IT OUT! THE DOOR IS VERY HAPPY TO SEE YOU. DOORS DOWN HERE DON'T GET A LOT OF VISITORS. ALIVE ONES.",
+      "CLEAR! THE MOBS IN THERE WILL RESPAWN EVENTUALLY. THEY HAVE A VERY GOOD UNION.",
+      "THAT IS HOW YOU DO IT, CRAWLER! OR AT LEAST THAT IS ONE WAY. A MESSY, SHIRTLESS WAY.",
+      "STAGE DONE! WE REVIEWED THE FOOTAGE. YOU KICKED A MOB INTO ANOTHER MOB. ICONIC. DEEPLY STUPID. ICONIC.",
       "CLEARED! TAKE A BREATH. NOT TOO DEEP. THE AIR DOWN HERE IS MOSTLY MONSTER."
     ],
     death: [
-      "OH NO! OH NO NO NO! ANYWAY. THE RATINGS FOR THAT WERE INCREDIBLE.",
-      "YOU DIED! DO NOT WORRY, WE GOT IT ON FOUR CAMERAS. ONE OF THEM IN SLOW MOTION.",
-      "AND THE CRAWLER GOES DOWN! THE CROWD GOES WILD! SOME OF THEM ARE SAD! MOST ARE NOT!",
-      "DEATH! THE GREAT EQUALIZER! AND YOU WERE SO EQUAL. SO VERY EQUAL.",
-      "WELL, THAT HAPPENED. WE WILL BE PLAYING IT AT YOUR MEMORIAL. IT IS A VERY SHORT MEMORIAL.",
-      "YOU HAVE DIED. PRINCESS DONUT WOULD LIKE IT KNOWN THAT SHE WAS NOT INVOLVED.",
-      "CRAWLER DOWN! THE MONSTER THAT GOT YOU IS GETTING A BONUS. A SMALL ONE. YOU WERE NOT THAT HARD.",
-      "YOU DIED IN YOUR UNDERWEAR. THAT IS GOING ON THE POSTER.",
-      "GAME OVER, MAN! WAIT, THAT LINE IS TAKEN. GAME OVER, CRAWLER! STILL WORKS."
+      "OH NO! OH NO NO NO! ANYWAY. THE NUMBERS ON THAT WERE INCREDIBLE.",
+      "YOU DIED! DON'T WORRY, WE GOT IT ON FOUR CAMERAS. ONE OF THEM IS IN SLOW MOTION. ONE OF THEM IS ON YOUR ASS.",
+      "AND THE CRAWLER GOES DOWN! THE CROWD GOES WILD! SOME OF THEM ARE SAD! MOST OF THEM ARE NOT!",
+      "WELL, SHIT. WE WILL BE PLAYING THAT AT YOUR MEMORIAL. IT IS A VERY SHORT MEMORIAL.",
+      "YOU HAVE DIED. PRINCESS DONUT WOULD LIKE IT ON THE RECORD THAT SHE WAS NOT INVOLVED AND THAT SHE LOOKED FABULOUS.",
+      "CRAWLER DOWN! THE MOB THAT GOT YOU IS GETTING A BONUS. A SMALL ONE. YOU WEREN'T THAT HARD.",
+      "YOU DIED IN YOUR UNDERWEAR. THAT IS GOING ON THE POSTER. THAT IS THE POSTER.",
+      "DEATH! THE GREAT EQUALIZER! YOU WERE ALREADY PRETTY EQUAL. NOW YOU ARE VERY EQUAL."
     ],
     levelUp: [
       "LEVEL UP! YOU ARE NOW SLIGHTLY LESS LIKELY TO DIE! WE ARE A LITTLE DISAPPOINTED!",
-      "DING! A NEW LEVEL! SPEND THAT STAT POINT AT THE NEXT SAFE ROOM, BEFORE YOU FORGET WHAT NUMBERS ARE.",
-      "LEVEL UP! YOUR MUSCLES GREW. YOUR BRAIN STAYED THE SAME SIZE. CLASSIC.",
-      "YOU LEVELED UP! THE MONSTERS HAVE BEEN NOTIFIED AND WILL BE TRYING HARDER.",
+      "DING! A NEW LEVEL! SPEND THAT STAT POINT WITH MORDECAI BEFORE YOU FORGET WHAT NUMBERS ARE.",
+      "LEVEL UP! YOUR MUSCLES GREW. YOUR BRAIN STAYED EXACTLY THE SAME SIZE. CLASSIC.",
+      "YOU LEVELED UP! THE MOBS HAVE BEEN NOTIFIED. THEY ARE NOT IMPRESSED. THEY ARE MOBS.",
       "STRONGER! FASTER! STILL BAREFOOT! LEVEL UP, CRAWLER!",
-      "LEVEL UP! WE PATCHED A FEW HOLES IN YOU FOR FREE. DO NOT GET USED TO IT.",
-      "A NEW LEVEL! SOMEWHERE A STATISTICIAN SIGHS AND ADJUSTS YOUR ODDS UPWARD.",
-      "LEVEL UP! THE CAT CLAIMS FULL CREDIT. WE ARE NOT GOING TO ARGUE WITH HER."
+      "LEVEL UP! WE PATCHED A FEW OF YOUR HOLES FOR FREE. DON'T GET USED TO IT.",
+      "A NEW LEVEL! THE CAT IS CLAIMING FULL CREDIT. WE ARE NOT GOING TO ARGUE WITH HER. NOBODY ARGUES WITH HER."
     ],
     lootbox: [
-      "OOH, A BOX! WHAT COULD IT BE? IT IS PROBABLY GOLD. IT IS USUALLY GOLD.",
-      "LOOT BOX TIME! SHAKE IT! DO NOT SHAKE IT TOO HARD. ONE OF THEM HAD A BEE IN IT ONCE.",
-      "OPEN IT! OPEN IT! THE AUDIENCE IS CHANTING. ALSO SOME OF THEM ARE BETTING.",
-      "THE SPONSORS HAVE FILLED THIS BOX WITH LOVE. AND SOMETHING THAT FELL OFF A TRUCK.",
+      "OOH, A BOX! WHAT COULD BE INSIDE? IT IS PROBABLY GOLD. IT IS USUALLY GOLD. IT IS NEVER PANTS.",
+      "LOOT BOX TIME! SHAKE IT! NOT TOO HARD. ONE OF THEM HAD A BEE IN IT ONCE. A BIG BEE.",
+      "OPEN IT! OPEN IT! SOMEWHERE OUT THERE, BILLIONS OF ALIENS ARE CHANTING. SOME OF THEM ARE BETTING.",
+      "THE SPONSORS FILLED THIS BOX WITH LOVE, AND WITH SOMETHING THAT FELL OFF A TRUCK.",
       "A PRIZE FOR YOU, CRAWLER! REMEMBER: GAMBLING IS BAD, UNLESS IT IS ON TELEVISION.",
-      "BOX OPENED! IT CONTAINS STUFF! WE PROMISED STUFF AND WE DELIVERED STUFF!",
-      "UNBOXING SEGMENT! SMILE FOR THE CAMERA. NO, A REAL SMILE. YOU LOOK LIKE A HOSTAGE.",
-      "EVERY BOX IS A LITTLE MIRACLE. MOST MIRACLES ARE POTIONS."
+      "UNBOXING SEGMENT! SMILE FOR THE CAMERA. NO, A REAL SMILE. YOU LOOK LIKE A HOSTAGE. YOU ARE A HOSTAGE. SMILE ANYWAY.",
+      "EVERY BOX IS A LITTLE MIRACLE. MOST MIRACLES ARE HEALTH POTIONS."
     ],
     revive: [
-      "BACK FROM THE DEAD! THAT IS GOING TO COST YOU. IT ALREADY DID. CHECK YOUR REVIVALS.",
-      "REVIVED! DEATH WAS WAITING WITH A CLIPBOARD. WE TOLD HIM TO COME BACK LATER.",
-      "YOU ARE ALIVE AGAIN! PLEASE DO NOT MAKE THIS A HABIT. THE PAPERWORK IS ENORMOUS.",
-      "THE NETWORK HAS DECIDED YOU ARE TOO ENTERTAINING TO STAY DEAD. CONGRATULATIONS?",
-      "REVIVAL USED! YOU HAVE BEEN RESET TO FACTORY SETTINGS. THE FACTORY WAS A SEWER.",
-      "WELCOME BACK! YOU MISSED NOTHING. EXCEPT DYING. YOU DID NOT MISS THAT. YOU HIT IT DEAD ON.",
-      "UP YOU GET, CRAWLER! THE SHOW MUST GO ON, AND YOU ARE THE SHOW.",
-      "REVIVED! A PORTION OF YOUR DIGNITY COULD NOT BE RECOVERED. IT WAS A SMALL PORTION."
+      "BACK FROM THE DEAD! THAT COST YOU A REVIVAL. CHECK YOUR WALLET. YOU DON'T HAVE A WALLET. YOU HAVE BOXERS.",
+      "REVIVED! DEATH WAS WAITING WITH A CLIPBOARD. WE TOLD HIM TO COME BACK AFTER SWEEPS WEEK.",
+      "YOU ARE ALIVE AGAIN! PLEASE DON'T MAKE THIS A HABIT. THE PAPERWORK IS ENORMOUS.",
+      "THE NETWORK HAS DECIDED YOU ARE TOO ENTERTAINING TO STAY DEAD. CONGRATULATIONS? CONDOLENCES?",
+      "WELCOME BACK! YOU MISSED NOTHING. EXCEPT DYING. YOU DID NOT MISS THAT. YOU NAILED THAT.",
+      "UP YOU GET, CRAWLER! THE SHOW MUST GO ON, AND UNFORTUNATELY, YOU ARE THE SHOW.",
+      "REVIVED! A SMALL PORTION OF YOUR DIGNITY COULD NOT BE RECOVERED. IT WAS A SMALL PORTION TO BEGIN WITH."
     ],
     boxEmpty: [
-      "NO BOXES LEFT! GO EARN SOME MORE. THE MONSTERS ARE RIGHT THERE.",
-      "YOUR BOX INVENTORY IS EMPTY. LIKE YOUR POCKETS. YOU DO NOT HAVE POCKETS. YOU HAVE BOXERS.",
-      "ZERO BOXES. THE SADDEST NUMBER. SECOND SADDEST AFTER YOUR KILL STREAK.",
-      "NOTHING TO OPEN, CRAWLER. TRY OPENING YOUR MIND. JUST KIDDING. KILL THINGS.",
-      "NO MORE LOOT. THE LOOT FAIRY IS ON BREAK. SHE IS A GOBLIN. SHE DOES NOT CARE.",
-      "EMPTY! WE CHECKED TWICE. ONCE UNDER THE COUCH. THERE IS NO COUCH.",
-      "BOXES: NONE. ACHIEVEMENTS AND BOSSES GIVE BOXES. JUST SAYING.",
-      "YOU HAVE OPENED EVERYTHING. EVEN THE ONES THAT WERE TICKING. BOLD."
+      "NO BOXES LEFT! GO EARN SOME MORE. THE MOBS ARE RIGHT OUTSIDE.",
+      "YOUR BOX INVENTORY IS EMPTY. LIKE YOUR POCKETS. YOU DON'T HAVE POCKETS. YOU HAVE BOXERS.",
+      "ZERO BOXES. THE SADDEST NUMBER. SECOND SADDEST AFTER YOUR VIEWER COUNT ON FLOOR ONE.",
+      "NOTHING TO OPEN, CRAWLER. TRY OPENING YOUR MIND. KIDDING. GO KILL SOMETHING.",
+      "EMPTY! WE CHECKED TWICE. ONCE UNDER THE TABLE. THE CAT CHECKED A THIRD TIME AND KNOCKED IT OVER.",
+      "BOXES: NONE. ACHIEVEMENTS AND BOSSES GIVE BOXES. JUST SAYING. NO PRESSURE. ALL THE PRESSURE."
     ],
     lowHp: [
       "YOUR HEALTH IS LOW! THIS WOULD BE A GREAT TIME FOR A POTION. OR A PRAYER. MOSTLY A POTION.",
-      "LOW HP! THE AUDIENCE IS LEANING FORWARD. THEY LOVE A CLOSE ONE.",
+      "LOW HP! THE AUDIENCE IS LEANING FORWARD. THEY LOVE A CLOSE ONE. THEY LOVE A MESSY ONE MORE.",
       "CAREFUL, CRAWLER! YOU ARE MOSTLY HOLES AT THIS POINT.",
-      "WARNING: CRAWLER STRUCTURAL INTEGRITY AT CRITICAL LEVELS. THE CAT HAS STARTED LOOKING FOR A NEW HUMAN.",
-      "YOU ARE ABOUT TO DIE! NO PRESSURE. EXCEPT ALL OF IT.",
-      "LOW HEALTH! QUICK TIP: THE POTION BUTTON IS THE POTION BUTTON.",
-      "THE BETTING ODDS ON YOUR DEATH JUST DROPPED TO TWO TO ONE. PROVE THEM WRONG. OR RIGHT. BOTH ARE FUN.",
-      "IS THAT A WHITE LIGHT? NO, IT IS JUST A FIREBALL. MOVE!"
+      "WARNING: CRAWLER STRUCTURAL INTEGRITY CRITICAL. THE CAT HAS STARTED BROWSING FOR A NEW HUMAN.",
+      "YOU ARE ABOUT TO DIE! NO PRESSURE. EXCEPT ALL OF IT. ALL OF THE PRESSURE.",
+      "LOW HEALTH! QUICK TIP: THE POTION BUTTON IS THE POTION BUTTON. UNLESS YOU HAVE THE TAINT. THEN YOU ARE FUCKED.",
+      "THE BETTING ODDS ON YOUR DEATH JUST DROPPED TO TWO TO ONE. PROVE THEM WRONG. OR RIGHT. BOTH ARE GOOD TV."
     ],
     bigCombo: [
       "C-C-COMBO! THE CROWD IS ON ITS FEET! SOME OF THEM HAVE EXTRA FEET!",
-      "WHAT A STRING OF HITS! WE ARE CUTTING THAT INTO THE TRAILER!",
-      "COMBO! YOUR KNUCKLES ARE WRITING CHECKS AND THE MONSTERS ARE CASHING THEM!",
+      "WHAT A STRING OF HITS! WE ARE CUTTING THAT INTO THE TRAILER RIGHT NOW!",
+      "COMBO! YOUR KNUCKLES ARE WRITING CHECKS AND THE MOBS ARE CASHING THEM!",
       "HIT AFTER HIT AFTER HIT! IS THIS A DUNGEON OR A DRUM SOLO?",
-      "INCREDIBLE COMBO! THE VIEW COUNTER IS SPINNING LIKE A SLOT MACHINE!",
-      "BEAUTIFUL VIOLENCE! THE SPONSORS ARE CRYING TEARS OF PROFIT!",
-      "THAT COMBO WAS SO GOOD THE MONSTERS WANT TO START A FAN CLUB. FROM THE AFTERLIFE.",
-      "KEEP IT GOING, CRAWLER! DO NOT STOP! THE RATINGS DEPEND ON IT! YOUR LIFE ALSO DEPENDS ON IT!"
+      "BEAUTIFUL VIOLENCE! THE SPONSORS ARE CRYING TEARS OF PURE PROFIT!",
+      "KEEP IT GOING, CRAWLER! DON'T STOP! THE RATINGS DEPEND ON IT! ALSO YOUR LIFE! MOSTLY THE RATINGS!"
     ],
     flee: [
       "RUNNING AWAY? BOLD STRATEGY. COWARDLY, BUT BOLD.",
       "THE CRAWLER FLEES! THE AUDIENCE BOOS! SOMEONE THREW A TOMATO! IT WAS ME!",
-      "TACTICAL RETREAT! WE WILL CALL IT THAT ON THE BROADCAST. WE ARE NICE LIKE THAT.",
-      "YOU LEFT! THE MONSTERS ARE HIGH FIVING. THE ONES WITH HANDS, ANYWAY.",
+      "TACTICAL RETREAT! THAT'S WHAT WE'LL CALL IT ON THE BROADCAST. WE ARE NICE LIKE THAT.",
+      "YOU LEFT! THE MOBS ARE HIGH-FIVING. THE ONES WITH HANDS, ANYWAY.",
       "FLEEING COSTS YOU NOTHING BUT YOUR PRIDE. YOU HAD VERY LITTLE PRIDE. SO, A BARGAIN.",
-      "BYE BYE! THE STAGE WILL STILL BE THERE WHEN YOU COME BACK. IT IS NOT GOING ANYWHERE. NEITHER ARE YOU.",
-      "RUN, CRAWLER, RUN! THE CHASE MUSIC IS ALREADY PLAYING!",
-      "A STRATEGIC WITHDRAWAL! GREAT GENERALS DO IT ALL THE TIME. RIGHT BEFORE THEY LOSE."
+      "RUN, CRAWLER, RUN! THE CHASE MUSIC IS ALREADY PLAYING!"
     ]
   };
 
-  // Mordecai gets a new body every floor (art: mordecai_fN / p_mordecai_fN). He comments the first time you talk to him.
+  // Mordecai gets a new body every floor (art: mordecai_fN / p_mordecai_fN).
   D.mordecaiForms = {
-    1: { name: 'BIRD', line: "WELCOME TO THE GUILD, KID. YES, I'M A BIRD. NO, I DON'T WANT TO TALK ABOUT IT. SIT DOWN BEFORE YOU FALL DOWN." },
-    2: { name: 'GOBLIN', line: "DON'T LAUGH. THE SHOW GIVES ME A NEW BODY EVERY FLOOR. THIS TIME IT'S A GOBLIN. THE EARS WHISTLE WHEN I WALK." },
-    3: { name: 'FROG', line: "A FROG. A FROG, CARL. I CAUGHT A FLY THIS MORNING WITHOUT MEANING TO. IT WAS DELICIOUS. I HATE THAT IT WAS DELICIOUS." },
-    4: { name: 'AUTOMATON', line: "THIS FLOOR I'M MADE OF GEARS. I TICK. I NEED OILING TWICE A DAY. IF I START SMOKING, PUNCH THE SIDE PANEL." },
-    5: { name: 'OCTOPUS', line: "EIGHT ARMS AND STILL ONE MUG. THE PRODUCERS THINK THIS IS FUNNY. I CAN POUR FOUR DRINKS AT ONCE, SO THAT'S SOMETHING." },
-    6: { name: 'STAG', line: "ANTLERS. I KEEP HITTING THE DOOR FRAME. THE HUNTERS OUT THERE KEEP LOOKING AT ME FUNNY. WATCH YOURSELF, KID." },
-    7: { name: 'VAMPIRE', line: "THE TEETH ARE NEW. NO, I'M NOT GOING TO BITE YOU. I CAN'T EVEN EAT GARLIC BREAD ANYMORE. THAT'S THE REAL TRAGEDY." },
-    8: { name: 'CYCLOPS', line: "ONE EYE. NO DEPTH PERCEPTION. I'VE MISSED THE BAR TWICE TODAY. IF YOU WANT A DRINK, POUR IT YOURSELF THIS FLOOR." },
-    9: { name: 'MINOTAUR', line: "HORNS, HOOVES AND A TEMPER. FITS THE MOOD. THE SHOWRUNNER IS UP THERE, KID. BEAT HIM AND THE SEASON STILL ISN'T OVER." },
-    10: { name: 'CRASH DUMMY', line: "A CRASH TEST DUMMY. YELLOW, JOINTED, AND THERE IS A TARGET PAINTED ON MY FACE. THE PRODUCERS THINK THEY'RE HILARIOUS." },
-    11: { name: 'PARADE MASCOT', line: "NOT. ONE. WORD. IT'S A PINK PLUSH MASCOT SUIT. IT SQUEAKS WHEN I WALK. THE HEAD DOESN'T COME OFF. I HAVE TRIED, CARL." }
+    1: { name: 'RAT HOOLIGAN', line: "YES, I'M A RAT. A RAT HOOLIGAN, OFFICIALLY. BEARD, VEST, SANDALS. DON'T MAKE THE CHEESE JOKE. EVERYBODY MAKES THE CHEESE JOKE." },
+    2: { name: 'BUGABOO', line: "A BUGABOO THIS TIME. SEVEN FEET OF FUR, NO NECK, EYES LIKE DINNER PLATES. I CAN'T REACH MY OWN FACE. SIT DOWN, KID. LET'S TALK." }
   };
-  D.mordecai = [
-    "BOXES AND STAT POINTS WAIT FOR A SAFE ROOM. THE SPONSORS WANT THE UNBOXING ON CAMERA. TALK TO ME TO TRAIN.",
-    "KID. LISTEN. A KICK IS SLOWER THAN A PUNCH BUT IT HITS HARDER. USE IT ON THE BIG ONES.",
-    "IN THE AIR, HOLD DOWN AND HIT ATTACK. YOU WILL DIVE FEET FIRST. BOUNCE OFF HEADS, IT KEEPS YOU SAFE.",
-    "BOMBS ARC. THROW THEM OVER WALLS AND INTO GROUPS. THREE KILLS IN ONE BLAST AND THE CROWD GOES NUTS.",
-    "CRATES HIDE SNACKS AND BOMBS. BREAK EVERY CRATE. NOBODY IS GOING TO BILL YOU.",
-    "POTIONS HEAL HALF YOUR MAX HP. DO NOT SAVE THEM FOR LATER. LATER IS WHEN YOU ARE DEAD.",
-    "THE SPECIAL METER FILLS WHEN YOU DEAL DAMAGE. FULL METER, HIT SPECIAL. SAVE IT FOR BOSSES IF YOU CAN.",
-    "STR IS PUNCH DAMAGE. CON IS HEALTH. DEX IS CRITS AND SPEED. INT MAKES YOUR COMPANION HURT THINGS MORE.",
-    "LEVELING UP HEALS YOU A LITTLE. SOMETIMES IT IS SMART TO FINISH A FIGHT BEFORE YOU DRINK.",
-    "FALLING IN A PIT COSTS 3 HP AND PUTS YOU BACK AT THE CHECKPOINT. TOUCH THE FLAGS.",
-    "ON THE MAP, LETTERED AREAS ARE OPTIONAL. BETTER LOOT, AND SOMETIMES A KEY OR A FRIEND IN A CAGE. GO LOOK.",
-    "THE WANDERING MONSTERS ON THE MAP START A SHORT FIGHT. AVOID THEM IF YOU ARE HURT.",
-    "BEAT THE FLOOR UNDER PAR TIME AND THE SHOW GIVES YOU A BONUS BOX. SPEED PAYS.",
-    "BOSSES CHANGE THEIR MOVES WHEN THEY GET HURT. WATCH FOR THE FLASH BEFORE A CHARGE OR A LASER.",
-    "SPIKES HURT AND THROW YOU UP. THAT CAN BE WORSE THAN THE SPIKES. LOOK BEFORE YOU LEAP.",
-    "THE SHOP PRICES GO UP EVERY FLOOR. BUY TONICS EARLY. YOU WILL THANK ME LATER.",
-    "COMBOS GET YOU MORE VIEWERS. VIEWERS GET YOU FAN BOXES. KEEP THE HITS CHAINED UNDER TWO SECONDS.",
-    "LOOT BOXES HAVE OUTFITS. FRIENDS YOU HAVE TO FIND YOURSELF. THEY ARE LOCKED IN CAGES ACROSS FLOORS 2 TO 7. PUNCH THE CAGE.",
-    "A PADLOCKED DOOR MEANS A KEY ITEM. FLEE, GO FIND IT, COME BACK. ITEMS STAY IN YOUR POCKET FOR THE WHOLE FLOOR.",
-    "LEVERS OPEN EVERY IRON GATE NEARBY. IF A GATE WILL NOT BUDGE, LOOK UP. THE LEVER IS USUALLY SOMEWHERE ANNOYING.",
-    "EVERY CRAWL, YOUR FRIENDS GET LOCKED UP AGAIN. THE SHOW CALLS IT A REBOOT. I CALL IT CHEAP WRITING.",
-    "IF THE CAT LETS YOU PET HER, PET HER. MORALE MATTERS DOWN HERE. TRUST ME.",
-    "ENEMIES WITH SHELLS OR ARMOR SHRUG OFF WEAK HITS. KICKS AND BOMBS GET THROUGH.",
-    "DO NOT FIGHT EVERYTHING ON THE GROUND. GET UP ON A PLATFORM AND MAKE THEM COME TO YOU.",
-    "YOU CAN DROP THROUGH THIN PLATFORMS. HOLD DOWN AND PRESS JUMP.",
-    "I HAVE BEEN DOWN HERE A LONG TIME, KID. MOST CRAWLERS DIE BEING GREEDY. DO NOT BE MOST CRAWLERS.",
-    "IN A RACE, HOLD RIGHT AND NEVER LET GO. JUMP THE GAPS, HIT THE PADS, AND LET THE CAT DO THE SHOOTING.",
-    "ON THE PARADE FLOAT, STAY ON THE FLOAT. EVERY FLOAT PART YOU BOLT ON DOES SOMETHING. BRING ALL FOUR."
-  ];
 
-  D.shopkeeper = { name: 'BOPCA THE SHOPKEEPER', lines: [
-    "WELCOME, WELCOME! EVERYTHING IS FOR SALE! EXCEPT ME! I AM FOR RENT.",
-    "POTIONS, BOMBS, TONICS! ALL GENUINE! MOSTLY GENUINE! THE LABELS ARE GENUINE.",
-    "YOU LOOK LIKE A CRAWLER WHO NEEDS A HEART CONTAINER. YOU LOOK LIKE YOU NEED SEVERAL.",
-    "NO SHIRT, NO SHOES, NO PROBLEM! I TAKE GOLD FROM ANYONE.",
-    "THE MYSTERY BOX? IT IS A MYSTERY TO ME TOO. THAT IS THE MAGIC.",
-    "A REVIVAL CONTRACT! SIGN HERE, AND HERE, AND HERE. DO NOT READ THAT PART.",
-    "PRICES GO UP EVERY FLOOR. BLAME THE DUNGEON ECONOMY. ALSO BLAME ME, A LITTLE.",
-    "COME BACK SOON! OR DO NOT. I AM PAID EITHER WAY. THAT IS A LIE. PLEASE COME BACK.",
-    "YOU CANNOT AFFORD THAT. I SAY THIS WITH LOVE. MOSTLY WITH PITY."
+  // floor-specific tips (safe rooms also carry their own `tips`; see below)
+  D.mordecaiByFloor = {
+    1: [
+      "PUNCHES ARE FAST. KICKS ARE SLOW AND HIT HARDER. DOWN PLUS ATTACK. USE THE KICK ON THE BIG ONES, THE PUNCH ON EVERYTHING ELSE.",
+      "IN THE AIR, HOLD DOWN AND HIT ATTACK. YOU DIVE FEET FIRST. BOUNCE OFF HEADS. IT KEEPS YOU OFF THE GROUND AND THE AUDIENCE LOVES IT.",
+      "KILL AN ARMED MOB WITH YOUR BARE HANDS AND THE SYSTEM GIVES YOU A PRIZE. IT LIKES THAT KIND OF THING. SICK BASTARD.",
+      "BAD LLAMAS LIGHT UP THEIR THROAT BEFORE THEY SPIT. HIT THE THROAT WHILE IT GLOWS AND THEY DROP. ONE PUNCH. TRUST ME.",
+      "SCATTERERS DIE UNDER A FOOT. STOMP 'EM. THE BIG MOMMA ROACH DOESN'T. KICK HER.",
+      "ROT STICKERS HANG FROM THE CEILING. IF ONE GRABS YOU, HIT ATTACK FAST AND FLICK IT OFF BEFORE IT POPS.",
+      "BOMBS ARC. THROW THEM OVER WALLS AND INTO GROUPS. AND NOT AT YOUR OWN FEET. I'VE SEEN IT. MORE THAN ONCE.",
+      "CRATES HIDE SNACKS AND BOMBS. CHESTS HAVE GOLD. MOBS ON THIS FLOOR DON'T CARRY ANY. BREAK EVERYTHING.",
+      "THE CAT'S MISSILE IS ON A COOLDOWN. THE METER IN THE CORNER IS HER BIG SPELL. FULL METER, HIT SPECIAL. SAVE IT FOR BOSSES.",
+      "POTIONS HEAL HALF YOUR HEALTH. DON'T SAVE THEM FOR LATER. LATER IS WHEN YOU'RE DEAD.",
+      "STR IS PUNCH DAMAGE. CON IS HEALTH. DEX IS CRITS AND SPEED. INT MAKES THE CAT HIT HARDER. SHE'D WANT ME TO SAY THAT FIRST.",
+      "TROGLODYTES ARE VENOMOUS AND THE LITTLE ONES JUMP. FIGHT THEM ON FLAT GROUND, NOT UNDER A LEDGE.",
+      "BOSSES CHANGE THEIR MOVES WHEN THEY'RE HURT. WATCH FOR THE FLASH BEFORE A CHARGE. MOVE BEFORE IT, NOT AFTER.",
+      "THE GODS ARE WATCHING FROM THE THIRD FLOOR ON. DON'T WORRY ABOUT THEM YET. WORRY ABOUT THE THING IN FRONT OF YOU."
+    ],
+    2: [
+      "THE GRUBS EAT CORPSES AND MAKE MORE GRUBS. KILL FAST, MOVE ON. DON'T FARM THEM, THEY HATCH INTO VESPAS.",
+      "THE TAINT MEANS NOTHING HEALS YOU. NOT POTIONS, NOT FOOD, NOT SLEEP. IF YOU'RE TAINTED, STOP GETTING HIT.",
+      "MIND HORRORS HURT YOUR HEAD JUST BY FLOATING NEAR YOU. STOMP THEM OR KEEP YOUR DISTANCE. DON'T STAND AND CHAT.",
+      "DANGER DINGOES TELEGRAPH THEIR CHARGE. JUMP IT. THEN PUNCH THE DOG IN THE ASS WHILE IT'S SKIDDING.",
+      "YOUR JUGS LEAVE BLUE FIRE ON THE FLOOR. MOBS BURN IN IT. YOU DON'T. DROP ONE AND LET THEM WALK INTO IT.",
+      "THE VIEWERS ARE LIVE NOW. COMBOS GET YOU FOLLOWERS. FOLLOWERS GET YOU FAN BOXES. KEEP THE HITS COMING.",
+      "PET BISCUITS. COLLECT THEM. A CAGED DOG THAT GETS FED STAYS CALM. A HUNGRY ONE COMES OUT SWINGING.",
+      "THAT RAGE ELEMENTAL CAN'T BE KILLED BY YOU. NOT AT YOUR LEVEL. NOT AT ANY LEVEL YOU'LL SEE THIS YEAR. OUTRUN IT.",
+      "BOSSES ARE SUPPOSED TO STAY IN THEIR ROOMS. SUPPOSED TO. DON'T COUNT ON IT ON THIS FLOOR.",
+      "THE NEW DINOSAUR BITES MOBS. IT ALSO BITES THE CAT. LET THEM WORK IT OUT. DON'T GET YOUR HAND IN THERE.",
+      "ON THE THIRD FLOOR YOU PICK A RACE AND A CLASS. DON'T PANIC-PICK. TALK TO ME FIRST. I'VE SEEN A LOT OF BAD PICKS."
+    ]
+  };
+  D.mordecai = D.mordecaiByFloor[1].concat(D.mordecaiByFloor[2]);
+  // the Mordecai rooms carry their floor's tips (ui reads safeRooms[id].tips)
+  if (D.safeRooms) {
+    ['guild', 'guild2'].forEach(function (k) { if (D.safeRooms[k]) D.safeRooms[k].tips = D.mordecaiByFloor[1]; });
+    if (D.safeRooms.bugaboo) D.safeRooms.bugaboo.tips = D.mordecaiByFloor[2];
+  }
+
+  D.shopkeeper = { name: 'TALLY', title: 'BOPCA PROTECTOR', lines: [
+    "HELLO. YOU BUY. I SELL. GOOD.",
+    "POTION IS RED. RED IS GOOD. DRINK.",
+    "NO SHOES. SORRY. EVERY DAY I ASK. NO SHOES.",
+    "DYNAMITE. NOT INSIDE. PLEASE. I JUST MOP.",
+    "PRINCESS WANT MORE PATE? I MAKE. ALWAYS I MAKE.",
+    "NO GOLD? THEN NO. SORRY. RULES.",
+    "YOU COME BACK. I COOK. GOOD."
   ] };
 
   D.story = {
+    // the prologue and the epilogue are cutscenes (D.cutscenes.prologue / f2_descent)
     intro: [
-      { text: "IT WAS THE COLDEST NIGHT OF THE YEAR. SNOW. WIND. YOU WERE STANDING OUTSIDE IN YOUR BOXERS AND A LEATHER JACKET.", portrait: 'p_carl' },
-      { text: "WHY? BECAUSE YOUR EX'S CAT, PRINCESS DONUT, HAD ESCAPED. AGAIN. AND SHE WAS SITTING ON A CAR, JUDGING YOU.", portrait: 'p_donut' },
-      { text: "YOU HAD JUST REACHED HER WHEN THE SKY WENT QUIET. A HUM. A FLASH. AND THEN EVERY BUILDING ON EARTH WAS GONE.", portrait: null },
-      { text: "NOT DESTROYED. GONE. CITIES, TOWNS, HOUSES. EVERYONE INSIDE WITH THEM. YOU WERE OUTSIDE. THAT WAS YOUR LUCKY BREAK.", portrait: null },
-      { text: "THEN THE VOICE CAME. FROM EVERYWHERE. LOUD, CHEERFUL, AND DELIGHTED TO MEET YOU.", portrait: 'p_ai' },
-      { text: "HELLO, EARTH! YOUR PLANET HAS BEEN SELECTED FOR THE GALAXY'S MOST POPULAR ENTERTAINMENT PROGRAM!", portrait: 'p_ai' },
-      { text: "THE SURFACE IS CLOSED! THE DUNGEON IS OPEN! EIGHTEEN FLOORS OF FUN, AND ELEVEN OF THEM ARE READY TODAY!", portrait: 'p_ai' },
-      { text: "GO DOWN THE STAIRS. FIGHT MONSTERS. OPEN BOXES. ENTERTAIN BILLIONS. STAY ON THE SURFACE AND, WELL. DO NOT DO THAT.", portrait: 'p_ai' },
-      { text: "THE CAT LOOKED AT YOU. YOU LOOKED AT THE CAT. SHE CLIMBED ONTO YOUR SHOULDER LIKE SHE OWNED IT. SHE DID NOW.", portrait: 'p_donut' },
-      { text: "WELCOME TO THE SHOW, CRAWLER. TRY TO LOOK GOOD DYING. OR BETTER YET, DO NOT DIE. THE RATINGS ARE BETTER THAT WAY.", portrait: 'p_ai' }
+      { text: "THE COLDEST NIGHT OF THE YEAR. A MAN IN BOXERS. A CAT ON A CAR. AND THEN THE BUILDINGS SANK.", portrait: null }
     ],
-    ending: [
-      { text: "THE GRAND MARSHAL TOPPLED OFF HIS THRONE FLOAT. HIS BATON ROLLED INTO THE GUTTER. THE MARCHING BAND, FOR ONCE, MISSED A BEAT.", portrait: null },
-      { text: "CONFETTI KEPT FALLING. NOBODY HAD TOLD THE CANNON TO STOP. PRINCESS DONUT WAVED FROM THE TRUCK WINDOW LIKE SHE PLANNED IT ALL.", portrait: 'p_donut' },
-      { text: "THEN THE CROWD ERUPTED. BILLIONS OF VIEWERS, SCREAMING ONE NAME. IT WAS YOURS. THE CAT ASSUMED IT WAS HERS.", portrait: 'p_donut' },
-      { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACE AND A PARADE OF HORRIBLES. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
-      { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE PARADE ROUTE ENDS AT A STAIRCASE GOING UP. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
-      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE GHOST TOWN, THE MANOR, THE JUNGLE, THE BUBBLES, THE IRON TANGLE AND THE OVER CITY.", portrait: 'p_carl' },
-      { text: "PAST THE TRAINING FLOORS AND THEIR RATS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
-      { text: "PRINCESS DONUT STRETCHED, YAWNED, AND ANNOUNCED THAT SHE WAS HUNGRY. SOME THINGS SURVIVE EVERYTHING.", portrait: 'p_donut' },
-      { text: "SEASON ONE: COMPLETE. THANK YOU FOR WATCHING. STAY TUNED, CRAWLER. THE GALAXY IS ALREADY ASKING FOR SEASON TWO.", portrait: 'p_ai' }
+    endingPages: [
+      { text: "THE ROYAL COURT OF PRINCESS DONUT: ONE MAN IN BOXERS, ONE CHAMPION PERSIAN, AND ONE BABY DINOSAUR WHO BITES.", portrait: 'p_donut' },
+      { text: "TWO FLOORS DOWN. SIXTEEN TO GO. THE GALAXY IS WATCHING NOW, AND IT LIKES WHAT IT SEES. THAT IS NOT GOOD NEWS.", portrait: 'p_ai' }
     ],
+    teaser: "CARL AND DONUT WILL RETURN IN CARL'S DOOMSDAY SCENARIO",
     credits: [
-      "DUNGEON CRAWLER WORLD: EARTH",
-      "A PERSONAL FAN GAME. NOT FOR SALE.",
-      "NOT AFFILIATED WITH ANYONE. AT ALL.",
-      "INSPIRED BY DUNGEON CRAWLER CARL",
-      "BY MATT DINNIMAN. GO READ THE BOOKS.",
-      "THEY ARE BETTER THAN THIS. THE CAT SAYS SO.",
-      "STARRING CARL AND PRINCESS DONUT",
-      "WITH MONGO, SAMANTHA, KATIA, ZEV, SIGNET",
-      "AND SIR SQUEAKS, OF COURSE",
-      "AND THE RIVALS OF DON'T COME IN LAST",
-      "AND PREPOTENTE, WHO RUINED FLOOR SEVEN",
-      "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
-      "AND TO BOPCA FOR THE TERRIBLE PRICES",
-      "NO TUTORIAL RATS WERE HARMED. OK, SEVERAL WERE.",
-      "ALL ART DRAWN IN CODE. ALL MUSIC MADE OF BEEPS.",
-      "THANK YOU FOR PLAYING, CRAWLER!"
+      "DUNGEON CRAWLER CARL: BOOK ONE",
+      "AN 8-BIT FAN GAME",
+      "BASED ON DUNGEON CRAWLER CARL",
+      "BY MATT DINNIMAN",
+      "A PERSONAL FAN PROJECT. NOT FOR SALE.",
+      "NOT AFFILIATED WITH OR ENDORSED BY",
+      "THE AUTHOR OR HIS PUBLISHERS.",
+      "GO READ THE BOOKS. THEY ARE BETTER.",
+      "",
+      "STARRING",
+      "CARL",
+      "PRINCESS DONUT",
+      "",
+      "WITH",
+      "MORDECAI",
+      "TALLY AND QWIST",
+      "RORY AND LORELAI",
+      "FRANK Q AND MAGGIE MY",
+      "MEADOW LARK: IMANI, BRANDON, CHRIS,",
+      "YOLANDA, ELLE, AGATHA AND THE RESIDENTS",
+      "LEXIS AND ODETTE",
+      "ZEV",
+      "THE MAESTRO",
+      "AND MONGO",
+      "",
+      "IN MEMORY OF YOLANDA MARTINEZ",
+      "",
+      "THE SYSTEM AI AS ITSELF",
+      "ALL ART DRAWN IN CODE",
+      "ALL MUSIC MADE OF BEEPS",
+      "NO TUTORIAL RATS WERE SPARED",
+      "",
+      "THANK YOU FOR CRAWLING"
     ]
   };
 
+  // fan ranks (floor 2 turns the viewers on)
   D.titles = [
     { views: 0, name: 'NOBODY' },
-    { views: 500, name: 'BACKGROUND EXTRA' },
-    { views: 2000, name: 'LOCAL CURIOSITY' },
-    { views: 6000, name: 'RISING CRAWLER' },
-    { views: 15000, name: 'CULT FAVORITE' },
-    { views: 35000, name: 'FAN FAVORITE' },
-    { views: 75000, name: 'PRIME TIME' },
-    { views: 150000, name: 'GALACTIC HEARTTHROB' },
-    { views: 300000, name: 'RATINGS MONSTER' },
-    { views: 600000, name: 'LIVING LEGEND' },
-    { views: 1000000, name: 'THE MAIN CHARACTER' }
+    { views: 300, name: 'BACKGROUND CORPSE' },
+    { views: 1500, name: 'THE GUY WITH THE CAT' },
+    { views: 5000, name: 'BOXER SHORTS GUY' },
+    { views: 12000, name: 'CULT FAVORITE' },
+    { views: 30000, name: 'FAN FAVORITE' },
+    { views: 70000, name: 'TRENDING CRAWLER' },
+    { views: 150000, name: 'PRIME TIME' },
+    { views: 300000, name: 'ROYAL COURT MATERIAL' },
+    { views: 600000, name: 'GALACTIC SENSATION' },
+    { views: 1000000, name: 'BIGGER THAN THE CAT' }
   ];
-})();
-
-/* interim stubs: safe rooms + cutscenes (full versions follow) */
-(function () {
-  'use strict';
-  var D = window.DCW.data;
-  function room(name, theme, npc, services) { return { name: name, theme: theme, music: 'safe', npc: npc, services: services, greet: [], restLine: 'YOU SLEEP. NOTHING EATS YOU. A GOOD NIGHT.' }; }
-  D.safeRooms = {
-    guild: room("MORDECAI'S GUILD HALL", 'safe_guild', 'mordecai', ['mordecai', 'boxes', 'rest']),
-    tally: room("TALLY'S RESTAURANT", 'safe_tally', 'tally', ['shop', 'boxes', 'rest', 'tv']),
-    cookie: room('AN UNSTAFFED SAFE ROOM', 'safe_cookie', null, ['cookies', 'boxes', 'rest', 'tv']),
-    guild2: room('THE TRAINING GUILD', 'safe_guild', 'mordecai', ['mordecai', 'boxes', 'rest']),
-    shelter: room('BIG SHOT CHICKEN', 'safe_shelter', 'qwist', ['shop', 'boxes', 'rest', 'tv', 'mailbox']),
-    bugaboo: room("MORDECAI'S SECOND FLOOR GUILD", 'safe_bugaboo', 'mordecai', ['mordecai', 'shop', 'boxes', 'rest', 'tv'])
-  };
-  ['guild', 'tally', 'cookie', 'guild2', 'shelter', 'bugaboo'].forEach(function (k) { D.safeRooms[k].tvLines = ['RECAP SOON.', 'STAY TUNED.', 'PATCH NOTES PENDING.']; D.safeRooms[k].mailLines = ['NO MAIL YET.', 'STILL NO MAIL.']; });
-  D.cutscenes = {};
-  ['prologue', 'f1_entrance', 'f1_mordecai', 'f1_episode1', 'f1_chopper', 'f1_frank', 'f1_meadowlark', 'f1_swine_plan', 'f1_odette',
-   'f2_welcome', 'f2_jug', 'f2_jack', 'f2_deathwatch', 'f2_menagerie', 'f2_descent'].forEach(function (id) {
-    D.cutscenes[id] = { music: 'intro', panels: [ { bg: 'stairwell', actors: [{ sprite: 'carl_idle', x: 140 }, { sprite: 'donut_idle', x: 162 }],
-      lines: [{ who: 'SYSTEM AI', portrait: 'p_ai', text: 'CUTSCENE ' + id.toUpperCase() + ' IS BEING WRITTEN. PLEASE ENJOY THIS PLACEHOLDER.' }] } ] };
-  });
-  D.cutscenes.f1_mordecai.give = [{ kind: 'flag', id: 'missile' }];
-  D.cutscenes.f1_chopper.give = [{ kind: 'flag', id: 'chopper' }];
-  D.cutscenes.f2_jug.give = [{ kind: 'flag', id: 'jugs' }];
-  D.items = { potion: { name: 'HEALTH POTION' }, bomb: { name: 'GOBLIN DYNAMITE', jugName: "CARL'S JUG O'BOOM" }, biscuit: { name: 'PET BISCUIT' } };
-  D.gear = {};
 })();
