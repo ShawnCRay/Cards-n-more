@@ -161,15 +161,19 @@
   };
 
   /* ---------------- bosses ----------------
-     hp ~ 40x the expected punch at that point of the story; 45-90 s fights.
+     hp ~ 40-60x the expected punch at that point of the story; 45-90 s fights.
+     Measured with a god-mode brawler bot (no dodging, bombs + special): dozer ~45 s,
+     the rest ~20-35 s; real players dodge, so roughly 2-3x that.
      New primitives (stage.js): roll, tentacle, sweep, mist:S, frenzy:N, scream,
      flex:S, throw:PROJ:N. Floor 1 bosses drop no gold (boxes instead). */
   D.bosses = {
     murder_dozer: { name: 'GOBLIN MURDER DOZER', title: 'A STEAM TANK FULL OF GOBLINS',
-      hp: 80, dmg: 3, w: 72, h: 44, sprite: 'murder_dozer', xp: 25, gold: [0, 0], flying: false, armor: 'front',
+      hp: 70, dmg: 3, w: 72, h: 44, sprite: 'murder_dozer', xp: 25, gold: [0, 0], flying: false, armor: 'front',
       phases: [
         { below: 1.0, speed: 34, pattern: ['walk:2', 'shoot:junk:2', 'idle:1', 'charge', 'idle:1.6', 'walk:1.5', 'rain:junk:3', 'idle:1.2'] },
-        { below: 0.5, speed: 46, pattern: ['charge', 'idle:1.2', 'spawn:goblin:2', 'shoot:junk:3', 'charge', 'idle:1', 'rain:junk:4', 'idle:1'] }
+        { below: 0.5, speed: 46, name: 'ABANDON SHIP', sub: 'THE GOBLINS ARE CLIMBING OUT',
+          line: "THE GOBLINS ARE CLIMBING OUT OF THE PIT TO HELP! THEY ARE VERY BAD AT HELPING. HIT THE BOILER!",
+          pattern: ['charge', 'idle:1.2', 'spawn:goblin:2', 'shoot:junk:3', 'charge', 'idle:1', 'rain:junk:4', 'idle:1'] }
       ],
       intro: ["IT IS A TRACTOR. IT IS A TANK. IT IS FULL OF GOBLINS. THE FRONT IS ARMORED, GENIUS. GO AROUND IT.",
         "SEE THE GLOWING BOILER ON ITS ASS? GLOWING THINGS ARE WEAK POINTS. THAT IS YOUR ONE FREE TIP TODAY. BOMBS ALSO WORK."],
@@ -177,10 +181,12 @@
       loot: 'boss', unlock: null },
 
     hoarder: { name: 'THE HOARDER', title: 'QUEEN OF THE GARBAGE MOUNTAIN',
-      hp: 130, dmg: 2, w: 52, h: 58, sprite: 'hoarder', xp: 40, gold: [0, 0], flying: false,
+      hp: 230, dmg: 2, w: 52, h: 58, sprite: 'hoarder', xp: 40, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 30, pattern: ['walk:2', 'spawn:scatterer:2', 'idle:1.4', 'charge', 'idle:1.2', 'spawn:scatterer:3', 'jump_slam', 'idle:1.4'] },
-        { below: 0.5, speed: 42, pattern: ['spawn:scatterer:3', 'charge', 'idle:0.9', 'rain:junk:5', 'spawn:brood_guardian:1', 'jump_slam', 'idle:1', 'charge', 'idle:1'] }
+        { below: 0.5, speed: 42, name: 'SPRING CLEANING', sub: 'THE GARBAGE AVALANCHE',
+          line: "NOW SHE'S MAD. HERE COMES THE GARBAGE. HIDE BEHIND SOMETHING THAT ISN'T ALSO GARBAGE. GOOD LUCK WITH THAT.",
+          pattern: ['spawn:scatterer:3', 'charge', 'idle:0.9', 'rain:junk:5', 'spawn:brood_guardian:1', 'jump_slam', 'idle:1', 'charge', 'idle:1'] }
       ],
       intro: ["OUR FIRST REAL BOSS! FIFTEEN FEET OF WOMAN, FORTY YEARS OF GARBAGE AND EXACTLY ONE TOOTH. NONE OF IT IS FOR SALE.",
         "SHE BIRTHS SCATTERERS OUT OF HER MOUTH. YES. HER MOUTH. KILL ONE THE SECOND IT CRAWLS OUT AND WATCH HER CHOKE ON IT!"],
@@ -188,10 +194,11 @@
       loot: 'boss', unlock: null },
 
     chieftain: { name: 'GOBLIN WAR CHIEFTAIN', title: 'LORD OF THE GOBLIN WORKSHOP',
-      hp: 160, dmg: 2, w: 30, h: 32, sprite: 'chieftain', xp: 45, gold: [0, 0], flying: false,
+      hp: 270, dmg: 2, w: 30, h: 32, sprite: 'chieftain', xp: 45, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 46, pattern: ['walk:1.5', 'throw:dynamite:3', 'idle:1', 'spawn:goblin_bomber:2', 'charge', 'idle:1.2', 'jump_slam', 'idle:1'] },
-        { below: 0.5, speed: 60, pattern: ['throw:dynamite:5', 'charge', 'jump_slam', 'idle:0.8', 'spawn:goblin_bomber:2', 'shockwave', 'charge', 'idle:0.8'] }
+        { below: 0.5, speed: 60, name: 'BLOOD AND DYNAMITE', sub: 'THE CHIEFTAIN LIGHTS HIS BELT',
+          pattern: ['throw:dynamite:5', 'charge', 'jump_slam', 'idle:0.8', 'spawn:goblin_bomber:2', 'shockwave', 'charge', 'idle:0.8'] }
       ],
       intro: ["THE GOBLIN WAR CHIEFTAIN! BONE CROWN, BIG CLEAVER, A BELT OF DYNAMITE. ONE OF THOSE IS GOING TO GO OFF NEXT TO YOU.",
         "THIS WORKSHOP IS PACKED WITH EXPLOSIVES AND FLAMMABLE GOBLINS. PLEASE BE CAREFUL. I AM KIDDING. PLEASE BE THE OPPOSITE OF CAREFUL."],
@@ -199,11 +206,14 @@
       loot: 'boss', unlock: null },
 
     juicer: { name: 'THE JUICER', title: 'BRO OF THE 24 HOUR GYM',
-      hp: 220, dmg: 3, w: 44, h: 48, sprite: 'juicer', xp: 60, gold: [0, 0], flying: false,
+      hp: 380, dmg: 3, w: 44, h: 48, sprite: 'juicer', xp: 60, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 40, pattern: ['walk:1.5', 'throw:plate:3', 'idle:0.9', 'charge', 'idle:1', 'flex:2', 'walk:1', 'jump_slam', 'idle:1'] },
-        { below: 0.55, speed: 54, pattern: ['throw:plate:4', 'charge', 'charge', 'idle:0.8', 'flex:2', 'shockwave', 'jump_slam', 'idle:0.9'] },
-        { below: 0.25, speed: 66, pattern: ['charge', 'throw:plate:6', 'idle:0.6', 'flex:1.5', 'jump_slam', 'shockwave', 'charge', 'idle:0.7'] }
+        { below: 0.55, speed: 54, name: 'PUMP IT UP', sub: 'NO DAYS OFF, BRO',
+          pattern: ['throw:plate:4', 'charge', 'charge', 'idle:0.8', 'flex:2', 'shockwave', 'jump_slam', 'idle:0.9'] },
+        { below: 0.25, speed: 66, name: 'FAILURE SET', sub: 'ONE MORE REP, BRO. ONE MORE.',
+          line: "HE'S GOING TO FAILURE, FOLKS! THIS IS WHERE THE GAINS HAPPEN! OR THE DEATHS! USUALLY BOTH!",
+          pattern: ['charge', 'throw:plate:6', 'idle:0.6', 'flex:1.5', 'jump_slam', 'shockwave', 'charge', 'idle:0.7'] }
       ],
       intro: ["BRO. BRO. HE NEEDS A SPOT, BRO. HE HAS NEEDED A SPOT SINCE THE DAWN OF TIME. NOBODY HAS EVER SPOTTED HIM.",
         "WHEN HE FLEXES, THE VEINS COME OUT. HIT THE VEINS FOR DOUBLE DAMAGE. DO NOT TELL HIM I SAID THAT. HE IS VERY SENSITIVE."],
@@ -211,11 +221,14 @@
       loot: 'boss', unlock: null },
 
     ball_of_swine: { name: 'THE BALL OF SWINE', title: 'THE PORKCHOP EXPRESS',
-      hp: 340, dmg: 4, w: 56, h: 56, sprite: 'ball_of_swine', xp: 90, gold: [0, 0], flying: false, floorBoss: true,
+      hp: 400, dmg: 4, w: 56, h: 56, sprite: 'ball_of_swine', xp: 90, gold: [0, 0], flying: false, floorBoss: true,
       phases: [
         { below: 1.0, speed: 30, pattern: ['idle:1.6', 'roll', 'idle:1', 'roll', 'idle:0.8', 'roll', 'idle:2'] },
-        { below: 0.65, speed: 40, pattern: ['roll', 'roll', 'idle:1', 'shockwave', 'roll', 'roll', 'idle:1.6'] },
-        { below: 0.3, speed: 56, sprite: 'dominatrix', w: 22, h: 30, spawnOnEnter: ['tuskling', 12],
+        { below: 0.65, speed: 40, name: 'THE PORKCHOP EXPRESS', sub: 'ALL ABOARD',
+          pattern: ['roll', 'roll', 'idle:1', 'shockwave', 'roll', 'roll', 'idle:1.6'] },
+        { below: 0.3, speed: 56, sprite: 'dominatrix', w: 22, h: 30, spawnOnEnter: ['tuskling', 12], daze: 2.5,
+          bossName: 'TUSKLING DOMINATRIX', name: 'THE BALL POPS!', sub: 'A DOZEN DAZED TUSKLINGS AND A WHIP',
+          line: "THE BALL POPPED! PIGS EVERYWHERE! AND THE ONE IN LEATHER WITH THE WHIP WAS HOLDING IT ALL TOGETHER. FINISH HER!",
           pattern: ['walk:1.5', 'charge', 'idle:0.8', 'shoot:pebble:3', 'walk:1', 'charge', 'idle:1'] }
       ],
       intro: ["THE BOROUGH BOSS! A HUNDRED PIG-ORC ARISTOCRATS FUSED INTO ONE GIANT BALL BY A CURSE. THEY ROLL. THEY CRUSH. THEY SQUEAL.",
@@ -224,11 +237,13 @@
       loot: 'boss', unlock: null },
 
     krakaren: { name: 'THE KRAKAREN CLONE', title: 'MANAGER OF THE REV-UP DISTILLERY',
-      hp: 420, dmg: 3, w: 80, h: 72, sprite: 'krakaren', xp: 140, gold: [40, 70], flying: false, gear: 'bigboi_boxers',
+      hp: 460, dmg: 3, w: 80, h: 72, sprite: 'krakaren', xp: 140, gold: [40, 70], flying: false, gear: 'bigboi_boxers', mistTaint: 4,
       phases: [
         { below: 1.0, speed: 0, pattern: ['idle:1.2', 'tentacle', 'idle:0.8', 'shoot:snot:3', 'idle:0.8', 'sweep', 'idle:1', 'tentacle', 'tentacle', 'idle:1', 'mist:4', 'idle:1'] },
-        { below: 0.55, speed: 0, pattern: ['tentacle', 'sweep', 'idle:0.6', 'shoot:snot:4', 'spawn:clurichaun:2', 'tentacle', 'sweep', 'mist:4', 'idle:0.8'] },
-        { below: 0.2, speed: 0, pattern: ['tentacle', 'tentacle', 'sweep', 'shoot:snot:5', 'sweep', 'mist:3', 'tentacle', 'idle:0.6'] }
+        { below: 0.55, speed: 0, name: 'MANAGER MODE', sub: 'SHE WANTS TO SPEAK TO YOUR SUPERVISOR',
+          pattern: ['tentacle', 'sweep', 'idle:0.6', 'shoot:snot:4', 'spawn:clurichaun:2', 'tentacle', 'sweep', 'mist:4', 'idle:0.8'] },
+        { below: 0.2, speed: 0, name: 'ONE STAR REVIEW', sub: 'SHE IS LEAVING A REVIEW. ON YOU.',
+          pattern: ['tentacle', 'tentacle', 'sweep', 'shoot:snot:5', 'sweep', 'mist:3', 'tentacle', 'idle:0.6'] }
       ],
       intro: ["WAIT. BOSSES CAN LEAVE THEIR ROOMS? APPARENTLY! TWENTY FEET OF PINK OCTOPUS WITH A SOCCER MOM BOB, AND SHE WANTS YOUR MANAGER.",
         "HER TENTACLES ARE COVERED IN TINY SCREAMING MOUTHS. THE SNOT GIVES YOU THE TAINT. THE MIST GIVES YOU MEASLES. LIVE, LAUGH, LOVE!"],
@@ -236,10 +251,12 @@
       loot: 'boss', unlock: null },
 
     ralph: { name: 'RALPH', title: 'THE FRENZIED GERBIL',
-      hp: 300, dmg: 2, w: 16, h: 14, sprite: 'ralph', xp: 120, gold: [30, 60], flying: false,
+      hp: 540, dmg: 2, w: 16, h: 14, sprite: 'ralph', screamW: 104, xp: 120, gold: [30, 60], flying: false,
       phases: [
         { below: 1.0, speed: 60, pattern: ['idle:1', 'frenzy:3', 'idle:0.8', 'walk:1', 'scream', 'idle:1.2', 'frenzy:3', 'idle:0.8'] },
-        { below: 0.5, speed: 76, releaseCages: true, pattern: ['frenzy:4', 'scream', 'idle:0.6', 'frenzy:3', 'walk:0.8', 'scream', 'spawn:kobold:2', 'idle:0.8'] }
+        { below: 0.5, speed: 76, releaseCages: true, name: 'FEEDING TIME', sub: 'EVERY HUNGRY CAGE OPENS',
+          line: "RALPH SCREAMED FOR HIS DOGS! EVERY CAGE YOU DIDN'T FEED IS OPENING! I HOPE YOU BROUGHT BISCUITS. YOU DIDN'T, DID YOU?",
+          pattern: ['frenzy:4', 'scream', 'idle:0.6', 'frenzy:3', 'walk:0.8', 'scream', 'spawn:kobold:2', 'idle:0.8'] }
       ],
       intro: ["THE KOBOLD BOSS IS... A GERBIL. ONE ADORABLE LITTLE GERBIL NAMED RALPH. LOOK AT HIS FACE. NOW LOOK AT HIS MOUTH. NOW RUN.",
         "HE IS TINY. PUNCHES WHIFF. FEET DO NOT. THE CAGED DINGOES ARE HIS BACKUP: FEED THEM BISCUITS OR THEY JOIN THE PARTY."],
@@ -1530,12 +1547,12 @@
     'X..........................................X',
     'X..........................................X',
     'X..........................................X',
-    'X..........................................X',
-    '...........................................X',
-    '...........................................X',
-    '.......=====........=====..................X',
-    '...........................................X',
-    '..c...h..................h.......K.........X',
+    'X............................X.............X',
+    '.............................X.............X',
+    '.............................X.............X',
+    '.......=====........=====....X.......====..X',
+    '.............................X.............X',
+    '..c...h..................h...X...K.........X',
     '############################################',
     '############################################'] };
 
@@ -1657,11 +1674,11 @@
     reward: { box: 'bronze', xp: 12 },
     intro: "LLAMA COUNTRY! THEY SPIT LAVA AND THEY DEAL DRUGS. WHEN ONE WINDS UP, ITS THROAT GLOWS. PUNCH THE GLOW. YOU WILL THANK ME. YOU WILL NOT THANK ME." });
 
-  st('f1_scatter', { name: 'SCATTERER ALLEY', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1',
+  st('f1_scatter', { name: 'SCATTERER ALLEY', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1', dark: true,
     chunks: { start: 'tn_start', pool: ['tn_b', 'tn_d', 'tn_f', 'tn_h', 'tn_a'], count: 4, end: 'end_door' },
     enemies: [['scatterer', 7], ['rat', 1]], elite: [['brood_guardian', 1]], flyers: [['scatterer', 1]],
     reward: { box: 'bronze', xp: 12 },
-    intro: "SCATTERER ALLEY! SHOEBOX ROACHES AS FAR AS THE EYE CAN SEE. YOU HAVE BARE FEET. THE MATH IS DISGUSTING. THE MATH IS ALSO VERY EFFECTIVE." });
+    intro: "A PITCH-BLACK SIDE ALLEY FULL OF SHOEBOX ROACHES. YOU CAN'T SEE THEM. YOU CAN HEAR THEM. YOU HAVE BARE FEET. GOOD LUCK, CRAWLER." });
 
   st('f1_hoarder', { name: "THE HOARDER'S CHAMBER", floor: 1, theme: 'hoard', kind: 'boss', music: 'boss',
     chunks: { start: 'hd_start', pool: ['hd_a', 'hd_b', 'hd_c'], count: 2, insert: ['hd_door'], end: 'arena_hoarder' },
@@ -1706,11 +1723,11 @@
     intro: "LOOK UP. NO, REALLY. THOSE BLACK RAVIOLI ON THE CEILING ARE ROT STICKERS. THEY DROP, THEY HUG, THEY EXPLODE. PRESS ATTACK TO SHAKE ONE OFF." });
 
   st('f1_ride', { name: '100 MILES EAST', floor: 1, theme: 'tunnels', kind: 'ride', music: 'ride',
-    ride: { finishText: 'MEADOW LARK THIS WAY' },
+    ride: { finishText: 'MEADOW LARK THIS WAY', countdown: 1.6, pitDmg: 3 },
     chunks: { start: 'ride_start', pool: RIDE, count: 10, end: 'ride_lark' },
     enemies: [['goblin', 3], ['rat', 3], ['bad_llama', 1], ['trog_pygmy', 1]], elite: [['trog_basher', 1]], flyers: [['scatterer', 1]],
     reward: { box: 'silver', xp: 18 },
-    intro: "THE GOBLIN COPPER CHOPPER, EVERYBODY! A AND JUMP TO HOP, ATTACK TO PUNCH FROM THE SADDLE, BOMB DROPS ONE BEHIND YOU. HEAD EAST. KEEP HEADING EAST." });
+    intro: "THE GOBLIN COPPER CHOPPER, EVERYBODY! JUMP TO HOP, ATTACK TO PUNCH FROM THE SADDLE, BOMB DROPS ONE BEHIND YOU. HEAD EAST. KEEP HEADING EAST." });
 
   st('f1_trogs', { name: 'TROGLODYTE NEIGHBORHOOD', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1',
     chunks: { start: 'tn_start', pool: ['tn_trog_a', 'tn_trog_b', 'tn_c', 'tn_f', 'tn_g', 'tn_h'], count: 4, end: 'end_door' },
@@ -1725,7 +1742,9 @@
     intro: "A 24-HOUR GYM IN A DUNGEON. THE POSTER SAYS TODAY IS THE DAY YOU GAIN. SOMEWHERE IN THE BACK, SOMEONE IS GRUNTING. LOUDLY. RHYTHMICALLY." });
 
   st('f1_swine', { name: 'THE BALL OF SWINE', floor: 1, theme: 'swine', kind: 'boss', music: 'boss_final',
-    allies: ['brandon', 'chris', 'yolanda', 'imani', 'agatha'], door: 'stairwell',
+    // allies in A-cell order; low dmg so Carl does most of the work (stage.js default guns are strong)
+    allies: [{ id: 'brandon', dmg: 1 }, { id: 'chris', dmg: 1 }, { id: 'imani', dmg: 1 }, { id: 'yolanda', dmg: 1 }, { id: 'agatha', dmg: 1 }],
+    door: 'stairwell',
     chunks: { start: 'sw_start', pool: ['sw_a', 'sw_b'], count: 1, end: 'arena_swine' },
     enemies: [['tuskling', 3], ['rat', 1]], elite: [['tuskling', 1]], flyers: [['tuskling', 1]],
     boss: 'ball_of_swine', reward: { box: 'boss', xp: 30 },
@@ -1749,15 +1768,16 @@
     intro: "REV-UP COUNTRY! THE CLURICHAUNS HAVE SLINGSHOTS AND THE TAINT. THE LAMINAKS HAVE A PYRAMID SCHEME. WHILE TAINTED, NOTHING HEALS. NOTHING!" });
 
   st('f2_krakaren', { name: 'THE REV-UP DISTILLERY', floor: 2, theme: 'distillery', kind: 'boss', music: 'boss',
-    breakout: true,
+    breakout: true, bossMusic: 'boss',
+    breakoutText: "WAIT. BOSSES CAN LEAVE THEIR ROOMS? THE KRAKAREN CLONE JUST CAME THROUGH SOLID CINDERBLOCK BECAUSE YOU WERE SKIPPING HER. RUDE!",
     chunks: { start: 'ds_start', pool: ['ds_a', 'ds_b', 'ds_c'], count: 2, end: 'arena_krakaren' },
     enemies: [['clurichaun', 3], ['brindle_grub', 1]], elite: [['laminak', 1]], flyers: [['laminak', 1]],
     boss: 'krakaren', reward: { box: 'boss', xp: 40 },
     intro: "THE REV-UP DISTILLERY. LIVE, LAUGH, LOVE OVER THE DOOR. THE BOSS ROOM IS UP AHEAD AND YOU ARE SKIPPING IT. SMART! SHE DISAGREES." });
 
   st('f2_rage', { name: 'THE DRIVE OF A LIFETIME', floor: 2, theme: 'cinder', kind: 'ride', music: 'rage',
-    pursuer: { id: 'rage_elemental', kind: 'boss', speed: 150, delay: 3, dmg: 6 },
-    ride: { finishText: 'THE STAIRWELL' }, door: 'stairwell',
+    pursuer: { id: 'rage_elemental', kind: 'boss', speed: 150, delay: 3, dmg: 6, reverseEvery: 8 },
+    ride: { finishText: 'THE STAIRWELL', countdown: 1.6, pitDmg: 3 }, door: 'stairwell',
     chunks: { start: 'ride_start', pool: RIDE, count: 10, end: 'ride_stairs' },
     enemies: [['brindle_grub', 3], ['dingo', 1], ['clurichaun', 1]], elite: [['cow_grub', 1]], flyers: [['brindle_grub', 1]],
     reward: { box: 'gold', xp: 60 },
@@ -1852,6 +1872,7 @@
         mord1("YOUR ACHIEVEMENTS CAME WITH BOXES. OPEN THEM AT THE TABLE. THE SHOW WANTS EVERY UNBOXING ON CAMERA, EVEN WHEN NOBODY'S WATCHING YET."),
         carl("A TROLLSKIN SHIRT. A HOODED CLOAK. A CLUB SHAPED LIKE A TOAD. NO SHOES. OF COURSE THERE ARE NO SHOES."),
         donut("A CROWN, CARL! A JEWELED CROWN! THE LABEL SAYS SOMETHING VERY RUDE ABOUT A SEPSIS WHORE, BUT THE GEMS ARE VERY REAL."),
+        mord1("THAT NEW TATTOO ON YOUR ARM IS A GOBLIN PASS. GOBLINS AREN'T SUPPOSED TO ATTACK ON SIGHT. MOST OF THEM CAN'T READ, SO KEEP YOUR FISTS UP."),
         mord1("AND TWO PET BISCUITS. KEEP THOSE. SOME MOBS CALM DOWN IF YOU FEED THEM. TALK TO ME WHEN YOU'VE GOT STAT POINTS TO SPEND.")
       ],
       give: [{ kind: 'gear', id: 'trollskin_shirt' }, { kind: 'gear', id: 'nightgaunt_cloak' }, { kind: 'gear', id: 'toad_cudgel' },

@@ -1115,6 +1115,23 @@
     return gs.map(function (g) { return outlined(resize(g, w + pad * 2, h + pad * 2, pad, pad)); });
   }
   function withK(pal) { var o = { k: C.K }; for (var q in pal) o[q] = pal[q]; return o; }
+  // Princess Donut is a tortoiseshell Persian: "fuzzy, black and beige and white" with big
+  // yellow eyes. tortie() mottles her dark base fur ('o') with blocky beige ('t'), black ('x')
+  // and a little warm brown ('O'). The pattern is fixed per cell so idle frames keep the same coat.
+  var TORTIE = { o: C.y0, t: C.n3, O: C.y1, c: C.W, w: C.y3, e: C.K };
+  function tortieCell(x, y, cell, seed) {
+    var h = Math.imul(Math.floor(x / cell) + 31, 73856093) ^ Math.imul(Math.floor(y / cell) + 17, 19349663) ^ seed;
+    h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+    var v = (h >>> 0) % 100;
+    return v < 24 ? 't' : v < 42 ? 'x' : v < 50 ? 'O' : 'o';
+  }
+  function tortieGrid(g, cell, seed) {
+    for (var y = 0; y < g.length; y++) for (var x = 0; x < g[y].length; x++) if (g[y][x] === 'o') g[y][x] = tortieCell(x, y, cell, seed);
+    return g;
+  }
+  function tortie(frames, cell, seed) {
+    return frames.map(function (f) { return tortieGrid(typeof f[0] === 'string' ? P(f) : f.map(function (r) { return r.slice(); }), cell || 2, seed || 7); });
+  }
   function spr(name, pal, frames, opt) { return def(name, withK(pal), build(frames, opt && opt.pad), opt); }
   // replace rows from index i
   function alt(base, i, newRows) { var r = base.slice(); for (var j = 0; j < newRows.length; j++) r[i + j] = newRows[j]; return r; }
@@ -1137,7 +1154,7 @@
    * ================================================================== */
   (function () {
     // ---- Princess Donut: Persian show cat with a purple-jeweled tiara ----
-    var dp = { o: C.n2, c: C.n3, O: C.n1, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, m: C.m2, x: C.K };
+    var dp = { o: TORTIE.o, t: TORTIE.t, c: TORTIE.c, O: TORTIE.O, e: TORTIE.e, w: TORTIE.w, p: C.m2, y: C.y2, j: C.p1, m: C.m2, x: C.K };
     var d0 = [
       '........j.j.j.',
       '........yyjyy.',
@@ -1197,9 +1214,9 @@
       // hind push-off, body stretching out again
       { dy: 0, cx: 9, cy: 7, rx: 4.5, ry: 1.5, fn: [12, 8, 15, 10], ff: [12, 8, 16, 9], hn: [5, 8, 3, 12], hf: [5, 8, 2, 12], t: [4, 6, 1, 4] }
     ].map(gallop);
-    spr('donut_idle', dp, dI);
-    spr('donut_run', dp, DR);
-    spr('donut_act', dp, [dact]);
+    spr('donut_idle', dp, tortie(dI));
+    spr('donut_run', dp, tortie(DR));
+    spr('donut_act', dp, tortie([dact]));
 
     // ---- Mongo: baby velociraptor ----
     var mp = { g: C.G1, G: C.l2, S: C.G0, w: C.W, e: C.K, x: C.K, O: C.y1, r: C.o1 };
@@ -2865,7 +2882,7 @@
     for (var x = 9; x < 25; x += 2) { px(g, x, 21, 'S'); px(g, x + 1, 22, 'S'); px(g, x, 23, 'S'); }
     rect(g, 14, 20, 6, 1, 'm'); px(g, 20, 19, 'm');
   });
-  portrait('p_donut', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
+  portrait('p_donut', { o: TORTIE.o, t: TORTIE.t, x: C.K, O: TORTIE.O, c: TORTIE.c, e: TORTIE.e, w: TORTIE.w, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
     oval(g, 16, 27, 13, 6, 'o'); oval(g, 16, 28, 7, 4, 'c');
     oval(g, 16, 17, 12, 10, 'o');
     tri(g, 4, 3, 10, 9, 4, 12, 'o'); tri(g, 28, 3, 22, 9, 28, 12, 'o'); tri(g, 5, 6, 8, 9, 5, 10, 'p'); tri(g, 27, 6, 24, 9, 27, 10, 'p');
@@ -2876,6 +2893,7 @@
     rect(g, 15, 20, 3, 2, 'p'); line(g, 16, 22, 16, 23, 'K'); line(g, 13, 24, 15, 23, 'K'); line(g, 17, 23, 19, 24, 'K');
     line(g, 4, 20, 10, 21, 'c'); line(g, 22, 21, 28, 20, 'c');
     rect(g, 11, 5, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 3, 'j'); px(g, 11 + k * 3 + 1, 4, 'y'); } px(g, 16, 2, 'j'); px(g, 15, 5, 'j'); px(g, 16, 5, 'J'); px(g, 17, 5, 'j');
+    tortieGrid(g, 3, 11);
   });
   portrait('p_mongo', { g: C.G1, G: C.l2, S: C.G0, w: C.W, e: C.K, m: C.o0 }, BG_HERO, function (g) {
     oval(g, 14, 26, 10, 7, 'g'); oval(g, 16, 28, 5, 4, 'G');
@@ -2918,7 +2936,7 @@
     rect(g, 12, 19, 9, 3, 'm'); line(g, 13, 20, 19, 20, 'w'); px(g, 16, 19, 'w'); px(g, 16, 21, 'w');
     line(g, 27, 6, 29, 4, 'r'); line(g, 28, 8, 31, 7, 'r'); line(g, 26, 4, 26, 1, 'r');
   });
-  portrait('p_donut_smug', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
+  portrait('p_donut_smug', { o: TORTIE.o, t: TORTIE.t, x: C.K, O: TORTIE.O, c: TORTIE.c, e: TORTIE.e, w: TORTIE.w, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
     oval(g, 16, 27, 13, 6, 'o'); oval(g, 16, 28, 7, 4, 'c');
     oval(g, 16, 16, 12, 10, 'o');
     tri(g, 4, 2, 10, 8, 4, 11, 'o'); tri(g, 28, 2, 22, 8, 28, 11, 'o'); tri(g, 5, 5, 8, 8, 5, 9, 'p'); tri(g, 27, 5, 24, 8, 27, 9, 'p');
@@ -2930,6 +2948,7 @@
     rect(g, 15, 18, 3, 2, 'p'); line(g, 16, 20, 16, 21, 'K'); line(g, 13, 22, 15, 21, 'K'); line(g, 17, 21, 20, 21, 'K'); px(g, 21, 20, 'K');
     line(g, 4, 19, 10, 20, 'c'); line(g, 22, 20, 28, 19, 'c');
     rect(g, 11, 4, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 2, 'j'); px(g, 11 + k * 3 + 1, 3, 'y'); } px(g, 16, 1, 'j'); px(g, 15, 4, 'j'); px(g, 16, 4, 'J'); px(g, 17, 4, 'j');
+    tortieGrid(g, 3, 11);
   });
 
   // Mordecai: the Rat Hooligan (floor 1) and the Bugaboo (floor 2)
@@ -3270,7 +3289,7 @@
   //      skull seat with white fur, disc wheels, ape-hanger bars. Carl drives with his legs held out
   //      off the hot engine; Princess Donut rides the sidecar on her orc-skull seat (purple backrest) ----
   var CHOP_PAL = { c: C.n1, C: C.n2, d: C.n0, K: C.K, g: C.g0, G: C.g1, w: C.W, s: C.n3, S: C.n2, h: C.y0, j: C.n0, J: C.y0, r: C.o1,
-    o: C.n2, O: C.n1, e: C.G1, y: C.y2, p: C.p1, P: C.m2, f: C.g1 };
+    o: TORTIE.o, t: TORTIE.t, x: C.K, O: TORTIE.O, e: TORTIE.w, y: C.y2, p: C.p1, P: C.m2, f: C.g1 };
   function chopper(g, f, hurt) {
     var bob = f;          // the engine thumps: chassis bounces 1px
     // exhaust stack curling up behind the rider, smoke puffs
@@ -3310,6 +3329,8 @@
     rect(g, 29, 9 + dy, 6, 1, 'y'); px(g, 30, 8 + dy, 'y'); px(g, 32, 7 + dy, 'p'); px(g, 33, 8 + dy, 'y');
     px(g, 31, 12 + dy, 'e'); px(g, 33, 12 + dy, 'e'); px(g, 34, 14 + dy, 'P'); oval(g, 33, 15 + dy, 2, 1, 's');
     if (f) px(g, 28, 10 + dy, 'O');
+    tortieGrid(g, 2, 7);   // her tortoiseshell coat (only Donut uses 'o' here)
+    oval(g, 33, 15 + dy, 2, 1, 's');
     rect(g, 24, 17, 18, 6, 'c'); oval(g, 41, 19.5, 2, 3, 'c'); rect(g, 24, 17, 18, 1, 'C'); line(g, 25, 22, 41, 22, 'd');
     for (x = 25; x < 41; x += 3) px(g, x, 17, 'w');
     px(g, 27, 19, 'd'); px(g, 33, 20, 'd'); px(g, 38, 19, 'd');

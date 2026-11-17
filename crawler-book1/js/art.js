@@ -1529,7 +1529,7 @@
     layers: [
       layer(384, 0.2, function (g, w) {
         R(g, 0, 0, w, BGH, K);
-        blockWall(g, 0, 10, w, 142, 16, 8, Q.c0, K);
+        blockWall(g, 0, 10, w, 142, 16, 8, Q.g0, K);
         rep(g, w, function () {
           // shelves of moonshine jugs (60 full, 80 empty)
           var shelves = [[10, 44, 120], [10, 74, 120], [150, 54, 70]];
@@ -1785,12 +1785,15 @@
   BG.safe = { back: K, base: 'safe_guild' };
 
   /* =====================================================================
-     CUTSCENE BACKDROPS (the cutscene player shows y 16..120 in a
-     letterboxed picture; actors stand on a floor line at y=112)
+     CUTSCENE BACKDROPS. Every background shares one floor line: y=150
+     (stages, safe rooms, and these). The cutscene player puts y=150 on its
+     picture floor and shows roughly y 60..160, so each backdrop is
+     composed for y 16..112 and drawn shifted down by 38 (spec.shift).
      ===================================================================== */
+  var CUT_SHIFT = 38;
   // the Transformation: a freezing night street, buildings sinking, one ornate wrought-iron stairwell
   BG.surface = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       var r = rng(801), i, x;
       for (i = 0; i < 70; i++) P(g, (r() * 320) | 0, 14 + ((r() * 50) | 0), r() < 0.25 ? Q.W : Q.g0);
@@ -1829,7 +1832,7 @@
 
   // the descent: stone stairs down to the great double doors
   BG.stairwell = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       hewnWall(g, 320, 0, 112, 811, Q.y0, K, Q.n0, 0.25);
       // stairs coming down from the upper left
@@ -1857,7 +1860,7 @@
 
   // a cramped production trailer
   BG.trailer = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       R(g, 0, 0, 320, 112, Q.y0);
       for (var x = 0; x < 320; x += 8) { R(g, x, 18, 1, 94, K); P(g, x + 3, 30 + (x * 5) % 70, Q.y1); }
@@ -1887,7 +1890,7 @@
 
   // Odette's talk-show set
   BG.studio = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       var i, x;
       // light beams as flat shapes
@@ -1921,37 +1924,37 @@
 
   // the pet reward room: ten cages
   BG.reward_room = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       blockWall(g, 0, 0, 320, 112, 16, 8, Q.c0, K);
-      R(g, 112, 14, 96, 10, K); R(g, 113, 15, 94, 8, Q.y1); tiny(g, 'REWARD ROOM', 160, 17, K, { align: 'center' });
+      R(g, 112, 22, 96, 10, K); R(g, 113, 23, 94, 8, Q.y1); tiny(g, 'REWARD ROOM', 160, 25, K, { align: 'center' });
       for (var row = 0; row < 2; row++) for (var c = 0; c < 5; c++) {
-        var x = 12 + c * 60, y = 30 + row * 40;
-        R(g, x, y, 56, 36, K); R(g, x + 1, y + 1, 54, 34, Q.g0); R(g, x + 3, y + 3, 50, 30, K);
-        for (var b = x + 6; b < x + 53; b += 5) R(g, b, y + 3, 1, 30, Q.g1);
-        R(g, x + 3, y + 17, 50, 1, Q.g0); R(g, x + 22, y + 32, 12, 4, Q.y2);
+        var x = 12 + c * 60, y = 36 + row * 38;
+        R(g, x, y, 56, 34, K); R(g, x + 1, y + 1, 54, 32, Q.g0); R(g, x + 3, y + 3, 50, 28, K);
+        for (var b = x + 6; b < x + 53; b += 5) R(g, b, y + 3, 1, 28, Q.g1);
+        R(g, x + 3, y + 16, 50, 1, Q.g0); R(g, x + 22, y + 30, 12, 4, Q.y2);
       }
       R(g, 0, 112, 320, 68, Q.g0); for (var gx = 0; gx < 320; gx += 16) R(g, gx, 112, 1, 68, K); R(g, 0, 112, 320, 1, K); R(g, 0, 128, 320, 1, K);
     })],
-    props: [{ L: 0, x: 37, y: 46, k: 'cagebark', fps: 0.6, blink: true }, { L: 0, x: 157, y: 86, k: 'cagebark', fps: 0.5, blink: true, ph: 0.5 }, { L: 0, x: 217, y: 46, k: 'cagebark', fps: 0.8, blink: true, ph: 0.3 }]
+    props: [{ L: 0, x: 37, y: 52, k: 'cagebark', fps: 0.6, blink: true }, { L: 0, x: 157, y: 90, k: 'cagebark', fps: 0.5, blink: true, ph: 0.5 }, { L: 0, x: 217, y: 52, k: 'cagebark', fps: 0.8, blink: true, ph: 0.3 }]
   };
 
-  // a safe-room TV close-up: a big bezel; the cutscene draws the recap on the black screen
+  // a safe-room TV close-up: a big bezel; the cutscene draws the recap on the black screen (y 30..100 before the shift)
   BG.tvroom = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       R(g, 0, 0, 320, 180, K);
-      R(g, 10, 16, 300, 104, Q.g0); R(g, 10, 16, 300, 2, Q.g1); R(g, 10, 16, 2, 104, Q.g1); R(g, 308, 16, 2, 104, K);
-      R(g, 22, 22, 276, 84, K);
-      R(g, 22, 108, 276, 1, K); tiny(g, 'BORANT', 40, 110, Q.g1); R(g, 284, 111, 3, 3, Q.r1); P(g, 284, 111, Q.r3);
-      for (var x = 120; x < 200; x += 4) R(g, x, 111, 2, 4, K);
-      R(g, 150, 120, 20, 6, Q.g0);
+      R(g, 12, 24, 296, 90, Q.g0); R(g, 12, 24, 296, 2, Q.g1); R(g, 12, 24, 2, 90, Q.g1); R(g, 306, 24, 2, 90, K);
+      R(g, 24, 30, 272, 70, K);
+      tiny(g, 'BORANT', 30, 104, Q.g1); R(g, 286, 105, 3, 3, Q.r1); P(g, 286, 105, Q.r3);
+      for (var x = 120; x < 200; x += 4) R(g, x, 104, 2, 5, K);
+      R(g, 140, 114, 40, 6, Q.g0); R(g, 120, 120, 80, 3, Q.g0);
     })]
   };
 
   // Death Watch Extreme Dungeon Mayhem: the round-table set under its ring of light
   BG.deathwatch = {
-    back: K,
+    back: K, shift: CUT_SHIFT,
     layers: [layer(320, 0, function (g) {
       var i;
       // ring of light
@@ -1990,10 +1993,11 @@
   }
   function buildBg(theme) {
     var spec = BG[theme], src = spec.base ? BG[spec.base] : spec;
-    var b = { back: spec.back || K, anim: src.anim || null, layers: [], props: [] }, i;
+    var b = { back: spec.back || K, anim: src.anim || null, layers: [], props: [], shift: src.shift || 0 }, i;
     for (i = 0; i < src.layers.length; i++) {
-      var L = src.layers[i], cv = mkCanvas(L.w, BGH);
-      try { L.draw(g2(cv), L.w, BGH); } catch (e) { if (window.console) console.error('art bg layer failed: ' + theme, e); }
+      var L = src.layers[i], cv = mkCanvas(L.w, BGH), lg = g2(cv);
+      if (b.shift) { R(lg, 0, 0, L.w, b.shift, src.back || K); lg.translate(0, b.shift); }
+      try { L.draw(lg, L.w, BGH); } catch (e) { if (window.console) console.error('art bg layer failed: ' + theme, e); }
       nesify(cv);
       if (spec.recolor) cv = recolorCanvas(cv, spec.recolor);
       b.layers.push({ cv: cv, L: L });
@@ -2031,7 +2035,7 @@
     }
     for (i = 0; i < b.props.length; i++) {
       var pr = b.props[i], p = pr.p, s = pr.s, lay = b.layers[p.L] || b.layers[0], rate = lay.L.rate, lw = lay.L.w;
-      var fr = propFrame(p, t), px = p.x - (p.cx ? s.w >> 1 : 0), py = p.y + (oys[p.L] || 0);
+      var fr = propFrame(p, t), px = p.x - (p.cx ? s.w >> 1 : 0), py = p.y + b.shift + (oys[p.L] || 0);
       var sx = rate ? ((px - camX * rate) % lw + lw) % lw : px;
       for (k = -1; k <= 1; k++) {
         var xx = Math.round(sx + k * lw);
@@ -2327,22 +2331,55 @@
       R(g, x, top + 3, 2, 5 - top, Q.b4); P(g, x, top + 5, Q.b6); P(g, x + 1, top + 6, Q.W);
     }
   }, false);
-  // the chase stage's wall of fire (32x180): a solid inferno with a licking front edge
+  // the chase stage's wall of fire (32x180): orange body full of rising yellow flame tongues,
+  // a red licking front edge on the right; frame 1 = tongues risen half a step (2-frame flicker)
   proc('fire_wall', 32, 180, 2, function (g, f) {
-    var r = rng(77 + f * 13);
-    for (var y = 0; y < 180; y++) {
-      var e = Math.round(22 + Math.sin(y * 0.14 + f * 2.1) * 5 + Math.sin(y * 0.41 + f * 1.3) * 3);
-      for (var x = 0; x <= e; x++) {
-        var d = e - x, c = d < 2 ? Q.o1 : d < 5 ? Q.n2 : d < 10 ? Q.y3 : ((x + y + f) % 9 === 0 ? Q.W : (((x >> 2) + (y >> 3) + f) & 1) ? Q.y3 : Q.n2);
-        P(g, x, y, c);
+    var y, x, edge = [];
+    for (y = 0; y < 180; y++) edge[y] = Math.round(21 + Math.sin(y * 0.14 + f * 2.1) * 5 + Math.sin(y * 0.41 + f * 1.3) * 3);
+    for (y = 0; y < 180; y++) { var e = edge[y]; R(g, 0, y, e + 1, 1, Q.n2); R(g, e - 1, y, 2, 1, Q.o1); }
+    for (var row = -1; row < 14; row++) for (var c = 0; c < 3; c++) {
+      var cx = 3 + c * 8 + (row & 1) * 4 + ((row * 5 + c) % 3) - 1, base = row * 14 + 12 - (f ? 7 : 0), th = 8 + ((row * 7 + c * 3 + 20) % 6);
+      for (var j = 0; j < th; j++) {
+        var yy = base - th + 1 + j; if (yy < 0 || yy >= 180) continue;
+        var hw = Math.round((2 + ((row + c) & 1)) * Math.pow(j / (th - 1), 0.7));
+        for (x = cx - hw; x <= cx + hw; x++) if (x < edge[yy] - 1) P(g, x, yy, j > th * 0.6 && Math.abs(x - cx) < hw ? Q.W : Q.y3);
+        if (j === 0 && cx < edge[yy] - 1) P(g, cx, yy - 1, Q.o1);
       }
     }
+    var r = rng(77 + f * 13);
     for (var i = 0; i < 14; i++) { // loose tongues of flame ahead of the wall
-      var ty = (r() * 176) | 0, tx = 26 + ((r() * 4) | 0);
+      var ty = (r() * 176) | 0, tx = edge[ty] + 2 + ((r() * 4) | 0);
+      if (tx > 30) tx = 30;
       P(g, tx, ty, Q.o1); P(g, tx, ty + 1, Q.n2); P(g, tx + 1, ty + 1, Q.o1); P(g, tx, ty + 2, Q.o1);
     }
   }, false);
   pix('ember', { r: Q.o1, o: Q.n2, y: Q.y3, w: Q.W }, [['.r..', 'ryo.', '.or.', '....'], ['....', '.o..', 'ryr.', '..r.']], false);
+
+  // Meadow Lark allies: Brandon and Chris's shotgun pellets, Yolanda's pistol bullet
+  pix('pellet', { w: Q.W, g: Q.g1 }, [['.....', '.gw..', '.wg..', '.....']]);
+  pix('bullet', { y: Q.y2, Y: Q.y3, o: Q.y1 }, [['......', '.oyYY.', '.oyyy.', '......']]);
+  // a generic 2-frame flame (burning ground, fire fx)
+  pix('fire', { r: Q.o1, o: Q.n2, y: Q.y3, w: Q.W }, [[
+    '....r...',
+    '...rr...',
+    '..ror.r.',
+    '..rorrr.',
+    '.rooyor.',
+    '.royyor.',
+    'rooywyor',
+    'royyyyor',
+    '.rooyor.',
+    '..rrrr..'], [
+    '........',
+    '.r...r..',
+    '.rr.ror.',
+    '.ror.ror',
+    '.rooroor',
+    'roooyyor',
+    'royywyor',
+    'royyyyor',
+    '.rooyor.',
+    '..rrrr..']], false);
 
   /* ---- fx ---- */
   proc('explosion', 32, 32, 5, function (g, f) {
@@ -2693,21 +2730,25 @@
   });
   // the descending stairwell (48x40): an ornate wrought-iron entrance over stone steps going down
   proc('stairwell', 48, 40, 1, function (g) {
+    var i, x;
     // the pit and the steps receding down into the dark
-    R(g, 6, 18, 36, 22, K);
-    for (var s = 0; s < 6; s++) { var y = 20 + s * 3; R(g, 8 + s * 2, y, 32 - s * 4, 2, s < 2 ? Q.g1 : s < 4 ? Q.g0 : Q.g3); R(g, 8 + s * 2, y + 2, 32 - s * 4, 1, K); }
-    // railings
-    for (var x = 4; x <= 44; x += 4) { R(g, x, 22, 1, 18, K); }
-    R(g, 3, 22, 42, 2, K); R(g, 3, 22, 42, 1, Q.g0);
-    // posts with lamps
-    R(g, 2, 8, 3, 32, K); R(g, 43, 8, 3, 32, K); P(g, 3, 12, Q.g0); P(g, 44, 12, Q.g0);
-    oval(g, 3, 5, 2, 3, K); oval(g, 3, 5, 1, 2, Q.y3); oval(g, 44, 5, 2, 3, K); oval(g, 44, 5, 1, 2, Q.y3);
-    // the arch and its sign
-    for (var a = 0; a <= 30; a++) { var t = a / 30, ax = Math.round(4 + t * 39), ay = Math.round(12 - Math.sin(t * Math.PI) * 9); R(g, ax, ay, 2, 2, K); }
-    R(g, 14, 4, 20, 9, K); R(g, 15, 5, 18, 7, Q.t0);
-    rows(g, 20, 6, ['wwwwwww', '.wwwww.', '..www..', '...w...'], { w: Q.G2 });
-    for (x = 8; x < 42; x += 8) { ring(g, x + 2, 28, 2, K); }
-  }, false);
+    R(g, 6, 22, 36, 18, K);
+    for (var s2 = 0; s2 < 6; s2++) { var y = 23 + s2 * 3; R(g, 8 + s2 * 2, y, 32 - s2 * 4, 2, s2 < 2 ? Q.g1 : s2 < 4 ? Q.g0 : Q.g3); }
+    // railing: posts, a top rail and a band of iron rings
+    for (x = 5; x <= 42; x += 4) R(g, x, 25, 1, 14, Q.g0);
+    R(g, 4, 24, 40, 1, Q.g1); R(g, 4, 31, 40, 1, Q.g0);
+    for (x = 7; x < 42; x += 8) ring(g, x + 2, 28, 2, Q.g0);
+    // lamp posts
+    R(g, 2, 9, 3, 31, Q.g0); R(g, 3, 9, 1, 31, Q.g1); R(g, 43, 9, 3, 31, Q.g0); R(g, 44, 9, 1, 31, Q.g1);
+    R(g, 1, 37, 5, 3, Q.g0); R(g, 42, 37, 5, 3, Q.g0);
+    oval(g, 3, 5, 2, 3, Q.g0); oval(g, 3, 5, 1, 2, Q.y3); P(g, 3, 4, Q.W);
+    oval(g, 44, 5, 2, 3, Q.g0); oval(g, 44, 5, 1, 2, Q.y3); P(g, 44, 4, Q.W);
+    // the arch with curls and its sign
+    for (i = 0; i <= 40; i++) { var t = i / 40, ax = Math.round(5 + t * 37), ay = Math.round(13 - Math.sin(t * Math.PI) * 9); R(g, ax, ay, 2, 1, Q.g0); P(g, ax, ay - 1, Q.g1); }
+    ring(g, 10, 14, 2, Q.g0); ring(g, 37, 14, 2, Q.g0);
+    R(g, 14, 5, 20, 9, K); R(g, 15, 6, 18, 7, Q.t0);
+    rows(g, 20, 7, ['wwwwwww', '.wwwww.', '..www..', '...w...'], { w: Q.G2 });
+  });
   // Mordecai's guild hall door (26x38): heavy oak, iron bands, a shield over it
   proc('guild_door', 26, 38, 1, function (g) {
     // stone frame
@@ -2926,7 +2967,7 @@
   icon('boxers', ['kkkkkkkk', 'kqyqyqyk', 'kyyyyyyk', 'kyQyyQyk', 'kyyykyyk', 'kyyk.kyk', 'kqqk.kqk', 'kkk...kk']);
   icon('foot', ['.kkk....', '.ksk....', '.ksk....', '.kssk...', '.kSsskkk', '.kSssssk', '.kSswsws', '..kkkkkk']);
   icon('crown', ['........', 'k.k..k.k', 'kykkkyk.', 'kyYyyYyk', 'kyrVyryk', 'kyyyyyyk', 'kooooook', 'kkkkkkkk']);
-  icon('talisman', ['...kk...', '..k..k..', '.kkkkkk.', 'kPpkkpPk', 'kpPkkPpk', '.kpkkpk.', 'kpk..kpk', '.k....k.']);
+  icon('talisman', ['.y....y.', '..y..y..', 'PPkyykPP', 'PpPyyPpP', 'PPPyyPPP', '.PpyypP.', '.PPkkPP.', '..k..k..']);
   icon('brush', ['.kkkkk..', 'kwGwGwk.', 'kGwGwGk.', 'kkkkkkk.', '..kck...', '..kck...', '..kCk...', '..kkk...']);
   icon('skirt', ['..kkkk..', '..kppk..', '.kpPppk.', '.kppPpk.', 'kpPppPpk', 'kppPpppk', 'kPkPkPkk', 'kk.k.k..']);
 
