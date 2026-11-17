@@ -378,6 +378,14 @@ menu_move menu_select menu_back lootbox_shake lootbox_open unlock level_up door 
 heal block buy error text_blip pause checkpoint crate_break spawn laser warn stomp splash fanfare views engine boost horn
 countdown go skid crash).
 
+## Integration notes (lead, after the build)
+- `stages[id].arenaTheme`: the stage switches to this theme when the boss arena locks (f1_juicer -> `gym_red`, the gym turns red when the doors shut).
+- Book box names: `achievements[id].boxName` and give entries `{kind:'box', tier, name}` keep the tier for the loot table but show the book's name ("BRONZE ASSHOLE'S BOX") in toasts, the box list and the opening screen (`DCW.game.giveLootBox(tier, from, quiet, name)`).
+- Skipping: Enter is START + CONFIRM, so Enter only advances text. A whole cutscene or dialog is skipped by START alone (Esc, P, gamepad Start, touch START); the hint reads ESC: SKIP.
+- Achievements are remembered per profile but re-earned (and re-rewarded) once per crawl, so gear tied to an achievement (podophilia -> toe ring, little_piggy -> pedicure kit) shows up in every crawl.
+- Level design: the longest normal running jump is about 65 px, so plain gaps stay at 3 tiles or less (4+ only with moving platforms, or on the chopper). The tutorial's only pit is 2 tiles.
+- Test hooks: `DCW.testHold = {right:1, jump:1}` holds several logical buttons at once; `tools/flow_test.js <dir> [--intro]` walks the whole book.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

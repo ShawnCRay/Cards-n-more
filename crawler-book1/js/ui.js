@@ -98,6 +98,10 @@
   /* ---------------- input ---------------- */
   function I() { return DCW.input || { pressed: function () { return false; }, down: function () { return false; } }; }
   function P(b) { return I().pressed(b); }
+  // Enter is both START and CONFIRM. Skipping a whole cutscene or dialog needs START on its own
+  // (Esc, P, a gamepad Start, the touch START button), so Enter only ever advances the text.
+  function skipP() { return P('start') && !P('confirm'); }
+  function skipName() { var dev = (DCW.input && DCW.input.lastDevice) || 'keyboard'; return dev === 'keyboard' ? 'ESC' : 'START'; }
   function Dn(b) { return I().down(b); }
   function consume() { if (DCW.input && DCW.input.consume) DCW.input.consume(); }
   // pressed, or auto-repeat while held
@@ -577,7 +581,7 @@
         var now = Math.floor(m.shown);
         if (now !== before) { m.blip += now - before; if (m.blip >= 3) { m.blip = 0; sfx('text_blip'); } }
       }
-      if (P('start') && opts.skippable !== false && m.t > 0.15) { finish(); return; }
+      if (skipP() && opts.skippable !== false && m.t > 0.15) { finish(); return; }
       if ((P('confirm') || P('back')) && m.t > 0.08) {
         if (m.shown < total) m.shown = total;
         else { m.i++; m.shown = 0; if (m.i >= m.pages.length) finish(); }
@@ -610,7 +614,7 @@
     t.w = Math.max(64, inner + iw + 12);
     t.h = 7 + (t.title ? 10 : 0) + t.lines.length * 10 + t.subLines.length * 10;
     if (o.sfx) sfx(o.sfx);
-    if (toasts.length < 4) toasts.push(t); else toastQ.push(t);
+    if (toasts.length < 3) toasts.push(t); else toastQ.push(t);
     return t;
   };
   ui.achievement = function (a) {
@@ -628,7 +632,9 @@
       y += t.h + 4;
     }
     toasts = toasts.filter(function (t) { return t.t < t.time; });
-    while (toasts.length < 4 && toastQ.length) toasts.push(toastQ.shift());
+    // a backlog (a cutscene or safe room handing out five rewards at once) moves along faster
+    if (toastQ.length) toasts.forEach(function (t) { t.time = Math.min(t.time, Math.max(t.t + 0.6, 1.8)); });
+    while (toasts.length < 3 && toastQ.length) toasts.push(toastQ.shift());
   }
   function drawToasts(ctx) {
     toasts.forEach(function (t) {
@@ -1019,7 +1025,7 @@
     function startOpen() {
       var list = boxes(); if (!list.length) return;
       var b = list[m.sel] || list[0];
-      m.tier = b.tier; m.from = b.from;
+      m.tier = b.tier; m.from = b.from; m.boxName = b.name || null;
       var rw = G('openLootBox', m.sel);
       if (!Array.isArray(rw)) {
         if (!hasG('openLootBox')) { list.splice(m.sel, 1); rw = [{ kind: 'gold', amount: 0 }]; }
@@ -1096,7 +1102,7 @@
             var b = list[i], yy = 32 + (i - m.scroll) * 21;
             if (i === m.sel) { R(10, yy - 2, 300, 20, C.sel); cursor(13, yy + 4); }
             spr(ctx, 'box_' + b.tier, 32, yy + 16, { frame: i === m.sel ? Math.floor((DCW.t || 0) * 6) : 0 });
-            T(fitText(tierName(b.tier), 250), 46, yy, boxColor(b.tier));
+            T(fitText(b.name || tierName(b.tier), 250), 46, yy, boxColor(b.tier));
             T(fitText('FROM: ' + (b.from || 'THE SPONSORS'), 250), 46, yy + 9, i === m.sel ? C.gray : C.dgray, { shadow: null });
           }
           scrollArrows(300, 30, 152, m.scroll, vis, list.length);
@@ -1113,7 +1119,7 @@
       var col = boxColor(m.tier);
       var spin = Math.floor((DCW.t || 0) * (m.mode === 'shake' ? 6 + m.mt * 6 : 4)) * 0.05;
       rays(ctx, 160, 92, darken(col), spin, 0, 28, W, H - 28);
-      T(tierName(m.tier), 160, 8, col, { align: 'center' });
+      T(fitText(m.boxName || tierName(m.tier), 312), 160, 8, col, { align: 'center' });
       if (m.from) T(fitText('FROM: ' + m.from, 300), 160, 18, C.gray, { align: 'center', shadow: null });
       if (m.mode === 'shake') {
         var amp = 1 + m.mt * 2.2;
@@ -1938,7 +1944,7 @@
     pl.update = function (dt) {
       pl.t += dt; pl.pt += dt;
       if (pl.done) return;
-      if (P('start') && pl.t > 0.25) { sfx('menu_back'); finish(); return; }
+      if (skipP() && pl.t > 0.25) { sfx('menu_back'); finish(); return; }
       if (pl.wipe) {
         pl.wipe.t += dt;
         if (pl.wipe.t >= WIPE) {
@@ -2028,7 +2034,7 @@
       // top bar: panel dots + skip hint
       var n = pl.panels.length;
       if (n > 1) for (var d = 0; d < n; d++) R(316 - (n - d) * 6, 3, 4, 3, d === pl.pi ? C.gold : d < pl.pi ? C.dgray : C.ddgray);
-      if (pl.t < 4 || blink(0.5)) T(bn('start') + ': SKIP', 4, 1, C.dgray, { shadow: null });
+      if (pl.t < 4 || blink(0.5)) T(skipName() + ': SKIP', 4, 1, C.dgray, { shadow: null });
     };
     return pl;
   }
@@ -2816,7 +2822,7 @@
         for (var wx = 0; wx < W; wx += 32) R(wx, 0, 1, GROUND, C.black);
         R(0, 30, W, 3, C.brown); R(0, 104, W, 2, C.tan);
       }
-      floorRow(ctx, 'safe', GROUND, 0, 2);
+      floorRow(ctx, (DCW.art && DCW.art.hasBackground && def.theme && DCW.art.hasBackground(def.theme)) ? def.theme : 'safe', GROUND, 0, 2);
       this.objs.forEach(function (o) { if (o.id !== 'door') try { self.drawStation(ctx, o, t); } catch (e) { /* never let a prop kill the room */ } });
       this.objs.forEach(function (o) { if (o.id === 'door') self.drawStation(ctx, o, t); });
       // companion + carl
@@ -2885,7 +2891,7 @@
       if (ph === 'end') { if (adv || this.ct > 9) this.go('credits'); return; }
       if (ph === 'credits') {
         this.cs = (this.cs || 0) + dt * (Dn('confirm') || Dn('jump') ? 5 : 1);
-        if (P('start') || this.cs * 18 > this.credits.length * 14 + H + 20) { this.cs = 0; this.go('teaser'); }
+        if (skipP() || this.cs * 18 > this.credits.length * 14 + H + 20) { this.cs = 0; this.go('teaser'); }
         return;
       }
       if (ph === 'teaser') { if (adv || this.ct > 10) this.go('stats'); return; }

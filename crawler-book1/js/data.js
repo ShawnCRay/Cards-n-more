@@ -330,8 +330,8 @@
     '..............=====.............',
     '.........o...........o..........',
     '...e.............e............e.',
-    '##########....######....########',
-    '##########....######....########'] };
+    '###########...######...#########',
+    '###########...######...#########'] };
 
   // ladder and two blocks, a secret box on the high shelf
   C.tn_b = { rows: [
@@ -494,8 +494,8 @@
     '..............XX........................',
     '..............XX........................',
     '..n..m..h.....XX..e..c.n.............e..',
-    '#########################....###########',
-    '#########################....###########'] };
+    '##########################..############',
+    '##########################..############'] };
 
   C.tn_hall_end = { rows: [
     'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
@@ -1370,7 +1370,7 @@
     '....................................',
     '.........o....o....o....o...........',
     '....................................',
-    '.........XX...XX...XX...XX..........',
+    '....................................',
     '.........XX...XX...XX...XX..........',
     '..e......XX...XX...XX...XX......e...',
     '#######..XX...XX...XX...XX..########',
@@ -1735,7 +1735,7 @@
     reward: { box: 'bronze', xp: 16 },
     intro: "TROGLODYTE COUNTRY! THE LITTLE ONES JUMP. THE BIG ONES PUNCH. THE MEDIUM ONES HAVE FIFTEEN-FOOT TONGUES. EVERYONE HERE IS VENOMOUS. SMILE!" });
 
-  st('f1_juicer', { name: 'THE 24 HOUR GYM', floor: 1, theme: 'gym', kind: 'boss', music: 'gym',
+  st('f1_juicer', { name: 'THE 24 HOUR GYM', floor: 1, theme: 'gym', arenaTheme: 'gym_red', kind: 'boss', music: 'gym',
     chunks: { start: 'gy_start', pool: ['gy_a', 'gy_b', 'gy_c'], count: 2, end: 'arena_juicer' },
     enemies: [['trog_pygmy', 3], ['trog_virtuoso', 1]], elite: [['trog_basher', 1]], flyers: [['trog_pygmy', 1]],
     boss: 'juicer', reward: { box: 'boss', xp: 24 },

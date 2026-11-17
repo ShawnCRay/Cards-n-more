@@ -400,7 +400,7 @@
     pollPad();
     BUTTONS.forEach(function (b) {
       prev[b] = cur[b];
-      cur[b] = kb[b] > 0 || kbHit[b] || touch[b] || pad[b];
+      cur[b] = kb[b] > 0 || kbHit[b] || touch[b] || pad[b] || !!(DCW.testHold && DCW.testHold[b]);
       kbHit[b] = false;
     });
     // a key tapped and released between two frames still registers once
@@ -633,6 +633,7 @@
   }
   // Headless test hook: advance the simulation n frames synchronously.
   DCW.stepFrames = function (n) { for (var i = 0; i < n; i++) step(); render(); };
+  DCW.testHold = null; // test helper: { right: 1, jump: 1 } holds those logical buttons until cleared
   DCW.pressKey = function (btn, frames) { // test helper: hold a logical button for N frames
     kb[btn]++; kbHit[btn] = true; DCW.stepFrames(frames || 1); kb[btn] = Math.max(0, kb[btn] - 1);
   };

@@ -2267,6 +2267,8 @@
   }
   function lockArena(B) {
     S.locked = true;
+    // the room can change once the doors shut (the Juicer's gym goes red)
+    if (S.def.arenaTheme) { S.theme = S.def.arenaTheme; if (has(ART(), 'prepare')) call(ART(), 'prepare', S.theme); flash('#f83800', 0.12); }
     var a = S.arena, L = S.L, tx = a.tx0;
     // drop a gate on the arena entrance
     for (var ty = 0; ty < L.h; ty++) {

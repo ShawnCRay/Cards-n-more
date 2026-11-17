@@ -444,7 +444,7 @@
       var r = G.run;
       switch (rw.kind) {
         case 'achieve': G.achieve(rw.id); break;
-        case 'box': G.giveLootBox(rw.tier || 'bronze', rw.from || from || 'STORY'); break;
+        case 'box': G.giveLootBox(rw.tier || 'bronze', rw.from || from || 'STORY', false, rw.name || rw.boxName); break;
         case 'gear': G.giveGear(rw.id, rw.from || from); break;
         case 'flag': G.setFlag(rw.id, !!rw.quiet); break;
         case 'item': {
@@ -589,12 +589,13 @@
     var t = (D().boxTiers || {})[tier];
     return (t && t.name) || ((TIER_NAMES[tier] || String(tier).toUpperCase()) + ' BOX');
   };
-  G.giveLootBox = function (tier, from, quiet) {
+  // name: the book's own box name ("BRONZE ASSHOLE'S BOX"); the tier still decides the loot table
+  G.giveLootBox = function (tier, from, quiet, name) {
     var r = G.run; if (!r) return;
-    r.boxes.push({ tier: tier, from: from || '' });
+    r.boxes.push(name ? { tier: tier, from: from || '', name: String(name).toUpperCase() } : { tier: tier, from: from || '' });
     if (!quiet) {
       sfx('pickup');
-      toast(G.tierName(tier), { title: 'LOOT BOX GET', icon: 'box', color: (DCW.art && DCW.art.boxColor) ? DCW.art.boxColor(tier) : '#f8b800' });
+      toast(name ? String(name).toUpperCase() : G.tierName(tier), { title: 'LOOT BOX GET', icon: 'box', color: (DCW.art && DCW.art.boxColor) ? DCW.art.boxColor(tier) : '#f8b800' });
     }
   };
 
@@ -796,7 +797,7 @@
     toast(a.name, { title: already ? 'ACHIEVEMENT!' : 'NEW ACHIEVEMENT!', icon: 'star', color: '#f8d878', time: 3.5 });
     if (run && !run.achRewarded[id]) {
       run.achRewarded[id] = true;
-      if (a.box !== null) G.giveLootBox(a.box || 'bronze', 'ACHIEVEMENT: ' + a.name, true);
+      if (a.box !== null) G.giveLootBox(a.box || 'bronze', 'ACHIEVEMENT: ' + a.name, true, a.boxName);
       if (a.gear) G.giveGear(a.gear, a.name);
       if (a.give) G.give(a.give, a.name);
     }
