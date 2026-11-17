@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>DCW art gallery</title>
+<title>DCC Book One art gallery</title>
 <style>
   body { background: #111; color: #ccc; font: 12px monospace; margin: 8px; }
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; margin: 0 0 8px 0; }
@@ -20,8 +20,8 @@
 <script src="../js/art_actors.js"></script>
 <script src="../js/art.js"></script>
 <script>
-/* Art gallery: every tile set, background, overworld theme, fx/pickup/icon and
-   every actor def. Params: ?scale=3 &t=1.5 (time) &cam=200 (camX) &only=themes|tiles|ow|sprites|actors|icons */
+/* Art gallery: every tile set, stage background, safe room / cutscene backdrop,
+   fx/pickup/icon and every actor def. Params: ?scale=3 &t=1.5 (time) &cam=200 (camX) &only=themes|tiles|backdrops|sprites|actors|icons */
 (function () {
   var qs = new URLSearchParams(location.search);
   var SCALE = +(qs.get('scale') || 3), ONLY = qs.get('only'), CAM = +(qs.get('cam') || 140);
@@ -115,35 +115,23 @@
     });
   }
 
-  // ---------- 3. overworld themes ----------
-  var OWMAP = [
-    '####################',
-    '#....,,..===....TT.#',
-    '#.##.,,..=.~~~..T..#',
-    '#.##.....=.~~~.....#',
-    '#........=====.###.#',
-    '#.T.,,.......=.###.#',
-    '#.T.,,.###...=.###.#',
-    '#.......##...=.....#',
-    '#~~~....##...====..#',
-    '#~~~......T.....,,.#',
-    '####################'
-  ];
-  if (want('ow')) {
-    (A.owThemes || []).forEach(function (theme) {
-      var g = section('ow_' + theme, 'OVERWORLD ' + theme, 320, 176);
+  // ---------- 3. background-only ids: safe room interiors + cutscene backdrops ----------
+  if (want('backdrops')) {
+    (A.backdrops || []).forEach(function (bg) {
+      var g = section('bg_' + bg, 'BACKDROP ' + bg, 320, 180);
       try {
-        for (var y = 0; y < OWMAP.length; y++) for (var x = 0; x < 20; x++) {
-          var ch = cell(OWMAP, x, y);
-          A.owTile(g, theme, ch, x * 16, y * 16, { up: cell(OWMAP, x, y - 1) === ch, down: cell(OWMAP, x, y + 1) === ch, left: cell(OWMAP, x - 1, y) === ch, right: cell(OWMAP, x + 1, y) === ch, tx: x, ty: y, t: DCW.t });
+        var f = Math.floor(DCW.t * 8);
+        A.background(g, bg, 0, 0);
+        if (/^safe/.test(bg)) { // safe room: floor tiles from y=150 (room id as tile theme), a few actors on the floor line
+          for (var fx = 0; fx < 320; fx += 16) for (var fy = 150; fy < 180; fy += 16) A.tile(g, bg, '#', fx, fy, { up: fy > 150, down: true, left: true, right: true, tx: fx / 16, ty: fy / 16 });
+          spr(g, 'carl_idle', 150, 150, { frame: f }); spr(g, 'donut_idle', 130, 150, { frame: f });
+          spr(g, 'box_gold', 60, 150, { frame: f }); spr(g, 'door', 296, 150);
+        } else { // cutscene: letterbox the picture to y 16..120, actors on y=112
+          spr(g, 'carl_idle', 140, 112, { frame: f }); spr(g, 'donut_idle', 162, 112, { frame: f });
+          g.fillStyle = '#000000'; g.fillRect(0, 0, 320, 16); g.fillRect(0, 120, 320, 60);
         }
-        var mk = ['ow_door', 'ow_manhole', 'ow_tent', 'ow_cave', 'ow_safe', 'ow_boss', 'ow_boss_locked', 'ow_stairs', 'ow_stairs_locked', 'ow_flag'];
-        for (var i = 0; i < mk.length; i++) { A.owTile(g, theme, '.', 16 + i * 16 + 64, 160 - 16 * 3, {}); }
-        for (i = 0; i < mk.length; i++) spr(g, mk[i], 16 + i * 16 + 72, 160 - 16 * 2);
-        spr(g, 'carl_ow_down', 8 * 16 + 8, 7 * 16 + 16, { frame: Math.floor(DCW.t * 4) });
-        spr(g, 'clown_walk', 6 * 16 + 8, 3 * 16 + 16, { frame: Math.floor(DCW.t * 4) });
-        label(g, theme.toUpperCase(), 4, 166, '#fff');
-      } catch (e) { report.errors.push(theme + ': ' + e.message); console.error(e); }
+        label(g, bg.toUpperCase(), 4, 4, '#fcfcfc');
+      } catch (e) { report.errors.push(bg + ': ' + e.message); console.error(e); }
     });
   }
 
@@ -169,7 +157,7 @@
     });
   }
   var own = (A.ownNames || []).filter(function (n) { return n.indexOf('icon_') !== 0; });
-  if (want('sprites')) sheet('own', 'ART.JS SPRITES (fx / projectiles / pickups / objects / markers)', own, 2);
+  if (want('sprites')) sheet('own', 'ART.JS SPRITES (fx / projectiles / pickups / objects)', own, 2);
   if (want('actors')) {
     var all = A.names().filter(function (n) { return (A.ownNames || []).indexOf(n) < 0; }).sort();
     var portraits = all.filter(function (n) { return /^p_/.test(n); }), rest = all.filter(function (n) { return !/^p_/.test(n); });
@@ -189,8 +177,10 @@
   if (want('icons')) {
     var g = section('icons', 'ICONS + FLIP/FLASH/ALPHA/SCALE + PLACEHOLDERS + PORTRAIT FALLBACK', 320, 80, 3);
     g.fillStyle = '#000'; g.fillRect(0, 0, 320, 80);
-    var ic = ['heart', 'heart_half', 'heart_empty', 'coin', 'bomb', 'potion', 'star', 'skull', 'box', 'key', 'sword', 'shield', 'boot', 'brain', 'eye'];
+    var ic = ['heart', 'heart_half', 'heart_empty', 'coin', 'bomb', 'potion', 'star', 'skull', 'box', 'key', 'sword', 'shield', 'boot', 'brain', 'eye', 'quest'];
     ic.forEach(function (n, i) { A.icon(g, n, 4 + i * 12, 4); });
+    var ic2 = ['biscuit', 'jug', 'dynamite', 'shirt', 'cloak', 'ring', 'club', 'gauntlet', 'boxers', 'foot', 'crown', 'talisman', 'brush', 'skirt'];
+    ic2.forEach(function (n, i) { A.icon(g, n, 200 + (i % 7) * 12, 4 + (i / 7 | 0) * 12); });
     ['bronze', 'silver', 'gold', 'platinum', 'legendary', 'fan', 'boss'].forEach(function (t, i) { g.fillStyle = A.boxColor(t); g.fillRect(4 + i * 12, 16, 10, 4); });
     var demo = A.has('carl_idle') ? 'carl_idle' : 'box_gold';
     A.sprite(g, demo, 20, 60); A.sprite(g, demo, 44, 60, { flip: true }); A.sprite(g, demo, 68, 60, { flash: true }); A.sprite(g, demo, 92, 60, { alpha: 0.5 }); A.sprite(g, demo, 124, 76, { scale: 2 });
