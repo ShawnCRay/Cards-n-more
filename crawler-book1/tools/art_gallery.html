@@ -121,14 +121,16 @@
       var g = section('bg_' + bg, 'BACKDROP ' + bg, 320, 180);
       try {
         var f = Math.floor(DCW.t * 8);
-        A.background(g, bg, 0, 0);
-        if (/^safe/.test(bg)) { // safe room: floor tiles from y=150 (room id as tile theme), a few actors on the floor line
+        if (/^safe/.test(bg)) {
+          A.background(g, bg, 0, 0); // safe room: floor tiles from y=150 (room id as tile theme), a few actors on the floor line
           for (var fx = 0; fx < 320; fx += 16) for (var fy = 150; fy < 180; fy += 16) A.tile(g, bg, '#', fx, fy, { up: fy > 150, down: true, left: true, right: true, tx: fx / 16, ty: fy / 16 });
           spr(g, 'carl_idle', 150, 150, { frame: f }); spr(g, 'donut_idle', 130, 150, { frame: f });
           spr(g, 'box_gold', 60, 150, { frame: f }); spr(g, 'door', 296, 150);
-        } else { // cutscene: letterbox the picture to y 16..120, actors on y=112
-          spr(g, 'carl_idle', 140, 112, { frame: f }); spr(g, 'donut_idle', 162, 112, { frame: f });
-          g.fillStyle = '#000000'; g.fillRect(0, 0, 320, 16); g.fillRect(0, 120, 320, 60);
+        } else { // cutscene: framed like ui.js (backdrop y=150 on the picture floor y=100, picture y 10..110)
+          g.fillStyle = '#000000'; g.fillRect(0, 0, 320, 180);
+          g.save(); g.translate(0, -50); A.background(g, bg, 0, 0); g.restore();
+          spr(g, 'carl_idle', 140, 100, { frame: f }); spr(g, 'donut_idle', 162, 100, { frame: f });
+          g.fillStyle = '#000000'; g.fillRect(0, 0, 320, 10); g.fillRect(0, 110, 320, 70);
         }
         label(g, bg.toUpperCase(), 4, 4, '#fcfcfc');
       } catch (e) { report.errors.push(bg + ': ' + e.message); console.error(e); }

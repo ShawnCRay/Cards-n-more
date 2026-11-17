@@ -2274,7 +2274,7 @@
     }
     smoke(tx * TS + 8, S.player.y, 4);
     var d = B.def, f = S.floor || {};
-    music(S.def.bossMusic || d.music || f.bossMusic || 'boss');
+    music(S.def.bossMusic || d.music || (/^boss/.test(S.def.music || '') ? S.def.music : null) || f.bossMusic || 'boss');
     sfx('boss_roar'); DCW.shake(3, 0.5);
     B.wake = 0.9;
     var intro = d.intro;
