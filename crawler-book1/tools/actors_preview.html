@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>actors preview</title>
+<style>
+ body{background:#20203a;color:#ddd;font:11px monospace;margin:8px}
+ .it{display:inline-block;vertical-align:top;margin:4px;padding:3px;background:#2c2c48}
+ .it.lt{background:#5c7c9c}
+ canvas{image-rendering:pixelated;margin-right:3px;vertical-align:bottom}
+ h3{margin:6px 0 2px;color:#fc8}
+</style></head><body>
+<script>window.DCW={};</script>
+<script src="../js/art_actors.js"></script>
+<script>
+// Tiny standalone rasterizer, preview only. ?f=regex filters names, ?s=scale, ?skins=1 shows carl skins, ?lt=1 light bg
+(function(){
+  var q=new URLSearchParams(location.search), re=new RegExp(q.get('f')||'.'), S=+(q.get('s')||4);
+  var defs=DCW.artDefs, procs=DCW.artProcs, skins=DCW.artSkins;
+  function rast(d,fi,pal){var c=document.createElement('canvas');c.width=d.w*S;c.height=d.h*S;var g=c.getContext('2d');
+    var fr=d.frames[fi];for(var y=0;y<d.h;y++)for(var x=0;x<d.w;x++){var ch=fr[y][x];if(ch==='.'||ch===' ')continue;var col=pal[ch];
+      if(col===undefined){col='#ff00ff';}if(!col)continue;g.fillStyle=col;g.fillRect(x*S,y*S,S,S);}return c;}
+  function procCanvas(p,fi){var c=document.createElement('canvas');c.width=p.w;c.height=p.h;var g=c.getContext('2d');p.draw(g,fi);
+    var c2=document.createElement('canvas');c2.width=p.w*S;c2.height=p.h*S;var g2=c2.getContext('2d');g2.imageSmoothingEnabled=false;g2.drawImage(c,0,0,p.w*S,p.h*S);return c2;}
+  function box(label){var d=document.createElement('div');d.className='it'+(q.get('lt')?' lt':'');d.innerHTML='<div>'+label+'</div>';document.body.appendChild(d);return d;}
+  var names=Object.keys(defs).filter(function(n){return re.test(n);});
+  if(q.get('skins')){
+    Object.keys(skins).forEach(function(s){var h=document.createElement('h3');h.textContent=s;document.body.appendChild(h);
+      names.filter(function(n){return n.indexOf('carl_')===0;}).forEach(function(n){var d=defs[n],pal=Object.assign({},d.pal,skins[s].pal);
+        var b=box(n.replace('carl_','')+' '+d.w+'x'+d.h);for(var i=0;i<d.frames.length;i++)b.appendChild(rast(d,i,pal));});});
+  } else {
+    names.forEach(function(n){var d=defs[n];var b=box(n+' '+d.w+'x'+d.h+' f'+d.frames.length);
+      d.frames.forEach(function(f,i){b.appendChild(rast(d,i,d.pal));});});
+    Object.keys(procs).filter(function(n){return re.test(n);}).forEach(function(n){var p=procs[n];var b=box('[proc] '+n+' '+p.w+'x'+p.h);
+      for(var i=0;i<(p.frames||1);i++)b.appendChild(procCanvas(p,i));});
+  }
+  var info=document.createElement('div');info.textContent='defs:'+Object.keys(defs).length+' procs:'+Object.keys(procs).length+' carlChars:'+(DCW.artActorsKit&&DCW.artActorsKit.carlCharsUsed);document.body.appendChild(info);
+})();
+</script></body></html>
