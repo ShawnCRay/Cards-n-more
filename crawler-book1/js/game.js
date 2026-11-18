@@ -65,7 +65,7 @@
       stats: { str: 3, con: 3, dex: 3, int: 3 },
       bonus: { hp: 2 },
       gold: 0, bombs: 3, potions: 1, biscuits: 0, views: 0, fanTier: 0,
-      boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0, plotArmorUsed: false, plotArmorPending: null,
+      boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0, plotArmorUsed: false, plotArmorPending: null, biscuitsFound: 0, biscuitSpots: {},
       currentStage: null, inSafe: false, room: null, seenRooms: {}, cookieHere: false, restedHere: false,
       pendingAmbush: null, won: false,
       companions: ['donut'], items: {}, gear: {}, flags: {}, hero: 'carl',
@@ -722,11 +722,20 @@
   G.itemName = function (id) { var q = G.itemDef(id); return (q && q.name) || String(id || '').toUpperCase(); };
   G.hasItem = function (id) { var r = G.run; return !!(r && r.items && r.items[id]); };
   // giveItem('potion'|'bomb'|'biscuit', n) adds consumables; any other id is a key item.
+  var shopping = false;
+  G.biscuitsLeftToFind = function () {
+    var r = G.run, rules = D().biscuitRules || {}, cap = typeof rules.found === 'number' ? rules.found : 4;
+    return r ? Math.max(0, cap - (r.biscuitsFound || 0)) : 0;
+  };
   G.giveItem = function (id, n) {
     var r = G.run; if (!r) return false;
     if (id === 'potion') { r.potions += (n || 1); persist(); return true; }
     if (id === 'bomb' || id === 'jug' || id === 'dynamite') { r.bombs = Math.min(G.playerStats().maxBombs, r.bombs + (n || 1)); persist(); return true; }
-    if (id === 'biscuit') { r.biscuits = (r.biscuits || 0) + (n || 1); persist(); return true; }
+    if (id === 'biscuit') { // the world gives at most D.biscuitRules.found per crawl; the shop's one doesn't count
+      var want = n || 1, k = shopping ? want : Math.max(0, Math.min(want, G.biscuitsLeftToFind()));
+      if (!shopping) r.biscuitsFound = (r.biscuitsFound || 0) + k;
+      r.biscuits = (r.biscuits || 0) + k; persist(); return k > 0;
+    }
     r.items = r.items || {};
     if (r.items[id]) return false;
     r.items[id] = true;
@@ -785,7 +794,9 @@
     r.gold -= p;
     r.bought = r.bought || {}; r.bought[id] = (r.bought[id] || 0) + 1;
     var gives = Array.isArray(it.give) ? it.give : [it.give || { kind: 'item', id: it.id, count: 1 }];
-    var got = gives.map(resolveReward);
+    var got;
+    shopping = true;
+    try { got = gives.map(resolveReward); } finally { shopping = false; }
     sfx('buy');
     G.track('shop');
     persist();
@@ -880,7 +891,7 @@
         (gives || []).forEach(function (g) {
           if (g.kind === 'flag') r.flags[g.id] = true;
           else if (g.kind === 'gear') r.gear[g.id] = true;
-          else if (g.kind === 'item' && g.id === 'biscuit') r.biscuits += g.count || 1;
+          else if (g.kind === 'item' && g.id === 'biscuit') { r.biscuits += g.count || 1; r.biscuitsFound = (r.biscuitsFound || 0) + (g.count || 1); }
           else if (g.kind === 'companion' && r.companions.indexOf(g.id) < 0) r.companions.push(g.id);
         });
       });

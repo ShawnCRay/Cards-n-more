@@ -2400,7 +2400,6 @@
       [{ kind: 'gold', min: 6, max: 16 }, 38],
       [{ kind: 'item', id: 'potion', count: 1 }, 18],
       [{ kind: 'item', id: 'bomb', count: 2 }, 18],
-      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
       [{ kind: 'xp', amount: 10 }, 12],
       [{ kind: 'stat', any: true, amount: 1 }, 5],
       [{ kind: 'hp', amount: 1 }, 3]
@@ -2409,7 +2408,6 @@
       [{ kind: 'gold', min: 15, max: 35 }, 32],
       [{ kind: 'item', id: 'potion', count: 1 }, 18],
       [{ kind: 'item', id: 'bomb', count: 3 }, 15],
-      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
       [{ kind: 'xp', amount: 25 }, 11],
       [{ kind: 'stat', any: true, amount: 1 }, 11],
       [{ kind: 'hp', amount: 2 }, 7]
@@ -2418,7 +2416,6 @@
       [{ kind: 'gold', min: 35, max: 70 }, 28],
       [{ kind: 'item', id: 'potion', count: 2 }, 16],
       [{ kind: 'item', id: 'bomb', count: 4 }, 13],
-      [{ kind: 'item', id: 'biscuit', count: 2 }, 5],
       [{ kind: 'xp', amount: 55 }, 11],
       [{ kind: 'stat', any: true, amount: 1 }, 16],
       [{ kind: 'hp', amount: 2 }, 11]
@@ -2442,7 +2439,6 @@
       [{ kind: 'gold', min: 12, max: 30 }, 32],
       [{ kind: 'item', id: 'potion', count: 1 }, 20],
       [{ kind: 'item', id: 'bomb', count: 3 }, 18],
-      [{ kind: 'item', id: 'biscuit', count: 1 }, 6],
       [{ kind: 'xp', amount: 20 }, 12],
       [{ kind: 'stat', any: true, amount: 1 }, 8],
       [{ kind: 'hp', amount: 1 }, 4]
@@ -2459,6 +2455,11 @@
 
   /* prices are floor-1 values; game.js scales by (1 + (floor-1)*0.35).
      Shops: Tally (floor 1) and Qwist (floor 2). */
+  // Pet biscuits are scarce on purpose: the world hands out at most `found` per crawl, Mordecai's
+  // two included. Each biscuit spot (B) in a stage only appears on a spotChance roll from the stage's
+  // seed. The shop sells one more (limit: 1). So a crawl can reach Ralph's four cages short.
+  D.biscuitRules = { found: 4, spotChance: 0.2 };
+
   D.shop = [
     { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. DOES NOTHING WHILE YOU HAVE THE TAINT. NOTHING DOES.', price: 30, give: { kind: 'item', id: 'potion', count: 1 } },
     { id: 'bomb', name: 'GOBLIN DYNAMITE', desc: "ONE STICK. ARCS NICELY. RESPECTS NOBODY. TURNS INTO A JUG O'BOOM ONCE CARL INVENTS THOSE.", price: 15, give: { kind: 'item', id: 'bomb', count: 1 } },

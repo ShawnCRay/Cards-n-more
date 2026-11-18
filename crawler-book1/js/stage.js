@@ -123,6 +123,7 @@
     var r = getRun(); if (!(r.biscuits > 0)) return false;
     r.biscuits--; return true;
   }
+  function biscuitsLeftToFind() { return has(G(), 'biscuitsLeftToFind') ? num(call(G(), 'biscuitsLeftToFind'), 0) : 99; }
   function giveBiscuit(n) {
     if (has(G(), 'biscuits') && has(G(), 'giveItem')) { call(G(), 'giveItem', 'biscuit', n || 1); return; }
     var r = getRun(); r.biscuits = (r.biscuits || 0) + (n || 1);
@@ -258,7 +259,12 @@
           break;
         }
         case 'C': S.objects.push({ kind: 'dcage', x: fx - 12, y: fy - 24, w: 24, h: 24, state: 'hostile', t: Math.random() * 4, shakeT: 0 }); break;
-        case 'B': addPickup('biscuit', fx, fy - 2, 0, 0, false); break;
+        case 'B': { // a biscuit spot: only sometimes stocked (seeded, so a revive sees the same), never past the crawl's cap
+          var bRoll = rnd(), bKey = (def.id || stageId) + ':' + s.tx + ',' + s.ty, bRun = getRun();
+          var bChance = num((D().biscuitRules || {}).spotChance, 0.2);
+          if (bRoll < bChance && biscuitsLeftToFind() > 0 && !(bRun.biscuitSpots || {})[bKey]) addPickup('biscuit', fx, fy - 2, 0, 0, false).spot = bKey;
+          break;
+        }
         case 'Z': S.objects.push({ kind: 'boost', x: x, y: fy - 6, w: 16, h: 6 }); break;
         case 'J': S.objects.push({ kind: 'jpad', x: x, y: fy - 8, w: 16, h: 8 }); break;
         case 'O': S.objects.push({ kind: 'oil', x: x, y: fy - 4, w: 16, h: 4 }); break;
@@ -540,8 +546,10 @@
       }
       case 'biscuit': {
         giveBiscuit(1);
+        if (p.spot) { run.biscuitSpots = run.biscuitSpots || {}; run.biscuitSpots[p.spot] = true; } // taken for good, even after a revive
         sfx('pickup'); numText(cx(P), P.y - 4, '+1 PET BISCUIT', '#f8d878');
         fxSprite('sparkle', cx(p), p.y + p.h, 0.3, { color: '#f8d878', size: 6 });
+        if (biscuitsLeftToFind() <= 0) S.pickups.forEach(function (q) { if (q !== p && q.kind === 'biscuit' && !(q.life > 0)) { q.life = 0.001; smoke(cx(q), cy(q), 2); } }); // that was the last one
         break;
       }
       case 'bomb': run.bombs = (run.bombs || 0) + 1; sfx('pickup'); numText(cx(P), P.y - 4, '+1 BOMB', '#fcfcfc'); break;

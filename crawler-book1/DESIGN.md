@@ -426,7 +426,11 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
 ## Pet biscuits (lead)
-Biscuits only matter in Ralph's dog pound: four dingo cages, and any cage not fed by his second phase opens. A crawl can buy one biscuit, total, across both shops (`limit: 1` on the shop item, counted in `run.bought`). Once bought, the row shows SOLD OUT. The rest have to be found: 2 from Mordecai, then 4 guaranteed in `f2_ralph` (1 at the start, 1 in either middle section, 2 in the arena). Extras can turn up in loot boxes, the `cn_bisc` section and the distillery.
+Biscuits only matter in Ralph's dog pound: four dingo cages, and any cage not fed by his second phase opens. They're scarce on purpose, so a crawl can arrive short.
+- **World cap:** the world hands out at most 4 per crawl (`D.biscuitRules.found`), counting Mordecai's 2. `run.biscuitsFound` tracks it, and `G.biscuitsLeftToFind()` reports what's left. Loot boxes no longer drop biscuits.
+- **Biscuit spots:** each `B` tile is stocked only on a `spotChance` (0.2) roll from the stage's seed, so a revive sees the same result. A taken spot is remembered (`run.biscuitSpots`) and stays empty after a revive. When the cap is hit, any other biscuit still in the stage puffs away.
+- **Shop:** one per crawl, across both shops (`limit: 1`, `run.bought`). It doesn't count toward the cap. Max ever held: 5.
+- **Odds** (simulated over 400 crawls through the real floor 2 builds): no biscuits found beyond Mordecai's 17%, one 39%, two 44%. Enough for all four cages: 44% without the shop, 83% with it.
 
 ## Donut's running gag (lead)
 When Donut is upset she uses one formula: "X? CARL. YOU KNOW HOW I FEEL ABOUT X." It runs through the whole series, so use it whenever she's put out, and keep it short and flat. The joke is the repetition.
