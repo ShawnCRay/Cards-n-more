@@ -172,11 +172,11 @@
       phases: [
         { below: 1.0, speed: 34, pattern: ['walk:2', 'shoot:junk:2', 'idle:1', 'charge', 'idle:1.6', 'walk:1.5', 'rain:junk:3', 'idle:1.2'] },
         { below: 0.5, speed: 46, name: 'ABANDON SHIP', sub: 'THE GOBLINS ARE CLIMBING OUT',
-          line: "THE GOBLINS ARE CLIMBING OUT OF THE PIT TO HELP! THEY ARE VERY BAD AT HELPING. HIT THE BOILER!",
+          line: "THE GOBLINS ARE CLIMBING OUT OF THE PIT TO HELP! THEY ARE VERY BAD AT HELPING. THEY ARE VERY GOOD AT STABBING.",
           pattern: ['charge', 'idle:1.2', 'spawn:goblin:2', 'shoot:junk:3', 'charge', 'idle:1', 'rain:junk:4', 'idle:1'] }
       ],
-      intro: ["IT IS A TRACTOR. IT IS A TANK. IT IS FULL OF GOBLINS. THE FRONT IS ARMORED, GENIUS. GO AROUND IT.",
-        "SEE THE GLOWING BOILER ON ITS ASS? GLOWING THINGS ARE WEAK POINTS. THAT IS YOUR ONE FREE TIP TODAY. BOMBS ALSO WORK."],
+      intro: ["IT IS A TRACTOR. IT IS A TANK. IT IS FULL OF GOBLINS. IT IS COAL-POWERED AND IT HATES YOU.",
+        "THE SPIKED WHEEL ON THE FRONT IS FOR CRAWLERS. THE LADDER ON THE BACK IS FOR GOBLINS. THE RESULT IS FOR THE HIGHLIGHT REEL."],
       defeat: "THE MURDER DOZER IS SCRAP! THE GOBLINS INSIDE ARE NOW A FINE PINK MIST. TEN OUT OF TEN. NO NOTES.",
       loot: 'boss', unlock: null },
 
@@ -189,7 +189,7 @@
           pattern: ['spawn:scatterer:3', 'charge', 'idle:0.9', 'rain:junk:5', 'spawn:brood_guardian:1', 'jump_slam', 'idle:1', 'charge', 'idle:1'] }
       ],
       intro: ["OUR FIRST REAL BOSS! FIFTEEN FEET OF WOMAN, FORTY YEARS OF GARBAGE AND EXACTLY ONE TOOTH. NONE OF IT IS FOR SALE.",
-        "SHE BIRTHS SCATTERERS OUT OF HER MOUTH. YES. HER MOUTH. KILL ONE THE SECOND IT CRAWLS OUT AND WATCH HER CHOKE ON IT!"],
+        "SHE BIRTHS SCATTERERS OUT OF HER MOUTH. YES. HER MOUTH. WE ARE AS UPSET ABOUT IT AS YOU ARE. ENJOY THE SHOW!"],
       defeat: "THE HOARDER IS DOWN! THE HEALTH DEPARTMENT HAS BEEN NOTIFIED. THE HEALTH DEPARTMENT IS ALSO DEAD. EVERYONE IS DEAD.",
       loot: 'boss', unlock: null },
 
@@ -216,7 +216,7 @@
           pattern: ['charge', 'throw:plate:6', 'idle:0.6', 'flex:1.5', 'jump_slam', 'shockwave', 'charge', 'idle:0.7'] }
       ],
       intro: ["BRO. BRO. HE NEEDS A SPOT, BRO. HE HAS NEEDED A SPOT SINCE THE DAWN OF TIME. NOBODY HAS EVER SPOTTED HIM.",
-        "WHEN HE FLEXES, THE VEINS COME OUT. HIT THE VEINS FOR DOUBLE DAMAGE. DO NOT TELL HIM I SAID THAT. HE IS VERY SENSITIVE."],
+        "HE HAS NOT SKIPPED A LEG DAY IN FOUR HUNDRED YEARS. HE HAS NOT SKIPPED ANYTHING ELSE EITHER. HE IS VERY SENSITIVE ABOUT IT."],
       defeat: "THE JUICER HAS RACKED HIS LAST REP! HIS PROTEIN TUB IS NOW A CRIME SCENE. THE GYM IS UNDER NEW MANAGEMENT: A CAT.",
       loot: 'boss', unlock: null },
 
@@ -232,7 +232,7 @@
           pattern: ['walk:1.5', 'charge', 'idle:0.8', 'shoot:pebble:3', 'walk:1', 'charge', 'idle:1'] }
       ],
       intro: ["THE BOROUGH BOSS! A HUNDRED PIG-ORC ARISTOCRATS FUSED INTO ONE GIANT BALL BY A CURSE. THEY ROLL. THEY CRUSH. THEY SQUEAL.",
-        "STAY UP ON THE REDOUBT. WHEN THE BALL SLAMS A WALL IT GETS DIZZY. THAT IS WHEN YOU HIT IT. AND WHEN IT POPS? OH, YOU WILL SEE."],
+        "THIRTY KNIGHTS AND THEIR LADY LOVES, FUSED INTO ONE ROLLING NIGHTMARE. IT DOES NOT STOP. IT DOES NOT TURN. IT DOES NOT CARE. GOOD LUCK!"],
       defeat: "THE BALL OF SWINE IS NO MORE! THE BOROUGH IS LIBERATED! THE STAIRWELL IS OPEN! WE HAVE BACON FOR A YEAR!",
       loot: 'boss', unlock: null },
 
@@ -259,7 +259,7 @@
           pattern: ['frenzy:4', 'scream', 'idle:0.6', 'frenzy:3', 'walk:0.8', 'scream', 'spawn:kobold:2', 'idle:0.8'] }
       ],
       intro: ["THE KOBOLD BOSS IS... A GERBIL. ONE ADORABLE LITTLE GERBIL NAMED RALPH. LOOK AT HIS FACE. NOW LOOK AT HIS MOUTH. NOW RUN.",
-        "HE IS TINY. PUNCHES WHIFF. FEET DO NOT. THE CAGED DINGOES ARE HIS BACKUP: FEED THEM BISCUITS OR THEY JOIN THE PARTY."],
+        "HE IS FOUR INCHES OF PURE HATRED. HE HAS KILLED EVERY DOG IN THIS POUND IN A FAIR FIGHT. NONE OF THEM WERE FAIR. HE IS VERY PROUD."],
       defeat: "RALPH HAS BEEN SQUISHED! THE WHOLE DUNGEON GROANED. WE ALL HEARD IT. THE DADDY TAX HAS BEEN PAID IN FULL.",
       loot: 'boss', unlock: null },
 
@@ -1665,7 +1665,7 @@
     chunks: { start: 'tn_start', pool: ['tn_d', 'tn_h'], count: 1, end: 'arena_dozer' },
     enemies: [['goblin', 3], ['rat', 1]], elite: [['goblin', 1]], flyers: [['rat', 1]],
     boss: 'murder_dozer', reward: { box: 'boss', xp: 15 },
-    intro: "THE MURDER DOZER IS STILL IDLING OUTSIDE THE GUILD. THE FRONT IS ARMORED. THE BACK IS NOT. THE BOMBS ON THE FLOOR ARE A HINT. A BIG ONE." });
+    intro: "THE MURDER DOZER IS STILL IDLING OUTSIDE THE GUILD. THE GOBLINS ON TOP HAVE STARTED A SECOND SONG. IT IS WORSE THAN THE FIRST." });
 
   st('f1_llamas', { name: 'LLAMA COUNTRY', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1',
     questItem: 'meth',
@@ -1748,7 +1748,7 @@
     chunks: { start: 'sw_start', pool: ['sw_a', 'sw_b'], count: 1, end: 'arena_swine' },
     enemies: [['tuskling', 3], ['rat', 1]], elite: [['tuskling', 1]], flyers: [['tuskling', 1]],
     boss: 'ball_of_swine', reward: { box: 'boss', xp: 30 },
-    intro: "BOROUGH BOSS TIME! MEADOW LARK HAS THE REDOUBT. CLIMB UP, STAY UP, AND HIT THE BALL WHEN IT SLAMS A WALL. THE STAIRWELL IS IN THE MIDDLE!" });
+    intro: "BOROUGH BOSS TIME! MEADOW LARK IS UP ON THE REDOUBT. THE STAIRWELL IS IN THE MIDDLE. SOMETHING VERY ROUND IS IN THE WAY!" });
 
   /* ================= FLOOR 2: THE SECOND FLOOR ================= */
   var JAN = { id: 'brindle_grub', chance: 0.3, cap: 8 };
@@ -1794,7 +1794,7 @@
     chunks: { start: 'pd_start', pool: ['pd_a', 'pd_b'], count: 1, end: 'arena_ralph' },
     enemies: [['kobold', 3], ['dingo', 1]], elite: [['kobold_rider', 1]], flyers: [['vespa', 1]],
     boss: 'ralph', reward: { box: 'boss', xp: 40 },
-    intro: "A PORTUGUESE MUNICIPAL DOG POUND. CAGED DINGOES LINE THE WALLS. STAND BY A CAGE AND PRESS UP TO FEED IT A BISCUIT. THE BOSS IS... SMALL." });
+    intro: "A PORTUGUESE MUNICIPAL DOG POUND. CAGED DINGOES LINE THE WALLS. THEY LOOK HUNGRY. SOMETHING IN THE BACK IS SCREAMING." });
 
   st('f2_return', { name: 'THE LONG WAY BACK', floor: 2, theme: 'cinder', kind: 'main', music: 'floor2',
     extraAlly: 'mongo', door: 'stairwell',
@@ -1873,7 +1873,7 @@
         carl("A TROLLSKIN SHIRT. A HOODED CLOAK. A CLUB SHAPED LIKE A TOAD. NO SHOES. OF COURSE THERE ARE NO SHOES."),
         donut("A CROWN, CARL! A JEWELED CROWN! THE LABEL SAYS SOMETHING VERY RUDE ABOUT A SEPSIS WHORE, BUT THE GEMS ARE VERY REAL."),
         mord1("THAT NEW TATTOO ON YOUR ARM IS A GOBLIN PASS. GOBLINS AREN'T SUPPOSED TO ATTACK ON SIGHT. MOST OF THEM CAN'T READ, SO KEEP YOUR FISTS UP."),
-        mord1("AND TWO PET BISCUITS. KEEP THOSE. SOME MOBS CALM DOWN IF YOU FEED THEM. TALK TO ME WHEN YOU'VE GOT STAT POINTS TO SPEND.")
+        mord1("AND TWO PET BISCUITS. KEEP THOSE. YOU NEVER KNOW. TALK TO ME WHEN YOU'VE GOT STAT POINTS TO SPEND.")
       ],
       give: [{ kind: 'gear', id: 'trollskin_shirt' }, { kind: 'gear', id: 'nightgaunt_cloak' }, { kind: 'gear', id: 'toad_cudgel' },
         { kind: 'gear', id: 'crown_sepsis' }, { kind: 'item', id: 'biscuit', count: 2 }],
@@ -2074,7 +2074,7 @@
         ai("PRINCESS DONUT HAS LEARNED MAGIC MISSILE! YOUR PET IS NOW A RANGED WEAPON. PLEASE POINT HER RESPONSIBLY. OR DON'T. WE'RE NOT YOUR MOM.")] },
       { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         carl("SO. ABOUT THE STEAM TANK FULL OF GOBLINS PARKED OUTSIDE YOUR FRONT DOOR."),
-        mord1("IT'S NOT GOING ANYWHERE AND NEITHER ARE YOU. ARMOR'S ON THE FRONT. THE BOILER'S ON THE BACK. GO AROUND, KID. AND BRING BOMBS.")] }
+        mord1("IT'S NOT GOING ANYWHERE AND NEITHER ARE YOU. YOU KILLED A RAT TO GET IN HERE. NOW GO KILL A TANK. EVERYTHING HAS A WEAK SPOT, KID. FIND IT.")] }
     ],
       give: [{ kind: 'flag', id: 'talks', quiet: true }, { kind: 'flag', id: 'missile' }, { kind: 'xp', amount: 10 }] },
 
@@ -2166,7 +2166,7 @@
         ai("BOROUGH BOSS! THE BALL OF SWINE: A HUNDRED TUSKLING ARISTOCRATS FUSED BY A CURSE, ROLLING IN CIRCLES FOR CENTURIES. SO. ROYALTY.")] },
       { bg: 'swine', actors: [A('carl_idle', 104), A('donut_idle', 126), A('chris_idle', 232, true)], lines: [
         donut("CARL. THEY'RE PIGS. ROYAL PIGS. IN A BALL. I DON'T KNOW WHETHER TO BE OFFENDED OR FLATTERED."),
-        carl("IT CAN'T CLIMB. IT ROLLS. SO WE BUILD UP: LEDGES, LADDERS, A REDOUBT. WE STAND ON TOP AND UNLOAD EVERY TIME IT HITS A WALL."),
+        carl("IT CAN'T CLIMB. IT ROLLS. SO WE BUILD UP: LEDGES, LADDERS, A REDOUBT. WE STAND ON TOP AND FIGURE OUT THE REST WHEN IT SHOWS UP."),
         say('CHRIS', 'p_chris', "AND THE STAIRWELL?"),
         carl("DEAD CENTER, BEHIND A RED FORCEFIELD. THE FIELD DROPS WHEN THE BALL DIES.")] },
       { bg: 'tvroom', fx: 'static', actors: [], lines: [
@@ -2374,7 +2374,7 @@
     bomb: { name: 'GOBLIN DYNAMITE', icon: 'dynamite', jugName: "CARL'S JUG O'BOOM", jugIcon: 'jug',
       desc: "A STICK OF GOBLIN DYNAMITE. LIGHT, THROW, DUCK. THE GOBLINS MADE IT, SO THE FUSE LENGTH IS MORE OF A SUGGESTION.",
       jugDesc: "MOONSHINE, GOBLIN OIL AND A TORCH FOR A CORK. BIGGER BLAST, AND IT LEAVES BLUE FIRE BEHIND. DUNGEONPRENEUR CERTIFIED." },
-    biscuit: { name: 'PET BISCUIT', icon: 'biscuit', desc: "A CRUMBLY BROWN PELLET. FEED ONE TO A CAGED DOG THROUGH THE BARS AND IT CALMS RIGHT DOWN. DO NOT FEED THEM TO THE CAT." }
+    biscuit: { name: 'PET BISCUIT', icon: 'biscuit', desc: "A CRUMBLY BROWN PELLET THAT SMELLS LIKE A PET STORE. ANIMALS GO NUTS FOR THEM. DO NOT FEED THEM TO THE CAT." }
   };
 
   /* ---------------- loot ----------------
@@ -2753,7 +2753,7 @@
       "DANGER DINGOES TELEGRAPH THEIR CHARGE. JUMP IT. THEN PUNCH THE DOG IN THE ASS WHILE IT'S SKIDDING.",
       "YOUR JUGS LEAVE BLUE FIRE ON THE FLOOR. MOBS BURN IN IT. YOU DON'T. DROP ONE AND LET THEM WALK INTO IT.",
       "THE VIEWERS ARE LIVE NOW. COMBOS GET YOU FOLLOWERS. FOLLOWERS GET YOU FAN BOXES. KEEP THE HITS COMING.",
-      "PET BISCUITS. COLLECT THEM. A CAGED DOG THAT GETS FED STAYS CALM. A HUNGRY ONE COMES OUT SWINGING.",
+      "PET BISCUITS. COLLECT THEM. ANIMALS GO STUPID FOR THEM. SO DOES THE CAT. DON'T LET HER SEE WHERE YOU KEEP THEM.",
       "THAT RAGE ELEMENTAL CAN'T BE KILLED BY YOU. NOT AT YOUR LEVEL. NOT AT ANY LEVEL YOU'LL SEE THIS YEAR. OUTRUN IT.",
       "BOSSES ARE SUPPOSED TO STAY IN THEIR ROOMS. SUPPOSED TO. DON'T COUNT ON IT ON THIS FLOOR.",
       "THE NEW DINOSAUR BITES MOBS. IT ALSO BITES THE CAT. LET THEM WORK IT OUT. DON'T GET YOUR HAND IN THERE.",

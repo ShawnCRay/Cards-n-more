@@ -397,6 +397,9 @@ countdown go skid crash).
 - Text always draws on whole pixels (half-pixel left-aligned text garbled on TV browsers).
 - Jump rules, enforced by `node tools/reach_test.js` (exact physics) and `COMFORT=1 node tools/reach_test.js` (82 px/s run, a human margin): every non-arena chunk must pass both. In practice: spike strips on flat ground at most 2 tiles, plain gaps at most 3, acid pools at most 3.
 
+## No boss spoilers (lead)
+Never tell the player a boss's weak spot or trick before they find it: no "hit the boiler", "kill a minion as it crawls out", "hit the veins when he flexes", "hit the ball when it slams a wall", "stomp him", "feed the dogs". That goes for boss intros, phase lines, stage intros, cutscenes, Mordecai's tips, item descriptions and achievement text (locked achievements already hide theirs). Reactive feedback is fine and is how players learn: CLANG! on armor, CHOKED!, DIZZY!, and a phase line after the cages have already opened. Interactables get a blinking UP arrow when you stand at them; what they do is for the player to find out.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

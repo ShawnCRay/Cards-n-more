@@ -3103,6 +3103,9 @@
     else {
       if (S.comp) drawComp(ctx, S.comp, camX, camY);
       drawPlayer(ctx, P, camX, camY);
+      // NES-style blinking UP arrow over anything you can use (signs, doors, NPCs, cages)
+      var near = !S.done && P.state === 'normal' && P.onGround ? interactAt(P) : null;
+      if (near && Math.floor(S.t * 3) % 3 !== 2) DCW.text('\u25B2', Math.round(cx(near) - camX), Math.round(near.y - camY - 12 - (Math.floor(S.t * 3) % 2)), '#fcfcfc', { align: 'center' });
     }
     if (S.comp2) drawComp(ctx, S.comp2, camX, camY);
     for (i = 0; i < S.enemies.length; i++) { var le = S.enemies[i]; if (!le.dead && le.state === 'latched') drawEnemy(ctx, le, camX, camY); }
