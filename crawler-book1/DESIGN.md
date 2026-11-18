@@ -386,6 +386,17 @@ countdown go skid crash).
 - Level design: the longest normal running jump is about 65 px, so plain gaps stay at 3 tiles or less (4+ only with moving platforms, or on the chopper). The tutorial's only pit is 2 tiles.
 - Test hooks: `DCW.testHold = {right:1, jump:1}` holds several logical buttons at once; `tools/flow_test.js <dir> [--intro]` walks the whole book.
 
+## Playtest round 2 (lead)
+- Donut can't talk until she eats the Enhanced Pet Biscuit in Mordecai's guild (`f1_mordecai`, flag `talks`). Before that she only hisses and meows.
+- Donut mode: beating the book sets `meta.donutMode` + `settings.donutMode` (all slots). Title shows NEW CRAWL AS DONUT -> `DCW.game.newRun('donut')`: `run.hero = 'donut'`, companion `carl` (ability bite, special GODDAMNIT, DONUT rampage). Donut's body is 12x13, she can't crouch, attack is a claw swipe until flag `missile`, then a homing Magic Missile (`castMissile`). Carl can't perch on a cat, so he catches up when she lands. Menus always show the duo (`pairComp()`); safe rooms swap who walks and who follows. Debug: `&hero=donut`.
+- Companions never fall to their death: they leap gaps toward the player when there is somewhere to land, wait at the edge otherwise, and ride Carl's shoulder (`perch`) when he is mid-air over a drop.
+- The Murder Dozer smashes every tile above the floor at its front edge (walls come down whole); the fire wall and the rage elemental pass through.
+- Mob introductions: the System AI reads a mob's `flavor` when the first one of that kind dies (once per crawl, never during a boss fight). Stage intros no longer warn about mobs.
+- Rot stickers stalk along the ceiling and drop where Carl will be (leading his speed); the first latch of a crawl shows PRESS ATTACK!
+- Chopper ramps (`J`) never launch on their own: jumping while on one gives big air.
+- Text always draws on whole pixels (half-pixel left-aligned text garbled on TV browsers).
+- Jump rules, enforced by `node tools/reach_test.js` (exact physics) and `COMFORT=1 node tools/reach_test.js` (82 px/s run, a human margin): every non-arena chunk must pass both. In practice: spike strips on flat ground at most 2 tiles, plain gaps at most 3, acid pools at most 3.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

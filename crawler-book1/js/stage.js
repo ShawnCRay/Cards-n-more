@@ -638,11 +638,23 @@
     if (e.hp <= 0) { killEnemy(e, opts); return true; }
     return false;
   }
+  // the System AI describes each kind of mob the first time you kill one (once per crawl, like the
+  // book's AI descriptions). Never in the middle of a boss fight.
+  function mobIntro(e) {
+    var run = getRun(), d = e.def || {};
+    if (!d.flavor || S.locked || S.boss) return;
+    run.mobsMet = run.mobsMet || {};
+    if (run.mobsMet[e.id]) return;
+    run.mobsMet[e.id] = true;
+    (S.mobIntroQ = S.mobIntroQ || []).push({ who: 'SYSTEM AI', portrait: 'p_ai', text: String(d.name || e.id).toUpperCase() + '! ' + d.flavor });
+    S.mobIntroT = Math.max(S.mobIntroT || 0, 0.7);
+  }
   function killEnemy(e, opts) {
     opts = opts || {};
     e.dead = true;
     var run = getRun(), d = e.def;
     S.kills++; run.kills = (run.kills || 0) + 1;
+    mobIntro(e);
     sfx('enemy_die');
     smoke(cx(e), cy(e), e.elite ? 6 : 3);
     fxSprite('explosion', cx(e), e.y + e.h + 4, 0.3, { color: '#f8b800', size: 12, scale: e.elite ? 2 : 1 });
@@ -923,12 +935,16 @@
 
   /* ---------------- player ---------------- */
   function makePlayer(x, feetY) {
-    return { x: x - 5, y: feetY - PH, w: 10, h: PH, vx: 0, vy: 0, face: 1, onGround: false, state: 'normal', st: 0,
+    // Donut mode (unlocked by beating the book): Princess Donut is the player, a cat-sized body
+    var hd = heroDonut(), pw = hd ? 12 : 10, ph = hd ? 13 : PH;
+    return { hero: hd ? 'donut' : 'carl', x: x - pw / 2, y: feetY - ph, w: pw, h: ph, vx: 0, vy: 0, face: 1, onGround: false, state: 'normal', st: 0, castCd: 0, castT: 0,
       coyote: 0, buffer: 0, jumping: false, airJumps: 0, inv: 0, invuln: 0, dropT: 0, crouch: false,
       pIdx: 0, chainT: 0, queued: false, hitList: [], throwT: 0, landT: 0, runT: 0, liqT: 0, platform: null, prevBottom: feetY,
       anim: 'idle', animT: 0 };
   }
+  function heroDonut() { var r = getRun(); return !!(r && r.hero === 'donut'); }
   function setCrouch(P, on) {
+    if (P.hero === 'donut') { P.crouch = false; return; } // cats don't crouch, they loaf
     if (on === P.crouch) return;
     var d = PH - PH_CROUCH;
     if (on) { P.y += d; P.h = PH_CROUCH; } else {
@@ -941,6 +957,19 @@
   function ladderAtPlayer(P, dy) {
     var tx = Math.floor(cx(P) / TS), ty = Math.floor((P.y + P.h + (dy || -2)) / TS);
     return tileAt(tx, ty) === T_LADDER ? { tx: tx, ty: ty } : null;
+  }
+  // Donut mode: the attack button casts Magic Missile at whatever is in front of her
+  function castMissile(P) {
+    if (P.castCd > 0) return;
+    var st = stats();
+    P.castCd = Math.max(0.16, 0.3 - num(st.missileCd, 0) * 0.1); P.castT = 0.18;
+    var best = null, bd = 1e9, i, e;
+    function consider(o) { var dx = cx(o) - cx(P), dy = Math.abs(cy(o) - cy(P)); if (dx * P.face < -8 || dy > 90 || Math.abs(dx) > 230) return; var d = Math.abs(dx) + dy * 1.5; if (d < bd) { bd = d; best = o; } }
+    for (i = 0; i < S.enemies.length; i++) { e = S.enemies[i]; if (!e.dead && e.active && e.state !== 'latched' && e.state !== 'hang' && onScreen(e, 8)) consider(e); }
+    if (bossHittable(S.boss)) consider(S.boss);
+    var dmg = num(st.dmg, 2) + Math.round(num(st.missileDmg, 0)); if (Math.random() < num(st.crit, 0)) dmg *= 2;
+    S.pproj.push({ kind: 'missile', x: cx(P) + P.face * 6 - 3, y: P.y + 1, w: 6, h: 6, vx: P.face * 190, vy: -25, target: best, life: 1.6, dmg: dmg, t: 0.12, player: true });
+    sfx('missile', { pitch: 1.2 });
   }
   function startPunch(P, idx) {
     P.state = 'punch'; P.st = 0; P.pIdx = idx; P.hitList = []; P.queued = false;
@@ -975,6 +1004,7 @@
     var P = S.player, st = stats(), run = getRun();
     P.prevBottom = P.y + P.h;
     P.inv -= dt; P.invuln -= dt; P.dropT -= dt; P.throwT -= dt; P.landT -= dt; P.chainT -= dt; P.animT += dt;
+    if (P.castCd > 0) P.castCd -= dt; if (P.castT > 0) P.castT -= dt;
     if (P.flickT > 0) P.flickT -= dt;
     if (P.coyote > 0) P.coyote--;
     if (P.buffer > 0) P.buffer--;
@@ -1104,6 +1134,7 @@
       if (I.pressed('attack') && !(P.flickT > 0)) {
         if (down && P.onGround) { setCrouch(P, false); P.state = 'kick'; P.st = 0; P.hitList = []; P.kickTracked = false; sfx('kick'); }
         else if (down && !P.onGround) { P.state = 'airkick'; P.st = 0; P.hitList = []; P.jumping = false; sfx('kick'); }
+        else if (P.hero === 'donut' && flag('missile')) castMissile(P);
         else { setCrouch(P, false); startPunch(P, (P.chainT > 0 && P.lastPIdx < 2) ? P.lastPIdx + 1 : 0); }
       } else if (I.pressed('bomb')) {
         throwBomb(P);
@@ -1348,6 +1379,7 @@
   /* ---------------- companion (Donut; Mongo as the f2_return extra ally) ---------------- */
   var COMP_DEFAULTS = {
     donut: { name: 'PRINCESS DONUT', ability: 'missile', cooldown: 1.6, power: 2, special: { name: 'MAGIC MISSILE BARRAGE' } },
+    carl: { name: 'CARL', ability: 'bite', cooldown: 0.9, power: 3, special: { name: 'GODDAMNIT, DONUT' }, sprite: 'carl' },
     mongo: { name: 'MONGO', ability: 'bite', cooldown: 1.2, power: 3, special: { name: 'MONGO RAMPAGE' } }
   };
   var COMP_COLORS = { missile: '#f8f8f8', bite: '#58d854' };
@@ -1357,13 +1389,14 @@
     var def = (D().companions || {})[id] || COMP_DEFAULTS[id];
     var ability = def.ability || (COMP_DEFAULTS[id] && COMP_DEFAULTS[id].ability) || 'missile';
     if (ability !== 'bite') ability = 'missile';
-    return { id: id, def: def, ability: ability, sprite: def.sprite || id, x: P.x - 16, y: P.y + P.h - 10, w: 12, h: 10, vx: 0, vy: 0, face: 1,
+    var big = id === 'carl', cw = big ? 10 : 12, ch = big ? 22 : 10;
+    return { id: id, def: def, ability: ability, sprite: def.sprite || id, x: P.x - 16, y: P.y + P.h - ch, w: cw, h: ch, vx: 0, vy: 0, face: 1,
       onGround: false, cd: 1, actT: 0, state: 'follow', stuckT: 0, pw: 1, target: null, t: 0, hitList: [], color: COMP_COLORS[ability] || '#fcfcfc',
-      follow: forceId ? 34 : 18 };
+      follow: forceId ? 34 : big ? 24 : 18 };
   }
   // Donut needs the 'missile' run flag (Mordecai's guild) and a stage that allows it
   function compCanAttack(C) {
-    if (!C || (S && S.def && S.def.noCompanionAttack)) return false;
+    if (!C || (S && S.def && S.def.noCompanionAttack && C.ability === 'missile')) return false;
     if (C.ability === 'missile') return flag('missile');
     return true;
   }
@@ -1383,10 +1416,54 @@
     if (bossHittable(B)) { var bx = cx(B) - x, by = cy(B) - y, d2 = bx * bx + by * by; if (d2 < bd) best = B; }
     return best;
   }
+  // back to Carl: beside him on safe ground, or up on his shoulder while he's in the air (like the book)
   function teleportComp(C, P) {
     smoke(cx(C), cy(C), 2);
-    C.x = cx(P) - P.face * C.follow - C.w / 2; C.y = P.y + P.h - C.h - 2; C.vx = 0; C.vy = 0; C.stuckT = 0; C.state = 'follow';
+    C.vx = 0; C.vy = 0; C.stuckT = 0; C.state = 'follow'; C.leap = 0;
+    var feetRow = Math.floor((P.y + P.h + 1) / TS), spots = [cx(P) - P.face * C.follow, cx(P) + P.face * C.follow, cx(P)], placed = false;
+    if (P.onGround) for (var i = 0; i < spots.length && !placed; i++) {
+      if (compStandRow(spots[i], P.y + P.h + 1, 1) === feetRow) { C.x = spots[i] - C.w / 2; C.y = P.y + P.h - C.h - 1; placed = true; }
+    }
+    if (!placed) { if (C.id === 'carl') C.away = true; else { C.perch = true; perchComp(C, P); } } // Carl can't ride a cat: he catches up
     smoke(cx(C), cy(C), 2);
+  }
+  function perchComp(C, P) { C.x = cx(P) - C.w / 2 - P.face * 3; C.y = P.y - C.h + 7; C.face = P.face; C.vx = 0; C.vy = 0; C.onGround = false; }
+  // companions never walk into pits or onto spikes: they leap gaps toward Carl or wait at the edge
+  function compStandRow(px, feetY, rows) { // first standable tile row at or below feetY in column px, or -1
+    var tx = Math.floor(px / TS);
+    for (var ty = Math.max(0, Math.floor(feetY / TS)); ty < Math.min(S.L.h, Math.floor(feetY / TS) + rows); ty++) {
+      var t = tileAt(tx, ty);
+      if (t === T_SPIKE || t === T_LIQUID) return -1;
+      if (isSolidT(t) || t === T_ONEWAY || (t === T_LADDER && isLadderTop(tx, ty))) return ty;
+    }
+    return -1;
+  }
+  function compSafeLanding(px, feetRow) { // a standable top near feetRow with nothing nasty on it
+    for (var dy = -2; dy <= 3; dy++) {
+      var ty = feetRow + dy, tx = Math.floor(px / TS), t = tileAt(tx, ty), above = tileAt(tx, ty - 1);
+      if (ty <= 0 || ty >= S.L.h) continue;
+      if ((isSolidT(t) || t === T_ONEWAY) && !isSolidT(above) && above !== T_SPIKE && above !== T_LIQUID && t !== T_SPIKE) return ty;
+    }
+    return -1;
+  }
+  function compEdgeCheck(C, P, dir) {
+    var feet = C.y + C.h, aheadX = dir > 0 ? C.x + C.w + 3 : C.x - 3;
+    var row = compStandRow(aheadX, feet + 1, 5);
+    var hz = tileAt(Math.floor(aheadX / TS), Math.floor((feet - 1) / TS));
+    if (row >= 0 && hz !== T_SPIKE && hz !== T_LIQUID) return; // solid ground ahead
+    var across = dir > 0 ? cx(P) > aheadX + 8 : cx(P) < aheadX - 8;
+    var feetRow = Math.floor(feet / TS), land = null;
+    for (var k = 1; k <= 7 && across; k++) {
+      var lx = aheadX + dir * k * TS, lr = compSafeLanding(lx, feetRow);
+      if (lr >= 0) { land = { x: lx + dir * 6, row: lr }; break; }
+    }
+    if (land) {
+      var up = Math.max(0, feetRow - land.row) * TS;
+      C.vy = -Math.min(400, 330 + up * 2.2); C.onGround = false;
+      var air = 2 * -C.vy / K.gravity * (up > 0 ? 0.85 : 1);
+      C.vx = dir * Math.min(230, Math.abs(land.x - cx(C)) / air);
+      C.leap = air + 0.1; C.face = dir;
+    } else { C.vx = 0; C.waitEdge = true; }
   }
   function updComp(C, dt) {
     var P = S.player;
@@ -1414,12 +1491,21 @@
         var dir = U.sign(cx(tg) - cx(C)) || C.face; C.face = dir;
         C.vx = dir * 230;
         if (overlap({ x: C.x - 4, y: C.y - 4, w: C.w + 8, h: C.h + 8 }, tg)) {
-          damageActor(tg, Math.round(power * 1.5), { kind: 'comp', kb: 90, dir: dir, srcX: cx(C) }); sfx('bite');
+          damageActor(tg, Math.round(power * 1.5), { kind: 'comp', kb: 90, dir: dir, srcX: cx(C) }); sfx(C.id === 'carl' ? 'punch' : 'bite');
           C.state = 'follow'; C.vx = -dir * 80; C.vy = -150; C.actT = 0.25;
         }
       }
     }
-    if (C.state === 'follow') {
+    if (C.away) { if (!P.onGround) return; C.away = false; teleportComp(C, P); if (C.away) return; }
+    if (C.perch) { // riding Carl's shoulder until he's standing somewhere she can hop down onto
+      perchComp(C, P);
+      if (P.onGround && !P.platform && compStandRow(cx(P) - P.face * 10, P.y + P.h + 1, 1) === Math.floor((P.y + P.h + 1) / TS)) {
+        C.perch = false; C.x = cx(P) - P.face * 10 - C.w / 2; C.y = P.y + P.h - C.h - 1; C.vy = -120;
+      }
+    }
+    if (C.leap > 0) { C.leap -= dt; if (C.onGround && C.leap < 0.5) C.leap = 0; }
+    C.waitEdge = false;
+    if (C.state === 'follow' && !(C.leap > 0) && !C.perch) {
       var tx = cx(P) - P.face * C.follow, dx = tx - cx(C);
       if (Math.abs(dx) > 5) C.vx = U.approach(C.vx, U.sign(dx) * Math.min(150, 30 + Math.abs(dx) * 3.2), 700 * dt);
       else C.vx = U.approach(C.vx, 0, 700 * dt);
@@ -1427,16 +1513,24 @@
       else C.face = P.face;
       // hop up ledges / toward a higher player
       if (C.onGround && ((C.hitWall && Math.abs(dx) > 8) || (P.y + P.h < C.y + C.h - 18 && Math.abs(dx) < 56 && P.onGround))) { C.vy = -310; C.onGround = false; }
+      // a pit or spikes ahead: leap toward Carl if there's somewhere to land, otherwise wait at the edge
+      if (C.onGround && Math.abs(dx) > 8 && Math.abs(C.vx) > 1) compEdgeCheck(C, P, U.sign(dx));
     }
     // physics
-    C.vy = Math.min(C.vy + K.gravity * dt, K.fallMax);
     var wasG = C.onGround;
-    moveBody(C, dt, P.dropT > 0 && cy(C) < cy(P) + 8);
+    if (!C.perch) {
+      C.vy = Math.min(C.vy + K.gravity * dt, K.fallMax);
+      moveBody(C, dt, P.dropT > 0 && cy(C) < cy(P) + 8);
+    }
     if (!wasG && C.onGround && C.vy === 0 && Math.random() < 0.3) dust(cx(C), C.y + C.h, 1);
     var ddx = cx(P) - cx(C), ddy = cy(P) - cy(C);
-    if (Math.abs(ddx) > 40 && Math.abs(C.vx) < 5 && C.state === 'follow') C.stuckT += dt; else C.stuckT = Math.max(0, C.stuckT - dt);
+    if (Math.abs(ddx) > 40 && Math.abs(C.vx) < 5 && C.state === 'follow' && !C.waitEdge) C.stuckT += dt; else C.stuckT = Math.max(0, C.stuckT - dt);
+    // waiting at a ledge Carl jumped over: once he's well across (or on a moving platform), pop over to him
+    if (C.waitEdge && P.onGround && Math.abs(ddx) > 72) C.stuckT += dt * 2;
     var Q = S.pursuer;
-    if (ddx * ddx + ddy * ddy > 180 * 180 || C.y > S.L.pxH || C.stuckT > 1.2 || (Q && Q.active && C.x < Q.x + Q.w)) teleportComp(C, P);
+    // airborne over a bottomless drop or spikes: puff back to Carl before falling out of the level
+    var doomed = !C.perch && !C.onGround && C.vy > 60 && compStandRow(cx(C), C.y + C.h, S.L.h) < 0;
+    if (!C.perch && (ddx * ddx + ddy * ddy > 180 * 180 || C.y > S.L.pxH || doomed || C.stuckT > 1.2 || (Q && Q.active && C.x < Q.x + Q.w))) teleportComp(C, P);
     // ----- ability on cooldown -----
     if (!compCanAttack(C)) { C.cd = 0.5; return; }
     var cool = Math.max(0.35, num(def.cooldown, 2) / (0.5 + 0.5 * C.pw) - (C.ability === 'missile' ? num(st.missileCd, 0) : 0));
@@ -1448,7 +1542,7 @@
         if (e) { fireMissile(cx(C), C.y, e, missileDmg(power), C.face); used = true; }
       } else {
         var b = nearestEnemy(cx(C), cy(C), 80, true);
-        if (b) { C.state = 'dash'; C.target = b; C.dt = 0.6; C.actT = 0.3; used = true; }
+        if (b && !C.perch) { C.state = 'dash'; C.target = b; C.dt = 0.6; C.actT = 0.3; used = true; }
       }
       C.cd = used ? cool : 0.25;
     }
@@ -1736,6 +1830,8 @@
     e.state = 'latched'; e.latchT = num(e.def.fuse, 1.5); e.vx = 0; e.vy = 0;
     e.lox = U.rand(-4, 4); e.loy = U.rand(2, 10);
     sfx('bite', { pitch: 1.6 }); numText(cx(P), P.y - 12, 'LATCHED!', '#f83800');
+    var run = getRun();
+    if (!run.stickerTip) { run.stickerTip = true; announce('PRESS ATTACK!', { color: '#f83800', time: 1.6, sub: 'FLICK IT OFF BEFORE IT POPS' }); }
     track('sticker');
   }
   function updLatched(e, dt) {
@@ -1795,8 +1891,19 @@
     dropper: function (e, dt, dx, dy, adx) {
       var P = S.player;
       if (e.state === 'hang') {
-        e.vx = 0; e.vy = 0; e.tele = 0;
-        if (adx < 20 && cy(P) > e.y && P.state !== 'dead') { e.state = 'drop'; sfx('warn', { vol: 0.4, pitch: 1.6 }); }
+        // stalk along the ceiling, then drop where Carl is GOING to be, not where he was
+        e.vy = 0; e.tele = 0;
+        var below = cy(P) > e.y + 4 && P.state !== 'dead' && P.state !== 'pit';
+        var fallH = Math.max(8, (P.y + 6) - (e.y + e.h));
+        var tFall = Math.sqrt(2 * fallH / K.gravity) + 0.04;
+        var lead = cx(P) + U.clamp(P.vx || 0, -K.runMax, K.runMax) * tFall, ldx = lead - cx(e);
+        if (below && Math.abs(ldx) < 9 && adx < 110) { e.state = 'drop'; e.vx = 0; e.vy = 60; sfx('warn', { vol: 0.4, pitch: 1.6 }); return; }
+        if (below && adx < 160) {
+          var dir = U.sign(ldx) || e.face, nx = e.x + dir * 62 * dt;
+          var edgeX = dir > 0 ? nx + e.w : nx, ceil = Math.floor((e.y - 1) / TS);
+          if (isSolidT(tileAt(Math.floor(edgeX / TS), ceil)) && !isSolidT(tileAt(Math.floor(edgeX / TS), Math.floor((e.y + 2) / TS)))) { e.x = nx; e.face = dir; e.vx = dir * 62; e.crawl = true; }
+          else { e.vx = 0; e.crawl = false; }
+        } else { e.vx = 0; e.crawl = false; }
         return;
       }
       if (e.state === 'drop') { e.vx = 0; gravMove(e, dt); if (e.onGround) { e.state = 'skitter'; dust(cx(e), e.y + e.h, 1); } return; }
@@ -2873,6 +2980,7 @@
     if (S.lockMsgT > 0 && S.ride) S.lockMsgT -= dt;
     call(G(), 'tick', dt);
     if (S.introPending && S.t > 0.5) { var line = S.introPending; S.introPending = null; say(line); }
+    else if (S.mobIntroQ && S.mobIntroQ.length) { S.mobIntroT -= dt; if (S.mobIntroT <= 0 && P.state !== 'dead') say(S.mobIntroQ.splice(0, S.mobIntroQ.length)); }
     var alive = !S.done && P.state !== 'dead' && P.state !== 'pit' && !(S.ride && S.ride.dead);
     if (I.pressed('start') && alive) {
       var f = S.floor;
@@ -3189,7 +3297,7 @@
       spr(ctx, name, cx(e) - camX, e.y + e.h - camY, frame, e.lox < 0, { flash: e.latchT < 0.5 && Math.floor(e.t * 16) % 2 === 0 }, e.w, e.h, '#000000');
       return;
     }
-    if (e.state === 'hang') frame = 0;
+    if (e.state === 'hang' && !e.crawl) frame = 0;
     if (e.hurtT > 0 && hasArt(base + '_hurt')) name = base + '_hurt';
     else if (e.tele || e.state === 'dash' || e.state === 'swoop' || e.state === 'drop') name = hasArt(base + '_attack') ? base + '_attack' : base + '_walk';
     else name = base + '_walk';
@@ -3239,13 +3347,14 @@
     return seq[0][0];
   }
   function drawComp(ctx, C, camX, camY) {
+    if (C.away) return;
     var name = C.sprite + (C.actT > 0 ? '_act' : (Math.abs(C.vx) > 12 || !C.onGround) ? '_run' : '_idle');
     if (!hasArt(name)) name = C.sprite + '_idle';
     var inf = artInfo(name), nf = (inf && inf.frames) || 2, frame;
     if (name.indexOf('_run') > 0) frame = Math.floor(C.t * (nf >= 6 ? 13 : 8)); // 6-frame gallop: ~0.46s per bound
     else if (name.indexOf('_idle') > 0 && nf >= 6) frame = seqFrame(COMP_IDLE_SEQ, C.t);
     else frame = Math.floor(C.t * 2);
-    spr(ctx, name, cx(C) - camX, C.y + C.h - camY, frame, C.face < 0, null, C.w, C.h, C.color);
+    spr(ctx, name, cx(C) - camX, C.y + C.h - camY, frame, C.face < 0, C.id === 'carl' ? { skin: (DCW.save && DCW.save.equipped && DCW.save.equipped.skin) || 'carl_boxers' } : null, C.w, C.h, C.color);
   }
   function drawFighters(ctx, camX, camY) {
     for (var i = 0; i < S.allies.length; i++) {
@@ -3280,7 +3389,16 @@
     P.animPrev = P.animT;
     return sp;
   }
+  function donutPose(P) {
+    if (P.state === 'dead' || P.state === 'hurt') return ['donut_idle', 4];
+    if (P.state === 'victory' || P.state === 'punch' || P.state === 'kick' || P.state === 'airkick' || P.castT > 0 || P.throwT > 0) return ['donut_act', 0];
+    if (P.state === 'climb') return ['donut_run', Math.floor(P.animT * 8)];
+    if (!P.onGround) return ['donut_run', P.vy < 0 ? 3 : 0];
+    if (Math.abs(P.vx) > 8) return ['donut_run', Math.floor(P.animT * 13)];
+    return ['donut_idle', seqFrame(COMP_IDLE_SEQ, P.animT)];
+  }
   function playerPose(P) {
+    if (P.hero === 'donut') return donutPose(P);
     var st = P.st || 0;
     if (P.state === 'dead') return ['carl_dead', 0];
     if (P.state === 'victory') return ['carl_victory', 0];
@@ -3477,9 +3595,30 @@
     sfx('boss_roar', { pitch: 1.4, vol: 0.6 }); DCW.shake(3, 0.3);
     numText(Q.x + Q.w - 12, Q.cfg.fire ? S.cam.y + 70 : Q.y + 8, 'STAGGERED!', '#f8d878', 1);
   }
+  // the Murder Dozer doesn't drive through scenery, it drives THROUGH scenery: everything above the
+  // floor in front of the spiked wheel comes apart (the ceiling row and the floor itself stay)
+  function smashTerrain(Q) {
+    var front = Q.x + Q.w, gRow = Math.floor(Q.ground / TS), n = 0, crate = false;
+    var top = Math.max(1, Math.floor((Q.y - 4) / TS));
+    for (var tx = Math.max(0, Math.floor((front - 8) / TS)); tx <= Math.floor((front + 2) / TS); tx++) for (var ty = top; ty < gRow; ty++) {
+      var t = tileAt(tx, ty); if (t === T_EMPTY) continue;
+      setTile(tx, ty, T_EMPTY); n++;
+      // a wall taller than the dozer comes down with it instead of hanging in the air
+      if (ty === top) for (var up = ty - 1; up >= 1 && tileAt(tx, up) !== T_EMPTY && tileAt(tx, up) !== T_ONEWAY; up--) {
+        setTile(tx, up, T_EMPTY); n++;
+        if (onScreen({ x: tx * TS, y: up * TS, w: TS, h: TS }, 24)) debris(tx * TS + 8, up * TS + 8, 5, '#bcbcbc', 150);
+      }
+      if (t === T_CRATE) crate = true;
+      if (onScreen({ x: tx * TS, y: ty * TS, w: TS, h: TS }, 24)) {
+        debris(tx * TS + 8, ty * TS + 8, 8, t === T_CRATE ? '#ac7c00' : t === T_ONEWAY ? '#a85010' : '#bcbcbc', 190);
+        if ((tx + ty) % 2) smoke(tx * TS + 8, ty * TS + 8, 1);
+      }
+    }
+    if (n && !(Q.smashT > 0)) { Q.smashT = 0.18; sfx(crate ? 'crate_break' : 'explosion', { pitch: crate ? 0.8 : 1.6, vol: 0.55 }); DCW.shake(2, 0.15); }
+  }
   function updPursuer(dt) {
     var Q = S.pursuer, P = S.player; if (!Q) return;
-    Q.t += dt; if (Q.hitT > 0) Q.hitT -= dt;
+    Q.t += dt; if (Q.hitT > 0) Q.hitT -= dt; if (Q.smashT > 0) Q.smashT -= dt;
     if (!Q.active) {
       if (S.done || S.t < Q.delay || (S.ride && S.ride.countT > 0)) return;
       Q.active = true; Q.x = Math.min(S.cam.x, cx(P) - 150) - Q.w; Q.vx = Q.speed;
@@ -3498,6 +3637,7 @@
     if (Q.x + Q.w > S.L.pxW) Q.x = S.L.pxW - Q.w;
     var front = Q.x + Q.w, zone = pursuerDanger(Q), i;
     if (!Q.cfg.fire) Q.y = Q.ground - Q.h;
+    if (Q.id === 'murder_dozer' || Q.cfg.smash) smashTerrain(Q);
     // it rolls over mobs in its way
     for (i = 0; i < S.enemies.length; i++) {
       var e = S.enemies[i];
@@ -3613,7 +3753,7 @@
       var o = S.objects[i];
       if ((o.kind !== 'boost' && o.kind !== 'jpad' && o.kind !== 'oil') || !overlap(b, o)) continue;
       if (o.kind === 'boost') { if (!(S.ride.boostT > 0.9)) { S.ride.boostT = 1.3; sfx('boost'); } }
-      else if (o.kind === 'jpad' && b.onGround) { b.vy = -430; b.onGround = false; b.padLaunch = true; sfx('jump', { pitch: 0.7 }); }
+      // ramps never launch you on their own: jumping while on one gives big air (see updRide)
       else if (o.kind === 'oil' && !(S.ride.spin > 0)) { S.ride.spin = 0.8; sfx('skid'); numText(cx(b), b.y - 8, 'SPIN OUT!', '#fcfcfc'); }
     }
   }
@@ -3653,7 +3793,13 @@
     if (R.boostT > 0 && !victory) P.vx = Math.max(P.vx, top * 0.9);
     if (R.spin > 0) P.vx *= Math.pow(0.4, dt);
     P.face = 1;
-    if (I.pressed('jump') && P.onGround && R.spin <= 0 && !victory) { P.vy = -330; P.onGround = false; sfx('jump', { pitch: 0.8 }); }
+    if (I.pressed('jump') && P.onGround && R.spin <= 0 && !victory) {
+      var onRamp = false;
+      for (i = 0; i < S.objects.length && !onRamp; i++) { var rp = S.objects[i]; if (rp.kind === 'jpad' && overlap({ x: P.x - 6, y: P.y, w: P.w + 12, h: P.h + 2 }, rp)) onRamp = true; }
+      P.vy = onRamp ? -430 : -330; P.onGround = false; P.padLaunch = onRamp;
+      sfx('jump', { pitch: onRamp ? 0.7 : 0.8 });
+      if (onRamp) numText(cx(P), P.y - 10, 'BIG AIR!', '#f8d878');
+    }
     if (!I.down('jump') && P.vy < -120 && !P.padLaunch) P.vy += 900 * dt;
     P.vy = Math.min(P.vy + K.gravity * dt, K.fallMax);
     var wasG = P.onGround, preVx = P.vx;

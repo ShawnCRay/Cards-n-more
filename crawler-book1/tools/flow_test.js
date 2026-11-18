@@ -2,7 +2,7 @@
 // in sequence order (stages are cleared through DCW.game.stageCleared, cutscenes skipped with
 // START after their first panel is captured). Reports the step order, missing ids, dead ends
 // and console errors, and saves a screenshot of every cutscene and safe room.
-// Usage: node crawler-book1/tools/flow_test.js <outDir> [--intro]
+// Usage: node crawler-book1/tools/flow_test.js <outDir> [--intro] [--donut]
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -27,7 +27,7 @@ const fs = require('fs');
   const step = n => page.evaluate(n => DCW.stepFrames(n), n);
   const press = async (b, f = 2) => { await page.evaluate(([b, f]) => DCW.pressKey(b, f), [b, f]); };
   const closeModals = async () => { for (let i = 0; i < 40 && await page.evaluate(() => DCW.ui.blocking()); i++) { await press('confirm'); await step(8); } };
-  await page.evaluate(() => DCW.game.newRun());
+  await page.evaluate(d => DCW.game.newRun(d ? 'donut' : undefined), process.argv.includes('--donut'));
   await step(40);
   const log = [];
   let shots = 0, last = '', same = 0;

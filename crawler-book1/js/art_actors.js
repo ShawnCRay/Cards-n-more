@@ -1101,6 +1101,8 @@
       skins[s] = { pal: p };
     });
     DCW.artActorsKit.carlCharsUsed = Object.keys(sigMap).length;
+    // Donut mode: Carl follows as a companion, whose sprite set is <id>_idle / _run / _act
+    if (defs.carl_punch) defs.carl_act = { w: defs.carl_punch.w, h: defs.carl_punch.h, pal: defs.carl_punch.pal, frames: [defs.carl_punch.frames[1], defs.carl_punch.frames[2]], ox: defs.carl_punch.ox || 0, oy: defs.carl_punch.oy || 0 };
   })();
 
   /* ================================================================== *

@@ -595,7 +595,7 @@
     '...........v........................',
     '....................................',
     '....................................',
-    '..e.................^^^^.....e......',
+    '..e..................^^......e......',
     '####################################',
     '####################################'] };
 
@@ -769,7 +769,7 @@
     '...................?................',
     '..................===...............',
     '....................................',
-    '.........====..........====.........',
+    '.........====...====...====.........',
     '....................................',
     '..e.....^^^^^^^^^^^^^^^^^^^^....e...',
     '####################################',
@@ -1238,7 +1238,7 @@
     '..............ooooo.................',
     '.............=======................',
     '....................................',
-    '..e....bb.......e.....^^^.....e.....',
+    '..e....bb.......e.....^^......e.....',
     '####################################',
     '####################################'] };
 
@@ -1416,7 +1416,7 @@
     '....................................',
     '...........o.o.o.o.o.o..............',
     '....................................',
-    '.............>......................',
+    '.............>........<.............',
     '..e.....^^^^^^^^^^^^^^^^^^^.....e...',
     '####################################',
     '####################################'] };
@@ -1508,7 +1508,7 @@
     '........XXXXX.....................',
     '........XXXXX.......=====.........',
     '..e.....XXXXX.....e........e...b..',
-    '##############~~~~################',
+    '##############~~~#################',
     '##################################'] };
 
   // jug racks: crates and platforms
@@ -1537,7 +1537,7 @@
     '..............XXX...............',
     '..........=====.................',
     '................................',
-    '..e...$..............^^^...e....',
+    '..e...$..............^^....e....',
     '################################',
     '################################'] };
 
@@ -1672,13 +1672,13 @@
     chunks: { start: 'tn_start', pool: ['tn_a', 'tn_c', 'tn_e', 'tn_g', 'tn_i'], count: 4, insert: ['tn_meth'], end: 'end_door' },
     enemies: [['bad_llama', 3], ['rat', 3], ['scatterer', 2]], elite: [['bad_llama', 1]], flyers: [['scatterer', 1]],
     reward: { box: 'bronze', xp: 12 },
-    intro: "LLAMA COUNTRY! THEY SPIT LAVA AND THEY DEAL DRUGS. WHEN ONE WINDS UP, ITS THROAT GLOWS. PUNCH THE GLOW. YOU WILL THANK ME. YOU WILL NOT THANK ME." });
+    intro: "LLAMA COUNTRY! THE LOCALS ARE TALL, FURRY AND DEEPLY UNPLEASANT. MAKE FRIENDS. OR DON'T. WE GET PAID EITHER WAY." });
 
   st('f1_scatter', { name: 'SCATTERER ALLEY', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1', dark: true,
     chunks: { start: 'tn_start', pool: ['tn_b', 'tn_d', 'tn_f', 'tn_h', 'tn_a'], count: 4, end: 'end_door' },
     enemies: [['scatterer', 7], ['rat', 1]], elite: [['brood_guardian', 1]], flyers: [['scatterer', 1]],
     reward: { box: 'bronze', xp: 12 },
-    intro: "A PITCH-BLACK SIDE ALLEY FULL OF SHOEBOX ROACHES. YOU CAN'T SEE THEM. YOU CAN HEAR THEM. YOU HAVE BARE FEET. GOOD LUCK, CRAWLER." });
+    intro: "A PITCH-BLACK SIDE ALLEY. SOMETHING IN HERE IS SKITTERING. A LOT OF SOMETHINGS. YOU HAVE BARE FEET. GOOD LUCK, CRAWLER." });
 
   st('f1_hoarder', { name: "THE HOARDER'S CHAMBER", floor: 1, theme: 'hoard', kind: 'boss', music: 'boss',
     chunks: { start: 'hd_start', pool: ['hd_a', 'hd_b', 'hd_c'], count: 2, insert: ['hd_door'], end: 'arena_hoarder' },
@@ -1720,20 +1720,20 @@
     chunks: { start: 'tn_start', pool: ['tn_rot_a', 'tn_rot_b', 'tn_rot_c', 'tn_d', 'tn_i'], count: 4, end: 'end_door' },
     enemies: [['rot_sticker', 5], ['rat', 2], ['goblin', 2]], elite: [['goblin_bomber', 1]], flyers: [['rot_sticker', 1]],
     reward: { box: 'bronze', xp: 14 },
-    intro: "LOOK UP. NO, REALLY. THOSE BLACK RAVIOLI ON THE CEILING ARE ROT STICKERS. THEY DROP, THEY HUG, THEY EXPLODE. PRESS ATTACK TO SHAKE ONE OFF." });
+    intro: "A NICE QUIET HALLWAY. LOW CEILINGS. GOOD VIBES. NOTHING TO WORRY ABOUT. ENJOY THE STROLL, CRAWLER." });
 
   st('f1_ride', { name: '100 MILES EAST', floor: 1, theme: 'tunnels', kind: 'ride', music: 'ride',
     ride: { finishText: 'MEADOW LARK THIS WAY', countdown: 1.6, pitDmg: 3 },
     chunks: { start: 'ride_start', pool: RIDE, count: 10, end: 'ride_lark' },
     enemies: [['goblin', 3], ['rat', 3], ['bad_llama', 1], ['trog_pygmy', 1]], elite: [['trog_basher', 1]], flyers: [['scatterer', 1]],
     reward: { box: 'silver', xp: 18 },
-    intro: "THE GOBLIN COPPER CHOPPER, EVERYBODY! JUMP TO HOP, ATTACK TO PUNCH FROM THE SADDLE, BOMB DROPS ONE BEHIND YOU. HEAD EAST. KEEP HEADING EAST." });
+    intro: "THE GOBLIN COPPER CHOPPER, EVERYBODY! JUMP TO HOP (JUMP ON A RAMP FOR BIG AIR), ATTACK TO PUNCH FROM THE SADDLE, BOMB DROPS ONE BEHIND YOU. HEAD EAST!" });
 
   st('f1_trogs', { name: 'TROGLODYTE NEIGHBORHOOD', floor: 1, theme: 'tunnels', kind: 'main', music: 'floor1',
     chunks: { start: 'tn_start', pool: ['tn_trog_a', 'tn_trog_b', 'tn_c', 'tn_f', 'tn_g', 'tn_h'], count: 4, end: 'end_door' },
     enemies: [['trog_pygmy', 4], ['trog_virtuoso', 2], ['rat', 2]], elite: [['trog_basher', 1]], flyers: [['trog_pygmy', 1]],
     reward: { box: 'bronze', xp: 16 },
-    intro: "TROGLODYTE COUNTRY! THE LITTLE ONES JUMP. THE BIG ONES PUNCH. THE MEDIUM ONES HAVE FIFTEEN-FOOT TONGUES. EVERYONE HERE IS VENOMOUS. SMILE!" });
+    intro: "TROGLODYTE COUNTRY! IT SMELLS LIKE A REPTILE HOUSE THAT GAVE UP ON ITSELF. THE NEIGHBORS ARE NOT FRIENDLY. SMILE!" });
 
   st('f1_juicer', { name: 'THE 24 HOUR GYM', floor: 1, theme: 'gym', arenaTheme: 'gym_red', kind: 'boss', music: 'gym',
     chunks: { start: 'gy_start', pool: ['gy_a', 'gy_b', 'gy_c'], count: 2, end: 'arena_juicer' },
@@ -1758,14 +1758,14 @@
     chunks: { start: 'cn_start', pool: ['cn_a', 'cn_b', 'cn_c', 'cn_d', 'cn_g', 'cn_h'], count: 5, end: 'end_door' },
     enemies: [['brindle_grub', 4], ['dingo', 2], ['mind_horror', 1]], elite: [['cow_grub', 1]], flyers: [['mind_horror', 1]],
     reward: { box: 'silver', xp: 30 },
-    intro: "THE SECOND FLOOR! WHITE FLOORS, ORANGE LICHEN, A MAZE THAT GOES ON FOREVER. THE GRUBS EAT THE DEAD AND MULTIPLY. SO KILL TIDILY." });
+    intro: "THE SECOND FLOOR! WHITE FLOORS, ORANGE LICHEN AND A MAZE THAT GOES ON FOREVER. EVERYTHING DOWN HERE IS HUNGRY. AND NOW THE AUDIENCE IS WATCHING!" });
 
   st('f2_revup', { name: 'REV-UP COUNTRY', floor: 2, theme: 'cinder', kind: 'main', music: 'floor2',
     janitor: JAN,
     chunks: { start: 'cn_start', pool: ['cn_a', 'cn_c', 'cn_d', 'cn_e', 'cn_f', 'cn_bisc'], count: 4, end: 'end_door' },
     enemies: [['clurichaun', 4], ['brindle_grub', 2]], elite: [['laminak', 1]], flyers: [['laminak', 1]],
     reward: { box: 'silver', xp: 32 },
-    intro: "REV-UP COUNTRY! THE CLURICHAUNS HAVE SLINGSHOTS AND THE TAINT. THE LAMINAKS HAVE A PYRAMID SCHEME. WHILE TAINTED, NOTHING HEALS. NOTHING!" });
+    intro: "REV-UP COUNTRY! SOMEBODY DOWN HERE HAS AN EXCITING BUSINESS OPPORTUNITY FOR YOU. SAY NO. SAY NO LOUDLY. AND WASH YOUR HANDS." });
 
   st('f2_krakaren', { name: 'THE REV-UP DISTILLERY', floor: 2, theme: 'distillery', kind: 'boss', music: 'boss',
     breakout: true, bossMusic: 'boss',
@@ -1788,7 +1788,7 @@
     chunks: { start: 'cn_start', pool: ['cn_a', 'cn_c', 'cn_e', 'cn_f', 'cn_g', 'cn_bisc'], count: 5, end: 'end_door' },
     enemies: [['kobold', 4], ['dingo', 2], ['cow_grub', 1]], elite: [['kobold_rider', 1]], flyers: [['vespa', 1]],
     reward: { box: 'silver', xp: 36 },
-    intro: "KOBOLD COUNTRY! CHIHUAHUA MEN IN BEER-TAB ARMOR, RIDING DANGER DINGOES WITH LANCES. PICK UP ANY PET BISCUITS YOU SEE. TRUST ME." });
+    intro: "KOBOLD COUNTRY! HEAR THAT? THAT IS YAPPING. A LOT OF YAPPING. PICK UP ANY PET BISCUITS YOU SEE. TRUST ME." });
 
   st('f2_ralph', { name: 'THE MUNICIPAL DOG POUND', floor: 2, theme: 'pound', kind: 'boss', music: 'boss',
     chunks: { start: 'pd_start', pool: ['pd_a', 'pd_b'], count: 1, end: 'arena_ralph' },
@@ -1802,7 +1802,7 @@
     chunks: { start: 'cn_start', pool: ['cn_b', 'cn_c', 'cn_d', 'cn_f', 'cn_h', 'cn_g'], count: 4, end: 'cn_stairs' },
     enemies: [['brindle_grub', 4], ['cow_grub', 2], ['dingo', 1]], elite: [['cow_grub', 1]], flyers: [['vespa', 2]],
     reward: { box: 'gold', xp: 40 },
-    intro: "THE GRUBS HAVE HIT THE SPAWN LIMIT AND THE BIG ONES ARE HATCHING INTO VESPAS. BACK TO THE STAIRWELL! THE NEW DINOSAUR WILL HELP. HE BITES." });
+    intro: "THE GRUBS HAVE HIT THE SPAWN LIMIT AND SOMETHING BIGGER IS HATCHING. BACK TO THE STAIRWELL! THE NEW DINOSAUR WILL HELP. HE BITES." });
 
   /* ---------------- quest items ---------------- */
   D.questItems = {
@@ -2035,36 +2035,48 @@
         ai("UNARMED COMBAT! NO WEAPON. BOLD. EMPTY POCKETS! NO SUPPLIES. BOLDER. EARLY ADOPTER! ONE OF THE FIRST FIVE THOUSAND THROUGH THE DOORS!")] },
       { bg: 'stairwell', actors: CD, lines: [
         carl("DONUT? YOU OKAY? YOU'RE MAKING A FACE."),
-        donut("CARL. CARL! I CAN TALK! OH MY GOD, CARL, I CAN TALK! I HAVE SO MANY THINGS TO SAY ABOUT YOUR APARTMENT."),
-        carl("OF COURSE YOU CAN. SURE. WHY NOT.")] },
+        nar("DONUT GLARES AT THE GLOWING ACHIEVEMENT TEXT HANGING IN THE AIR. THEN AT CARL. THEN SHE HISSES AT BOTH OF THEM."),
+        donut("HSSSSSSSS."),
+        carl("YEAH. ME TOO.")] },
       { bg: 'tunnels', actors: CD, lines: [
         ai("YOUR BOXES OPEN IN A GUILD HALL. GUILD HALLS ONLY ADMIT CRAWLERS WHO HAVE KILLED A MOB. SO GO KILL SOMETHING! THE RATS ARE RIGHT THERE!"),
-        donut("MISS BEATRICE WOULD NEVER LET ME KILL A RAT. MISS BEATRICE ISN'T HERE THOUGH, IS SHE, CARL? WHERE IS SHE, CARL?"),
-        carl("SOMEWHERE WARM. COME ON. STAY BEHIND ME.")] }
+        nar("A RAT THE SIZE OF A LOAF OF BREAD SQUEAKS AT THEM FROM THE DARK. DONUT'S TAIL GOES FULL BOTTLE BRUSH."),
+        carl("STAY BEHIND ME. AND DON'T EAT ANYTHING DOWN HERE.")] }
     ],
       give: [{ kind: 'achieve', id: 'crazy_cat_lady' }, { kind: 'achieve', id: 'why_no_pants' }, { kind: 'achieve', id: 'unarmed_combat' },
         { kind: 'achieve', id: 'early_adopter' }, { kind: 'achieve', id: 'empty_pockets' }] },
 
+    // Donut cannot talk until she eats the Enhanced Pet Biscuit from her pet box, here in the guild.
     f1_mordecai: { music: 'safe', panels: [
       { bg: 'safe_guild', fx: 'shake', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         nar("THE GUILD DOOR SLAMS. OUTSIDE, THE MURDER DOZER GRINDS TO A STOP AND JUST... IDLES. WAITING. THE GOBLINS ON TOP ARE SINGING."),
         mord1("IN. SIT. TOUCH NOTHING. I'M MORDECAI. I RUN THIS TUTORIAL GUILD, AND YOU TWO ARE ALREADY THE WORST CRAWLERS I'VE HAD TODAY.")] },
-      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
-        smug("AND WHAT ARE YOU SUPPOSED TO BE? A RAT IN A VEST? GOODNESS. YOUR MOTHER MUST HAVE BEEN A VERY LONELY STORM DRAIN."),
-        mord1("...DID YOUR CAT JUST INSULT MY MOTHER?"),
-        carl("SHE DOES THAT. SHE INSULTED MINE AT THANKSGIVING. SORRY. IT'S BEEN A NIGHT.")] },
+      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 168), A('mordecai_f1_idle', 214, true)], lines: [
+        nar("DONUT LEAPS OFF CARL'S SHOULDER, KNOCKS A BRASS URN OFF THE SHELF, AND STARTS DIGGING IN WHAT SPILLS OUT LIKE IT'S A FRESH LITTER BOX."),
+        mord1("...THAT'S MY MOTHER."),
+        carl("OH GOD. DONUT, NO. I'M SO SORRY. SHE'S A CAT. SHE DOESN'T KNOW WHAT AN URN IS.")] },
       { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         mord1("TUTORIAL. YOUR HUD IS ON NOW. HEALTH, LEVEL, INVENTORY. EVERYTHING YOU PICK UP GOES INTO A POCKET THAT ISN'T THERE. DON'T THINK ABOUT IT."),
-        mord1("THIS FLOOR ISN'T LIVE. NOBODY'S WATCHING YET. ENJOY IT. ONCE THEY ARE, EVERY STUPID THING YOU DO IS FOR THEM.")] },
+        mord1("THIS FLOOR ISN'T LIVE. NOBODY'S WATCHING YET. ENJOY IT. ONCE THEY ARE, EVERY STUPID THING YOU DO IS FOR THEM."),
+        mord1("NOW OPEN YOUR BOXES. THE PET BOX IS FOR HER. GOD HELP US ALL.")] },
       { bg: 'safe_guild', fx: 'flash', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
-        mord1("THE CAT GETS A SPELL. MAGIC MISSILE. POINT, CAST, SOMETHING DIES. DON'T CAST IT INDOORS. DON'T CAST IT AT ME."),
+        nar("INSIDE THE BRONZE PET BOX: ONE ENHANCED PET BISCUIT. DONUT EATS IT BEFORE ANYONE CAN READ THE LABEL."),
+        nar("HER EYES GO WIDE. HER EARS GO FLAT. SHE OPENS HER MOUTH."),
+        donut("...CARL."),
+        carl("DID THE CAT JUST SAY MY NAME?"),
+        donut("CARL. CARL! I CAN TALK! OH MY GOD, CARL, I CAN TALK! I HAVE SO MANY THINGS TO SAY ABOUT YOUR APARTMENT.")] },
+      { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
+        smug("AND YOU. MISTER RAT IN A VEST. I'M SORRY ABOUT YOUR MOTHER. SHE WAS VERY ABSORBENT."),
+        mord1("...I LIKED YOU BETTER WHEN YOU COULDN'T TALK."),
+        mord1("SMART PETS GET A SPELL. MAGIC MISSILE. POINT, CAST, SOMETHING DIES. DON'T CAST IT INDOORS. DON'T CAST IT AT ME.")] },
+      { bg: 'safe_guild', fx: 'flash', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         donut("OH, CARL. CARL! I CAN SHOOT THINGS NOW. MISS BEATRICE NEVER ONCE LET ME SHOOT THINGS."),
         ai("PRINCESS DONUT HAS LEARNED MAGIC MISSILE! YOUR PET IS NOW A RANGED WEAPON. PLEASE POINT HER RESPONSIBLY. OR DON'T. WE'RE NOT YOUR MOM.")] },
       { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         carl("SO. ABOUT THE STEAM TANK FULL OF GOBLINS PARKED OUTSIDE YOUR FRONT DOOR."),
         mord1("IT'S NOT GOING ANYWHERE AND NEITHER ARE YOU. ARMOR'S ON THE FRONT. THE BOILER'S ON THE BACK. GO AROUND, KID. AND BRING BOMBS.")] }
     ],
-      give: [{ kind: 'flag', id: 'missile' }, { kind: 'xp', amount: 10 }] },
+      give: [{ kind: 'flag', id: 'talks', quiet: true }, { kind: 'flag', id: 'missile' }, { kind: 'xp', amount: 10 }] },
 
     f1_episode1: { music: 'tension', panels: [
       { bg: 'tvroom', fx: 'static', actors: [], lines: [
@@ -2472,6 +2484,11 @@
 
   /* ---------------- companions ---------------- */
   D.companions = {
+    // Donut mode (after beating the book): Carl follows Princess Donut and punches things for her
+    carl: { name: 'CARL', ability: 'bite', cooldown: 0.9, power: 3, sprite: 'carl',
+      desc: "A MAN IN HIS BOXERS AND A LEATHER JACKET WHO HAS PUNCHED HIS WAY THROUGH TWO FLOORS. NOW HE WORKS FOR THE CAT. HE ALWAYS DID.",
+      special: { name: 'GODDAMNIT, DONUT', desc: 'CARL CHARGES ACROSS THE SCREEN AND PUNCHES EVERYTHING IN HIS WAY.', time: 1.8 },
+      how: 'BEAT BOOK ONE. THEN THE PRINCESS TAKES THE LEAD.' },
     donut: { name: 'PRINCESS DONUT', ability: 'missile', cooldown: 1.6, power: 2, sprite: 'donut',
       desc: 'A CHAMPION PERSIAN SHOW CAT, ROYALTY ACCORDING TO HER, AND THE DUNGEON AGREES. CASTS MAGIC MISSILE ONCE SHE LEARNS IT.',
       special: { name: 'MAGIC MISSILE BARRAGE', desc: 'A STORM OF HOMING MISSILES HITS EVERY ENEMY ON SCREEN.', time: 0 },

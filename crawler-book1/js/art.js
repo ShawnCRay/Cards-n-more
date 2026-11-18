@@ -1200,9 +1200,6 @@
           var rl = rng(304);
           for (var i = 0; i < 26; i++) { var yy = 90 + ((rl() * 58) | 0), side = rl() < 0.5 ? -1 : 1, xx = 268 + side * (13 + ((rl() * 4) | 0)); P(g, xx, yy, rl() < 0.3 ? Q.t2 : Q.t1); }
           R(g, 263, 140, 10, 1, Q.t1); R(g, 265, 139, 6, 1, Q.t0);
-          // official dungeon sign, blends into the wall
-          R(g, 206, 94, 30, 11, K); R(g, 207, 95, 28, 9, Q.n0); R(g, 207, 95, 28, 1, Q.y1);
-          tiny(g, 'GUILD', 218, 97, Q.y0, { align: 'center' }); rows(g, 229, 97, ['.y..', 'yyyy', '.y..'].map(function (s) { return s.split('').reverse().join(''); }), { y: Q.y0 });
           // dim lichen crusts on the far wall
           var spots = [[150, 46], [182, 128], [340, 60], [20, 112]];
           for (i = 0; i < spots.length; i++) for (var k = 0; k < 7; k++) P(g, spots[i][0] + ((rl() * 10) | 0), spots[i][1] + ((rl() * 6) | 0), k < 5 ? Q.t0 : Q.t1);
@@ -1231,6 +1228,10 @@
             R(g, px + 14, 72, 4, 14, K); R(g, px + 15, 72, 2, 13, Q.y0); P(g, px + 15, 72, Q.n0);
             R(g, px + 13, 70, 6, 3, K); R(g, px + 14, 71, 4, 1, Q.g0);
           }
+          // official dungeon sign, nailed to the wall between two posts (same layer as the posts, so
+          // it scrolls with them and never slides behind one)
+          R(g, 96, 94, 32, 11, K); R(g, 97, 95, 30, 9, Q.n0); R(g, 97, 95, 30, 1, Q.y1);
+          tiny(g, 'GUILD', 108, 97, Q.y3, { align: 'center' }); rows(g, 119, 97, ['..y.', 'yyyy', '..y.'], { y: Q.y3 });
           // rubble
           for (x = 0; x < w; x += 7 + ((r() * 20) | 0)) { var rw = 4 + ((r() * 7) | 0); R(g, x, 154 - (rw >> 1), rw, (rw >> 1) + 6, K); R(g, x + 1, 155 - (rw >> 1), rw - 2, (rw >> 1) + 4, Q.y0); P(g, x + 1, 155 - (rw >> 1), Q.n0); }
         });
@@ -1721,7 +1722,7 @@
       shelf(g, 262, 96, 44, Q.g1, Q.g0);
       oval(g, 284, 94, 16, 3, K); oval(g, 284, 94, 15, 2, Q.W);
       for (var c = 0; c < 4; c++) { oval(g, 274 + c * 7, 91 - (c & 1), 3, 2, K); oval(g, 274 + c * 7, 91 - (c & 1), 2, 1, Q.y1); P(g, 273 + c * 7, 90 - (c & 1), Q.y0); }
-      tiny(g, 'TAKE ONE', 284, 76, Q.c1, { align: 'center' });
+      tiny(g, 'TAKE 1', 284, 76, Q.c1, { align: 'center' });
       // a wall clock and a SAFE ROOM plaque
       oval(g, 30, 40, 11, 11, K); oval(g, 30, 40, 9, 9, Q.W); line(g, 30, 40, 30, 33, K); line(g, 30, 40, 35, 42, K);
       R(g, 8, 70, 46, 12, K); R(g, 9, 71, 44, 10, Q.G1); tiny(g, 'SAFE ROOM', 31, 73, Q.W, { align: 'center' });

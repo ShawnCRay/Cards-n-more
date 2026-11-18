@@ -208,7 +208,8 @@
     for (var li = 0; li < lines.length; li++) {
       var s = lines[li].toUpperCase();
       var w = DCW.textWidth(s, scale); if (w > maxW) maxW = w;
-      var sx = x;
+      // always whole pixels: a half-pixel x makes some browsers (TVs, consoles) resample the glyphs
+      var sx = Math.round(x);
       if (opts.align === 'center') sx = Math.round(x - w / 2);
       else if (opts.align === 'right') sx = Math.round(x - w);
       var sy = Math.round(y + li * lineH);

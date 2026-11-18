@@ -68,7 +68,7 @@
       boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0,
       currentStage: null, inSafe: false, room: null, seenRooms: {}, cookieHere: false, restedHere: false,
       pendingAmbush: null, won: false,
-      companions: ['donut'], items: {}, gear: {}, flags: {},
+      companions: ['donut'], items: {}, gear: {}, flags: {}, hero: 'carl',
       seed: (Math.random() * 1e9) >>> 0
     };
   }
@@ -85,10 +85,15 @@
   };
 
   // New crawl: the Transformation on the surface, the name gag at the dungeon doors, then Floor 1.
-  G.newRun = function () {
+  // hero 'donut' (Donut mode, unlocked by beating the book): play as Princess Donut, Carl follows.
+  G.donutModeUnlocked = function () {
+    var s = DCW.save; return !!(s && ((s.meta && s.meta.donutMode) || (s.settings && s.settings.donutMode)));
+  };
+  G.newRun = function (hero) {
     var s = DCW.save;
     s.run = makeRun();
-    s.equipped.companion = 'donut';
+    if (hero === 'donut') { s.run.hero = 'donut'; s.run.companions.push('carl'); }
+    s.equipped.companion = hero === 'donut' ? 'carl' : 'donut';
     s.equipped.skin = 'carl_boxers';
     s.meta.runs = (s.meta.runs || 0) + 1;
     persist();
@@ -102,7 +107,8 @@
     var r = G.run; if (!r) return;
     var fresh = makeRun();
     Object.keys(fresh).forEach(function (k) { if (r[k] === undefined) r[k] = fresh[k]; });
-    if (r.companions.indexOf(DCW.save.equipped.companion) < 0) DCW.save.equipped.companion = 'donut';
+    if (r.hero === 'donut') { if (r.companions.indexOf('carl') < 0) r.companions.push('carl'); DCW.save.equipped.companion = 'carl'; }
+    else if (r.companions.indexOf(DCW.save.equipped.companion) < 0 || DCW.save.equipped.companion === 'carl') DCW.save.equipped.companion = 'donut';
   };
   G.continueRun = function () {
     var r = G.run;
@@ -349,6 +355,9 @@
     var r = G.run, m = DCW.save.meta;
     if (r) r.won = true;
     m.wins = (m.wins || 0) + 1;
+    // beating the book unlocks Donut mode (shared by every save slot)
+    if (!G.donutModeUnlocked()) { m.donutMode = true; DCW.save.settings.donutMode = true; m.donutModeNew = true; }
+    m.donutMode = true; DCW.save.settings.donutMode = true;
     G.track('win');
     persist();
     go(S().ending || fallbackScene('THE END OF BOOK ONE', function () { G.quitToTitle(); }), {});
@@ -875,6 +884,7 @@
     if (stId && f) { var k = (f.sequence || []).indexOf(stId); if (k >= 0) seqIdx = k; }
     var before = simulateStory(r, n, seqIdx);
     r.seqIndex = seqIdx;
+    if (p.get('hero') === 'donut') { r.hero = 'donut'; r.companions.push('carl'); s.equipped.companion = 'carl'; } else s.equipped.companion = 'donut';
     var lvl = parseInt(p.get('level') || '0', 10) || Math.max(1, Math.round(1 + before * 0.45));
     for (var i = 1; i < lvl; i++) { r.level++; var pts = (r.level % 5 === 0) ? 2 : 1; r.stats[['str', 'con', 'dex', 'int'][i % 4]] += pts; }
     (p.get('flags') || '').split(',').filter(Boolean).forEach(function (fl) { r.flags[fl] = true; });

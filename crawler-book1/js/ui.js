@@ -432,6 +432,9 @@
       portrait: firstArt(['p_mordecai_f' + n, 'p_mordecai']) || 'p_mordecai' };
   }
   function compSprite(id) { var d = compDef(id); return (d && d.sprite) || id || 'donut'; }
+  // Donut mode: Princess Donut is the player and Carl follows. Menu art always shows the duo.
+  function heroDonut() { var r = getRun(); return !!(r && r.hero === 'donut'); }
+  function pairComp() { var c = equipped('companion'); return c === 'carl' ? 'donut' : compSprite(c); }
   // who speaks -> portrait name (data may omit portraits)
   var WHO_PORTRAIT = { 'SYSTEM AI': 'p_ai', 'AI': 'p_ai', 'THE AI': 'p_ai', 'CARL': 'p_carl', 'DONUT': 'p_donut', 'PRINCESS DONUT': 'p_donut',
     'MONGO': 'p_mongo', 'ZEV': 'p_zev', 'TALLY': 'p_tally', 'QWIST': 'p_qwist', 'FRANK': 'p_frank_q', 'FRANK Q': 'p_frank_q',
@@ -953,7 +956,7 @@
       BOX(10, 22, 110, 70, { fill: C.black, border: C.dgray });
       R(12, 80, 106, 10, C.dbrown); R(12, 80, 106, 1, C.tan);
       bigSprite(ctx, 'carl_idle', 46, 84, { scale: 2, skin: equipped('skin'), frame: Math.floor((DCW.t || 0) * 2) % 2 });
-      bigSprite(ctx, compSprite(equipped('companion')) + '_idle', 94, 84, { scale: 2, frame: Math.floor((DCW.t || 0) * 2) % 2 });
+      bigSprite(ctx, pairComp() + '_idle', 94, 84, { scale: 2, frame: Math.floor((DCW.t || 0) * 2) % 2 });
       var lv = run.level || 1, need = xpNeed(lv);
       T('CARL  LEVEL ' + lv, 12, 98, C.green);
       BAR(12, 109, 106, 4, (run.xp || 0) / need, C.green, C.ddgreen);
@@ -1338,7 +1341,7 @@
       var skin = outfitRow ? (row.skins[m.skinI] || equipped('skin')) : equipped('skin');
       var who = row && row.type === 'gear' ? (row.g.def.who === 'donut' ? 'donut' : 'carl') : 'both';
       if (who !== 'donut') bigSprite(ctx, 'carl_idle', px + (who === 'both' ? 50 : 60), 66, { scale: 2, skin: skin, frame: fr });
-      if (who !== 'carl' || outfitRow) bigSprite(ctx, compSprite(equipped('companion')) + '_idle', px + (who === 'donut' ? 60 : 108), 66, { scale: 2, frame: fr, flip: who !== 'donut' });
+      if (who !== 'carl' || outfitRow) bigSprite(ctx, pairComp() + '_idle', px + (who === 'donut' ? 60 : 108), 66, { scale: 2, frame: fr, flip: who !== 'donut' });
       if (row && row.type === 'gear') bigIcon(ctx, row.g.def.icon || 'gear', px + 104, 32 + (blink(1.5) ? 0 : -2), 3);
       if (outfitRow && equipped('skin') === skin) T('WEARING', px + pw - 6, 24, C.green, { align: 'right', shadow: null });
       // text
@@ -2116,6 +2119,11 @@
           if (DCW.save && DCW.save.run) ui.confirm('START OVER IN SLOT ' + (DCW.slot || 1) + '? THIS SLOT\'S CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
           else start('newRun');
         } },
+        (DCW.game && DCW.game.donutModeUnlocked && DCW.game.donutModeUnlocked()) ? { label: 'NEW CRAWL AS DONUT', action: function () {
+          var go = function () { sfx('fanfare'); if (tryCall(DCW.game, 'newRun', ['donut']) === MISSING) ui.toast('GAME MODULE MISSING', { color: C.red }); };
+          if (DCW.save && DCW.save.run) ui.confirm('START OVER IN SLOT ' + (DCW.slot || 1) + ' AS PRINCESS DONUT? THIS SLOT\'S CURRENT CRAWL WILL BE LOST.', go);
+          else go();
+        } } : null,
         { label: 'SAVE SLOT ' + (DCW.slot || 1), action: function () { ui.openSlots(); } },
         { label: 'ACHIEVEMENTS', action: ui.openAchievements },
         { label: 'SETTINGS', action: ui.openSettings },
@@ -2146,7 +2154,7 @@
       R(0, 172, W, 8, C.black);
       var fr = Math.floor(t * 2) % 2;
       bigSprite(ctx, 'carl_idle', 52, 157, { scale: 2, skin: equipped('skin'), frame: fr });
-      bigSprite(ctx, compSprite(equipped('companion')) + '_idle', 88, 157, { scale: 2, frame: fr });
+      bigSprite(ctx, pairComp() + '_idle', 88, 157, { scale: 2, frame: fr });
       // the System AI hovering on the right, live
       var bob = Math.floor(t * 2) % 2 ? -2 : 0;
       bigSprite(ctx, 'ai_screen', 266, 140 + bob, { scale: 2, frame: Math.floor(t * 2) });
@@ -2180,7 +2188,7 @@
     { bg: 'surface', fx: ['collapse', 'snow'], actors: [{ sprite: 'carl_idle', x: 140 }, { sprite: 'donut_idle', x: 164 }],
       lines: [{ text: 'EVERY BUILDING ON THE PLANET IS NOW GOING INTO THE GROUND. IF YOU ARE INDOORS, WELL. THANKS FOR WATCHING.' }] },
     { bg: 'surface', fx: 'snow', actors: [{ sprite: 'carl_idle', x: 140 }, { sprite: 'donut_idle', x: 164, flip: true }],
-      lines: [{ who: 'CARL', text: 'I STEPPED OUTSIDE FOR TWO MINUTES. TWO.' }, { who: 'DONUT', text: 'AND I AM VERY GRATEFUL, CARL. NOW FIND ME SOMETHING WARM TO SIT ON.' }] },
+      lines: [{ who: 'CARL', text: 'I STEPPED OUTSIDE FOR TWO MINUTES. TWO.' }, { who: 'DONUT', text: 'MREOW.' }] },
     { bg: 'stairwell', actors: [{ sprite: 'carl_idle', x: 120 }, { sprite: 'donut_idle', x: 144 }],
       lines: [{ text: 'THE STAIRWELLS ARE OPEN, CRAWLERS. GO DOWN. THE AUDIENCE IS WAITING, AND THEY ARE SO HUNGRY.' }] }
   ] };
@@ -2826,13 +2834,13 @@
       this.objs.forEach(function (o) { if (o.id !== 'door') try { self.drawStation(ctx, o, t); } catch (e) { /* never let a prop kill the room */ } });
       this.objs.forEach(function (o) { if (o.id === 'door') self.drawStation(ctx, o, t); });
       // companion + carl
-      var comp = compSprite(equipped('companion'));
+      var comp = compSprite(equipped('companion')), hero = heroDonut() ? 'donut' : 'carl';
       var cs = this.cmoving ? comp + '_run' : comp + '_idle';
       if (this.pet > 0 && hasArt(comp + '_act')) cs = comp + '_act';
-      spr(ctx, cs, this.cx, GROUND, { frame: Math.floor(t * (this.cmoving ? 8 : 2)), flip: this.cface < 0 });
-      spr(ctx, this.moving ? 'carl_run' : 'carl_idle', this.x, GROUND, { frame: Math.floor(t * (this.moving ? 10 : 2)), flip: this.face < 0, skin: equipped('skin') });
+      spr(ctx, cs, this.cx, GROUND, { frame: Math.floor(t * (this.cmoving ? 8 : 2)), flip: this.cface < 0, skin: equipped('skin') });
+      spr(ctx, this.moving ? hero + '_run' : hero + '_idle', this.x, GROUND, { frame: Math.floor(t * (this.moving ? 10 : 2)), flip: this.face < 0, skin: equipped('skin') });
       this.hearts.forEach(function (h) { T('♥', Math.round(h.x), Math.round(h.y), (Math.floor(h.life * 8) % 2) ? C.red : C.pink, { shadow: null }); });
-      if (this.pet > 0.2) { var pw2 = tw('PURR'); BOX(this.cx - pw2 / 2 - 4, GROUND - 46, pw2 + 8, 12, { fill: C.white, border: C.black }); T('PURR', this.cx, GROUND - 44, C.black, { align: 'center', shadow: null }); }
+      if (this.pet > 0.2 && !heroDonut()) { var pw2 = tw('PURR'); BOX(this.cx - pw2 / 2 - 4, GROUND - 46, pw2 + 8, 12, { fill: C.white, border: C.black }); T('PURR', this.cx, GROUND - 44, C.black, { align: 'center', shadow: null }); }
       // room name plate (entering)
       if (t < 3.2) {
         var nm = String(def.name || 'SAFE ROOM').toUpperCase(), nw = tw(nm) + 16;
@@ -2919,7 +2927,7 @@
         var walkX = Math.min(sx - 8, 40 + ct * 44), sink = Math.max(0, ct - 4.3) * 18;
         ctx.save(); ctx.beginPath(); ctx.rect(0, top, W, fl + 2 - top); ctx.clip();
         var moving = walkX < sx - 8;
-        spr(ctx, moving ? compSprite(equipped('companion')) + '_run' : compSprite(equipped('companion')) + '_idle', walkX - 22, fl + Math.max(0, sink - 6), { frame: Math.floor(t * 8) });
+        spr(ctx, moving ? pairComp() + '_run' : pairComp() + '_idle', walkX - 22, fl + Math.max(0, sink - 6), { frame: Math.floor(t * 8) });
         spr(ctx, moving ? 'carl_run' : 'carl_idle', walkX, fl + sink, { frame: Math.floor(t * (moving ? 10 : 2)), skin: equipped('skin') });
         ctx.restore();
         ctx.restore();
@@ -2940,7 +2948,7 @@
         R(0, 168, W, 12, C.black);
         var rx = 30 + ((t * 40) % 300);
         spr(ctx, 'carl_run', Math.round(rx), 177, { frame: Math.floor(t * 10), skin: equipped('skin') });
-        spr(ctx, compSprite(equipped('companion')) + '_run', Math.round(rx - 20), 177, { frame: Math.floor(t * 10) });
+        spr(ctx, pairComp() + '_run', Math.round(rx - 20), 177, { frame: Math.floor(t * 10) });
         return;
       }
       if (ph === 'teaser') {
@@ -2972,6 +2980,9 @@
         ['ACHIEVEMENTS', an + '/' + Object.keys(achs).length]
       ];
       rows.forEach(function (r, i) { var yy = 24 + i * 13; T(r[0], 20, yy, C.gray); T(fitText(r[1], 160), 300, yy, i === 3 ? C.pink : C.white, { align: 'right' }); });
+      // beating the book unlocks Donut mode
+      if (blink(1.5) || t < 1) { T('DONUT MODE UNLOCKED!', 20, 143, C.gold); T('NEW CRAWL AS DONUT IS ON THE TITLE SCREEN', 20, 153, C.gray, { shadow: null }); }
+      spr(ctx, 'donut_act', 262, 162, { frame: 0 });
       spr(ctx, 'ai_screen', 286, 160 + (Math.floor(t * 2) % 2 ? -2 : 0), { frame: Math.floor(t * 2) });
     }
   };
