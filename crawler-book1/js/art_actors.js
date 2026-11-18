@@ -154,9 +154,9 @@
   // Base palette chars (fill colours). Outline 'k' is added per skin automatically.
   var CARL_PAL = {
     k: C.K,
-    s: '#fce0a8',  // skin (face, hands)
-    S: '#fca044',  // skin shade / stubble / ear
-    n: '#fce0a8',  // nose (skin) - clown turns it red
+    s: '#fca044',  // skin (face, hands): the NES's warm skin tone (pale peach washes out to white on TVs)
+    S: '#e45c10',  // skin shade / stubble / ear
+    n: '#fca044',  // nose (skin) - clown turns it red
     h: '#503000',  // hair
     e: C.K,        // pupils
     w: C.W,        // eye whites / teeth
@@ -166,8 +166,8 @@
     v: '#881400',  // sleeves
     V: '#503000',  // sleeve shade
     q: '#503000',  // jacket inner edge / lapel line
-    t: '#fce0a8',  // torso under jacket (bare chest by default)
-    T: '#fca044',  // torso detail (navel, pec shadow)
+    t: '#fca044',  // torso under jacket (bare chest by default)
+    T: '#e45c10',  // torso detail (navel, pec shadow)
     b: C.W,        // boxers
     B: '#f83800',  // boxer hearts
     l: '#fce0a8',  // lower legs (bare)
@@ -1470,7 +1470,7 @@
 
   // ---- FRANK Q: lean 40-ish player killer. Seahawks beanie, stubble, black tee, spiked glowing
   //      black shoulder pads, ripped jeans, heavy boots, iron battle axe ----
-  var FRANK_PAL = { s: C.n3, S: C.n2, h: C.b1, H: C.l2, t: C.K, T: C.g3, a: C.p2, j: C.b3, J: C.b6, f: C.y0, m: C.g1, M: C.g0, y: C.y1, x: C.K };
+  var FRANK_PAL = { s: C.n2, S: C.n1, h: C.b1, H: C.l2, t: C.K, T: C.g3, a: C.p2, j: C.b3, J: C.b6, f: C.y0, m: C.g1, M: C.g0, y: C.y1, x: C.K };
   var FRANK = [
     '....hhhhhh......',
     '...hhhhhhhh.....',
@@ -1499,7 +1499,7 @@
 
   // ---- MAGGIE MY: athletic, fierce, close-cropped brown hair, leather jacket, metallic pants and
   //      boots, a black dagger with a purple halo ----
-  var MAG_PAL = { s: C.n3, S: C.n2, h: C.y0, l: C.n0, L: C.y0, t: C.r1, m: C.g1, M: C.g0, d: C.K, D: C.m2, x: C.K };
+  var MAG_PAL = { s: C.n2, S: C.n1, h: C.y0, l: C.n0, L: C.y0, t: C.r1, m: C.g1, M: C.g0, d: C.K, D: C.m2, x: C.K };
   var MAGGIE = [
     '....hhhhh.......',
     '...hhhhhhh......',
@@ -1659,7 +1659,7 @@
   npc('yolanda', YOL_PAL, pistol(YOL, 13, 12, 20), { f1: pistol(breathe(YOL, 14), 13, 13, 20), attack: pistol(setPx(YOL, [[11, 12], [12, 11], [13, 10]], 's'), 14, 9, 20, true), cx: 7 });
   // agatha: tiny, ancient, wrapped in scarves, red-checkered trapper hat askew, unsettling smile,
   //         a bubbling potion
-  var AG_PAL = { s: C.n3, S: C.n2, r: C.o1, R: C.W, a: C.p1, A: C.l1, B: C.y2, x: C.K, w: C.W, p: C.G2, P: C.l3, g: C.g1 };
+  var AG_PAL = { s: C.n2, S: C.n1, r: C.o1, R: C.W, a: C.p1, A: C.l1, B: C.y2, x: C.K, w: C.W, p: C.G2, P: C.l3, g: C.g1 };
   var AGATHA = [
     '...rRrRr......',
     '..RrRrRrR.....',
@@ -1685,7 +1685,7 @@
   npc('agatha', AG_PAL, AGATHA, { f1: AG1, attack: AGATK, cx: 6 });
 
   // ---- ELLE McGIBBONS: 99 years old, white hair, cardigan, anti-slip socks, a wheelchair, attitude ----
-  var ELLE_PAL = { s: C.n3, S: C.n2, h: C.W, H: C.g1, c: C.m0, C: C.p0, d: C.b6, x: C.K, m: C.g1, M: C.g0, t: C.K, y: C.y2, r: C.r1 };
+  var ELLE_PAL = { s: C.n2, S: C.n1, h: C.W, H: C.g1, c: C.m0, C: C.p0, d: C.b6, x: C.K, m: C.g1, M: C.g0, t: C.K, y: C.y2, r: C.r1 };
   function elle(f) {
     var g = blank(22, 24);
     // wheelchair: big wheel, frame, push handle
@@ -1706,7 +1706,7 @@
   def('elle_idle', withK(ELLE_PAL), build([elle(0), elle(1)]));
 
   // ---- JACK: old man, bald with white tufts, hospital gown, pants down round the ankles. Trouble. ----
-  var JACK_PAL = { s: C.n3, S: C.n2, h: C.W, g: C.b6, G: C.b4, b: C.y1, x: C.K, y: C.y2 };
+  var JACK_PAL = { s: C.n2, S: C.n1, h: C.W, g: C.b6, G: C.b4, b: C.y1, x: C.K, y: C.y2 };
   var JACK = [
     '....sssss.......',
     '...sssssss......',
@@ -1764,7 +1764,7 @@
   def('odette_idle', withK(ODE_PAL), build([odette(0), odette(1)]));
 
   // ---- LEXIS: willowy production assistant, blonde hair in a tight bun, simple black dress, clipboard ----
-  var LEX_PAL = { s: C.n3, S: C.n2, h: C.y3, H: C.y2, d: C.K, D: C.g3, c: C.y1, w: C.W, x: C.K };
+  var LEX_PAL = { s: C.n2, S: C.n1, h: C.y3, H: C.y2, d: C.K, D: C.g3, c: C.y1, w: C.W, x: C.K };
   var LEXIS = [
     '..hh........',
     '.hHhh.......',
@@ -2284,7 +2284,7 @@
     enemy('mind_horror', mhp, horror(0), horror(1), horror(2));
 
     // ---- clurichaun: hillbilly leprechaun, curly black hair, ruddy hooked nose, snot, patched overalls ----
-    var clp = { s: C.n3, r: C.o2, g: C.G1, x: C.K, l: C.l2, y: C.y1 };
+    var clp = { s: C.n2, r: C.o2, g: C.G1, x: C.K, l: C.l2, y: C.y1 };
     w0 = [
       '.xxxxxx...',
       'xxxxxxxx..',
@@ -2305,7 +2305,7 @@
     enemy('clurichaun', clp, w0, w1, at);
 
     // ---- laminak: fat soccer-mom fairy, hummingbird wings, inverted blonde bob, leaf pantsuit ----
-    var lmp = { s: C.n3, h: C.y2, g: C.G1, a: C.b6, x: C.K, r: C.o1 };
+    var lmp = { s: C.n2, h: C.y2, g: C.G1, a: C.b6, x: C.K, r: C.o1 };
     w0 = [
       'aa..hhhh....',
       'aaahhhhhh...',
@@ -2443,7 +2443,7 @@
 
   // ---- THE HOARDER: 15-ft obese woman, matted black hair, sores, one crooked tooth, ripped filthy
   //      t-shirt, tight blue sweatpants with PINK down the leg, barefoot ----
-  boss('hoarder', { s: C.n3, S: C.n2, h: C.K, w: C.g1, W: C.g0, b: C.b3, B: C.b1, p: C.m2, r: C.o0, K: C.K, n: C.n0, N: C.n1, e: C.K }, 52, 58, function (g, p) {
+  boss('hoarder', { s: C.n2, S: C.n1, h: C.K, w: C.g1, W: C.g0, b: C.b3, B: C.b1, p: C.m2, r: C.o0, K: C.K, n: C.n0, N: C.n1, e: C.K }, 52, 58, function (g, p) {
     var b = p.a === 'idle' ? p.i : 0, st = p.a === 'walk' ? (p.i ? 1 : -1) : 0, sp = p.a === 'special', atk = p.a === 'attack';
     var cx = 25;
     // legs: tight blue sweatpants with the PINK stripe down the leg, bare feet
@@ -2871,7 +2871,7 @@
   // generic humanoid face helpers
   function eyeP(g, x, y, look) { rect(g, x, y, 2, 3, 'w'); rect(g, x + (look || 1), y + 1, 1, 2, 'e'); }
 
-  portrait('p_carl', { K: C.K, s: '#fce0a8', S: '#fca044', h: '#503000', e: C.K, w: C.W, m: C.K, j: '#881400', J: '#503000', t: '#fce0a8' }, BG_HERO, function (g) {
+  portrait('p_carl', { K: C.K, s: '#fca044', S: '#e45c10', h: '#503000', e: C.K, w: C.W, m: C.K, j: '#881400', J: '#503000', t: '#fca044' }, BG_HERO, function (g) {
     rect(g, 4, 26, 24, 6, 'j'); rect(g, 12, 26, 9, 6, 't'); line(g, 12, 26, 14, 31, 'J'); line(g, 20, 26, 18, 31, 'J');
     rect(g, 13, 22, 7, 5, 's');
     oval(g, 16, 14, 10, 10, 's');
@@ -2924,7 +2924,7 @@
 
   /* ---------------- BOOK ONE PORTRAITS (32x32) ---------------- */
   // expressions for the heroes
-  portrait('p_carl_mad', { K: C.K, s: C.n3, S: C.n2, h: C.y0, e: C.K, w: C.W, m: C.K, j: C.n0, J: C.y0, t: C.n3, r: C.o1 }, BG_HERO, function (g) {
+  portrait('p_carl_mad', { K: C.K, s: C.n2, S: C.n1, h: C.y0, e: C.K, w: C.W, m: C.K, j: C.n0, J: C.y0, t: C.n2, r: C.o1 }, BG_HERO, function (g) {
     rect(g, 4, 26, 24, 6, 'j'); rect(g, 12, 26, 9, 6, 't'); line(g, 12, 26, 14, 31, 'J'); line(g, 20, 26, 18, 31, 'J');
     rect(g, 13, 22, 7, 5, 's');
     oval(g, 16, 14, 10, 10, 's');
@@ -3021,7 +3021,7 @@
   });
 
   // player killers
-  portrait('p_frank_q', { s: C.n3, S: C.n2, h: C.b1, H: C.l2, t: C.K, a: C.p2, A: C.p0, e: C.K, w: C.W, r: C.o1, K: C.K }, BG_FOE, function (g) {
+  portrait('p_frank_q', { s: C.n2, S: C.n1, h: C.b1, H: C.l2, t: C.K, a: C.p2, A: C.p0, e: C.K, w: C.W, r: C.o1, K: C.K }, BG_FOE, function (g) {
     rect(g, 3, 26, 26, 6, 't');
     tri(g, 0, 31, 8, 22, 12, 31, 'A'); tri(g, 31, 31, 24, 22, 20, 31, 'A'); line(g, 3, 24, 1, 21, 'a'); line(g, 8, 23, 8, 19, 'a'); line(g, 28, 24, 30, 21, 'a'); line(g, 24, 23, 24, 19, 'a');
     rect(g, 13, 21, 7, 6, 's');
@@ -3034,7 +3034,7 @@
     for (var x = 9; x < 24; x += 2) { px(g, x, 21, 'S'); px(g, x + 1, 23, 'S'); }
     line(g, 13, 21, 19, 21, 'K');
   });
-  portrait('p_maggie_my', { s: C.n3, S: C.n2, h: C.y0, l: C.n0, L: C.y0, t: C.r1, e: C.K, w: C.W, d: C.K, D: C.m2, K: C.K }, BG_FOE, function (g) {
+  portrait('p_maggie_my', { s: C.n2, S: C.n1, h: C.y0, l: C.n0, L: C.y0, t: C.r1, e: C.K, w: C.W, d: C.K, D: C.m2, K: C.K }, BG_FOE, function (g) {
     rect(g, 3, 25, 26, 7, 'l'); tri(g, 12, 25, 20, 25, 16, 31, 't'); line(g, 11, 25, 14, 31, 'L'); line(g, 21, 25, 18, 31, 'L');
     rect(g, 13, 21, 7, 5, 's');
     oval(g, 16, 14, 9, 10, 's');
@@ -3086,7 +3086,7 @@
     rect(g, 12, 14, 3, 2, 'w'); px(g, 14, 15, 'e'); rect(g, 19, 14, 3, 2, 'w'); px(g, 21, 15, 'e');
     rect(g, 16, 16, 2, 3, 'S'); line(g, 13, 21, 19, 21, 'K'); line(g, 9, 18, 10, 20, 'S'); line(g, 23, 18, 22, 20, 'S');
   });
-  portrait('p_agatha', { s: C.n3, S: C.n2, r: C.o1, R: C.W, a: C.p1, A: C.l1, B: C.y2, x: C.K, w: C.W, K: C.K }, BG_FOE, function (g) {
+  portrait('p_agatha', { s: C.n2, S: C.n1, r: C.o1, R: C.W, a: C.p1, A: C.l1, B: C.y2, x: C.K, w: C.W, K: C.K }, BG_FOE, function (g) {
     rect(g, 2, 24, 28, 8, 'a'); for (var x = 2; x < 30; x += 4) { line(g, x, 24, x + 3, 31, 'A'); px(g, x + 2, 26, 'B'); }
     oval(g, 16, 16, 8, 9, 's');
     // trapper hat askew, red checks, ear flaps
@@ -3099,7 +3099,7 @@
     rect(g, 11, 20, 11, 2, 'x'); px(g, 10, 19, 'x'); px(g, 22, 19, 'x'); px(g, 13, 20, 'w'); px(g, 18, 20, 'w'); px(g, 20, 21, 'w');
     line(g, 12, 23, 20, 23, 'S');
   });
-  portrait('p_elle', { s: C.n3, S: C.n2, h: C.W, H: C.g1, c: C.m0, C: C.p0, e: C.K, w: C.W, r: C.r1, K: C.K, y: C.y2 }, BG_HERO, function (g) {
+  portrait('p_elle', { s: C.n2, S: C.n1, h: C.W, H: C.g1, c: C.m0, C: C.p0, e: C.K, w: C.W, r: C.r1, K: C.K, y: C.y2 }, BG_HERO, function (g) {
     rect(g, 3, 25, 26, 7, 'c'); line(g, 16, 25, 16, 31, 'C'); px(g, 15, 27, 'y'); px(g, 15, 29, 'y');
     rect(g, 13, 21, 7, 5, 's');
     oval(g, 16, 15, 9, 10, 's');
@@ -3111,7 +3111,7 @@
     line(g, 14, 21, 19, 20, 'r'); px(g, 20, 19, 'r');
     line(g, 12, 23, 20, 23, 'S');
   });
-  portrait('p_jack', { s: C.n3, S: C.n2, h: C.W, g: C.b6, G: C.b4, e: C.K, w: C.W, K: C.K, r: C.r2 }, BG_HERO, function (g) {
+  portrait('p_jack', { s: C.n2, S: C.n1, h: C.W, g: C.b6, G: C.b4, e: C.K, w: C.W, K: C.K, r: C.r2 }, BG_HERO, function (g) {
     rect(g, 3, 25, 26, 7, 'g'); for (var x = 5; x < 28; x += 4) { px(g, x, 27, 'G'); px(g, x + 2, 30, 'G'); }
     rect(g, 13, 21, 7, 5, 's');
     oval(g, 16, 14, 10, 11, 's');
@@ -3139,7 +3139,7 @@
     line(g, 11, 2, 5, 0, 'A'); line(g, 21, 2, 27, 0, 'A');
     line(g, 12, 16, 13, 19, 'A'); line(g, 20, 16, 19, 19, 'A');
   });
-  portrait('p_lexis', { s: C.n3, S: C.n2, h: C.y3, H: C.y2, d: C.K, D: C.g3, e: C.K, w: C.W, m: C.r2, c: C.y1, K: C.K, p: C.p3 }, BG_NPC, function (g) {
+  portrait('p_lexis', { s: C.n2, S: C.n1, h: C.y3, H: C.y2, d: C.K, D: C.g3, e: C.K, w: C.W, m: C.r2, c: C.y1, K: C.K, p: C.p3 }, BG_NPC, function (g) {
     rect(g, 4, 26, 24, 6, 'd'); tri(g, 13, 26, 19, 26, 16, 29, 's');
     rect(g, 14, 21, 5, 6, 's');
     oval(g, 16, 14, 8, 10, 's');
@@ -3175,7 +3175,7 @@
     for (var k = 0; k < 12; k++) { var an = k * Math.PI / 6, t = pol(16, 22, 11, an), b1 = pol(16, 22, 7, an - 0.25), b2 = pol(16, 22, 7, an + 0.25); tri(g, t[0], t[1], b1[0], b1[1], b2[0], b2[1], 'G'); }
     oval(g, 16, 22, 7, 7, 'g'); oval(g, 16, 22, 5, 5, 'r'); line(g, 11, 22, 21, 22, 'K'); line(g, 16, 17, 16, 27, 'K'); oval(g, 16, 22, 1.5, 1.5, 'G');
   });
-  portrait('p_hoarder', { s: C.n3, S: C.n2, h: C.K, H: C.g0, w: C.g1, r: C.o0, e: C.K, K: C.K, W: C.W }, BG_FOE, function (g) {
+  portrait('p_hoarder', { s: C.n2, S: C.n1, h: C.K, H: C.g0, w: C.g1, r: C.o0, e: C.K, K: C.K, W: C.W }, BG_FOE, function (g) {
     oval(g, 16, 31, 15, 4, 'w'); line(g, 6, 29, 9, 31, 'H');
     // matted black mop behind the head
     oval(g, 16, 10, 15, 10, 'h'); rect(g, 1, 10, 30, 14, 'h');
@@ -3290,7 +3290,7 @@
   // ---- THE GOBLIN COPPER CHOPPER: mismatched copper scrap frame, thumping steam engine, alligator-
   //      skull seat with white fur, disc wheels, ape-hanger bars. Carl drives with his legs held out
   //      off the hot engine; Princess Donut rides the sidecar on her orc-skull seat (purple backrest) ----
-  var CHOP_PAL = { c: C.n1, C: C.n2, d: C.n0, K: C.K, g: C.g0, G: C.g1, w: C.W, s: C.n3, S: C.n2, h: C.y0, j: C.n0, J: C.y0, r: C.o1,
+  var CHOP_PAL = { c: C.n1, C: C.n2, d: C.n0, K: C.K, g: C.g0, G: C.g1, w: C.W, s: C.n2, S: C.n1, h: C.y0, j: C.n0, J: C.y0, r: C.o1,
     o: TORTIE.o, t: TORTIE.t, x: C.K, O: TORTIE.O, e: TORTIE.w, y: C.y2, p: C.p1, P: C.m2, f: C.g1 };
   function chopper(g, f, hurt) {
     var bob = f;          // the engine thumps: chassis bounces 1px

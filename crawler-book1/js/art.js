@@ -1132,8 +1132,8 @@
     },
     tvA: function () { return tvStrip(0); }, tvB: function () { return tvStrip(1); }, tvC: function () { return tvStrip(2); },
     seal: function () { // magically sealed portcullis shimmer 20x30
-      return strip(20, 30, 2, function (g, f) {
-        for (var y = 0; y < 30; y++) for (var x = 0; x < 20; x++) if (((x + y + f) & 3) === 0 && ((x * 7 + y * 3) % 5)) P(g, x, y, Q.m0);
+      return strip(20, 30, 2, function (g, f) { // energy running down the gaps between the bars
+        for (var x = 1; x < 20; x += 6) for (var y = 0; y < 30; y++) if (((y >> 1) + f) % 3 === 0) P(g, x, y, (y >> 1) % 2 ? Q.m2 : Q.m1);
       });
     },
     field: function () { // red force field around the stairwell 48x60
@@ -1515,12 +1515,12 @@
             R(g, x0 + 1, 123, ww - 2, 38, Q.p0); R(g, x0 + 3, 119, ww - 6, 4, Q.p0); R(g, x0 + 3, 119, ww - 6, 1, Q.p1); R(g, x0 + 1, 123, 1, 30, Q.p1);
             for (var y = 130; y < 160; y += 10) R(g, x0 + 1, y, ww - 2, 1, K);
           }
-          for (var t = 0; t < 2; t++) { var tx = 100 + t * 160; R(g, tx, 70, 6, 2, Q.g0); R(g, tx + 2, 60, 2, 11, K); R(g, tx + 2, 61, 1, 9, Q.y0); }
+          for (var t = 0; t < 2; t++) { var tx = 100 + t * 160; R(g, tx, 92, 6, 2, Q.g0); R(g, tx + 2, 82, 2, 11, K); R(g, tx + 2, 83, 1, 9, Q.y0); }
         });
       })
     ],
-    props: [{ L: 0, x: 64, y: 120, k: 'seal', fps: 3, cx: true }, { L: 0, x: 192, y: 120, k: 'seal', fps: 3, cx: true, ph: 1 },
-      { L: 0, x: 318, y: 124, k: 'field', fps: 6, cx: true }, { L: 1, x: 103, y: 49, k: 'torch', flick: 10, cx: true }, { L: 1, x: 263, y: 49, k: 'torch', flick: 11, cx: true }]
+    props: [{ L: 0, x: 63, y: 88, k: 'seal', fps: 3, cx: true }, { L: 0, x: 191, y: 88, k: 'seal', fps: 3, cx: true, ph: 1 },
+      { L: 0, x: 318, y: 124, k: 'field', fps: 6, cx: true }, { L: 1, x: 103, y: 71, k: 'torch', flick: 10, cx: true }, { L: 1, x: 263, y: 71, k: 'torch', flick: 11, cx: true }]
   };
 
   /* ---------------- the Rev-Up distillery ---------------- */
