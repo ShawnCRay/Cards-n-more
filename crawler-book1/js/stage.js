@@ -80,6 +80,20 @@
       crit: 0.04 + (st.dex - 3) * 0.02, speedMul: 1 + (st.dex - 3) * 0.03, bombDmg: 8 + lv * 2 + (st.str - 3), bombRadius: 28,
       compPower: 1 + (st.int - 3) * 0.15 + (lv - 1) * 0.04, def: 0, goldMul: 1, viewMul: 1, extraJump: false, skinPerk: null };
   }
+  // Mobs level up with the dungeon. Each floor's data gives an HP multiplier and an added hit damage
+  // for its first and last stage; stages in between ramp linearly by their place in the floor.
+  // (Bosses keep their hand-tuned numbers.)
+  function mobScale(stageId) {
+    var fl = D().floors || [];
+    for (var i = 0; i < fl.length; i++) {
+      var ms = fl[i].mobs; if (!ms) continue;
+      var seq = (fl[i].sequence || []).filter(function (x) { return typeof x === 'string' && x.indexOf(':') < 0; });
+      var k = seq.indexOf(stageId); if (k < 0) continue;
+      var t = seq.length > 1 ? k / (seq.length - 1) : 0;
+      return { hp: ms.hp[0] + (ms.hp[1] - ms.hp[0]) * t, dmg: Math.round(ms.dmg[0] + (ms.dmg[1] - ms.dmg[0]) * t) };
+    }
+    return { hp: 1, dmg: 0 };
+  }
   function floorDef() {
     var f = call(G(), 'floorDef');
     if (f) return f;
@@ -213,7 +227,7 @@
     });
 
     S = {
-      id: def.id || stageId, def: def, floor: floorDef(), theme: def.theme || 'sewer', L: L, rnd: rnd,
+      id: def.id || stageId, def: def, floor: floorDef(), theme: def.theme || 'sewer', L: L, rnd: rnd, mob: mobScale(def.id || stageId),
       chunks: chunks, isBoss: isBoss,
       t: 0, cam: { x: 0, y: 0, look: 0 },
       enemies: [], eproj: [], pproj: [], haz: [], pickups: [], objects: [], platforms: [], parts: [], nums: [], allies: [],
@@ -1250,6 +1264,7 @@
       if (o.kind === 'qitem' && !o.taken && overlap(P, o)) { collectItem(o); continue; }
       if (o.kind === 'checkpoint' && !o.on && overlap(P, o)) {
         o.on = true; S.checkpoint = { x: cx(o), y: o.y + o.h }; S.lastSafe = S.checkpoint;
+        var crun = getRun(); crun.checkpoint = { stage: S.id, x: S.checkpoint.x, y: S.checkpoint.y }; // a revival starts here
         sfx('checkpoint'); fxSprite('sparkle', cx(o), o.y + 6, 0.4, { color: '#58f898', size: 10 });
         numText(cx(o), o.y - 8, 'CHECKPOINT', '#58f898');
       }
@@ -1294,11 +1309,11 @@
     if (P.state === 'pit' || P.state === 'dead') return;
     track('fall');
     sfx('hurt');
-    if (!S.god) { applyDamage(K.pitDamage); S.damageTaken += K.pitDamage; }
     S.combo = 0;
-    if (run.hp <= 0) { P.y = S.L.pxH - 4; killPlayer('FELL IN A PIT'); return; }
+    // NES rules: a pit is death. The way back is a sponsor revival, which returns Carl to the last
+    // checkpoint flag he touched. (God mode keeps the old drop-back-to-solid-ground respawn.)
+    if (!S.god) { run.hp = 0; P.y = S.L.pxH - 4; killPlayer('FELL IN A PIT'); return; }
     P.state = 'pit'; P.st = 0.55; P.vx = 0; P.vy = 0;
-    numText(cx(P), S.cam.y + H - 20, '-' + K.pitDamage, '#f83800');
   }
   function respawnFromPit() {
     var P = S.player, sp = S.lastSafe || S.checkpoint || S.start;
@@ -1716,10 +1731,11 @@
     var ai0 = artInfo((d.sprite || id) + '_walk'), okInfo = ai0 && !ai0.missing;
     var w = num(d.w, okInfo ? Math.max(8, ai0.w - 4) : 12), h = num(d.h, okInfo ? Math.max(6, ai0.h - 1) : 12);
     var flying = ai === 'flyer' || !!d.flying;
-    var hp = Math.max(1, Math.round(num(d.hp, 3) * (elite ? 1.6 : 1)));
+    var ms = (S && S.mob) || { hp: 1, dmg: 0 };
+    var hp = Math.max(1, Math.round(num(d.hp, 3) * (elite ? 1.6 : 1) * ms.hp));
     var e = {
       id: id, def: d, ai: ai, elite: !!elite, x: fx - w / 2, y: flying ? fy - TS / 2 - h / 2 : fy - h, w: w, h: h, vx: 0, vy: 0,
-      hp: hp, maxHp: hp, face: Math.random() < 0.5 ? -1 : 1, flying: flying, speed: num(d.speed, 30), dmg: num(d.dmg, 1) + (elite ? 1 : 0),
+      hp: hp, maxHp: hp, face: Math.random() < 0.5 ? -1 : 1, flying: flying, speed: num(d.speed, 30), dmg: num(d.dmg, 1) + (elite ? 1 : 0) + ms.dmg,
       aggro: num(d.aggro, 96), st: 0, timer: 0.5 + Math.random(), state: 'patrol', flash: 0, stun: 0, hurtT: 0, active: false,
       onGround: false, baseY: 0, t: Math.random() * 6, kids: 0, sprite: d.sprite || id, color: AI_COLORS[ai] || '#ac7c00', tele: 0
     };
@@ -1776,6 +1792,7 @@
   function enemyFire(e, id, x, y, tx, ty, opts) {
     opts = opts || {};
     if (e.def.taint && opts.taint === undefined) opts.taint = e.def.taint;
+    if (opts.dmg === undefined && S.mob && S.mob.dmg) opts.dmg = num(projDef(id).dmg, 1) + S.mob.dmg; // shots level up too
     return fireProj(id, x, y, tx, ty, opts);
   }
   // a lobbed projectile came down: fire patch (juicer's plates) or a blast (bomb bard dynamite)
@@ -2963,6 +2980,14 @@
     buildLevel(params.stageId || (run && run.currentStage) || firstStageId());
     S.player = makePlayer(S.start.x, S.start.y);
     S.lastSafe = { x: S.start.x, y: S.start.y };
+    // coming back to a stage after dying: start at the last checkpoint flag (the layout is seeded
+    // per run, so it's the same flag in the same place); earlier flags count as already touched
+    var cp = run && run.checkpoint;
+    if (cp && cp.stage === S.id && !(S.def.kind === 'ride' || S.def.kind === 'race' || S.def.ride)) {
+      S.player.x = cp.x - S.player.w / 2; S.player.y = cp.y - S.player.h;
+      S.checkpoint = { x: cp.x, y: cp.y }; S.lastSafe = S.checkpoint;
+      S.objects.forEach(function (o) { if (o.kind === 'checkpoint' && cx(o) <= cp.x + 1) o.on = true; });
+    }
     S.comp = makeCompanion(S.player);
     if (S.def.extraAlly) S.comp2 = makeCompanion(S.player, S.def.extraAlly);
     S.kickX = 0; S.kickY = 0; S.slowT = 0; S.slowScale = 1;
@@ -3765,6 +3790,7 @@
   function rideGroundOk(x, w) { var gy = groundBelow(x + w / 2, 0); return safeAt(x + 2, gy + 1) && safeAt(x + w - 2, gy + 1) && gy < S.L.pxH - TS; }
   function rideRespawn() {
     var P = S.player, Q = S.pursuer;
+    if (!S.god && S.ride && !S.ride.dead) { track('fall'); S.ride.hp = 0; getRun().hp = 0; P.y = S.L.pxH - 4; wreckChopper('FELL IN A PIT'); return; }
     var sp = P.lastSafe || { x: S.start.x - P.w / 2, y: S.start.y };
     var x = Math.max(8, sp.x - 110), tries;
     if (Q && Q.active && x < Q.x + Q.w + 64) {

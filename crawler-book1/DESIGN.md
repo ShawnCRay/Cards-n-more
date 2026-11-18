@@ -416,6 +416,14 @@ The background must always be darker, or a different hue, than anything the play
 - Lichen in the background stays dark rust (`n0`). Bright orange blobs there read as brindle grubs.
 - New themes: check a screenshot with mobs on screen. If a tile or a mob is the same color family as the wall behind it, darken the wall, not the sprite.
 
+## Difficulty pass 1 (lead)
+Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 1. Measured with Carl at the level he normally has at each stage: floor 2 mobs died in under 2 punches, and Carl could take 21 to 28 hits.
+- **Pits are death,** on foot and on the motorcycle (god mode keeps the old drop-back respawn). Every death sets `run.hp = 0`, so quitting to the title and continuing lands on the death screen again instead of a free restart.
+- **Checkpoint flags are saved to the run** (`run.checkpoint`). A sponsor revival rebuilds the same seeded layout and starts Carl at the last flag he touched. The checkpoint clears on stage clear, on entering a different stage, or on fleeing.
+- **Mobs level up with the dungeon.** `D.floors[i].mobs = { hp: [first, last], dmg: [first, last] }` gives an HP multiplier and added hit damage, ramped by the stage's place in the floor. Floor 1 goes from 1.0x/+0 to 1.6x/+2; floor 2 from 1.8x/+2 to 2.4x/+3. This applies to mobs, elites and enemy shots. Bosses keep their hand-tuned numbers.
+- **Result at the normal level for each stage:** floor 2 takes 3 to 4 punches per mob, and Carl goes down in 7 to 9 hits. Late floor 1 takes 2 to 3 punches and 9 to 11 hits. The hall tutorial is unchanged.
+- Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

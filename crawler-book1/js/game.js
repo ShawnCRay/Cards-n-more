@@ -199,6 +199,7 @@
       var st = currentStep(); if (st && st.kind === 'stage' && st.id === stageId) setTimeout(function () { G.advance(); }, 600);
       return;
     }
+    if (r.checkpoint && r.checkpoint.stage !== stageId) r.checkpoint = null; // flags only count inside their own stage
     r.currentStage = stageId; r.inSafe = false; r.stageStartHp = r.hp;
     persist();
     var sc = DCW.stage && DCW.stage.scene;
@@ -214,6 +215,7 @@
     var first = !r.cleared[id];
     var rw = st.reward || {};
     r.cleared[id] = true;
+    r.checkpoint = null;
     sfx('fanfare');
     var xp = rw.xp ? (first ? rw.xp : Math.round(rw.xp / 3)) : 0;
     if (xp) { G.addXP(xp); rewards.push({ kind: 'xp', amount: xp }); }
@@ -259,6 +261,7 @@
     var r = G.run; if (!r) return;
     r.deaths++; DCW.save.meta.deaths = (DCW.save.meta.deaths || 0) + 1;
     r.lastDeath = result || {};
+    r.hp = 0; // every death (pits and wrecks too) waits on the death screen, even after quitting to the title
     G.track('death');
     persist();
     go(S().death || fallbackScene('YOU HAVE DIED', function () { G.revive() || G.endRun(); }), { result: result || {} });
@@ -288,6 +291,7 @@
   G.fleeStage = function () {
     var r = G.run; if (!r) return;
     G.track('flee');
+    r.checkpoint = null; // fleeing restarts from the top
     var line = pickLine('flee');
     var stageId = r.currentStage;
     persist();

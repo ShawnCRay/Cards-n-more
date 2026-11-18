@@ -1649,7 +1649,7 @@
       "IN THE AIR, DOWN + ATTACK IS A DIVING STOMP. LANDING ON A HEAD BOUNCES YOU. YOUR BARE FEET ARE A WEAPON NOW. WE ARE SO SORRY.",
       "UP AND DOWN CLIMB LADDERS. DOWN + JUMP DROPS YOU THROUGH THIN PLATFORMS. THE DUNGEON HAS VERTICALITY. YOU ARE WELCOME.",
       "C THROWS A BOMB (PAD: B). Q DRINKS A HEALTH POTION. TAB OR SELECT OPENS YOUR GEAR. YOU HAVE NO GEAR. ENJOY THE EMPTY SCREEN.",
-      "PITS COST HEALTH. FLAGS ARE CHECKPOINTS. YOUR CAT HAS NO SPELLS YET, SO SHE WILL JUST WATCH. SHE IS FURIOUS ABOUT IT.",
+      "PITS KILL YOU. FLAGS ARE CHECKPOINTS: IF A SPONSOR REVIVES YOU, YOU START AT THE LAST ONE. YOUR CAT HAS NO SPELLS YET. SHE IS FURIOUS ABOUT IT.",
       "NOTICE: GUILD HALLS ONLY ADMIT CRAWLERS WHO HAVE KILLED A MOB. NO KILL, NO ENTRY. THIS RULE IS NOT NEGOTIABLE. WE CHECKED."
     ] });
 
@@ -1827,14 +1827,17 @@
       sequence: ['CUT:f1_entrance', 'f1_hall', 'f1_dozer_chase', 'CUT:f1_mordecai', 'SAFE:guild', 'f1_dozer', 'f1_llamas', 'f1_scatter',
         'SAFE:tally', 'f1_hoarder', 'CUT:f1_episode1', 'f1_goblins', 'CUT:f1_chopper', 'f1_workshop', 'f1_fire', 'f1_rot', 'SAFE:cookie',
         'CUT:f1_frank', 'f1_ride', 'CUT:f1_meadowlark', 'f1_trogs', 'f1_juicer', 'SAFE:guild2', 'CUT:f1_swine_plan', 'f1_swine', 'CUT:f1_odette'],
-      required: [], boss: 'f1_swine', par: 2400 },
+      required: [], boss: 'f1_swine', par: 2400,
+      // mobs level up with the dungeon: HP multiplier and added hit damage, first stage -> last stage
+      mobs: { hp: [1.0, 1.6], dmg: [0, 2] } },
     { n: 2, name: 'THE SECOND FLOOR', tagline: 'SIX DAYS. THE CAMERAS ARE LIVE. DO NOT PEE.', theme: 'cinder', music: 'floor2',
       days: 6, viewers: true, overworld: null,
       intro: ["WELCOME TO THE SECOND FLOOR, BITCHES! SIX DAYS, THE LEGAL MINIMUM. A CINDERBLOCK MAZE FULL OF THINGS THAT EAT THINGS.",
         "AND THE VIEWERS ARE LIVE! FOLLOWERS, FAVORITES, SPONSORS. EVERY KILL IS CONTENT NOW. MAKE IT PRETTY. OR AT LEAST MAKE IT LOUD."],
       sequence: ['CUT:f2_welcome', 'f2_maze', 'SAFE:shelter', 'f2_revup', 'CUT:f2_jug', 'f2_krakaren', 'SAFE:bugaboo', 'CUT:f2_jack',
         'f2_rage', 'CUT:f2_deathwatch', 'f2_kobolds', 'f2_ralph', 'CUT:f2_menagerie', 'f2_return', 'CUT:f2_descent'],
-      required: [], boss: 'f2_ralph', par: 1800 }
+      required: [], boss: 'f2_ralph', par: 1800,
+      mobs: { hp: [1.8, 2.4], dmg: [2, 3] } }
   ];
 })();
 
