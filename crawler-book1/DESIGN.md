@@ -410,6 +410,12 @@ The screen moves only when the player travels. Players reported motion sickness 
 - A companion special shows its big name card the first time it is used each run (`run.specialsSeen`). After that the name pops over the caster. There is no full-screen white flash.
 - `node tools/cam_test.js <stageId> idle|turn|fight|run` reports camera travel and how often the view moved while Carl stood still. Idle and turn should be 0 in arenas.
 
+## Readable playfield (lead)
+The background must always be darker, or a different hue, than anything the player stands on or fights. Floor 2 broke this: mid-gray cinderblock behind light-gray cinderblock floors, gray catwalks, gray kobolds and white cow grubs, so everything blended into the wall.
+- Floor 2's far wall and pillars (`CN` in art.js) are deep slate (`c0` faces, black mortar, `c1` lit edges). The distillery wall uses the same shadow.
+- Lichen in the background stays dark rust (`n0`). Bright orange blobs there read as brindle grubs.
+- New themes: check a screenshot with mobs on screen. If a tile or a mob is the same color family as the wall behind it, darken the wall, not the sprite.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

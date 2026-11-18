@@ -1253,8 +1253,11 @@
     var r = rng(seed);
     for (var i = 0; i < n; i++) { var bx = x + ((r() * n * 2.2) | 0) - n, by = y + ((r() * n * 1.2) | 0) - (n >> 1), rr = 1 + ((r() * 2) | 0); oval(g, bx, by, rr + 1, rr, c1); if (rr > 1 || r() < 0.5) P(g, bx, by, c2); }
   }
-  // Floor 2 background palette: gray cinderblock in shadow, rust lichen
-  var CN = { face: Q.g0, mortar: K, hi: Q.g1, lich: Q.n0, lich2: Q.n1, cor: { floor: Q.g0, far: Q.g0, line: Q.g0, tube: Q.g1 } };
+  // Floor 2 background palette: the far cinderblock sits in deep slate shadow so the white-gray
+  // blocks Carl stands on (and the gray kobolds and white cow grubs) read clearly in front of it.
+  // Gray-on-gray backgrounds made the ground, the platforms and the mobs vanish into the wall.
+  // Lichen back here stays dark rust: bright orange blobs looked like brindle grubs.
+  var CN = { face: Q.c0, mortar: K, hi: Q.c1, lich: Q.n0, lich2: Q.n0, lit: Q.n1, cor: { floor: Q.c0, far: Q.c0, line: Q.c0, tube: Q.c1 } };
     BG.cinder = {
     back: K,
     layers: [
@@ -1268,7 +1271,7 @@
           for (var i = 0; i < cs.length; i++) { var c = cs[i]; R(g, c[0] - 2, c[1] - 2, c[2] + 4, 152 - c[1] + 2, K); corridor(g, c[0], c[1], c[2], 152 - c[1], CN.cor); }
           // bathroom door (do NOT pee in the hall)
           R(g, 114, 112, 24, 40, K); R(g, 116, 114, 20, 38, Q.y0); R(g, 118, 116, 16, 14, Q.n0); R(g, 118, 133, 16, 16, Q.n0); P(g, 132, 132, Q.y1);
-          R(g, 117, 100, 18, 9, K); R(g, 118, 101, 16, 7, Q.g1);
+          R(g, 117, 100, 18, 9, K); R(g, 118, 101, 16, 7, Q.c1);
           rows(g, 120, 102, ['.k...k..k.', 'kkk.kkk.k.', '.k..kkk.k.', '.k...k..k.', 'k.k.k.k.k.'], { k: K });
           // rust-orange lichen blooms
           var sp = [[100, 30, 5], [160, 122, 4], [250, 40, 6], [356, 128, 5], [14, 70, 4], [226, 100, 3]];
@@ -1287,7 +1290,7 @@
             R(g, px - 2, 11, pw + 4, 149, K);
             blockWall(g, px, 11, pw, 147, 16, 8, CN.face, K, CN.hi, true);
             R(g, px, 11, 1, 147, CN.hi); R(g, px + pw - 3, 11, 3, 147, K);
-            bloom(g, px + 10, 46 + i * 50, 5, CN.lich2, Q.n2, 412 + i);
+            bloom(g, px + 10, 46 + i * 50, 5, CN.lich, CN.lit, 412 + i);
             bloom(g, px + 20, 112 - i * 30, 3, CN.lich, CN.lich2, 420 + i);
           }
         });
@@ -1530,7 +1533,7 @@
     layers: [
       layer(384, 0.25, function (g, w) {
         R(g, 0, 0, w, BGH, K);
-        blockWall(g, 0, 10, w, 142, 16, 8, Q.g0, K);
+        blockWall(g, 0, 10, w, 142, 16, 8, CN.face, K); // same deep shadow as the maze, so the brown planks and the boss stand out
         rep(g, w, function () {
           // shelves of moonshine jugs (60 full, 80 empty)
           var shelves = [[10, 44, 120], [10, 74, 120], [150, 54, 70]];
