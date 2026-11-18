@@ -24,7 +24,7 @@
     kickDur: 0.36, airkickVX: 160, airkickVY: 250, airkickBounce: 275,
     hurtDur: 0.3, iframes: 1.1, pitDamage: 3, pitIframes: 1.6,
     comboWindow: 2,
-    camLook: 38, camLookSpeed: 110, camLerp: 9,
+    camLook: 32, camLookSpeed: 60, camLookDelay: 0.35, camDead: 20, camDeadArena: 56, camLerp: 9,
     bombFuse: 1.15, bombVX: 125, bombVY: -175, bombGrav: 620, bombSelfDmg: 2,
     specialPassive: 1 / 110, // meter per second
     updateMargin: W * 0.6,   // enemies update only within this of the screen
@@ -1564,9 +1564,18 @@
     var def = S.ride ? ((D().companions || {}).donut || COMP_DEFAULTS.donut) : C.def;
     var power = num(def.power, 1) * num(stats().compPower, 1);
     var name = (def.special && def.special.name) || 'SPECIAL';
-    announce(name, { color: '#f8d878', time: 1.6, sub: (def.name || 'DONUT').toUpperCase() });
-    flash('#fcfcfc', 0.12);
-    DCW.shake(3, 0.3); DCW.freeze(6);
+    // the big name card (and its white flash) only plays the first time each run; after that the
+    // name just pops over the caster so a special doesn't stop the screen every time
+    var run = getRun(); run.specialsSeen = run.specialsSeen || {};
+    if (!run.specialsSeen[name]) {
+      run.specialsSeen[name] = true;
+      announce(name, { color: '#f8d878', time: 1.6, sub: (def.name || 'DONUT').toUpperCase() });
+      DCW.shake(2, 0.25); DCW.freeze(6);
+    } else {
+      var who = C && !S.ride ? C : P, half = (DCW.textWidth ? DCW.textWidth(name) : name.length * 6) / 2 + 4;
+      numText(U.clamp(cx(who), S.cam.x + half, S.cam.x + W - half), who.y - 12, name, '#f8d878');
+      DCW.shake(1, 0.15);
+    }
     if (C) C.actT = 1;
     var i, e;
     if (ability === 'missile') {
@@ -2907,24 +2916,31 @@
   function updCamera(dt, snap) {
     var P = S.player, c = S.cam, L = S.L;
     if (S.ride) { rideCamera(dt, snap); return; }
-    if (P.state !== 'pit' && P.state !== 'dead') {
-      c.look = snap ? P.face * K.camLook : U.approach(c.look, P.face * K.camLook, K.camLookSpeed * dt);
-      var tx = cx(P) + c.look - W / 2;
-      var B = S.boss;
-      if (S.locked && B && !B.gone) { // keep the boss in frame without losing the player
-        tx = tx * 0.6 + (cx(B) - W / 2) * 0.4;
-        tx = U.clamp(tx, cx(P) - W + 56, cx(P) - 56);
-      }
-      var py = P.y + P.h / 2, ty = c.y;
-      if (py - c.y < 64) ty = py - 64; else if (py - c.y > 118) ty = py - 118;
-      if (snap) { c.x = tx; c.y = ty; }
-      else { c.x += (tx - c.x) * Math.min(1, K.camLerp * dt); c.y += (ty - c.y) * Math.min(1, 7 * dt); }
-    }
     var minX = 0, maxX = L.pxW - W;
     if (S.locked && S.arena) { minX = S.arena.x0; maxX = S.arena.x1 - W; if (maxX < minX) minX = maxX = (S.arena.x0 + S.arena.x1 - W) / 2; }
     var Q = S.pursuer;
     if (Q && Q.active && !S.done) minX = Math.min(Math.max(minX, Q.x + Q.w - 40), Math.max(0, maxX)); // never scroll left of the chase
     if (maxX < minX) maxX = minX;
+    if (P.state !== 'pit' && P.state !== 'dead') {
+      // The screen only moves when Carl travels. Look-ahead builds after he has run one way for a
+      // moment (turning round to swing or standing still leaves it alone), a dead zone in the middle
+      // of the screen soaks up small steps, and boss arenas no longer chase the boss: a pointer at
+      // the screen edge shows where it is instead. Everything moving at once made people queasy.
+      var running = Math.abs(P.vx) > 50 && (P.vx > 0 ? 1 : -1) === P.face;
+      c.runT = running ? num(c.runT, 0) + dt : 0;
+      var wantLook = c.look;
+      if (S.locked) { if (running) wantLook = 0; }
+      else if (c.runT > K.camLookDelay) wantLook = P.face * K.camLook;
+      c.look = snap ? (S.locked ? 0 : P.face * K.camLook) : U.approach(c.look, wantLook, K.camLookSpeed * dt);
+      var want = cx(P) + c.look - W / 2, DZ = S.locked ? K.camDeadArena : K.camDead;
+      var tx = snap || c.tx === undefined ? want : c.tx;
+      if (want > tx + DZ) tx = want - DZ; else if (want < tx - DZ) tx = want + DZ;
+      c.tx = tx = U.clamp(tx, minX, maxX); // clamped before easing, so the view never drifts past a wall
+      var py = P.y + P.h / 2, ty = c.y;
+      if (py - c.y < 64) ty = py - 64; else if (py - c.y > 118) ty = py - 118;
+      if (snap) { c.x = tx; c.y = ty; }
+      else { c.x += (tx - c.x) * Math.min(1, K.camLerp * dt); c.y += (ty - c.y) * Math.min(1, 7 * dt); }
+    }
     if (snap) c.x = U.clamp(c.x, minX, maxX);
     else {
       if (c.x < minX) c.x = S.locked ? U.approach(c.x, minX, 380 * dt) : minX;
@@ -3076,7 +3092,7 @@
       var kx = Math.round(S.cam.x + (S.kickX || 0)), ky = Math.round(S.cam.y + (S.kickY || 0));
       camX = U.clamp(kx, Math.min(camX, 0), Math.max(camX, S.L.pxW - W)); camY = U.clamp(ky, Math.min(camY, 0), Math.max(camY, S.L.pxH - H));
     }
-    if (S.wobble && shakeOn()) camX += (Math.floor(S.t * 15) % 2) ? 1 : -1; // psionic headache: the screen wobbles 1px
+    if (S.wobble && shakeOn()) camY += Math.round(Math.sin(S.t * 4)); // psionic headache: a slow 1px sway (a fast jitter made people sick)
     // background (a flash swaps the whole backdrop to one solid NES color, no overlays)
     if (S.flashT > 0) { ctx.fillStyle = S.flashColor; ctx.fillRect(0, 0, W, H); }
     else if (has(ART(), 'background')) { try { DCW.art.background(ctx, S.theme, camX, camY); } catch (e) { console.error('[stage] background', e); ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); } }
@@ -3096,7 +3112,7 @@
     for (i = 0; i < S.pickups.length; i++) drawPickup(ctx, S.pickups[i], camX, camY);
     // enemies
     for (i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && onScreen(e, 24)) drawEnemy(ctx, e, camX, camY); }
-    if (S.boss && !S.boss.gone) drawBoss(ctx, S.boss, camX, camY);
+    if (S.boss && !S.boss.gone) { drawBoss(ctx, S.boss, camX, camY); drawBossPointer(ctx, S.boss, camX, camY); }
     // fighters, companions, player
     drawFighters(ctx, camX, camY);
     if (S.ride) { drawRide(ctx, camX, camY); }
@@ -3323,6 +3339,16 @@
       ctx.fillStyle = '#000000'; ctx.fillRect(Math.round(x - bw / 2), Math.round(e.y - camY - 4), bw, 2);
       ctx.fillStyle = e.elite ? '#f8d878' : '#f83800'; ctx.fillRect(Math.round(x - bw / 2), Math.round(e.y - camY - 4), Math.round(bw * e.hp / e.maxHp), 2);
     }
+  }
+  // boss arenas don't chase the boss with the camera any more: when it's off screen a red arrow
+  // blinks at that edge, level with it
+  function drawBossPointer(ctx, B, camX, camY) {
+    if (!S.locked || B.dying || B.hidden) return;
+    var l = B.x - camX, r = B.x + B.w - camX;
+    if (r > 0 && l < W) return;
+    if (Math.floor(S.t * 4) % 2) return;
+    var right = l >= W, y = U.clamp(Math.round(B.y + B.h / 2 - camY), 30, H - 30);
+    DCW.text(right ? '\u25B6' : '\u25C0', right ? W - 5 : 5, y - 3, '#fcfcfc', { align: 'center' });
   }
   function drawBoss(ctx, B, camX, camY) {
     if (B.hidden) return;

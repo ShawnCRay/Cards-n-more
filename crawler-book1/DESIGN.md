@@ -400,6 +400,16 @@ countdown go skid crash).
 ## No boss spoilers (lead)
 Never tell the player a boss's weak spot or trick before they find it: no "hit the boiler", "kill a minion as it crawls out", "hit the veins when he flexes", "hit the ball when it slams a wall", "stomp him", "feed the dogs". That goes for boss intros, phase lines, stage intros, cutscenes, Mordecai's tips, item descriptions and achievement text (locked achievements already hide theirs). Reactive feedback is fine and is how players learn: CLANG! on armor, CHOKED!, DIZZY!, and a phase line after the cages have already opened. Interactables get a blinking UP arrow when you stand at them; what they do is for the player to find out.
 
+## Calm camera (lead)
+The screen moves only when the player travels. Players reported motion sickness in boss arenas, where the old camera swung its look-ahead on every turn and slid toward the boss while Carl stood still, with two parallax layers sliding at different speeds behind it.
+- Look-ahead (32 px) builds only after 0.35 s of running one way, at 60 px/s. Turning round to swing changes nothing.
+- A dead zone (20 px in stages, 56 px in locked arenas) soaks up small steps. The follow target is clamped to the level and arena bounds before easing, so the view never drifts past a wall.
+- Locked arenas never track the boss. When it is off screen, a white arrow blinks at that edge, level with it.
+- Parallax rates are 1/4 (far) and 1/2 (near) on every theme, for an even NES cadence (0.2 and 0.45 stepped unevenly).
+- The psionic headache is a slow 1 px vertical sway, not a 7.5 Hz jitter.
+- A companion special shows its big name card the first time it is used each run (`run.specialsSeen`). After that the name pops over the caster. There is no full-screen white flash.
+- `node tools/cam_test.js <stageId> idle|turn|fight|run` reports camera travel and how often the view moved while Carl stood still. Idle and turn should be 0 in arenas.
+
 ## Tools
 - `node tools/shot.js "?debug&stage=f1_hall" out.png 120 "<js to eval first>"` screenshot after N frames.
 - `?debug&stage=<id>` jumps into a stage; `?debug&scene=safe&room=tally`, `?debug&cut=<id>`, `?debug&floor=2`; `&god` god mode; in stages key `9` clears, `0` toggles god.

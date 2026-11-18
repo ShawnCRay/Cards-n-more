@@ -1302,7 +1302,7 @@
   BG.hoard = {
     back: K,
     layers: [
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         hewnWall(g, w, 0, 150, 501, Q.y0, K, Q.n0, 0.05);
         rep(g, w, function () {
           var r = rng(502), i;
@@ -1322,7 +1322,7 @@
         });
         R(g, 0, 150, w, BGH - 150, K);
       }),
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         rep(g, w, function () {
           var r = rng(511), i;
           // nearer heaps along the floor
@@ -1361,7 +1361,7 @@
   BG.goblin = {
     back: K,
     layers: [
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         hewnWall(g, w, 0, 150, 601, Q.y0, K, Q.n0, 0.05);
         rep(g, w, function () {
           var r = rng(602), i;
@@ -1384,7 +1384,7 @@
         });
         R(g, 0, 150, w, BGH - 150, K);
       }),
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         rep(g, w, function () {
           var i;
           // copper steam pipe with a valve
@@ -1429,7 +1429,7 @@
     back: K,
     layers: [
       // far: mirror wall, ceiling strip lights, motivational posters
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         R(g, 0, 0, w, BGH, K);
         rep(g, w, function () {
           for (var x = 0; x < 384; x += 48) { R(g, x + 4, 2, 40, 4, Q.g0); R(g, x + 5, 3, 38, 2, Q.W); }
@@ -1448,7 +1448,7 @@
         R(g, 0, 152, w, BGH - 152, K);
       }),
       // near: squat rack with a loaded bar, dumbbell rack
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         rep(g, w, function () {
           // squat rack
           var sx = 40;
@@ -1485,7 +1485,7 @@
     back: K,
     layers: [
       // far: curved track walls of dark stone, sealed round portcullises, the stairwell behind a red force field
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         R(g, 0, 0, w, BGH, K);
         blockWall(g, 0, 22, w, 130, 32, 12, K, K, Q.p0, true);
         rep(g, w, function () {
@@ -1506,7 +1506,7 @@
         R(g, 0, 152, w, BGH - 152, K);
       }),
       // near: rounded wall caps along the track, grooved floor lines, torches
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         rep(g, w, function () {
           var walls = [[10, 64], [150, 48], [250, 56]];
           for (var i = 0; i < walls.length; i++) {
@@ -1528,7 +1528,7 @@
   BG.distillery = {
     back: K,
     layers: [
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         R(g, 0, 0, w, BGH, K);
         blockWall(g, 0, 10, w, 142, 16, 8, Q.g0, K);
         rep(g, w, function () {
@@ -1551,7 +1551,7 @@
         });
         R(g, 0, 152, w, BGH - 152, K);
       }),
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         rep(g, w, function () {
           // copper still: pot on a burner, coil, condenser barrel
           oval(g, 64, 98, 30, 26, K); oval(g, 64, 98, 28, 24, Q.n0); oval(g, 56, 90, 10, 9, Q.n1); P(g, 52, 86, Q.n2); P(g, 53, 85, Q.n2);
@@ -1579,7 +1579,7 @@
   BG.pound = {
     back: K,
     layers: [
-      layer(384, 0.2, function (g, w) {
+      layer(384, 0.25, function (g, w) {
         R(g, 0, 0, w, BGH, K);
         blockWall(g, 0, 12, w, 140, 32, 16, K, K, Q.b1, true);
         // azulejo band
@@ -1603,7 +1603,7 @@
         R(g, 0, 152, w, BGH - 152, K);
       }),
       // near: chain-link fence with posts, barbed wire on top, a kennel gate
-      layer(320, 0.45, function (g, w) {
+      layer(320, 0.5, function (g, w) {
         var x, y;
         for (y = 45; y < 160; y++) for (x = 0; x < w; x++) if (((x + y) % 12 === 0) || ((x - y + 1200) % 12 === 0)) P(g, x, y, Q.g0);
         rep(g, w, function () {
