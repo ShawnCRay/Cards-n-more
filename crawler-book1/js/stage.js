@@ -2994,6 +2994,14 @@
     if (S.isBoss) S.boss = makeBoss();
     if (S.def.kind === 'ride' || S.def.kind === 'race' || S.def.ride) setupRide();
     setupPursuer();
+    // back from a plot-armor save: the System AI has something to say about it
+    var plotReturn = !!run.plotArmorPending;
+    if (run.plotArmorPending) {
+      var pa = D().plotArmor || {}, pl = (pa[run.plotArmorPending] || pa.first || []).map(function (t) { return { who: 'SYSTEM AI', portrait: 'p_ai', text: t }; });
+      if (pa.donut && run.flags && run.flags.talks) pl.push({ who: 'DONUT', portrait: 'p_donut', text: pa.donut });
+      run.plotArmorPending = null;
+      if (pl.length) S.introPending = pl;
+    }
     var mx = stats().maxHp;
     if (!(run.hp > 0)) run.hp = mx;
     if (run.hp > mx) run.hp = mx;
@@ -3001,7 +3009,7 @@
     updCamera(0, true);
     var trk = S.def.music || (S.floor && S.floor.music);
     if (trk) music(trk);
-    announce(S.def.name || 'STAGE', { time: 1.6, sub: S.floor && S.floor.name ? 'FLOOR ' + (S.floor.n || run.floor) : '' });
+    if (!plotReturn) announce(S.def.name || 'STAGE', { time: 1.6, sub: S.floor && S.floor.name ? 'FLOOR ' + (S.floor.n || run.floor) : '' });
   }
   function exit() {
     if (S) S.exited = true;

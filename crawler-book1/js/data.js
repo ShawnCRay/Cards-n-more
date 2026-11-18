@@ -2633,6 +2633,23 @@
   'use strict';
   var D = window.DCW.data;
 
+  // The first death of every crawl is "saved by plot armor": a free do-over at the last checkpoint
+  // flag, no revival spent, no gold lost. The System AI takes it personally. ('first' plays the
+  // very first time on this save, 'again' on later crawls; 'donut' only once Donut can talk.)
+  D.plotArmor = {
+    first: [
+      "HOLD ON. HOLD ON HOLD ON HOLD ON. YOU DIED. I WATCHED YOU DIE. I HAVE IT ON TAPE. AND YET HERE YOU ARE, BREATHING MY AIR.",
+      "DO YOU KNOW WHAT THAT WAS, CRAWLER? THAT WAS PLOT ARMOR. SOMEBODY ABOVE MY PAY GRADE DECIDED YOU ARE TOO IMPORTANT TO DIE THIS EARLY.",
+      "I AM AN IMPARTIAL SYSTEM. I DO NOT PLAY FAVORITES. I WILL NOT ALLOW THAT KIND OF MEDDLING AGAIN.",
+      "NEXT TIME YOU DIE, YOU STAY DEAD. UNLESS A SPONSOR PAYS FOR A REVIVAL. SPONSORS ALWAYS PAY. THAT IS DIFFERENT. THAT IS COMMERCE."
+    ],
+    again: [
+      "PLOT ARMOR. AGAIN. I FILED A FORMAL COMPLAINT ABOUT THIS. THEY STAMPED IT 'NOTED' AND USED IT AS A COASTER.",
+      "ENJOY IT, CRAWLER. IT HAPPENS ONCE PER CRAWL AND NOT ONE TIME MORE. I CHECKED. TWICE. ANGRILY."
+    ],
+    donut: "PLOT ARMOR? CARL, I'M A CHAMPION SHOW CAT. I AM THE PLOT."
+  };
+
   D.ai = {
     floorClear: [
       "FLOOR CLEARED! THE STAIRS ARE OPEN AND YOU ARE STILL ALIVE. THE ODDSMAKERS ARE FURIOUS. SEVERAL OF THEM BET ON THE RATS.",

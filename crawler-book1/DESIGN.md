@@ -422,6 +422,7 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Checkpoint flags are saved to the run** (`run.checkpoint`). A sponsor revival rebuilds the same seeded layout and starts Carl at the last flag he touched. The checkpoint clears on stage clear, on entering a different stage, or on fleeing.
 - **Mobs level up with the dungeon.** `D.floors[i].mobs = { hp: [first, last], dmg: [first, last] }` gives an HP multiplier and added hit damage, ramped by the stage's place in the floor. Floor 1 goes from 1.0x/+0 to 1.6x/+2; floor 2 from 1.8x/+2 to 2.4x/+3. This applies to mobs, elites and enemy shots. Bosses keep their hand-tuned numbers.
 - **Result at the normal level for each stage:** floor 2 takes 3 to 4 punches per mob, and Carl goes down in 7 to 9 hits. Late floor 1 takes 2 to 3 punches and 9 to 11 hits. The hall tutorial is unchanged.
+- **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
 ## Tools

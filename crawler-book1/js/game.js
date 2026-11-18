@@ -65,7 +65,7 @@
       stats: { str: 3, con: 3, dex: 3, int: 3 },
       bonus: { hp: 2 },
       gold: 0, bombs: 3, potions: 1, biscuits: 0, views: 0, fanTier: 0,
-      boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0,
+      boxes: [], revivals: 3, floorTime: 0, totalTime: 0, kills: 0, deaths: 0, plotArmorUsed: false, plotArmorPending: null,
       currentStage: null, inSafe: false, room: null, seenRooms: {}, cookieHere: false, restedHere: false,
       pendingAmbush: null, won: false,
       companions: ['donut'], items: {}, gear: {}, flags: {}, hero: 'carl',
@@ -261,6 +261,18 @@
     var r = G.run; if (!r) return;
     r.deaths++; DCW.save.meta.deaths = (DCW.save.meta.deaths || 0) + 1;
     r.lastDeath = result || {};
+    // the first death of every crawl is "saved by plot armor": a free do-over at the last checkpoint
+    // flag (no revival spent, no gold lost) and the System AI swears it won't happen again
+    if (!r.plotArmorUsed && r.currentStage && G.stageDef(r.currentStage)) {
+      r.plotArmorUsed = true;
+      r.plotArmorPending = DCW.save.meta.plotArmorSeen ? 'again' : 'first';
+      DCW.save.meta.plotArmorSeen = true;
+      r.hp = G.playerStats().maxHp;
+      G.track('death');
+      persist();
+      G.enterStage(r.currentStage);
+      return;
+    }
     r.hp = 0; // every death (pits and wrecks too) waits on the death screen, even after quitting to the title
     G.track('death');
     persist();
