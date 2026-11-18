@@ -1530,7 +1530,7 @@
   var GUNPAL = { m: C.g0, M: C.g1, y: C.y1, F: C.W, Y: C.y2 };
   function merge2(a, b) { var o = {}, k; for (k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
   // brandon: chubby, shorter, heavy red puffer jacket
-  var BRANDON_PAL = merge2(GUNPAL, { s: C.n1, S: C.n0, h: C.K, j: C.o1, J: C.o0, b: C.b1, f: C.K, w: C.W, x: C.K });
+  var BRANDON_PAL = merge2(GUNPAL, { s: C.n0, S: C.y0, h: C.K, j: C.o1, J: C.o0, b: C.b1, f: C.K, w: C.W, x: C.K });
   var BRANDON = [
     '................',
     '................',
@@ -1567,7 +1567,7 @@
     f1: longGun(breathe(BRANDON, 18), 3, 18, 15, 9, 22),
     attack: longGun(setPx(BRANDON, [[9, 5], [12, 5]], 'x'), 4, 14, 18, 14, 22, true), cx: 8 });
   // chris: taller, quieter, metal skullcap
-  var CHRIS_PAL = merge2(GUNPAL, { s: C.n1, S: C.n0, h: C.K, c: C.g1, C: C.g0, j: C.c1, J: C.c0, b: C.y0, f: C.K, w: C.W, x: C.K });
+  var CHRIS_PAL = merge2(GUNPAL, { s: C.n0, S: C.y0, h: C.K, c: C.g1, C: C.g0, j: C.c1, J: C.c0, b: C.y0, f: C.K, w: C.W, x: C.K });
   var CHRIS = [
     '.....cccccc.....',
     '....ccCcccccc...',
@@ -1734,31 +1734,38 @@
   // ---- ODETTE (on air): black mantis helmet with mirrored compound eyes and antennae, the upper
   //      body of a plus-sized woman in an armoured breastplate, and a king crab where her legs
   //      should be ----
-  var ODE_PAL = { s: C.n1, S: C.n0, k: C.K, e: C.b6, E: C.W, a: C.g1, A: C.g0, c: C.o1, C: C.o0, n: C.m2, x: C.K, w: C.W };
+  // The book's on-air costume: a plus-sized woman in a gold breastplate with comically oversized
+  // prosthetic breasts (it's armour, and the joke is how enormous it is). Frame 1 bounces.
+  var ODE_PAL = { s: C.n0, S: C.y0, k: C.K, e: C.b6, E: C.W, a: C.g1, A: C.g0, c: C.o1, C: C.o0, n: C.m2, x: C.K, w: C.W,
+    b: C.y2, B: C.y1, h: C.y3, r: C.r1 };
   function odette(f) {
-    var g = blank(34, 34);
-    // crab: shell + legs
-    for (var k = 0; k < 4; k++) {
-      var lx = 6 + k * 6, up = (k + f) % 2;
-      line(g, lx, 25, lx - 3, 27 - up, 'c', 2); line(g, lx - 3, 27 - up, lx - 4, 33, 'c', 2);
-      line(g, lx + 2, 25, lx + 5, 28 - up, 'C', 2); line(g, lx + 5, 28 - up, lx + 6, 33, 'C');
+    var g = blank(38, 39), k;
+    // king crab body where her legs should be: wide red shell, four legs a side, a claw reaching forward
+    for (k = 0; k < 4; k++) {
+      var lx = 7 + k * 7, up = (k + f) % 2;
+      line(g, lx, 30, lx - 3, 33 - up, 'c', 2); line(g, lx - 3, 33 - up, lx - 4, 38, 'c', 2);
+      line(g, lx + 3, 30, lx + 6, 34 - up, 'C', 2); line(g, lx + 6, 34 - up, lx + 7, 38, 'C');
     }
-    oval(g, 16, 24, 13, 5, 'c'); oval(g, 16, 23, 11, 3, 'C');
-    for (k = 0; k < 6; k++) px(g, 7 + k * 4, 22 + (k % 2), 'c');
-    // claw arm reaching forward
-    line(g, 27, 24, 31, 21, 'c', 2); oval(g, 31, 18, 2.5, 2.5, 'c'); px(g, 33, 16, 'c'); px(g, 32, 15, 'c');
-    // torso: armoured breastplate
-    rect(g, 10, 12, 12, 9, 's');
-    oval(g, 13, 15, 3.5, 3, 'a'); oval(g, 19, 15, 3.5, 3, 'a'); px(g, 12, 14, 'w'); px(g, 18, 14, 'w');
-    rect(g, 10, 19, 12, 2, 'A');
-    // arms + long claw nails
-    line(g, 9, 13, 6, 20, 's', 2); line(g, 6, 20, 4, 21, 'n');
-    line(g, 22, 13, 25, 18 - f, 's', 2); line(g, 25, 18 - f, 27, 16 - f, 'n'); px(g, 27, 18 - f, 'n');
-    // mantis helmet: black triangle head, mirrored compound eyes, two long antennae
-    tri(g, 9, 2, 23, 2, 16, 12, 'k');
-    oval(g, 11, 4, 3, 2.5, 'e'); oval(g, 21, 4, 3, 2.5, 'e'); px(g, 10, 3, 'E'); px(g, 20, 3, 'E');
-    rect(g, 14, 9, 4, 2, 's');
-    line(g, 13, 1, 9 - f, 0, 'A'); line(g, 19, 1, 26 + f, 0, 'A');
+    oval(g, 18, 29, 15, 5, 'c'); oval(g, 18, 28, 12, 3, 'C');
+    for (k = 0; k < 7; k++) px(g, 7 + k * 4, 27 + (k % 2), 'c');
+    line(g, 31, 28, 35, 24, 'c', 2); oval(g, 35, 21, 2.5, 2.5, 'c'); px(g, 37, 19, 'c'); px(g, 36, 18, 'c');
+    // plus-sized torso and the black belt from her crawl
+    oval(g, 18, 21, 8, 5, 's'); rect(g, 11, 24, 15, 2, 'k'); px(g, 18, 24, 'b');
+    // arms: one on the hip, one waving with long claw nails
+    line(g, 9, 14, 5, 21, 's', 2); line(g, 5, 21, 9, 24, 's', 2); px(g, 10, 24, 'n');
+    line(g, 27, 14, 31, 9 - f, 's', 2); line(g, 31, 9 - f, 33, 6 - f, 'n'); px(g, 33, 8 - f, 'n'); px(g, 32, 5 - f, 'n');
+    // the breastplate: two enormous gold domes, far wider than she is
+    var by = 17 + f;
+    oval(g, 12, by, 6.5, 5.5, 'b'); oval(g, 24, by, 6.5, 5.5, 'b');
+    oval(g, 13, by + 2, 5, 3, 'B'); oval(g, 25, by + 2, 5, 3, 'B'); oval(g, 12, by, 5, 3.5, 'b'); oval(g, 24, by, 5, 3.5, 'b');
+    rect(g, 10, by - 3, 2, 2, 'h'); rect(g, 22, by - 3, 2, 2, 'h');
+    line(g, 18, by - 5, 18, by + 5, 'k'); px(g, 18, by - 6, 'r');
+    // neck and the black mantis helmet with mirrored compound eyes and antennae
+    rect(g, 16, 10, 5, 3, 's');
+    tri(g, 10, 1, 27, 1, 18, 11, 'k');
+    oval(g, 12, 3, 3.5, 2.5, 'e'); oval(g, 24, 3, 3.5, 2.5, 'e'); px(g, 11, 2, 'E'); px(g, 23, 2, 'E');
+    rect(g, 16, 8, 5, 2, 's'); line(g, 17, 9, 19, 9, 'r');
+    line(g, 15, 1, 10 - f, 0, 'A'); line(g, 21, 1, 27 + f, 0, 'A');
     return g;
   }
   def('odette_idle', withK(ODE_PAL), build([odette(0), odette(1)]));
@@ -3057,13 +3064,13 @@
     rect(g, 12, 13, 3, 2, 'w'); px(g, 14, 14, 'e'); rect(g, 19, 13, 3, 2, 'w'); px(g, 21, 14, 'e');
     rect(g, 16, 15, 2, 4, 'S');
   }
-  portrait('p_brandon', { s: C.n1, S: C.n0, h: C.K, j: C.o1, J: C.o0, w: C.W, e: C.K, K: C.K }, BG_HERO, function (g) {
+  portrait('p_brandon', { s: C.n0, S: C.y0, h: C.K, j: C.o1, J: C.o0, w: C.W, e: C.K, K: C.K }, BG_HERO, function (g) {
     manPort(g, { fat: true, collar: function (g2) { rect(g2, 2, 23, 28, 4, 'j'); line(g2, 2, 26, 29, 26, 'J'); line(g2, 4, 29, 27, 29, 'J'); } });
     oval(g, 16, 6, 10, 4, 'h'); rect(g, 5, 6, 3, 8, 'h'); rect(g, 25, 6, 3, 8, 'h');
     oval(g, 16, 21, 7, 3, 'h'); rect(g, 13, 19, 7, 2, 'w'); line(g, 13, 19, 19, 19, 'K');
     line(g, 11, 11, 15, 11, 'h'); line(g, 18, 11, 22, 11, 'h');
   });
-  portrait('p_chris', { s: C.n1, S: C.n0, h: C.K, c: C.g1, C: C.g0, j: C.c1, J: C.c0, w: C.W, e: C.K, K: C.K }, BG_HERO, function (g) {
+  portrait('p_chris', { s: C.n0, S: C.y0, h: C.K, c: C.g1, C: C.g0, j: C.c1, J: C.c0, w: C.W, e: C.K, K: C.K }, BG_HERO, function (g) {
     manPort(g, { collar: function (g2) { line(g2, 3, 27, 28, 27, 'J'); } });
     oval(g, 16, 7, 10, 6, 'c'); rect(g, 6, 7, 21, 3, 'c'); line(g, 6, 9, 26, 9, 'C'); px(g, 10, 5, 'C'); px(g, 20, 4, 'C'); px(g, 15, 3, 'w');
     line(g, 12, 12, 15, 12, 'h'); line(g, 18, 12, 22, 12, 'h');
@@ -3125,19 +3132,24 @@
   });
 
   // showbiz
-  portrait('p_odette', { s: C.n1, S: C.n0, k: C.K, q: C.g3, e: C.b6, E: C.W, b: C.b4, a: C.g1, A: C.g0, r: C.r1, w: C.W, K: C.K }, BG_NPC, function (g) {
-    rect(g, 2, 27, 28, 5, 's'); oval(g, 10, 31, 7, 4, 'a'); oval(g, 22, 31, 7, 4, 'a'); px(g, 7, 29, 'w'); px(g, 19, 29, 'w');
-    rect(g, 11, 21, 11, 7, 's');
+  portrait('p_odette', { s: C.n0, S: C.y0, k: C.K, q: C.g3, e: C.b6, E: C.W, b: C.b4, a: C.g1, A: C.g0, r: C.r1, w: C.W, K: C.K,
+    g: C.y2, G: C.y1, h: C.y3 }, BG_NPC, function (g) {
+    // shoulders, then the breastplate: two gold domes so big they don't fit in the frame
+    rect(g, 1, 23, 30, 9, 's');
+    oval(g, 8, 31, 8.5, 7, 'g'); oval(g, 24, 31, 8.5, 7, 'g');
+    oval(g, 9, 33, 7, 4, 'G'); oval(g, 25, 33, 7, 4, 'G'); oval(g, 8, 31, 6.5, 5, 'g'); oval(g, 24, 31, 6.5, 5, 'g');
+    rect(g, 5, 26, 3, 2, 'h'); rect(g, 21, 26, 3, 2, 'h'); line(g, 16, 24, 16, 31, 'K');
+    rect(g, 13, 19, 7, 5, 's');
     // her face under the helmet: chin, red lips, a TV smile
-    oval(g, 16, 20, 7, 5, 's'); line(g, 12, 21, 20, 21, 'r'); line(g, 13, 22, 19, 22, 'r'); line(g, 13, 21, 19, 21, 'w'); px(g, 12, 20, 'S'); px(g, 20, 20, 'S');
+    oval(g, 16, 19, 7, 5, 's'); line(g, 12, 20, 20, 20, 'r'); line(g, 13, 21, 19, 21, 'r'); line(g, 13, 20, 19, 20, 'w'); px(g, 12, 19, 'S'); px(g, 20, 19, 'S');
     // the black mantis helmet (grey sheen so it reads), mirrored compound eyes, antennae
-    tri(g, 2, 4, 30, 4, 16, 18, 'k'); rect(g, 4, 2, 24, 4, 'k');
-    line(g, 2, 4, 16, 18, 'q'); line(g, 30, 4, 16, 18, 'q'); line(g, 4, 2, 27, 2, 'q'); line(g, 14, 6, 16, 16, 'A');
+    tri(g, 2, 4, 30, 4, 16, 17, 'k'); rect(g, 4, 2, 24, 4, 'k');
+    line(g, 2, 4, 16, 17, 'q'); line(g, 30, 4, 16, 17, 'q'); line(g, 4, 2, 27, 2, 'q'); line(g, 14, 6, 16, 15, 'A');
     oval(g, 8, 8, 5.5, 4.5, 'e'); oval(g, 24, 8, 5.5, 4.5, 'e');
     for (var y = 5; y < 13; y++) for (var x = 3; x < 30; x++) if (g[y][x] === 'e' && (x + 2 * y) % 5 === 0) px(g, x, y, 'b');
     rect(g, 5, 6, 2, 2, 'E'); rect(g, 21, 6, 2, 2, 'E');
     line(g, 11, 2, 5, 0, 'A'); line(g, 21, 2, 27, 0, 'A');
-    line(g, 12, 16, 13, 19, 'A'); line(g, 20, 16, 19, 19, 'A');
+    line(g, 12, 15, 13, 18, 'A'); line(g, 20, 15, 19, 18, 'A');
   });
   portrait('p_lexis', { s: C.n2, S: C.n1, h: C.y3, H: C.y2, d: C.K, D: C.g3, e: C.K, w: C.W, m: C.r2, c: C.y1, K: C.K, p: C.p3 }, BG_NPC, function (g) {
     rect(g, 4, 26, 24, 6, 'd'); tri(g, 13, 26, 19, 26, 16, 29, 's');
