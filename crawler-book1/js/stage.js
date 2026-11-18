@@ -612,6 +612,20 @@
     return typeof b === 'number' ? (b < 1 ? 1 + b : b) : 1;
   }
   function comboMul() { return 1 + Math.min(S.combo, 60) * 0.05; }
+  // Donut's running gag ("X? CARL. YOU KNOW HOW I FEEL ABOUT X."): when something she can't stand
+  // hurts the player, she says so. Once per crawl per gripe, at most one every 20 s, only once she talks.
+  var CAUSE_GRIPE = { 'SPIKES': 'spikes', 'FIRE': 'fire', 'OWN BOMB': 'bomb', 'ROT STICKER': 'sticker' };
+  function donutGripe(key) {
+    var g = D().donutGripes, run = getRun();
+    if (!g || !key || S.ride || !(run.flags && run.flags.talks) || S.gripeT > 0) return;
+    var k = g[key] ? key : null, parts = String(key).split('_');
+    for (var i = 0; !k && i < parts.length; i++) if (g[parts[i]]) k = parts[i];
+    if (!k) return;
+    run.gripes = run.gripes || {};
+    if (run.gripes[k]) return;
+    run.gripes[k] = true; S.gripeT = 20;
+    toast(g[k], { title: 'DONUT', icon: 'star', color: '#f878f8', time: 3.8 });
+  }
   function quip(pool, chance) {
     if (S.quipT > 0 || Math.random() > (chance || 1)) return;
     var line = aiLine(pool);
@@ -929,6 +943,7 @@
     var mx = stats().maxHp;
     if (run.hp > 0 && run.hp <= mx * 0.25 && !S.lowHpQuipped) { S.lowHpQuipped = true; S.quipT = 0; quip('lowHp', 1); }
     if (run.hp <= 0) killPlayer(opts.cause || 'DAMAGE');
+    else donutGripe(opts.mob || opts.gripe || CAUSE_GRIPE[opts.cause]);
     return true;
   }
   function applyDamage(n) {
@@ -1247,7 +1262,7 @@
     if (spike && P.inv <= 0) { if (hurtPlayer(2, undefined, { kby: -280, cause: 'SPIKES' })) { P.vx *= 0.3; } else if (S.god) P.vy = Math.min(P.vy, -200); }
     if (liquid) {
       P.liqT -= dt;
-      if (P.liqT <= 0) { P.liqT = 0.5; if (hurtPlayer(1, undefined, { knock: false, cause: 'HAZARD' })) { sfx('splash'); } P.inv = Math.min(P.inv, 0.45); }
+      if (P.liqT <= 0) { P.liqT = 0.5; if (hurtPlayer(1, undefined, { knock: false, cause: 'HAZARD', gripe: 'wet' })) { sfx('splash'); } P.inv = Math.min(P.inv, 0.45); }
       P.vx *= 0.92;
       if (P.vy > 70) P.vy = 70;
     } else P.liqT = 0;
@@ -1793,7 +1808,9 @@
     opts = opts || {};
     if (e.def.taint && opts.taint === undefined) opts.taint = e.def.taint;
     if (opts.dmg === undefined && S.mob && S.mob.dmg) opts.dmg = num(projDef(id).dmg, 1) + S.mob.dmg; // shots level up too
-    return fireProj(id, x, y, tx, ty, opts);
+    var p = fireProj(id, x, y, tx, ty, opts);
+    if (p) { p.mob = e.id; p.from = String(e.def.name || e.id).toUpperCase(); }
+    return p;
   }
   // a lobbed projectile came down: fire patch (juicer's plates) or a blast (bomb bard dynamite)
   function projLanded(p) {
@@ -1901,7 +1918,7 @@
       return;
     }
     if (P.state === 'airkick' || harmless) return; // airkick handled by its own hitbox
-    hurtPlayer(e.dmg, cx(e), { cause: (e.def.name || e.id), taint: num(e.def.taint, 0) });
+    hurtPlayer(e.dmg, cx(e), { cause: (e.def.name || e.id), mob: e.id, taint: num(e.def.taint, 0) });
   }
   function patrol(e, dt, speed) {
     if (e.onGround && !groundAhead(e)) e.face = -e.face;
@@ -2155,7 +2172,7 @@
       if (!dead && P.state !== 'dead' && overlap(p, P)) {
         if (p.onLand === 'explode') projLanded(p);
         else {
-          hurtPlayer(p.dmg, cx(p), { cause: 'PROJECTILE', taint: p.taint }); hitSpark(cx(p), cy(p));
+          hurtPlayer(p.dmg, cx(p), { cause: p.from || 'PROJECTILE', mob: p.mob, taint: p.taint }); hitSpark(cx(p), cy(p));
           if (p.onLand === 'fire') { p.y = P.y + P.h - p.h; projLanded(p); } // the flaming plate drops at Carl's feet
         }
         dead = true;
@@ -3026,6 +3043,7 @@
     if (S.taintT > 0) S.taintT = Math.max(0, S.taintT - dt);
     if (S.taintMsgT > 0) S.taintMsgT -= dt;
     if (S.specialMsgT > 0) S.specialMsgT -= dt;
+    if (S.gripeT > 0) S.gripeT -= dt;
     if (S.lockMsgT > 0 && S.ride) S.lockMsgT -= dt;
     call(G(), 'tick', dt);
     if (S.introPending && S.t > 0.5) { var line = S.introPending; S.introPending = null; say(line); }
