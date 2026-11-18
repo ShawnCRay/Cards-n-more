@@ -1717,10 +1717,11 @@
       var vis = 6;
       for (var i = m.scroll; i < Math.min(l.length, m.scroll + vis); i++) {
         var it = l[i], yy = 76 + (i - m.scroll) * 11, p = price(it), afford = (run.gold || 0) >= p;
+        var soldOut = !!(it.limit && ((run.bought || {})[it.id] || 0) >= it.limit);
         if (i === m.sel) { R(10, yy - 2, 300, 11, m.flash > 0 ? C.dbrown : C.sel); cursor(13, yy); }
-        T(fitText(it.name || it.id, 200), 24, yy, i === m.sel ? C.white : C.gray);
-        T(p, 298, yy, afford ? C.gold : C.red, { align: 'right' });
-        icon(ctx, 'coin', 298 - tw(p) - 10, yy - 1);
+        T(fitText(it.name || it.id, 200), 24, yy, soldOut ? C.dgray : i === m.sel ? C.white : C.gray);
+        if (soldOut) T('SOLD OUT', 298, yy, C.dgray, { align: 'right' });
+        else { T(p, 298, yy, afford ? C.gold : C.red, { align: 'right' }); icon(ctx, 'coin', 298 - tw(p) - 10, yy - 1); }
       }
       scrollArrows(302, 72, 136, m.scroll, vis, l.length);
       sep(10, 143, 300);

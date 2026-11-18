@@ -779,8 +779,9 @@
     var r = G.run, it = shopItem(id);
     if (!r || !it) return { ok: false, msg: 'SOLD OUT' };
     var p = G.price(id);
+    // limit: how many one crawl may buy, across every shop (pet biscuits: one)
+    if (it.limit && (r.bought = r.bought || {})[id] >= it.limit) { sfx('error'); return { ok: false, msg: 'SOLD OUT. ONE PER CRAWL.' }; }
     if (r.gold < p) { sfx('error'); return { ok: false, msg: 'NOT ENOUGH GOLD' }; }
-    if (it.limit && (r.bought = r.bought || {})[id] >= it.limit) { sfx('error'); return { ok: false, msg: 'SOLD OUT' }; }
     r.gold -= p;
     r.bought = r.bought || {}; r.bought[id] = (r.bought[id] || 0) + 1;
     var gives = Array.isArray(it.give) ? it.give : [it.give || { kind: 'item', id: it.id, count: 1 }];

@@ -425,6 +425,9 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
+## Pet biscuits (lead)
+Biscuits only matter in Ralph's dog pound: four dingo cages, and any cage not fed by his second phase opens. A crawl can buy one biscuit, total, across both shops (`limit: 1` on the shop item, counted in `run.bought`). Once bought, the row shows SOLD OUT. The rest have to be found: 2 from Mordecai, then 4 guaranteed in `f2_ralph` (1 at the start, 1 in either middle section, 2 in the arena). Extras can turn up in loot boxes, the `cn_bisc` section and the distillery.
+
 ## Donut's running gag (lead)
 When Donut is upset she uses one formula: "X? CARL. YOU KNOW HOW I FEEL ABOUT X." It runs through the whole series, so use it whenever she's put out, and keep it short and flat. The joke is the repetition.
 - **Cutscenes:** bad lighting on the recap, Hekla's hair, being left on the floor, Carl's Jug O'Boom credit, Pork Boy taking her ratings. Her plot-armor line is "PLOT ARMOR? CARL. YOU KNOW HOW I FEEL ABOUT PLOT ARMOR."

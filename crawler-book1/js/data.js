@@ -2463,7 +2463,7 @@
     { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. DOES NOTHING WHILE YOU HAVE THE TAINT. NOTHING DOES.', price: 30, give: { kind: 'item', id: 'potion', count: 1 } },
     { id: 'bomb', name: 'GOBLIN DYNAMITE', desc: "ONE STICK. ARCS NICELY. RESPECTS NOBODY. TURNS INTO A JUG O'BOOM ONCE CARL INVENTS THOSE.", price: 15, give: { kind: 'item', id: 'bomb', count: 1 } },
     { id: 'bomb_bundle', name: 'DYNAMITE SIX PACK', desc: 'SIX BOOMS FOR THE PRICE OF FIVE. A GOBLIN HOLIDAY SPECIAL. DO NOT STORE NEAR THE CAT.', price: 75, give: { kind: 'item', id: 'bomb', count: 6 } },
-    { id: 'biscuit', name: 'PET BISCUIT', desc: 'FEEDS ONE CAGED DOG. TURNS A SNARL INTO A NAP. KEEP A FEW IN YOUR BOXERS FOR LATER.', price: 20, give: { kind: 'item', id: 'biscuit', count: 1 } },
+    { id: 'biscuit', name: 'PET BISCUIT', desc: 'FEEDS ONE CAGED DOG. TURNS A SNARL INTO A NAP. ONE PER CUSTOMER, PER CRAWL. THE SUPPLIER IS VERY STRICT.', price: 20, limit: 1, give: { kind: 'item', id: 'biscuit', count: 1 } },
     { id: 'pate', name: 'SALMON PATE', desc: "THE PRINCESS'S FAVORITE. NOT FOR YOU. +8 XP FOR KEEPING HER HAPPY. SHE TAKES THE PLATE TOO.", price: 10, give: { kind: 'xp', amount: 8 } },
     { id: 'tonic_str', name: 'POTION OF STRENGTH', desc: '+1 STR. MORE PUNCH IN THE PUNCHES AND THE KICKS AND THE BOMBS. TASTES LIKE A GYM SOCK.', price: 120, give: { kind: 'stat', stat: 'str', amount: 1 } },
     { id: 'tonic_con', name: 'POTION OF CONSTITUTION', desc: '+1 CON. +2 MAX HP. YOUR LIVER WILL FILE A FORMAL COMPLAINT.', price: 120, give: { kind: 'stat', stat: 'con', amount: 1 } },
