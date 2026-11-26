@@ -45,6 +45,7 @@ const J = [
   { n: 'hud', s: 'hud', steps: [['frames', 30], ['shot', 'hud_street']] },
   { n: 'hud_night', s: 'hud_night', steps: [['frames', 30], ['shot', 'hud_night']] },
   { n: 'hud_level', s: 'hud_level', steps: [['frames', 30], ['shot', 'hud_level'], ['eval', 'DCW.save.run.selected="jug"; 1'], ['frames', 6], ['shot', 'hud_cycle']] },
+  { n: 'hud_wanted', s: 'hud_wanted', steps: [['frames', 30], ['shot', 'hud_wanted']] },
   { n: 'hud_low', s: 'hud_low', steps: [['frames', 30], ['shot', 'hud_low']] },
   { n: 'pause', s: 'pause', steps: [['frames', 10], ['shot', 'pause'], ...tap('up'), ...tap('confirm', 5), ['shot', 'pause_quit_confirm']] },
   { n: 'pause_level', s: 'pause_level', steps: [['frames', 10], ['shot', 'pause_level'], ...taps('up', 2), ...tap('confirm', 5), ['shot', 'pause_flee_confirm'], ...tap('up'), ...tap('confirm', 40), ['eval', 'window.__calls.join(" ")']] },

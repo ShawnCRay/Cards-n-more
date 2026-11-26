@@ -9,7 +9,10 @@ const runs = [
   ['index', ''], ['title', 'debug&scene=title'], ['classPick', 'debug&scene=classPick'], ['inn', 'debug&scene=inn'], ['inn_narwhal', 'debug&scene=inn&inn=narwhal&act=2'],
   ['club', 'debug&scene=club&act=2'], ['map', 'debug&scene=map'], ['ending', 'debug&scene=ending'], ['ending_early', 'debug&scene=ending&kind=early'],
   ['ending_collapse', 'debug&scene=ending&kind=collapse'], ['death', 'debug&scene=death&cause=guard'], ['results', 'debug&scene=results'],
-  ['cinema_arrival', 'debug&cinema=arrival'], ['cinema_tour', 'debug&cinema=tour'], ['area_village', 'debug&area=village']
+  ['cinema_arrival', 'debug&cinema=arrival'], ['cinema_tour', 'debug&cinema=tour'], ['area_village', 'debug&area=village&flags=toured,map_village'],
+  ['area_settlement_night', 'debug&area=settlement&act=2&night&flags=settled,gumgum_asked'],
+  ['lv_lemurs', 'debug&level=a1_lemurs', 'level'], ['lv_barricade', 'debug&level=a1_barricade', 'level'], ['lv_escape', 'debug&level=a3_escape', 'level'],
+  ['lv_bigtop', 'debug&level=a1_bigtop', 'level'], ['lv_show', 'debug&level=a2_danger_zone', 'level'], ['lv_mongo', 'debug&level=a2_mongo', 'level']
 ];
 (async () => {
   const browser = await chromium.launch();
@@ -20,7 +23,7 @@ const runs = [
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   const base = 'file://' + path.resolve(__dirname, '../index.html');
-  for (const [name, q] of runs) {
+  for (const [name, q, mode] of runs) {
     errors = [];
     await page.goto(base + (q ? '?' + q : ''));
     await page.waitForTimeout(700);
@@ -28,7 +31,8 @@ const runs = [
     const el = await page.$('#screen');
     await el.screenshot({ path: path.join(out, 'real_' + name + '.png') });
     // poke a few buttons to make sure the screen takes input without errors
-    for (const b of ['down', 'confirm', 'up', 'back', 'start', 'back']) { await page.evaluate(b => DCW.pressKey(b, 1), b); await page.evaluate(() => DCW.stepFrames(20)); }
+    const keys = mode === 'level' ? ['right', 'right', 'attack', 'start'] : ['down', 'confirm', 'up', 'back', 'start', 'back'];
+    for (const b of keys) { await page.evaluate(b => DCW.pressKey(b, b === 'right' ? 30 : 1), b); await page.evaluate(() => DCW.stepFrames(20)); }
     await el.screenshot({ path: path.join(out, 'real_' + name + '_b.png') });
     const sc = await page.evaluate(() => { for (const k in DCW.ui.scenes) if (DCW.ui.scenes[k] === DCW.scene) return 'ui.' + k; return DCW.scene === (DCW.stage && DCW.stage.scene) ? 'stage' : '?'; });
     console.log(name + ' [' + sc + ']: ' + (errors.length ? 'ERRORS\n  ' + errors.slice(0, 8).join('\n  ') : 'ok'));

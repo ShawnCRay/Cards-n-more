@@ -486,6 +486,9 @@ for (const [id, a] of Object.entries(A)) {
     if (d.kind === 'cinema' && !D.cinema[d.target]) err(ww + ': cinema ' + d.target);
     if (d.kind === 'npc' && !has(D.talk, d.target)) err(ww + ': npc ' + d.target + ' has no D.talk');
     if (d.phase && !['any', 'day', 'night'].includes(d.phase)) err(ww + ': phase');
+    // convention (game.js default texts, flow_test.js): night locks say AFTER DARK, day locks say MORNING
+    if (d.phase === 'night' && d.lockText && !/AFTER DARK/.test(d.lockText)) err(ww + ': night lockText should say AFTER DARK');
+    if (d.phase === 'day' && d.lockText && !/MORNING/.test(d.lockText)) err(ww + ': day lockText should say MORNING');
     if (d.needsItem && !I[d.needsItem]) err(ww + ': needsItem ' + d.needsItem);
     useFlag(d.showIf, ww + '.showIf'); useFlag(d.hideIf, ww + '.hideIf'); useFlag(d.needs, ww + '.needs');
     if (d.lockText === undefined && (d.needs || d.needsItem)) warn(ww + ': needs without lockText');
@@ -668,7 +671,7 @@ for (const [id, list] of Object.entries(D.talk || {})) {
 }
 (D.mordecaiHints || []).forEach((h, i) => { useFlag((h.when || {}).flags, 'mordecaiHints[' + i + ']'); useFlag((h.when || {}).notFlags, 'mordecaiHints[' + i + ']'); text('mordecaiHints[' + i + ']', h.text); });
 texts('mordecai', D.mordecai, 20);
-for (const k of 'floorClear stageClear death levelUp lootbox revive boxEmpty lowHp bigCombo flee night day crime ban collapse cockroach guardKill earlyStairs edge'.split(' ')) texts('ai.' + k, (D.ai || {})[k], 3);
+for (const k of 'floorClear stageClear death levelUp lootbox revive boxEmpty lowHp bigCombo flee night day crime ban collapse cockroach guardKill earlyStairs edge import levelClear'.split(' ')) texts('ai.' + k, (D.ai || {})[k], 3);
 for (const [k, v] of Object.entries(D.ai || {})) if (!/^(floorClear|stageClear|death|levelUp|lootbox|revive|boxEmpty|lowHp|bigCombo|flee|night|day|crime|ban|collapse)$/.test(k)) texts('ai.' + k, v, 1);
 for (const [name, por] of Object.entries(D.who || {})) { if (!PORTRAITS.includes(por)) err('who.' + name + ': portrait ' + por); }
 
@@ -729,7 +732,17 @@ else {
   }
   if (!(CP.carlRaces || []).some(r => r.id === 'primal' && !r.locked)) err('classPick: primal must be pickable');
   if (!(CP.carlClasses || []).some(r => r.id === 'compensated_anarchist' && !r.locked)) err('classPick: compensated_anarchist must be pickable');
-  ['intro', 'raceAi', 'classAi', 'donutLines', 'mordecaiLines', 'outro'].forEach(k => lines('classPick.' + k, CP[k], 1));
+  ['intro', 'raceAi', 'classAi', 'donutLines', 'mordecaiLines', 'collapse', 'outro'].forEach(k => lines('classPick.' + k, CP[k], 1));
+}
+const CLUB = (D.clubs || {}).desperado;
+if (!CLUB) err('clubs.desperado missing (ui.js scenes.club reads it)');
+else {
+  text('clubs.desperado.name', CLUB.name, 32);
+  if (!D.shops[CLUB.shop]) err('clubs.desperado.shop ' + CLUB.shop);
+  if (!MUSIC.includes(CLUB.music)) err('clubs.desperado.music');
+  if (!BACKDROPS.includes(CLUB.theme)) err('clubs.desperado.theme');
+  lines('clubs.desperado.lines.door', CLUB.lines.door, 1); lines('clubs.desperado.lines.quint', CLUB.lines.quint, 1);
+  ['dance', 'bar'].forEach(k => (CLUB.lines[k] || []).forEach((g, i) => lines('clubs.desperado.lines.' + k + '[' + i + ']', g, 1)));
 }
 
 /* ---------------- story ---------------- */

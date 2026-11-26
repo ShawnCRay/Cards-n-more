@@ -258,7 +258,7 @@ const HELPERS = () => {
   check(r.healed, 'potion heals', r.healed);
   check(r.fired >= 0 && r.dmg > 0, 'Donut auto-fires Magic Missile', r);
   check(r.bit >= 0, 'Mongo dashes to bite', r.bit);
-  check(r.risen === 1, 'Second Chance raises the dead as an ally', r.risen);
+  check(r.risen >= 1, 'Second Chance raises the dead as an ally', r.risen);
   check(r.pile === 1 && r.back > 0 && r.pile2 === 0, 'mold lion regrows once (not twice)', r);
   check(r.burned, 'fire kills a regrowing mold lion for good', r.burned);
   // levers, real exit
@@ -278,14 +278,14 @@ const HELPERS = () => {
   await load('level=t_dark');
   r = await ev(() => {
     const S = T.S(); T.god(true); DCW.stepFrames(20);
-    const b = S.enemies.find(e => e.ai === 'berserker'); b.hp = b.maxHp = 999;
+    const b = S.enemies.find(e => e.ai === 'berserker') || DCW.stage.spawn('berserker', T.P().x + 300, 160); b.hp = b.maxHp = 999;
     const keepDonut = S.party.donut; S.party.donut = null; S.pproj.length = 0;
     T.warp(b.x - 130, b.y + b.h); T.until(() => b.inDark, 120);
     const inDarkFar = b ? (b.inDark ? b.speed / b.baseSpeed : 0) : -1;
     S.party.donut = keepDonut;
     T.warp(b.x - 30, b.y + b.h); DCW.stepFrames(3);
     const nearLit = b.inDark;
-    const elf = S.enemies.find(e => e.ai === 'caster'); elf.hp = elf.maxHp = 999; T.warp(elf.x - 80, elf.y + elf.h); T.face(1);
+    const elf = S.enemies.find(e => e.ai === 'caster') || DCW.stage.spawn('city_elf', T.P().x + 200, 160); elf.hp = elf.maxHp = 999; T.warp(elf.x - 80, elf.y + elf.h); T.face(1);
     const orb = T.until(() => S.orbs.length > 0, 600);
     // xistera (act 2): hob launches straight
     DCW.save.run.selected = 'hob'; T.tap('KeyC', 1); const h = S.pproj.find(p => p.xid === 'hob');

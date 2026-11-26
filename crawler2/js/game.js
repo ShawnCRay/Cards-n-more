@@ -283,6 +283,7 @@
     }
     r.area = areaId; r.levelId = null; r.inInn = null; r.inClub = null;
     if (entry && typeof entry === 'object' && entry.x !== undefined) r.areaX = entry.x;
+    r.flags['visited_' + areaId] = true;   // the map screen shows where you have been
     persist();
     var sc = DCW.stage && DCW.stage.scene;
     go(sc || fallbackScene('STREET MODULE MISSING'), { areaId: areaId, entry: entry || 'left' });
@@ -557,6 +558,13 @@
 
   /* ---------------- inns, clubs, crafting ---------------- */
   G.innDef = function (id) { return (D().inns || {})[id] || { name: 'INN', price: 10 }; };
+  G.innPrice = function (id) { var r = G.run; return Math.round((G.innDef(id || (r && r.inInn)).price || 10) * actScale()); };
+  G.pickClass = function (race, klass) {
+    var r = G.run; if (!r) return;
+    r.race = race || r.race; r.klass = klass || r.klass;
+    G.track('class_pick');
+    persist();
+  };
   G.enterInn = function (innId) {
     var r = G.run; if (!r) return;
     r.inInn = innId || r.inInn || 'pug'; r.levelId = null; persist();
@@ -583,7 +591,7 @@
       G.track('rest');
       return { ok: true, msg: 'YOU DRINK UNTIL DARK. NIGHT FALLS.' };
     }
-    var price = Math.round((inn.price || 10) * actScale());
+    var price = G.innPrice(innId || r.inInn);
     if (r.gold < price) { sfx('error'); return { ok: false, msg: 'NOT ENOUGH GOLD (' + price + ')' }; }
     r.gold -= price;
     G.advanceClock(hoursUntil(7));

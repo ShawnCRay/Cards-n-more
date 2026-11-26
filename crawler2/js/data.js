@@ -2087,7 +2087,7 @@
         '3': { kind: 'level', target: 'a1_solo', label: "SIGNET'S LAIR", sprite: 'manhole', showIf: 'lions_done', hideIf: 'solo_done' },
         '4': { kind: 'level', target: 'a1_heather', label: 'HUNTING GROUND', sprite: 'gate', showIf: 'solo_done', hideIf: 'heather_done' },
         '5': { kind: 'level', target: 'a1_bigtop', label: 'THE BIG TOP', sprite: 'tent_flap', showIf: 'has_ticket', hideIf: 'circus_gone',
-               needsItem: 'big_top_ticket', phase: 'night', lockText: 'THE BIG TOP OPENS AT SUNDOWN. CIRCUS HOURS. REST AT THE PUG: WAIT FOR NIGHT.' },
+               needsItem: 'big_top_ticket', phase: 'night', lockText: 'THE BIG TOP OPENS AT SUNDOWN. COME BACK AFTER DARK. AT THE PUG YOU CAN WAIT FOR NIGHT.' },
         '6': { kind: 'level', target: 'a1_barricade', label: 'BACK TO DONUT', sprite: 'alley_mouth', showIf: 'bigtop_done', hideIf: 'circus_gone' },
         '7': { kind: 'stairs', label: 'STAIRWELL TO FLOOR 4', sprite: 'stairs_down', showIf: 'circus_gone' },
         '8': { kind: 'area', target: 'ruins_e', entry: 'left', label: 'EAST ROAD', sprite: 'gate',
@@ -2136,7 +2136,7 @@
         'B': { kind: 'cinema', target: 'recap', label: 'THE BIG SCREEN', sprite: 'sign', showIf: 'settled' },
         '7': { kind: 'level', target: 'a2_danger_zone', label: 'TRAILER LOT', sprite: 'trailer', showIf: 'divider_done' },
         '8': { kind: 'level', target: 'a2_apito', label: 'APITO EDUCATION CENTER', sprite: 'door_school', showIf: 'show_done',
-               phase: 'day', lockText: 'CLOSED FOR THE NIGHT. EVEN CULTS KEEP OFFICE HOURS. COME BACK IN DAYLIGHT.' },
+               phase: 'day', lockText: 'CLOSED FOR THE NIGHT. EVEN CULTS KEEP OFFICE HOURS. COME BACK IN THE MORNING.' },
         '9': { kind: 'level', target: 'a2_alley_night', label: 'BACK ALLEY', sprite: 'alley_mouth', showIf: 'katia_joined',
                phase: 'night', lockText: 'JUST AN ALLEY BY DAY. AT NIGHT THE SHADOW LEAKS COME OUT. COME BACK AFTER DARK.' },
         'C': { kind: 'area', target: 'admin', entry: 'left', label: 'ADMINISTRATIVE DISTRICT', sprite: 'gate',
@@ -2159,11 +2159,11 @@
       guarded: true, rows: R.admin,
       doors: {
         '1': { kind: 'level', target: 'a3_climb', label: 'MUNICIPAL BUILDING', sprite: 'door_admin', showIf: 'mongo_big', hideIf: 'quill_dead',
-               phase: 'night', lockText: 'MISS QUILL IS AT HER DESK ALL DAY. THE MAGISTRATE ONLY COMES OUT AT NIGHT. SO DO YOU.' },
+               phase: 'night', lockText: 'MISS QUILL IS AT HER DESK ALL DAY. THE MAGISTRATE ONLY COMES OUT AFTER DARK. SO DO YOU.' },
         '2': { kind: 'level', target: 'a3_plant', label: "QUILL'S WINDOW", sprite: 'door_admin', showIf: 'climb_done', hideIf: 'quill_dead' },
         '3': { kind: 'level', target: 'a3_nest', label: 'THE WRECKAGE', sprite: 'manhole', showIf: 'quill_dead', hideIf: 'nest_done' },
         '4': { kind: 'level', target: 'a3_depot', label: 'GUARD DEPOT', sprite: 'gate', showIf: 'nest_done',
-               phase: 'night', lockText: 'THE SWORDSMEN ARE ON DUTY. AT NIGHT THEY SIT IN THE DEPOT IN STASIS. THAT IS WHEN YOU GO IN.' },
+               phase: 'night', lockText: 'THE SWORDSMEN ARE ON DUTY. AFTER DARK THEY SIT IN THE DEPOT IN STASIS. THAT IS WHEN YOU GO IN.' },
         '5': { kind: 'level', target: 'a3_escape', label: 'RUN!', sprite: 'gate', showIf: 'glass_broken', hideIf: 'escaped' }
       },
       edges: { left: { area: 'settlement', entry: 'right' }, right: { area: 'east_stairs', entry: 'left' } },
@@ -2183,7 +2183,7 @@
       guarded: false, rows: R.east_stairs,
       doors: {
         '1': { kind: 'level', target: 'x_park', label: 'OVERGROWN PARK', sprite: 'gate', phase: 'night',
-               lockText: 'IT IS JUST A PARK BY DAY. A SIGN SAYS: CLOSED AFTER DUSK. SO THAT IS WHEN THE GOOD STUFF COMES OUT.' },
+               lockText: 'IT IS JUST A PARK BY DAY. A SIGN SAYS CLOSED AT DUSK. COME BACK AFTER DARK. THAT IS WHEN THE GOOD STUFF COMES OUT.' },
         '2': { kind: 'npc', target: 'sealed_stairs', label: 'EASTERN STAIRWELL', sprite: 'stairs_down' }
       },
       edges: { left: { area: 'admin', entry: 'right' }, right: null },
@@ -2675,8 +2675,6 @@
     ],
 
     floor_open: [
-      { bg: 'guide_room', shake: 0.6, sfx: 'burst', lines: [
-        L(AI, "ATTENTION CRAWLERS! THE SECOND FLOOR HAS COLLAPSED! ANYONE STILL DOWN THERE IS NOW A FOND MEMORY! FLOOR THREE TIMER: EIGHT DAYS!") ] },
       { bg: 'panel:arrival', music: 'village', fade: true, lines: [
         L(AI, "WELCOME TO THE OVER CITY! A FAKE SKY, A RED SUN AND THREE HUNDRED THOUSAND SQUARE KILOMETERS OF RUINS ON TOP OF A SLEEPING VOLCANO."),
         L(AI, "THE MONSTERS ARE THE CHILDREN OF A POISON CATACLYSM. THE VILLAGES ARE SAFE BY DAY. THE CRAWLERS ARE SNACKS BY NIGHT. HAVE A GREAT FLOOR!"),
@@ -3255,6 +3253,11 @@
       L(CARL, "I DIDN'T KNOW. I SWEAR. OKAY. I KNEW A LITTLE. SHE SAID IT WAS TO KEEP YOU SAFE TOO."),
       L('MORDECAI', "I AM LEVEL 50 AND I HAVE BEEN DOWN HERE LONGER THAN YOUR PLANET HAD TELEVISION. AND A CAT JUST SIGNED ME. I NEED A DRINK. I NEED SEVERAL.")
     ],
+    collapse: [
+      L(AI, "ATTENTION CRAWLERS! THE SECOND FLOOR HAS COLLAPSED! ANYONE STILL DOWN THERE IS NOW A FOND MEMORY! FLOOR THREE TIMER: EIGHT DAYS!"),
+      L(CARL, "WAIT. I'M STILL PICKING. THE CLOCK STARTED WHILE I'M STANDING IN A CLOSET READING A MENU?"),
+      L('MORDECAI', "WELCOME TO THE THIRD FLOOR. NOBODY WAITS FOR YOU HERE. PICK.")
+    ],
     outro: [
       L(AI, "RACE AND CLASS LOCKED IN! YOUR STAT POINTS HAVE BEEN DISTRIBUTED! CARL IS A LEVEL 13 PRIMAL COMPENSATED ANARCHIST! DONUT IS A LEVEL 13 CAT FORMER CHILD ACTOR!"),
       L(AI, "STEP THROUGH THE DOOR, CRAWLERS. THE OVER CITY IS WAITING. IT IS HUNGRY. IT IS ALWAYS HUNGRY.")
@@ -3704,6 +3707,17 @@
       "ALCHEMY! MOONSHINE PLUS RAG PLUS FIRE EQUALS ONE JUG O'BOOM AND ONE VERY UPSET FIRE MARSHAL.",
       "CRAFTED! IT IS STILL MOSTLY MOONSHINE. IT IS NOW ALSO MOSTLY EXPLOSIVE."
     ],
+    import: [
+      "WELL, WELL. A RETURNING CONTESTANT! THE AUDIENCE REMEMBERS YOU. MOSTLY YOUR FEET.",
+      "BOOK ONE SAVE DETECTED! YOUR OLD OUTFITS HAVE BEEN DRY CLEANED. THE SMELL WOULD NOT COME OUT. WE TRIED.",
+      "A VETERAN! LEVELS DO NOT CARRY OVER, BUT YOUR WARDROBE DOES. AND YOUR REPUTATION. MOSTLY THE BAD PARTS."
+    ],
+    levelClear: [
+      "CLEARED! THE LOCALS ARE DEAD AND THE LOOT IS YOURS. A CLASSIC LOVE STORY.",
+      "DONE! WE WOULD GIVE IT A SEVEN. THE CAT WOULD GIVE IT A FOUR.",
+      "THAT IS HOW YOU DO IT! OR AT LEAST, THAT IS ONE WAY. A LOUD, MESSY, BAREFOOT WAY.",
+      "LEVEL DONE! THE CLOCK TICKED. THE FLOOR IS STILL COLLAPSING. NO PRESSURE. ALL THE PRESSURE."
+    ],
     cockroach: [
       "PRINCESS DONUT'S COCKROACH SKILL ACTIVATES! ZERO HIT POINTS AND STILL ALIVE! UNCONSCIOUS, BUT ALIVE! THE URCHINS ARE COMING FOR YOU NOW, CARL!",
       "THE BARRICADE IS DOWN! THE CAT SURVIVED A HIT THAT SHOULD HAVE ENDED HER! THE TUMBLEWEEDS HAVE NOTICED YOU INSTEAD. GOOD LUCK!",
@@ -3728,6 +3742,32 @@
       "SWEET DREAMS, CRAWLER! THE CLOCK KEPT TICKING WHILE YOU SLEPT. IT ALWAYS DOES.",
       "RESTED! HP FULL! TIME GONE! THERE IS ALWAYS A PRICE, AND IT IS USUALLY HOURS."
     ]
+  };
+
+  /* the Desperado Club (ui.js scenes.club): Clarabelle at the door, Quint's pharmacy */
+  D.clubs = {
+    desperado: { name: 'THE DESPERADO CLUB', shop: 'quint', music: 'club', theme: 'club',
+      lines: {
+        door: [
+          { who: 'CLARABELLE', text: "MEMBERS ONLY. YOU HAVE THE TATTOO. FINE. THE DINOSAUR GOES IN THE PLAYROOM. THE PLAYROOM IS NOT SAFE. THAT'S THE FUN PART." },
+          { who: 'CLARABELLE', text: "CLARABELLE. LEVEL 40. CROCODILIAN. NO FIGHTING. I EAT FIGHTERS. I'M NOT JOKING. I'M NOT EVEN HUNGRY RIGHT NOW AND I WOULD." },
+          { who: 'CLARABELLE', text: "THE GIRL WITH THE DOGS TORE THIS PLACE UP LAST NIGHT. IF YOU SEE HER, TELL HER CLARABELLE REMEMBERS. CLARABELLE ALWAYS REMEMBERS." }
+        ],
+        quint: [
+          "PHARMACY. QUINT. WHAT DO YOU NEED.",
+          "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS.",
+          "NO, I WON'T SAY IT IN THE VOICE. EVERYBODY WANTS THE VOICE."
+        ],
+        dance: [
+          [{ who: 'DONUT', text: "CARL. YOU DANCE LIKE A SHOPPING CART WITH A BAD WHEEL. A VERY ENTHUSIASTIC SHOPPING CART." }],
+          [{ who: 'SYSTEM AI', text: "THE DISCO BALL IS SPINNING! THE NEON IS FLASHING! THE CRAWLER IS DOING THE ROBOT! TWO OF THOSE THINGS ARE ON PURPOSE!" }],
+          [{ who: 'CARL', text: "IT'S VEGAS, MARDI GRAS AND A ROLLER RINK FROM 1978. I'M DOING THE HUSTLE. NOBODY CAN STOP ME." }, { who: 'DONUT', text: "SOMEBODY SHOULD." }]
+        ],
+        bar: [
+          [{ who: 'DONUT', text: "A DIRTY SHIRLEY, PLEASE. EXTRA CHERRIES. I AM A CELEBRITY. I SAVED A CIRCUS." }, { who: 'CARL', text: "A BEER. ANYTHING COLD THAT ISN'T MOVING." }],
+          [{ who: 'MORDECAI', text: "(AT THE END OF THE BAR, FACE DOWN) ...THE WHOLE BOTTLE. NO, THE OTHER WHOLE BOTTLE." }]
+        ]
+      } }
   };
 
   /* Mordecai at the inns: Level 50 Incubus, Donut's bound manager. Drunk, bitter, brilliant. */

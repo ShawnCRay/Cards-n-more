@@ -7,6 +7,24 @@
    Contract: ../DESIGN.md sections 4-8 (+ book 1's stage contract).
    Every call into art/audio/ui/game/data is feature-detected so
    the stage runs standalone with fixture data (tools/stage_*).
+
+   Optional data fields read here (beyond DESIGN 6):
+   - level: clearToExit (exit locked until hostiles + regrow piles are gone),
+     party: [...] (game.party override), rescueFlag, rescueLines, bossMusic,
+     debrisProj (drop), survival.barricadeHp|guardHp, survival.breakLines,
+     plant.finale: 'handoff' (no blast: detonator handed to Katia),
+     escape.burstText[4], escape.rainProj, escape.cause, detonateSub.
+   - enemy: group (swarm size), reach (stilt), dropRange, hiddenUntilSeen (perch),
+     maxKids|maxSpawn, angerTime (urchin), orbEvery/orbR/orbTime (caster),
+     charmEvery/charmTime, berserkSpeed|chargeSpeed, ringR, regrowTime,
+     bodyHp/leash/body (krasue), invulnerable.
+   - boss: custard: 0.25 | ticket: {below, sprite, sub, lines}, curedLines,
+     facade, camo (body alpha), boomyMul, fearImmune, music.
+   - area: enemiesAfter: {flag, day, night}, citizenCount, signpostText.
+   HUD object passed to DCW.ui.drawHUD adds: clock, objective, explosive {id,count,name},
+   explosives {jug,hob,dyn,smoke}, party [ids], timer {label,t,warn} | null,
+   meters [{label,frac,text,color}], specialLocked, mode, kind, night, wanted, charmed, player ('carl'|'mongo').
+   Donut sits at Carl's feet + DCW.artActorsKit.carlShoulder (mirrored by facing).
    ============================================================ */
 (function () {
   'use strict';
@@ -1694,6 +1712,11 @@
     if (S.done || P.state === 'victory') return;
     if (S.isBoss && S.boss && !S.boss.dead) { numText(cx(o), o.y - 6, 'LOCKED', '#f83800'); sfx('error'); return; }
     if (S.plant && !S.plant.detonated) { if (!(S.lockMsgT > 0)) { S.lockMsgT = 2; sfx('error'); numText(cx(o), o.y - 6, 'NOT DONE HERE', '#f83800'); } return; }
+    if (S.def.clearToExit) {
+      var left = S.regrows.length;
+      for (var i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && e.hostile && !e.citizen && e.state !== 'gone') left++; }
+      if (left > 0) { if (!(S.lockMsgT > 0)) { S.lockMsgT = 2; sfx('error'); numText(cx(o), o.y - 6, 'CLEAR THE AREA: ' + left + ' LEFT', '#f83800'); } return; }
+    }
     if (o.needs && !hasItem(o.needs)) {
       if (!(S.lockMsgT > 0)) {
         S.lockMsgT = 2.5;
@@ -4425,6 +4448,7 @@
     hud.stageName = S.def.name || ''; hud.areaName = S.mode === 'street' ? (S.def.name || '') : null;
     hud.mode = S.mode; hud.kind = S.kind; hud.night = S.night; hud.wanted = S.mode === 'street' && run.wanted === S.areaId;
     hud.charmed = S.player && S.player.charmT > 0;
+    hud.player = S.swap ? 'mongo' : 'carl';
     if (has(UI(), 'drawHUD')) { call(UI(), 'drawHUD', ctx, hud); return; }
     DCW.text('♥' + hud.hp + '/' + hud.maxHp + '  ' + (hud.explosive ? hud.explosive.id.toUpperCase() + 'X' + hud.explosive.count : '') + '  P' + (hud.potions || 0) + '  $' + hud.gold, 4, 4, '#fcfcfc');
     if (hud.special !== null) DCW.bar(4, 14, 40, 3, hud.special, '#f8d878');

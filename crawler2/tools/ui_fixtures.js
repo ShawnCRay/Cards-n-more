@@ -39,6 +39,7 @@
       if (this.p.meters) h.meters = this.p.meters;
       if (this.p.party) h.party = this.p.party;
       if (this.p.locked) h.specialLocked = true;
+      if (this.p.wanted) { h.wanted = true; h.charmed = true; h.timer = { t: 12, label: 'DAWN', warn: true }; }
       DCW.ui.drawHUD(ctx, h);
     }
   };
@@ -78,6 +79,7 @@
       case 'hud': DCW.setScene(fakeStage, { combo: 14 }); break;
       case 'hud_night': s.run.hour = 22; s.run.flags.katia_joined = true; DCW.setScene(fakeStage, { theme: 'settlement', night: true, party: ['donut', { id: 'mongo', state: 'stunned' }, 'katia'] }); break;
       case 'hud_level': s.run.levelId = 'a1_heather'; s.run.selected = 'dyn'; DCW.setScene(fakeStage, { level: true, boss: true, combo: 31, special: 1, theme: 'circus', timer: 25, timerLabel: 'ESCAPE', meters: [{ label: 'POISON', value: 0.7, color: '#58d854' }, { label: 'VIEWS', value: 0.3, color: '#f878f8', text: '1.2K' }] }); break;
+      case 'hud_wanted': DCW.setScene(fakeStage, { wanted: true }); break;
       case 'hud_low': s.run.hp = 2; s.run.hoursLeft = 18; s.run.items.jug = 0; DCW.setScene(fakeStage, { level: true, combo: 3, locked: true }); break;
       default:
         DCW.setScene(fakeStage, { level: /pause_level/.test(sc) });

@@ -939,7 +939,8 @@
     ctx.globalAlpha = 0.82; R(0, 0, W, 13, '#000'); ctx.globalAlpha = 1;
     R(0, 13, W, 1, '#1c1c3c');
     // player mini portrait
-    var who = h.player || (h.swap === 'mongo' ? 'mongo' : 'carl');
+    var swapMongo = h.swap === 'mongo' || (h.explosive === null && h.companion === 'mongo');
+    var who = h.player || (swapMongo ? 'mongo' : 'carl');
     R(0, 0, 14, 14, '#000'); R(0, 0, 14, 1, C.dgray); R(0, 13, 14, 1, C.dgray); R(0, 0, 1, 14, C.dgray); R(13, 0, 1, 14, C.dgray);
     miniPortrait(ctx, 'p_' + who, 1, 1);
     // hp bar (segmented) + numbers
@@ -968,7 +969,7 @@
       T(ex.n, x + 9, 3, ex.n > 0 ? C.white : C.red);
     }
     x += 22;
-    if (h.potions !== null) { icon(ctx, 'potion', x, 2); T(h.potions === undefined ? itemCount('potion') : h.potions, x + 9, 3, C.white); }
+    if (h.potions !== null && !(h.potions === undefined && swapMongo)) { icon(ctx, 'potion', x, 2); T(h.potions === undefined ? itemCount('potion') : h.potions, x + 9, 3, C.white); }
     x += 22;
     icon(ctx, 'coin', x, 2); T(fitText(h.gold || 0, 30), x + 9, 3, C.gold); x += 44;
     T('LV' + (h.level || 13), x, 2, C.green);
@@ -989,7 +990,7 @@
     // ---- second row ----
     var party = h.party === true ? partyList() : (Array.isArray(h.party) ? h.party : null);
     var timer = h.timer;
-    if (timer !== undefined && timer !== null && typeof timer !== 'object') timer = { t: +timer };
+    if (timer !== undefined && timer !== null && typeof timer !== 'object') timer = { t: +timer, label: h.timerLabel };
     var obj = h.objective === true ? objectiveInfo() : h.objective;
     if (obj && typeof obj === 'object') obj = obj.text;
     var partyW = party && party.length ? party.length * 13 + 4 : 0;
@@ -1011,10 +1012,10 @@
       });
     }
     if (timer && timer.t !== undefined && !isNaN(timer.t)) {
-      var secs = Math.max(0, timer.t), warn = timer.warn === undefined ? 30 : timer.warn;
-      var tcol = timer.color || (secs <= warn ? (blink(4) ? C.red : C.white) : C.white);
+      var secs = Math.max(0, timer.t), urgent = typeof timer.warn === 'boolean' ? timer.warn : secs <= (timer.warn === undefined ? 30 : timer.warn);
+      var tcol = timer.color || (urgent ? (blink(4) ? C.red : C.white) : C.white);
       T(fmtTime(Math.ceil(secs)), 160, 16, tcol, { align: 'center', scale: 2 });
-      if (timer.label) T(up(timer.label), 160, 32, secs <= warn ? C.red : C.gray, { align: 'center' });
+      if (timer.label) T(up(timer.label), 160, 32, urgent ? C.red : C.gray, { align: 'center' });
     }
     var meters = Array.isArray(h.meters) ? h.meters : (h.meter ? [h.meter] : []);
     var my = party && party.length ? 30 : 16;
@@ -1026,6 +1027,10 @@
       T(lab2, 260, yy, C.white, { align: 'right' });
       if (mt.text !== undefined) T(up(mt.text), 290, yy + 7, C.gray, { align: 'center', shadow: null });
     });
+    // street law + incubus charm
+    var flagY = timer ? 42 : obj ? 27 : 16;
+    if (h.wanted) { var wt = 'WANTED! RUN FOR THE RUINS'; DCW.box(160 - tw(wt) / 2 - 5, flagY, tw(wt) + 10, 11, { fill: '#5c0000', border: blink(4) ? C.red : C.gold }); T(wt, 160, flagY + 2, C.white, { align: 'center' }); flagY += 13; }
+    if (h.charmed) { var ct = '♥ CHARMED: ◀▶ SWAPPED ♥'; T(ct, 160, flagY + 2, blink(5) ? C.pink : C.purple, { align: 'center' }); }
     // explosive name popup after cycling
     if (ex && hudS.selT > 0) {
       var en = itemName(ex.id) + ' ×' + ex.n, ew = tw(en) + 8;
@@ -1053,6 +1058,7 @@
       R(8, 173, Math.round(304 * bf), 4, '#d82800'); R(8, 173, Math.round(304 * bf), 1, '#fc7460');
     } else hudS.bossTrail = null;
   };
+  ui.hudMeters = true; // drawHUD draws h.meters and h.timer (rooms.js / show.js check this)
   // a HUD object built from the run (for scenes that don't track their own numbers)
   ui.hudFromRun = function (extra) {
     var run = getRun() || {}, st = pStats(), lv = run.level || 13;

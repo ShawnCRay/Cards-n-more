@@ -43,7 +43,7 @@ const INDEX = 'file://' + path.resolve(__dirname, '../index.html');
       const T = (x, y) => { const tx = Math.floor(x / 16), ty = Math.floor(y / 16); if (tx < 0 || tx >= s0.L.w || ty < 0 || ty >= s0.L.h) return 0; return s0.L.t[ty * s0.L.w + tx]; };
       let f, end = null, jt = 0, helped = [];
       const street = s0.mode === 'street';
-      const budget = street ? 1500 : 5400;
+      const budget = street ? 1500 : (s0.surv ? Math.round(s0.surv.total * 60) + 900 : 5400);
       let dir = 1;
       for (f = 0; f < budget; f++) {
         const s = DCW.stage.state;
