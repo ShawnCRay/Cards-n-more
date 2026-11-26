@@ -66,7 +66,9 @@ the request in your final report.
   `DCW.bar(x,y,w,h,frac,color,back)`.
 - Utils `DCW.U`: `clamp lerp sign rand randi chance pick shuffle(arr,rnd) rng(seed) hash(str) overlap(a,b) approach weighted([[item,w]],rnd) fmtTime fmtNum`.
 - Save: `DCW.save` (live object), `DCW.persist()`, `DCW.resetSave()`. Settings in `DCW.save.settings`
-  `{music, sfx, shake, crt, touch:'auto'|'on'|'off'}`; after changing call `DCW.applyCrt()` / `DCW.applyTouchSetting()` / `DCW.audio.setVolumes()`.
+  `{music, sfx, shake, crt, touch:'auto'|'on'|'off', easy, fancy}`; after changing call `DCW.applyCrt()` / `DCW.applyTouchSetting()` / `DCW.audio.setVolumes()`.
+  `fancy` (FANCY EFFECTS, default on) gates the heavy stage lighting and ambient background life; read it with `DCW.fancy()`.
+  All screen shake and camera kicks obey `shake`.
 - `DCW.debug` true with `?debug` in the URL. `DCW.params` is the URLSearchParams.
 - Test hooks: `DCW.stepFrames(n)` advances n frames synchronously; `DCW.pressKey(btn, frames)`.
 
@@ -169,8 +171,9 @@ the level they'd naturally be (about level `1 + (N-1)*2.5`), and bosses take ~45
 All under `DCW.data`.
 
 ### Themes (ids are fixed; art draws them)
-Side-scroll themes: `sewer cave city circus swamp train bubble forest castle ruin warzone safe`.
-Overworld themes: `ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war`.
+Side-scroll themes: `sewer cave city circus swamp train bubble forest castle ruin warzone safe`
+(+ `ghosttown ghostmine` for Floor 8).
+Overworld themes: `ow_city ow_rail ow_reef ow_woods ow_manor ow_waste ow_war` (+ `ow_town` for Floor 8).
 
 ### floors
 ```js
@@ -358,14 +361,22 @@ DCW.art.tile(ctx, theme, ch, x, y, ctxInfo)  // top-left 16x16 for chunk chars '
 DCW.art.background(ctx, theme, camX, camY)  // fills the whole screen; parallax layers
 DCW.art.owTile(ctx, owTheme, ch, x, y, info) // overworld 16x16 tile for '#','.',',','=','~','T' (info like tile)
 DCW.art.boxColor(tier) -> css color
+DCW.art.bgLights(theme, camX, camY, out) // pushes screen-space lights {x, y, r, c:[r,g,b], i} from the theme's
+  // background (torches etc., at their parallax positions) for the stage light map. BG specs may define
+  // `lights(out, camX, camY, t, oy)`, and a parallax layer may carry `after(ctx, camX, camY, t, oy)` to draw
+  // animated life right after that layer (so depth reads right).
 ```
 
 Required sprite names (all face right):
-- Player (16x24-ish): `carl_idle`(2) `carl_run`(4) `carl_jump` `carl_fall` `carl_punch`(2)
-  `carl_kick`(2) `carl_airkick` (diving stomp kick) `carl_throw` `carl_hurt` `carl_dead`
+- Player (16x24-ish): `carl_idle`(5: rest, inhale, exhale, blink, glance back) `carl_run`(8: contact,
+  down, pass, up, then the far leg leading) `carl_jump`(2: rise, apex) `carl_fall`(2: drop, flail)
+  `carl_land`(2: squash, recover) `carl_skid` (turning at speed, faces the new direction) `carl_crouch`
+  `carl_punch`(5: chamber, jab, cross, haymaker windup, haymaker) `carl_kick`(3: chamber, extended,
+  anticipation) `carl_airkick` (diving stomp kick) `carl_throw` `carl_hurt` `carl_dead`
   `carl_climb`(2) `carl_victory`; overworld: `carl_ow_down`(2) `carl_ow_up`(2) `carl_ow_side`(2).
   All support `skin`.
-- Companions (~16x14): `donut_idle`(2) `donut_run`(2) `donut_act`; same for `mongo_*`,
+- Companions (~16x14): `donut_idle`(6: rest, breath, tail curl, tail flick, ear twitch, blink) `donut_run`(6, bounding
+  gallop, 18x13) `donut_act`; frame order is a contract with stage.js timelines; same for `mongo_*`,
   `katia_*`, `zev_*`, `squeaks_*`.
 - Enemies (12-24 px): `<id>_walk`(2) `<id>_attack` `<id>_hurt` for ids:
   `rat roach goblin goblin_archer goblin_brute bat grub shaman juicer_minion clown clown_brute
@@ -373,6 +384,9 @@ Required sprite names (all face right):
   masked_noble ghoul gargoyle skeleton mutant drone golem soldier sniper war_beast cultist`.
 - Bosses (32-64 px): `<id>_idle(2) _walk(2) _attack _hurt _special` for
   `hoarder juicer ringmaster engineer tidemother butcher bride overseer showrunner`.
+- Floor 8 retheme (THE GHOSTS OF EARTH): enemies `wampus_cat mountain_light woodbooger sheepsquatch
+  mothling`, boss `mothman` (+ `p_mothman`; replaces overseer in data), quest items `qi_lamp qi_beacon`.
+  Floor 8 no longer uses mutant/drone/golem/overseer, but floors 9-10 still use the first three.
 - Projectiles/fx: `arrow rock fireball bubble bolt bottle laser_orb knife spore note missile`
   `bomb` `explosion`(5) `hit`(3) `dust`(3) `sparkle`(4) `shockwave`(2) `smoke`(3)
 - Pickups/objects: `coin`(4) `snack` `bomb_pickup` `potion` `box_bronze box_silver box_gold box_platinum
@@ -416,14 +430,14 @@ turn it on), `w` white detail. Skins may also set any of these to `null`.
 
 | Floor | Name idea | Layout | Side-scroll themes | Enemies | Boss | Boss unlock |
 |---|---|---|---|---|---|---|
-| 1 | Tutorial dungeon / sewers under the city | linear: 2 stages, safe room, boss | sewer | rat roach goblin bat | hoarder | companion `squeaks` |
-| 2 | Goblin warrens | linear: 3 stages, safe room, boss | cave | goblin goblin_archer goblin_brute grub shaman bat juicer_minion | juicer | companion `mongo` |
+| 1 | The First Floor (tutorial; sewers stand in for the books' torchlit tunnels) | linear: 2 stages, safe room, boss | sewer | rat roach goblin bat | hoarder | companion `squeaks` |
+| 2 | The Second Floor (last training level; goblin tunnels) | linear: 3 stages, safe room, boss | cave | goblin goblin_archer goblin_brute grub shaman bat juicer_minion | juicer | companion `mongo` |
 | 3 | The over city (FIRST OVERWORLD) | overworld `ow_city` | city circus swamp | clown clown_brute skyfowl swamp_troll gator rat | ringmaster | skin `carl_clown` |
-| 4 | The rail tangle | overworld `ow_rail` | train city | steam_goblin conductor rail_rat bat | engineer | companion `katia` |
-| 5 | The bubble sea | overworld `ow_reef` | bubble swamp | fishman jelly crab gator | tidemother | skin `carl_hazmat` |
+| 4 | The Iron Tangle | overworld `ow_rail` | train city | steam_goblin conductor rail_rat bat | engineer | companion `katia` |
+| 5 | The Bubbles (one bubble's sea quadrant) | overworld `ow_reef` | bubble swamp | fishman jelly crab gator | tidemother | skin `carl_hazmat` |
 | 6 | The hunting grounds | overworld `ow_woods` | forest | hunter hound masked_noble skyfowl | butcher | companion `zev` |
 | 7 | The bedlam manor | overworld `ow_manor` | castle | ghoul gargoyle skeleton bat | bride | skin `carl_bodyguard` |
-| 8 | The ruin | overworld `ow_waste` | ruin city | mutant drone golem | overseer | skin `carl_kilt` |
+| 8 | The ghosts of Earth (a replica West Virginia river town on December 10th; ghost townsfolk, Appalachian folklore) | overworld `ow_town` | ghosttown ghostmine | wampus_cat mountain_light woodbooger sheepsquatch mothling | mothman | skin `carl_kilt` |
 | 9 | Faction wars (finale) | overworld `ow_war` | warzone | soldier sniper war_beast cultist + mix | showrunner | skin `carl_gold`, game won |
 
 Other skins (`carl_jacket`, `carl_pajamas`, `carl_toga`) come from loot boxes and achievements.
@@ -481,6 +495,12 @@ arcing), use potion, companion special (special button when meter full: meter fi
 damage dealt and over time). Companion follows the player and uses its ability on cooldown.
 Combo counter: hits within 2s chain; views gained per kill scale with combo.
 Debug (`DCW.debug`): key `9` (code Digit9) clears the stage, `0` toggles god mode.
+Lighting: stage.js builds one dithered light map per frame (ambient + colored lights from the
+background, Carl, projectiles, blasts, pickups, doors, hazards). Per-theme config lives in `LIGHTING`
+(Floor 1 `tunnels` uses it); `dark` stages use the same path with a near-black ambient. The background is
+multiplied by the map, tiles and actors by "lifted" copies so gameplay stays readable. Ambient life that never
+collides (drips, rumble grit) is per-theme in `AMBIENT`. Juice: camera kick on hits, slow motion on a combo
+finisher (10+) and boss phase changes, sprite-colored gibs, landing dust scaled by fall height.
 
 ## Update 2: quests, rescues, levers (binding for this update)
 
@@ -501,7 +521,7 @@ item, and in-level levers open gates.
   spirits sweeps the screen.
 - No loot table may contain `{kind:'companion'}`. No boss `unlock` may be a companion.
   Boss skin unlocks: hoarder `carl_jacket`, ringmaster `carl_clown`, tidemother `carl_hazmat`,
-  bride `carl_bodyguard`, overseer `carl_kilt`, showrunner `carl_gold`; juicer, engineer, butcher: none.
+  bride `carl_bodyguard`, overseer (now mothman) `carl_kilt`, showrunner `carl_gold`; juicer, engineer, butcher: none.
 
 ### New data
 ```js

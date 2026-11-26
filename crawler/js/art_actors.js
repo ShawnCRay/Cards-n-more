@@ -171,6 +171,7 @@
     b: C.W,        // boxers
     B: '#f83800',  // boxer hearts
     l: '#fce0a8',  // lower legs (bare)
+    L: '#fca044',  // far leg (shaded, sits behind the near leg in stride poses)
     f: '#fce0a8',  // feet (bare)
     F: '#fca044',  // toes / sole shade
     a: null, A: null // accessory layer (off by default; skins below paint real accessories)
@@ -195,6 +196,9 @@
   var HEAD_SIDE_OPEN = headVar(null, null, '..SsssmwwmS.', '..SSsSmmmS..');
   var HEAD_SIDE_HURT = headVar('hhSssmsssms.', 'hSkSsseSsse.', '..SssmmmmmS.', null);
   var HEAD_SIDE_HAPPY = headVar('hhSsssmssms.', 'hSkSsmsmmsm.', '..SssmwwwmS.', '..SSsSmmmS..');
+  var HEAD_SIDE_BLINK = headVar('hhSssssssss.', 'hSkSseessee.', null, null);
+  var HEAD_SIDE_LOOK = headVar('hhSssewssew.', 'hSkSsewssew.', null, null);
+  var HEAD_SIDE_GRIT = headVar('hhSsseSsseS.', 'hSkSswesswe.', '..SsswwwwmS.', '..SSsmmmmS..');
   var HEAD_BACK = [
     '..hhhhhhhh..',
     '.hhhhhhhhhh.',
@@ -217,6 +221,9 @@
     open: { g: HEAD_SIDE_OPEN, view: 'side' },
     hurt: { g: HEAD_SIDE_HURT, view: 'side' },
     happy: { g: HEAD_SIDE_HAPPY, view: 'side' },
+    blink: { g: HEAD_SIDE_BLINK, view: 'side' },
+    look: { g: HEAD_SIDE_LOOK, view: 'side' },
+    grit: { g: HEAD_SIDE_GRIT, view: 'side' },
     back: { g: HEAD_BACK, view: 'back' }
   };
 
@@ -257,105 +264,313 @@
     '....ffFF.ffFF...'
   ]);
 
-  // run frames (bodies authored with legs in stride)
-  var B_RUN = [
-    body([
-      '.....jjtttjj....',
-      '....vjqtttqjvv..',
-      '...vvjqtTtqjvVs.',
-      '..vVvjqtttqj.ss.',
-      '..ss.jqtTtqj....',
-      '..ss.jqtttqj....',
-      '.....jjbbbjj....',
-      '.....bBbbbBb....',
-      '....bbbbBbbbb...',
-      '...bbb...bbbl...',
-      '...lll....lll...',
-      '..lll......llff.',
-      '.lll.......fFF..',
-      'ffFF............'
+  /* ---- Full-canvas pose bodies (24 wide, stamped at x=0). Each pose is { y: top canvas row, r: rows }.
+   * Depth: near limbs use the bright chars (v sleeve, s hand, l leg, f foot); far limbs use the
+   * shade chars (V sleeve, S hand, L leg, F foot) so every skin shows which limb is in front. */
+  function pose(y, r) { return { y: y, r: r }; }
+
+  // RUN: 8 frames. 0 contact (near leg forward), 1 down, 2 pass, 3 up/flight, 4-7 the same with
+  // the far leg leading. Torso leans forward 1px; bob = [0, +1, 0, -1].
+  var RUN = [
+    pose(14, [ // contact, near leg leading
+      '..........jjtttjj.......',
+      '........vvjqtttqjV......',
+      '.......vVvjqtTtqjVSS....',
+      '......vV..jqtttqj.SS....',
+      '......ss..jqtTtqj.......',
+      '......ss..jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.........bbbbBbbbb......',
+      '.........LLL...lll......',
+      '........LLL.....lll.....',
+      '........LL.......lll....',
+      '.......FFL........lll...',
+      '..................ffff..'
     ]),
-    body([
-      '.....jjtttjj....',
-      '....vjqtttqjv...',
-      '...vvjqtttqjvv..',
-      '...vVjqtttqjVv..',
-      '...ssjqtTtqjss..',
-      '...ssjqtttqjss..',
-      '.....jjbbbjj....',
-      '.....bBbbbBb....',
-      '.....bbbBbbb....',
-      '.....bbb.bbb....',
-      '......llllll....',
-      '......lll.fFF...',
-      '......lll.......',
-      '.....ffFF.......'
+    pose(15, [ // down, near leg leading
+      '..........jjtttjj.......',
+      '.........vjqtttqjV......',
+      '........vVjqtTtqjVSS....',
+      '.......vV.jqtttqj.SS....',
+      '.......ss.jqtTtqj.......',
+      '.......ss.jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.....FF..bbbbBbbbb......',
+      '......FFL.LL..lll.......',
+      '........LLL....lll......',
+      '...............lll......',
+      '..............ffFF......'
     ]),
-    body([
-      '.....jjtttjj....',
-      '...vvjqtttqjv...',
-      '..sVvjqtTtqjvv..',
-      '..ss.jqtttqjVvv.',
-      '.....jqtTtqj.ss.',
-      '.....jqtttqj.ss.',
-      '.....jjbbbjj....',
-      '.....bBbbbBb....',
-      '....bbbbBbbbb...',
-      '....lbbb..bbbl..',
-      '...lll.....lll..',
-      '..lll.......lll.',
-      '.ffF.........ll.',
-      '..F.........ffFF'
+    pose(14, [ // pass, near leg leading
+      '..........jjtttjj.......',
+      '.........Vjqtttqjv......',
+      '........VVjqtTtqjvV.....',
+      '........VVjqtttqjvv.....',
+      '........SSjqtTtqj.ss....',
+      '..........jqtttqj.ss....',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '..........bbbBbbbbL.....',
+      '............lllLLL......',
+      '............lll.LLL.....',
+      '............lll.FF......',
+      '............lll.........',
+      '...........ffFF.........'
     ]),
-    body([
-      '.....jjtttjj....',
-      '....vjqtttqjv...',
-      '...vvjqtttqjvv..',
-      '...vVjqtttqjVv..',
-      '...ssjqtTtqjss..',
-      '...ssjqtttqjss..',
-      '.....jjbbbjj....',
-      '.....bBbbbBb....',
-      '.....bbbBbbb....',
-      '.....bbb.bbb....',
-      '.....llllll.....',
-      '...fFFlll.......',
-      '.........lll....',
-      '.........ffFF...'
+    pose(13, [ // flight, near leg leading
+      '..........jjtttjj.......',
+      '.........Vjqtttqjv..ss..',
+      '........VVjqtTtqjvvvss..',
+      '.......VV.jqtttqjVv.....',
+      '......SS..jqtTtqj.......',
+      '......SS..jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.........bbbbBbbbbLL....',
+      '.........ll......LLL....',
+      '....ff...ll.......LLL...',
+      '......llll.........LL...',
+      '..................FFF...',
+      '........................',
+      '........................'
+    ]),
+    pose(14, [ // contact, far leg leading
+      '..........jjtttjj.......',
+      '.........Vjqtttqjv......',
+      '........VVjqtTtqjvvss...',
+      '.......VV.jqtttqjVvss...',
+      '.......SS.jqtTtqj.......',
+      '.......SS.jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.........bbbbBbbbb......',
+      '.........lll...LLL......',
+      '........lll.....LLL.....',
+      '........ll.......LLL....',
+      '.......ffl........LLL...',
+      '..................FFFF..'
+    ]),
+    pose(15, [ // down, far leg leading
+      '..........jjtttjj.......',
+      '.........Vjqtttqjv......',
+      '........VVjqtTtqjvvss...',
+      '.......VV.jqtttqjVvss...',
+      '.......SS.jqtTtqj.......',
+      '.......SS.jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.....ff..bbbbBbbbb......',
+      '......ffl.ll..LLL.......',
+      '........lll....LLL......',
+      '...............LLL......',
+      '..............FFff......'
+    ]),
+    pose(14, [ // pass, far leg leading
+      '..........jjtttjj.......',
+      '.........vjqtttqjV......',
+      '........vVjqtTtqjVV.....',
+      '........vvjqtttqjVV.....',
+      '........ssjqtTtqj.SS....',
+      '..........jqtttqj.SS....',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '..........bbbBbbbbl.....',
+      '............LLLlll......',
+      '............LLL.lll.....',
+      '............LLL.ff......',
+      '............LLL.........',
+      '...........FFff.........'
+    ]),
+    pose(13, [ // flight, far leg leading
+      '..........jjtttjj.......',
+      '.........vjqtttqjV..SS..',
+      '........vvjqtTtqjVVVSS..',
+      '.......vV.jqtttqj.......',
+      '......ss..jqtTtqj.......',
+      '......ss..jqtttqj.......',
+      '..........jjbbbjj.......',
+      '..........bBbbbBb.......',
+      '.........bbbbBbbbbll....',
+      '.........LL......lll....',
+      '....FF...LL.......lll...',
+      '......LLLL.........ll...',
+      '..................fff...',
+      '........................',
+      '........................'
     ])
   ];
+  var RUN_BOB = [0, 1, 0, -1, 0, 1, 0, -1];
 
-  var B_JUMP = body([
-    '..ss.jjtttjj.ss.',
-    '..vv.jqtttqj.vv.',
-    '..vVvjqtTtqjvVv.',
-    '...vvjqtttqjvv..',
-    '.....jqtTtqj....',
-    '.....jqtttqj....',
-    '.....jjbbbjj....',
-    '.....bBbbbBb....',
-    '....bbbbBbbbbb..',
-    '....bbb..lllll..',
-    '....lll...fFFl..',
-    '...lll.....FF...',
-    '...fFF..........',
-    '................'
+  // JUMP: 0 takeoff/rise (stretched, fist up), 1 apex (tucked, arms out for balance)
+  var JUMP_RISE = pose(6, [
+    '....................ss..',
+    '....................ss..',
+    '....................vv..',
+    '...................vVv..',
+    '..................vvv...',
+    '................vvv.....',
+    '.........jjtttjjvv......',
+    '........VjqtttqjV.......',
+    '.......VVjqtTtqj........',
+    '......VV.jqtttqj........',
+    '......SS.jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '........bbbbBbbbbl......',
+    '........Lbbb...llll.....',
+    '........LLL......ll.....',
+    '.........LLL....ffF.....',
+    '..........LLL...........',
+    '...........FFF..........'
   ]);
-  var B_FALL = body([
-    '.....jjtttjj....',
-    '...vvjqtttqjvv..',
-    '..vVvjqtTtqjvVv.',
-    '.ss..jqtttqj..ss',
-    '.ss..jqtTtqj..ss',
-    '.....jqtttqj....',
-    '.....jjbbbjj....',
-    '.....bBbbbBb....',
-    '.....bbbBbbb....',
-    '.....bbb.bbb....',
-    '.....lll.lll....',
-    '.....lll..lll...',
-    '....ffFF..ffFF..',
-    '................'
+  var JUMP_APEX = pose(12, [
+    '.........jjtttjj........',
+    '....ss.vvjqtttqjvv.ss...',
+    '....ssVVVjqtTtqjvvvss...',
+    '.........jqtttqj........',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '........bbbbBbbbbll.....',
+    '.......LLLbb...lllll....',
+    '......LLLL.......lll....',
+    '.......FF.......fFF.....'
+  ]);
+  // FALL: 0 early fall (legs reaching down), 1 fast fall (arms flung up, flail)
+  var FALL_A = pose(10, [
+    '.....ss..........ss.....',
+    '.....SS..........ss.....',
+    '......VV........vv......',
+    '.......VVjjtttjjvv......',
+    '........VjqtttqjV.......',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '.........bbbBbbb........',
+    '........LLbb.bbll.......',
+    '.......LLL....lll.......',
+    '.......LL.....lll.......',
+    '......FFF.....lll.......',
+    '.............ffFF.......'
+  ]);
+  var FALL_B = pose(9, [
+    '....ss............ss....',
+    '....SS............ss....',
+    '.....VV..........vv.....',
+    '......VV........vv......',
+    '.......VVjjtttjjvv......',
+    '........VjqtttqjV.......',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '.........bbbBbbb........',
+    '........LLbb.bbl........',
+    '.......LLL....lll.......',
+    '......LLL.....lll.......',
+    '.....FFF......lll.......',
+    '.............ffFF.......'
+  ]);
+  // LAND: 0 squash (knees out, arms down for balance), 1 recover
+  var LAND_SQUASH = pose(17, [
+    '.........jjtttjj........',
+    '........vjqtttqjv.......',
+    '......vvVjqtTtqjVvv.....',
+    '.....ss..jqtttqj..ss....',
+    '.....ss..jjbbbjj..ss....',
+    '........bbBbbbBbb.......',
+    '.......bbbbbBbbbbb......',
+    '......LLLl.....llll.....',
+    '.....LLL.........lll....',
+    '.....LLL.........lll....',
+    '....FFFF.........ffFF...'
+  ]);
+  // SKID: Carl already faces the new direction while momentum drags him backwards; he leans in,
+  // the back leg braces and the front knee bends.
+  var SKID = pose(15, [
+    '...........jjtttjj......',
+    '..........vjqtttqjvvss..',
+    '.........vVjqtTtqjvvss..',
+    '........VV.jqtttqj......',
+    '.......SS..jqtTtqj......',
+    '.......SS..jjbbbjj......',
+    '...........bBbbbBb......',
+    '..........bbbbBbbbb.....',
+    '........LLbbb...bblll...',
+    '......LLL........lll....',
+    '....LLL..........lll....',
+    '..FLL...........ffFF....',
+    '.FFF....................'
+  ]);
+  // PUNCH extras: cross (far arm) and the 3rd-hit haymaker with a lean-back windup and a lunge.
+  var CROSS = pose(14, [
+    '..........jjtttjj.......',
+    '........vvjqtttqjVVVVSS.',
+    '.......vVsjqtTtqjVVVVSS.',
+    '.......ss.jqtttqj.......',
+    '..........jqtTtqj.......',
+    '..........jqtttqj.......',
+    '..........jjbbbjj.......',
+    '..........bBbbbBb.......',
+    '.........bbbbBbbbb......',
+    '........LLL....lll......',
+    '.......LLL......lll.....',
+    '.......LLL......lll.....',
+    '......FFFF......ffFF....'
+  ]);
+  var HAY_WIND = pose(14, [
+    '.....ss..jjtttjj........',
+    '.....ssvvjqtttqjV.......',
+    '.......vVjqtTtqjVSS.....',
+    '.........jqtttqj.SS.....',
+    '.........jqtTtqj........',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '........bbbbBbbbb.......',
+    '.......LLL....lll.......',
+    '......LLL.....lll.......',
+    '......LLL......lll......',
+    '.....FFFF......ffFF.....'
+  ]);
+  var HAY_HIT = pose(15, [
+    '...........jjtttjj......',
+    '.........VVjqtttqjvvvsss',
+    '........VVSjqtTtqjvvvsss',
+    '...........jqtttqj...sss',
+    '...........jqtTtqj......',
+    '...........jjbbbjj......',
+    '...........bBbbbBb......',
+    '..........bbbbBbbbb.....',
+    '........LLbbb....bll....',
+    '......LLL.........lll...',
+    '....LLL...........lll...',
+    '...FFF...........ffFF...'
+  ]);
+  // KICK anticipation: weight back, guard up, near knee starting to lift
+  var KICK_PREP = pose(14, [
+    '........jjtttjj.........',
+    '.......vjqtttqjv........',
+    '......vVjqtTtqjvv.......',
+    '......ss.jqtttqj.ss.....',
+    '......ss.jqtTtqj.ss.....',
+    '.........jqtttqj........',
+    '.........jjbbbjj........',
+    '.........bBbbbBb........',
+    '........bbbbBbbbb.......',
+    '.......LLL....lll.......',
+    '......LLL.....lll.......',
+    '......LLL.....lll.......',
+    '.....FFFF.....ffFF......'
   ]);
   // punch: canvas-wide (24) bodies so the fist can reach out. rows 14..27
   var B_PUNCH1 = [
@@ -672,16 +887,25 @@
       stamp(g, headGrid('side'), HX, HY + 1);
       return f;
     })();
-    CARL.carl_run = [
-      carlFrame('side', HX + 1, HY, B_RUN[0], BX, BY),
-      carlFrame('side', HX + 1, HY - 1, B_RUN[1], BX, BY - 1),
-      carlFrame('side', HX + 1, HY, B_RUN[2], BX, BY),
-      carlFrame('side', HX + 1, HY - 1, B_RUN[3], BX, BY - 1)
-    ];
-    CARL.carl_jump = [carlFrame('open', HX, HY - 2, B_JUMP, BX, BY - 2)];
-    CARL.carl_fall = [carlFrame('open', HX, HY - 1, B_FALL, BX, BY - 1)];
-    CARL.carl_punch = [carlFrame('side', HX + 1, HY, B_PUNCH1, 0, BY), carlFrame('open', HX + 2, HY, B_PUNCH2, 0, BY)];
-    CARL.carl_kick = [carlFrame('side', HX, HY, B_KICK1, 0, BY), carlFrame('open', HX - 1, HY + 1, B_KICK2, 0, BY)];
+    // idle 1: inhale (chest and shoulders rise 1px); 3: blink; 4: glance back over the shoulder
+    CARL.carl_idle.push(
+      carlFrame('side', HX, HY - 1, B_IDLE.slice(0, 3).concat(B_IDLE.slice(2)), BX, BY - 1),
+      carlFrame('blink', HX, HY, B_IDLE, BX, BY),
+      carlFrame('look', HX, HY, B_IDLE, BX, BY)
+    );
+    CARL.carl_idle = [CARL.carl_idle[0], CARL.carl_idle[2], CARL.carl_idle[1], CARL.carl_idle[3], CARL.carl_idle[4]];
+    function P2(head, hx, hy, p) { return carlFrame(head, hx, hy, p.r, 0, p.y); }
+    CARL.carl_run = RUN.map(function (p, i) { return P2('side', HX + 1, HY + RUN_BOB[i], p); });
+    CARL.carl_jump = [P2('open', HX, HY - 2, JUMP_RISE), P2('open', HX, HY - 2, JUMP_APEX)];
+    CARL.carl_fall = [P2('open', HX, HY - 1, FALL_A), P2('hurt', HX, HY - 1, FALL_B)];
+    CARL.carl_land = [P2('side', HX, HY + 3, LAND_SQUASH), CARL.carl_idle[2]];
+    CARL.carl_skid = [P2('grit', HX + 2, HY + 1, SKID)];
+    // punch: 0 jab chamber, 1 jab, 2 cross (far fist), 3 haymaker windup, 4 haymaker
+    CARL.carl_punch = [carlFrame('side', HX + 1, HY, B_PUNCH1, 0, BY), carlFrame('open', HX + 2, HY, B_PUNCH2, 0, BY),
+      P2('grit', HX + 1, HY, CROSS), P2('grit', HX - 1, HY, HAY_WIND), P2('open', HX + 2, HY + 1, HAY_HIT)];
+    // kick: 0 chamber, 1 extended, 2 anticipation
+    CARL.carl_kick = [carlFrame('side', HX, HY, B_KICK1, 0, BY), carlFrame('open', HX - 1, HY + 1, B_KICK2, 0, BY),
+      P2('grit', HX - 1, HY, KICK_PREP)];
     CARL.carl_airkick = [carlFrame('open', HX - 2, HY - 1, B_AIRKICK, 0, BY)];
     CARL.carl_throw = [carlFrame('open', HX + 1, HY, B_THROW, 0, BY)];
     CARL.carl_hurt = [carlFrame('hurt', HX - 2, HY + 1, B_HURT, 0, BY)];
@@ -747,11 +971,11 @@
   var SKIN_DEFS = {};
   SKIN_DEFS.carl_boxers = { pal: {} };
   SKIN_DEFS.carl_jacket = {
-    pal: { t: C.W, T: C.g1, b: C.b3, B: C.b1, l: C.b3, f: C.W, F: C.g1 },
+    pal: { t: C.W, T: C.g1, b: C.b3, B: C.b1, l: C.b3, L: C.b1, f: C.W, F: C.g1 },
     pat: function (c, k) { if (c === 'b' && k === 'd') return C.b4; }
   };
   SKIN_DEFS.carl_bodyguard = {
-    pal: { j: C.g1, J: C.g0, v: C.g1, V: C.g0, q: C.b1, t: C.b3, T: C.y2, b: C.g0, B: C.g1, l: C.g1, f: C.g0, F: C.g3, s: '#fce0a8' },
+    pal: { j: C.g1, J: C.g0, v: C.g1, V: C.g0, q: C.b1, t: C.b3, T: C.y2, b: C.g0, B: C.g1, l: C.g1, L: C.g0, f: C.g0, F: C.g3, s: '#fce0a8' },
     pat: function (c, k) {
       if ((c === 'j' || c === 'v') && (k === 'b' || k === 'x')) return C.g2;
       if (c === 'l' && (k === 'b' || k === 'x')) return C.g0;
@@ -799,7 +1023,7 @@
     }
   };
   SKIN_DEFS.carl_hazmat = {
-    pal: { j: C.y2, J: C.y1, v: C.y2, V: C.y1, q: C.y1, t: C.y2, T: C.K, b: C.y2, B: C.y1, l: C.y2, f: C.G0, F: C.t0, s: C.G1, S: C.G0, n: C.G1 },
+    pal: { j: C.y2, J: C.y1, v: C.y2, V: C.y1, q: C.y1, t: C.y2, T: C.K, b: C.y2, B: C.y1, l: C.y2, L: C.y1, f: C.G0, F: C.t0, s: C.G1, S: C.G0, n: C.G1 },
     pat: function (c, k) { if ((c === 'b' || c === 'j') && (k === 'b' || k === 'x')) return C.y1; },
     acc: function (o, H) { // yellow hood with a big cyan visor; covers the whole head
       var x = H.x, y = H.y, w = H.w, h = H.h;
@@ -815,7 +1039,7 @@
     }
   };
   SKIN_DEFS.carl_pajamas = {
-    pal: { j: C.b4, J: C.b2, v: C.b4, V: C.b2, q: C.b2, t: C.b4, T: C.W, b: C.b4, B: C.b2, l: C.b4, f: C.b2, F: C.b1 },
+    pal: { j: C.b4, J: C.b2, v: C.b4, V: C.b2, q: C.b2, t: C.b4, T: C.W, b: C.b4, B: C.b2, l: C.b4, L: C.b2, f: C.b2, F: C.b1 },
     pat: function (c, k) {
       if ('jvtbl'.indexOf(c) >= 0 && k === 'x') return C.y3; // little stars
     },
@@ -831,7 +1055,7 @@
     }
   };
   SKIN_DEFS.carl_clown = {
-    pal: { s: C.W, S: C.m3, n: C.o1, h: C.o1, j: C.m1, J: C.m0, v: C.y2, V: C.y1, q: C.m0, t: C.y2, T: C.o1, b: C.G1, B: C.y2, l: C.W, f: C.o1, F: C.o0 },
+    pal: { s: C.W, S: C.m3, n: C.o1, h: C.o1, j: C.m1, J: C.m0, v: C.y2, V: C.y1, q: C.m0, t: C.y2, T: C.o1, b: C.G1, B: C.y2, l: C.W, L: C.g1, f: C.o1, F: C.o0 },
     pat: function (c, k) {
       if ((c === 'j' || c === 't' || c === 'b') && k === 'd') return c === 't' ? C.b3 : C.W;
       if (c === 'l' && (k === 'b' || k === 'x')) return C.o1;
@@ -862,7 +1086,7 @@
     }
   };
   SKIN_DEFS.carl_gold = {
-    pal: { s: C.y2, S: C.y1, n: C.y2, h: C.y3, e: C.y0, m: C.y0, j: C.y2, J: C.y1, v: C.y2, V: C.y1, q: C.y1, t: C.y3, T: C.y1, b: C.y2, B: C.W, l: C.y2, f: C.y1, F: C.y0 },
+    pal: { s: C.y2, S: C.y1, n: C.y2, h: C.y3, e: C.y0, m: C.y0, j: C.y2, J: C.y1, v: C.y2, V: C.y1, q: C.y1, t: C.y3, T: C.y1, b: C.y2, B: C.W, l: C.y2, L: C.y1, f: C.y1, F: C.y0 },
     pat: function (c, k) {
       if (k === 'x') return C.W;            // shine glints
       if (k === 'd') return C.y3;
@@ -1027,11 +1251,11 @@
    *  COMPANIONS (face right)
    * ================================================================== */
   (function () {
-    // ---- Princess Donut: Persian show cat with a tiara ----
-    var dp = { o: C.n2, c: C.n3, O: C.n1, e: C.G1, w: C.W, p: C.m2, y: C.y2, r: C.r1, m: C.m2, x: C.K };
+    // ---- Princess Donut: Persian show cat with a purple-jeweled tiara ----
+    var dp = { o: C.n2, c: C.n3, O: C.n1, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, m: C.m2, x: C.K };
     var d0 = [
-      '........y.y.y.',
-      '........yyryy.',
+      '........j.j.j.',
+      '........yyjyy.',
       'o......OoooooO',
       'oo.....ooOooOo',
       'oo.....oweowe.',
@@ -1043,13 +1267,53 @@
       '.cccccccooo...',
       '.O.O....O.O...'
     ];
-    var d1 = alt(d0, 2, ['.o.....OoooooO', 'o......ooOooOo', 'oo.....oOOoOO.']);
-    var dr0 = legs(alt(d0, 2, ['.......OoooooO', 'ooo....ooOooOo']), ['ooocccccoooo..', 'Occccc...ooo..', 'O.........OO..']);
-    var dr1 = legs(alt(d0, 2, ['.......OoooooO', '.oo....ooOooOo', 'oo.....oweowe.']), ['.ooccccooo....', '.ccccccoooc...', '...OO.OO......']);
     var dact = alt(d0, 2, ['o......OoooooO', 'oo.....oooooom', 'oo.....omeome.', '.o.....cccpccm', '.ooooooccxxc.m']);
-    dact = alt(dact, 0, ['......m.y.y.y.', '.....m..yyryy.']);
-    spr('donut_idle', dp, [d0, d1]);
-    spr('donut_run', dp, [dr0, dr1]);
+    dact = alt(dact, 0, ['......m.j.j.j.', '.....m..yyjyy.']);
+    // idle: 0 rest, 1 breath in (back rises), 2 tail curls over, 3 tail flicks back,
+    // 4 right ear twitches flat, 5 slow blink. stage.js plays them on a long timeline.
+    var dI = [
+      d0,
+      alt(d0, 5, ['.o.oooocccpcc.']),
+      alt(d0, 0, ['........j.j.j.', '.oo.....yyjyy.', 'oo.....OoooooO', 'o......ooOooOo', 'oo.....oweowe.', '.o.....cccpcc.']),
+      alt(d0, 0, ['o.......j.j.j.', 'oo......yyjyy.', '.o.....OoooooO', '.o.....ooOooOo', '.o.....oweowe.', '.o.....cccpcc.']),
+      alt(d0, 2, ['o......Ooooooo', 'oo.....ooOoooO']),
+      alt(d0, 4, ['oo.....oOOoOO.'])
+    ];
+    // run: a bounding gallop built from a body oval, line legs and a fluffy tail, with the
+    // idle head (tiara included, colours untouched) stamped on top. 18 x 13 fill.
+    var DHEAD = P(d0.slice(0, 9).map(function (r) { return r.slice(7); }), 7, 9);
+    for (var hy = 0; hy < 9; hy++) for (var hx = 0; hx < 7; hx++) {
+      // keep only the head (cut the tail and back that share these rows)
+      if (hy >= 6 && hx < 1) DHEAD[hy][hx] = '.';
+    }
+    function gallop(f) {
+      var g = blank(18, 13), i;
+      function leg(L, near) { line(g, L[0], L[1], L[2], L[3], near ? 'o' : 'O'); if (near) px(g, L[2], L[3], 'c'); }
+      leg(f.ff, false); leg(f.hf, false);
+      line(g, f.t[0], f.t[1], f.t[2], f.t[3], 'o', 2);
+      px(g, f.t[2], f.t[3], 'c');
+      oval(g, f.cx, f.cy, f.rx, f.ry, 'o');
+      for (i = Math.round(f.cx - f.rx + 2); i <= Math.round(f.cx + f.rx - 1); i++) px(g, i, Math.round(f.cy + f.ry), 'c');
+      leg(f.fn, true); leg(f.hn, true);
+      stamp(g, DHEAD, 11, f.dy);
+      return g;
+    }
+    var DR = [
+      // extended suspension: front reaching, hind trailing
+      { dy: 0, cx: 9, cy: 7, rx: 4.5, ry: 1.5, fn: [12, 9, 15, 11], ff: [12, 9, 16, 10], hn: [5, 8, 2, 10], hf: [5, 8, 1, 9], t: [4, 6, 1, 3] },
+      // front feet land ahead
+      { dy: 1, cx: 9, cy: 8, rx: 4.5, ry: 1.5, fn: [12, 9, 13, 12], ff: [12, 9, 14, 12], hn: [5, 9, 3, 11], hf: [5, 9, 2, 10], t: [4, 7, 1, 5] },
+      // front legs push under the chest, hind legs swing forward
+      { dy: 2, cx: 9, cy: 8, rx: 4, ry: 2, fn: [12, 10, 11, 12], ff: [12, 10, 12, 12], hn: [6, 10, 9, 11], hf: [6, 10, 8, 11], t: [5, 7, 2, 4] },
+      // gathered suspension: all four tucked, back arched
+      { dy: 0, cx: 9, cy: 7, rx: 3.5, ry: 2, fn: [12, 9, 10, 11], ff: [12, 9, 11, 11], hn: [6, 9, 9, 11], hf: [6, 9, 8, 10], t: [5, 6, 2, 2] },
+      // hind feet land under the belly, front lift
+      { dy: 1, cx: 9, cy: 8, rx: 4, ry: 2, fn: [12, 10, 14, 11], ff: [12, 10, 15, 10], hn: [6, 10, 8, 12], hf: [6, 10, 7, 12], t: [5, 7, 2, 4] },
+      // hind push-off, body stretching out again
+      { dy: 0, cx: 9, cy: 7, rx: 4.5, ry: 1.5, fn: [12, 8, 15, 10], ff: [12, 8, 16, 9], hn: [5, 8, 3, 12], hf: [5, 8, 2, 12], t: [4, 6, 1, 4] }
+    ].map(gallop);
+    spr('donut_idle', dp, dI);
+    spr('donut_run', dp, DR);
     spr('donut_act', dp, [dact]);
 
     // ---- Mongo: baby velociraptor ----
@@ -1889,6 +2153,156 @@
       'SSS.ssssSssss.......']);
     enemy('golem', gop, w0, w1, at);
 
+    /* ---- floor 8 (THE GHOSTS OF EARTH): Appalachian folklore ---- */
+    // ---- wampus cat: lean mountain lion with a wild black mane and glowing eyes ----
+    var wcp = { f: C.y1, F: C.y0, b: C.n3, h: C.p0, H: C.b1, e: C.l2, n: C.r1, w: C.W, t: C.y0 };
+    w0 = [
+      '...............F..F.',
+      '..............hFfhFf.',
+      't............hhffffff',
+      't...........hhhfeefffn',
+      '.t..........hhhffffff',
+      '.tt..ffffffhhhhffwfw',
+      '..ttfffffffffhhfff..',
+      '...fFffffFfffhhbb...',
+      '...fFFfffFFffbbbh...',
+      '...fFFffffffbbbb....',
+      '....FF.ff...ffbf....',
+      '...FF...ff.ff..ff...',
+      '..ff....ff.f....ff..'];
+    w1 = legs(w0, ['....FF.ff...ffbf....', '....FFff....ff.f....', '.....ffff...fff.....']);
+    at = alt(w0, 3, ['t...........hhhfeefffnn', '.t..........hhhffffffw.', '.tt..ffffffhhhhffwwwwf', '..ttfffffffffhhffw.w..']);
+    enemy('wampus_cat', wcp, w0, w1, at);
+
+    // ---- brown mountain light: a hovering ball of light with a sad little face ----
+    var mlp = { w: C.W, y: C.y3, Y: C.y2, o: C.n2, O: C.n1, e: C.n0, r: C.o1 };
+    w0 = [
+      '.....oo.o.....',
+      '....oYYoYo....',
+      '...oYyyyyYo...',
+      '..oYyywwyyYo..',
+      '..oyywwwwwyo..',
+      '.oYyewwwweyYo.',
+      '.oYywwwwwwyYo.',
+      '..oyywwewyyo..',
+      '..oYyywwyyYo..',
+      '...oYyyyyYo...',
+      '....oYYYYo....',
+      '.....oOOo.....',
+      '......OO......',
+      '.......O......'];
+    w1 = [
+      '......oo.o....',
+      '....oYoYYo....',
+      '...oYyyyyYo...',
+      '..oYyywwyyYo..',
+      '..oyywwwwwyo..',
+      '.oYyewwwweyYo.',
+      '.oYywwwwwwyYo.',
+      '..oyywwewyyo..',
+      '..oYyywwyyYo..',
+      '...oYyyyyYo...',
+      '....oYYYYo....',
+      '.....oOOo.....',
+      '.....OO.......',
+      '....O.........'];
+    at = alt(w0, 0, ['..o..oo.o..o.', '.o..oYYoYo..o', '...oYyyyyYo...', '..oYyywwyyYo..', '..oyywwwwwyo..', '.oYyrwwwwryYo.', '.oYywwwwwwyYo.', '..oyywweeyyo..', '..oYyyweeyyYo..']);
+    enemy('mountain_light', mlp, w0, w1, at);
+
+    // ---- woodbooger: the local bigfoot, snow on his shoulders ----
+    var wbp = { f: C.y0, F: C.n0, h: C.y1, s: C.g0, S: C.g3, e: C.W, x: C.K, w: C.W, m: C.r0 };
+    w0 = [
+      '........wwwww.......',
+      '.......wffffhw......',
+      '......ffffffffh.....',
+      '......ffssssfff.....',
+      '......fsexsexff.....',
+      '......fsssssSff.....',
+      '....wwfssmmsfffww...',
+      '...wffffssssfffffw..',
+      '..fffhfffffffffhff..',
+      '..ffhffffFffffffhff.',
+      '.fffffffFFffffffffff',
+      '.ffhf.ffffffffff.fhf',
+      '.ffff.ffffhfffff.fff',
+      '.sss..fffffffff..sss',
+      '.sss..ffffFffff..sss',
+      '......ffff.ffff.....',
+      '......fff...fff.....',
+      '......fff...fff.....',
+      '.....ffff...ffff....',
+      '.....ssss...ssss....'];
+    w1 = legs(w0, ['......ffff.ffff.....', '.....fff.....fff....', '....fff.......fff...', '...ffff.......ffff..', '...ssss.......ssss..']);
+    at = alt(w0, 6, [
+      '....wwfssmmsfffww....ss',
+      '...wffffssssfffffwfffss',
+      '..fffhfffffffffhffffff.',
+      '..ffhffffFffffffhff....',
+      '.fffffffFFfffffff......',
+      '.ffhf.ffffffffff.......',
+      '.ffff.ffffhfffff.......',
+      '.sss..fffffffff........',
+      '.sss..ffffFffff........']);
+    enemy('woodbooger', wbp, w0, w1, at);
+
+    // ---- sheepsquatch: woolly white beast with ram horns and a goat face ----
+    var ssp = { w: C.W, W: C.g1, G: C.g0, c: C.y1, C: C.y0, s: C.g3, e: C.o1, n: C.K };
+    w0 = [
+      '..............cc....',
+      '.............cCCc...',
+      '...........wcc..c...',
+      '..wwww....wwcssss...',
+      '.wwWwwwwwwwwssessn..',
+      'wwwwwWwwwWwwwsssss..',
+      'wWwwwwwwwwwwwwsss...',
+      'wwwWwwwwWwwwwwW.....',
+      'wwwwwwWwwwwwwWw.....',
+      '.wWwwwwwwwWwwww.....',
+      '..GG.GG....GG.GG....',
+      '..ss.ss....ss.ss....',
+      '.sss.ss...sss.ss....'];
+    w1 = legs(w0, ['...GG.GG..GG.GG.....', '...ss..ss.ss..ss....', '..sss..ss.sss.ss....']);
+    at = alt(w0, 0, [
+      '....................',
+      '....................',
+      '...........w........',
+      '..wwww....wwww.cc...',
+      '.wwWwwwwwwwwwwcCCc..',
+      'wwwwwWwwwWwwwwsssc..',
+      'wWwwwwwwwwwwwssessn.',
+      'wwwWwwwwWwwwwsssss..',
+      'wwwwwwWwwwwwwWss....']);
+    enemy('sheepsquatch', ssp, w0, w1, at);
+
+    // ---- mothling: a moth the size of a turkey, eyespot wings ----
+    var mtp = { g: C.y1, G: C.y0, y: C.n2, Y: C.n1, o: C.n3, r: C.K, b: C.g1, e: C.o1, a: C.g3 };
+    w0 = [
+      '.a..........a...',
+      '..a........a....',
+      'GGGa......aGGG..',
+      'GgggG.bb.GgggGG.',
+      'GgorgGbbGgrogyG.',
+      'GgoogGbebGoogyG.',
+      '.GgggGbbbGgggG..',
+      '..GyyGbbbGyyG...',
+      '...GGYbbbYGG....',
+      '......bb........',
+      '......b.........'];
+    w1 = [
+      '................',
+      '.a....bb....a...',
+      '..aGGGbebGGa....',
+      '.GgggGbbbGgggG..',
+      'GgorgGbbbGgrogG.',
+      'GgoogGbbbGgoogG.',
+      '.GyyGGbbbGGyyG..',
+      '..GGG.bbb.GGG...',
+      '......bb........',
+      '......b.........',
+      '................'];
+    at = alt(w0, 4, ['GgorgGbbGgrogyG.', 'GgoogGbrbGoogyG.', '.GgggGbbbbGggG..', '..GyyGbbbbbyG...']);
+    enemy('mothling', mtp, w0, w1, at);
+
     // ---- soldier (helmet, armour vest, blaster) ----
     var sop = { h: C.l0, H: C.G0, s: C.n3, e: C.K, v: C.G0, V: C.t0, g: C.g0, G: C.g3, b: C.y0, r: C.o1, l: C.l0 };
     w0 = [
@@ -2307,6 +2721,66 @@
     else { rect(g, cx + 16, 26 + b, 8, 12, 'a'); rect(g, cx + 15, 37 + b, 11, 9, 'A'); rect(g, cx + 17, 45 + b, 7, 2, 'G'); }
   });
 
+  // ---- THE MOTHMAN (floor 8, THE GHOSTS OF EARTH): tall grey winged figure, no real head,
+  //      two glowing red eyes set in the shoulders, moth wings with eyespots, taloned feet ----
+  boss('mothman', { b: C.g0, B: C.p0, f: C.g1, m: C.y0, M: C.y1, h: C.n0, o: C.n3, O: C.K, e: C.o1, E: C.y3, t: C.g1, T: C.g3, K: C.K }, 66, 58, function (g, p) {
+    var cx = 33, atk = p.a === 'attack', sp = p.a === 'special', hurt = p.a === 'hurt';
+    var flap = (p.a === 'idle' || p.a === 'walk') ? p.i : sp ? -1 : atk ? 2 : 1;
+    var bob = flap === 1 ? 2 : 0, sy = 16 + bob;
+    // wings: tip height by pose (-1 = flared high, 0 = up, 1 = level, 2 = swept forward/down)
+    var tipY = [0, 2, 12, 22][flap + 1], tipX = [1, 3, 0, 7][flap + 1], lowY = [38, 42, 48, 52][flap + 1];
+    [-1, 1].forEach(function (s) {
+      var sx = cx + s * 5, tx = s < 0 ? tipX : 65 - tipX, ty = tipY + bob;
+      // outline of the wing as a fan from the shoulder: tip, then a scalloped trailing edge back to the body
+      var pts = [[tx, ty], [cx + s * 25, lowY - 17 + bob], [cx + s * 20, lowY - 6 + bob], [cx + s * 13, lowY + bob], [cx + s * 8, lowY - 8 + bob], [sx, sy + 20]];
+      for (var k = 0; k < pts.length - 1; k++) tri(g, sx, sy, pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], 'm');
+      // carve scallops between the trailing-edge points
+      for (k = 1; k < pts.length - 2; k++) {
+        var A = pts[k], B2 = pts[k + 1], mx = (A[0] + B2[0]) / 2, my = (A[1] + B2[1]) / 2;
+        var dx = sx - mx, dy = sy - my, dl = Math.sqrt(dx * dx + dy * dy) || 1;
+        tri(g, A[0], A[1], B2[0], B2[1], Math.round(mx + dx / dl * 4), Math.round(my + dy / dl * 4), '.');
+      }
+      // leading edge + veins out to each trailing point
+      line(g, sx, sy, tx, ty, 'h', 2);
+      for (k = 1; k < pts.length - 1; k++) line(g, sx, sy + 2, pts[k][0] - s, pts[k][1] - 2, 'M');
+      // eyespot on the outer wing
+      var ox = Math.round(sx + (tx - sx) * 0.6), oy = Math.round(sy + (ty - sy) * 0.6 + 7);
+      oval(g, ox, oy, 3, 3, 'o'); rect(g, ox, oy, 1, 1, sp ? 'e' : 'O'); px(g, ox - 1, oy - 1, 'h');
+    });
+    // legs (dangling: he hovers)
+    var lg = p.a === 'walk' ? (p.i ? 2 : -2) : 0;
+    line(g, cx - 4, 38 + bob, cx - 6 + lg, 50 + bob, 'b', 3); line(g, cx + 4, 38 + bob, cx + 6 - lg, 50 + bob, 'b', 3);
+    [[cx - 6 + lg, -1], [cx + 6 - lg, 1]].forEach(function (L) {
+      var fx = L[0], fy = 51 + bob;
+      line(g, fx, fy, fx - 3, fy + 4, 't'); line(g, fx, fy, fx, fy + 5, 't'); line(g, fx, fy, fx + 3, fy + 4, 't');
+    });
+    // torso: tall, hunched, no neck. Shoulders rise into a domed hood with the eyes in it
+    oval(g, cx, 30 + bob, 8, 11, 'b');
+    oval(g, cx, 18 + bob, 9, 7, 'b');
+    rect(g, cx - 7, 20 + bob, 15, 10, 'b');
+    for (var y = 22; y < 40; y += 3) { px(g, cx - 3, y + bob, 'B'); px(g, cx + 2, y + 1 + bob, 'B'); px(g, cx, y + 2 + bob, 'f'); }
+    line(g, cx - 7, 24 + bob, cx - 5, 38 + bob, 'B'); line(g, cx + 7, 24 + bob, cx + 5, 38 + bob, 'B');
+    px(g, cx - 4, 12 + bob, 'f'); px(g, cx - 2, 11 + bob, 'f'); px(g, cx + 1, 11 + bob, 'f');
+    // the eyes: huge, red, set wide in the hood. Brighter when he attacks
+    var ew = sp || atk ? 4 : 3;
+    [-5, 5].forEach(function (dx) {
+      oval(g, cx + dx, 18 + bob, ew, ew - 1, 'e');
+      oval(g, cx + dx, 18 + bob, ew - 2, ew - 2 > 0 ? ew - 3 : 0, 'E');
+      if (hurt) { rect(g, cx + dx - 3, 18 + bob, 7, 1, 'B'); }
+    });
+    // arms: long, thin, clawed
+    if (atk) {
+      line(g, cx + 7, 24 + bob, cx + 22, 30 + bob, 'b', 2); line(g, cx - 7, 24 + bob, cx + 4, 34 + bob, 'b', 2);
+      [[cx + 23, 30], [cx + 5, 35]].forEach(function (c) { line(g, c[0], c[1] + bob, c[0] + 4, c[1] - 2 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + 4, c[1] + 1 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + 3, c[1] + 3 + bob, 't'); });
+    } else if (sp) {
+      line(g, cx - 7, 24 + bob, cx - 14, 10 + bob, 'b', 2); line(g, cx + 7, 24 + bob, cx + 14, 10 + bob, 'b', 2);
+      [[cx - 15, 9, -1], [cx + 15, 9, 1]].forEach(function (c) { line(g, c[0], c[1], c[0] + c[2] * 2, c[1] - 4, 't'); line(g, c[0], c[1], c[0], c[1] - 4, 't'); line(g, c[0], c[1], c[0] - c[2] * 2, c[1] - 4, 't'); });
+    } else {
+      line(g, cx - 7, 24 + bob, cx - 9, 38 + bob, 'b', 2); line(g, cx + 7, 24 + bob, cx + 9, 38 + bob, 'b', 2);
+      [[cx - 9, 39, -1], [cx + 9, 39, 1]].forEach(function (c) { line(g, c[0], c[1] + bob, c[0] - 1, c[1] + 4 + bob, 't'); line(g, c[0], c[1] + bob, c[0] + c[2] * 2, c[1] + 3 + bob, 't'); });
+    }
+  });
+
   // ---- THE SHOWRUNNER: alien game-show host, mic, sequins, many eyes, big grin ----
   boss('showrunner', { g: C.G2, G: C.G1, q: C.y2, Q: C.y1, W: C.W, l: C.p1, L: C.p0, r: C.o1, w: C.W, e: C.y3, K: C.K, m: C.g0, M: C.g3, p: C.K, s: C.m2, t: C.W, b: C.K, h: C.y0 }, 56, 64, function (g, p) {
     var b = p.a === 'idle' ? p.i : 0, cx = 24, st = p.a === 'walk' ? (p.i ? 2 : -2) : 0;
@@ -2381,7 +2855,7 @@
     for (var x = 9; x < 25; x += 2) { px(g, x, 21, 'S'); px(g, x + 1, 22, 'S'); px(g, x, 23, 'S'); }
     rect(g, 14, 20, 6, 1, 'm'); px(g, 20, 19, 'm');
   });
-  portrait('p_donut', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, r: C.r1, K: C.K }, BG_HERO, function (g) {
+  portrait('p_donut', { o: C.n2, O: C.n1, c: C.n3, e: C.G1, w: C.W, p: C.m2, y: C.y2, j: C.p1, J: C.p3, K: C.K }, BG_HERO, function (g) {
     oval(g, 16, 27, 13, 6, 'o'); oval(g, 16, 28, 7, 4, 'c');
     oval(g, 16, 17, 12, 10, 'o');
     tri(g, 4, 3, 10, 9, 4, 12, 'o'); tri(g, 28, 3, 22, 9, 28, 12, 'o'); tri(g, 5, 6, 8, 9, 5, 10, 'p'); tri(g, 27, 6, 24, 9, 27, 10, 'p');
@@ -2391,7 +2865,7 @@
     rect(g, 8, 13, 5, 2, 'O'); rect(g, 19, 13, 5, 2, 'O'); // haughty lids
     rect(g, 15, 20, 3, 2, 'p'); line(g, 16, 22, 16, 23, 'K'); line(g, 13, 24, 15, 23, 'K'); line(g, 17, 23, 19, 24, 'K');
     line(g, 4, 20, 10, 21, 'c'); line(g, 22, 21, 28, 20, 'c');
-    rect(g, 11, 5, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 3, 'y'); px(g, 11 + k * 3 + 1, 4, 'y'); } px(g, 16, 2, 'y'); px(g, 16, 5, 'r');
+    rect(g, 11, 5, 11, 3, 'y'); for (k = 0; k < 4; k++) { px(g, 11 + k * 3 + 1, 3, 'j'); px(g, 11 + k * 3 + 1, 4, 'y'); } px(g, 16, 2, 'j'); px(g, 15, 5, 'j'); px(g, 16, 5, 'J'); px(g, 17, 5, 'j');
   });
   portrait('p_mongo', { g: C.G1, G: C.l2, S: C.G0, w: C.W, e: C.K, m: C.o0 }, BG_HERO, function (g) {
     oval(g, 14, 26, 10, 7, 'g'); oval(g, 16, 28, 5, 4, 'G');
@@ -2526,6 +3000,18 @@
     px(g, 7, 4, 'w'); px(g, 6, 5, 'w'); px(g, 8, 3, 'w');
     rect(g, 5, 22, 22, 3, 'A');
   });
+  portrait('p_mothman', { b: C.g0, B: C.p0, f: C.g1, m: C.y0, M: C.y1, h: C.n0, e: C.o1, E: C.y3, K: C.K }, BG_FOE, function (g) {
+    // wings framing the shot
+    tri(g, 16, 14, 0, 0, 0, 30, 'm'); tri(g, 16, 14, 31, 0, 31, 30, 'm');
+    line(g, 16, 14, 0, 1, 'h', 2); line(g, 16, 14, 31, 1, 'h', 2);
+    line(g, 15, 16, 1, 18, 'M'); line(g, 15, 18, 3, 28, 'M'); line(g, 17, 16, 30, 18, 'M'); line(g, 17, 18, 28, 28, 'M');
+    // hooded shoulders, no face, just the eyes
+    oval(g, 16, 22, 11, 10, 'b'); oval(g, 16, 14, 10, 8, 'b'); rect(g, 6, 16, 21, 16, 'b');
+    for (var y = 24; y < 32; y += 3) { px(g, 12, y, 'B'); px(g, 20, y + 1, 'B'); px(g, 16, y + 2, 'f'); }
+    px(g, 12, 7, 'f'); px(g, 14, 6, 'f'); px(g, 18, 6, 'f');
+    oval(g, 10, 15, 4, 3, 'e'); oval(g, 22, 15, 4, 3, 'e'); oval(g, 10, 15, 2, 1, 'E'); oval(g, 22, 15, 2, 1, 'E');
+    px(g, 9, 14, 'E'); px(g, 21, 14, 'E');
+  });
   portrait('p_showrunner', { g: C.G2, G: C.G1, q: C.y2, Q: C.y1, W: C.W, l: C.p1, r: C.o1, w: C.W, K: C.K, s: C.m2 }, BG_FOE, function (g) {
     rect(g, 2, 26, 28, 6, 'q'); tri(g, 12, 26, 20, 26, 16, 31, 'w'); rect(g, 13, 26, 7, 2, 'r'); line(g, 12, 26, 14, 31, 'l'); line(g, 20, 26, 18, 31, 'l');
     dots(g, 0, 26, 32, 6, 'q', 'W', function (x, y) { return (x * 3 + y) % 5 === 0; });
@@ -2540,7 +3026,7 @@
    *  summoner) + her fae spirit, and their portraits
    * ================================================================== */
   (function () {
-    // ---- Samantha: porcelain doll head, curly black hair, cracked, big red lips ----
+    // ---- Samantha: porcelain doll head, curly hair (recolored blonde in LOOK TWEAKS), cracked, big red lips ----
     var sp = { h: '#24242c', H: '#6c6c84', f: C.W, F: C.g1, x: C.g0, c: C.r3, r: C.r1, R: C.r2, m: C.r0, e: C.o1, t: C.W };
     var s0 = [
       '..h.hH.hH.hh..',

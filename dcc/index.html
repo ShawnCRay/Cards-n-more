@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<title>Dungeon Crawler Carl: Crawler Select</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Crect x='3' y='2' width='10' height='3' fill='%23fcd8a8'/%3E%3Crect x='3' y='5' width='10' height='5' fill='%23fcd8a8'/%3E%3Crect x='5' y='6' width='2' height='2' fill='%23000'/%3E%3Crect x='9' y='6' width='2' height='2' fill='%23000'/%3E%3Crect x='2' y='10' width='12' height='6' fill='%235c3c18'/%3E%3Crect x='6' y='10' width='4' height='6' fill='%23fcfcfc'/%3E%3Crect x='3' y='1' width='10' height='2' fill='%23a85010'/%3E%3C/svg%3E">
+<style>
+  /* Dungeon Crawler Carl hub: pick which DCC game to play. Each book is its own game on its own
+     console generation (Book One: 8-bit). Solo only, so this page is not part of the game room.
+     Colours are the NES palette the games use. */
+  :root {
+    --void: #000000;
+    --stone: #1c1a24;
+    --stone-hi: #2a2734;
+    --mortar: #0c0b10;
+    --white: #fcfcfc;
+    --gray: #bcbcbc;
+    --dgray: #7c7c7c;
+    --gold: #f8b800;
+    --gold-hi: #f8d878;
+    --orange: #e45c10;
+    --pink: #f878f8;
+    --magenta: #d800cc;
+    --red: #f83800;
+    --cyan: #3cbcfc;
+    --green: #58d854;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { background: var(--void); }
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    color: var(--white);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(216, 0, 204, 0.18), transparent 70%),
+      radial-gradient(ellipse 70% 40% at 50% 100%, rgba(248, 184, 0, 0.10), transparent 70%),
+      /* cinderblock: 32x16 blocks in running bond, black mortar */
+      linear-gradient(var(--mortar) 0 2px, transparent 2px) 0 0 / 32px 16px,
+      linear-gradient(90deg, var(--mortar) 0 2px, transparent 2px) 0 0 / 32px 32px,
+      linear-gradient(90deg, var(--mortar) 0 2px, transparent 2px) 16px 16px / 32px 32px,
+      var(--stone);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 40px;
+  }
+  /* CRT: scanlines and a vignette over everything */
+  body::before, body::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  body::before { background: repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 1px, transparent 1px 3px); }
+  body::after { background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.75) 100%); }
+
+  .wrap { width: 100%; max-width: 760px; position: relative; z-index: 1; }
+
+  header { text-align: center; margin-bottom: 20px; }
+  .kicker { color: var(--pink); font-size: 12px; letter-spacing: 4px; margin-bottom: 10px; }
+  h1 {
+    font-size: clamp(26px, 7.4vw, 50px);
+    line-height: 1.02;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-shadow: 3px 3px 0 var(--red), 6px 6px 0 var(--void);
+    font-weight: 900;
+  }
+  h1 .big { display: block; font-size: 1.55em; color: var(--gold-hi); text-shadow: 4px 4px 0 var(--orange), 8px 8px 0 var(--void); }
+  .tag { margin-top: 14px; color: var(--gray); font-size: 12px; letter-spacing: 2px; }
+
+  /* the System AI, in an NES dialog box */
+  .ai {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--void);
+    border: 3px solid var(--white);
+    box-shadow: 0 0 0 3px var(--void), 0 0 24px rgba(248, 120, 248, 0.25);
+    padding: 12px;
+    margin: 0 0 26px;
+    min-height: 92px;
+  }
+  .ai svg { flex: 0 0 auto; width: 56px; height: 56px; image-rendering: pixelated; border: 2px solid var(--white); background: var(--void); }
+  .ai .who { display: inline-block; background: var(--red); color: var(--white); font-size: 11px; padding: 2px 6px; margin-bottom: 6px; }
+  .ai .line { font-size: 13px; line-height: 1.6; color: var(--white); min-height: 3.2em; }
+  .ai .line::after { content: '\25BC'; color: var(--gold); margin-left: 6px; font-size: 10px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .section { color: var(--gold-hi); font-size: 13px; letter-spacing: 4px; margin: 6px 0 12px; display: flex; align-items: center; gap: 10px; }
+  .section::before, .section::after { content: ''; flex: 1; height: 3px; background: repeating-linear-gradient(90deg, var(--gold) 0 6px, transparent 6px 10px); }
+
+  /* a book = a cartridge */
+  .books { display: grid; gap: 18px; grid-template-columns: 1fr; margin-bottom: 30px; }
+  @media (min-width: 640px) { .books { grid-template-columns: 1.35fr 1fr; } }
+  .cart {
+    position: relative; display: flex; flex-direction: column;
+    background: var(--stone-hi);
+    border: 3px solid var(--void);
+    box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 3px var(--void);
+    color: inherit; text-decoration: none;
+    transition: transform 0.12s steps(2), box-shadow 0.12s steps(2);
+  }
+  a.cart:hover, a.cart:focus-visible { transform: translate(-2px, -2px); box-shadow: 0 0 0 3px var(--gold-hi), 8px 8px 0 3px var(--void), 0 0 26px rgba(248, 184, 0, 0.35); outline: none; }
+  a.cart:active { transform: translate(2px, 2px); box-shadow: 0 0 0 3px var(--gold), 2px 2px 0 3px var(--void); }
+  .cart .label { position: relative; background: var(--void); border-bottom: 3px solid var(--void); }
+  .cart .label img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; }
+  .gen { position: absolute; bottom: 8px; right: 8px; background: var(--void); border: 2px solid var(--cyan); color: var(--cyan); font-size: 11px; padding: 2px 6px; }
+  .cart .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .cart h2 { font-size: 20px; color: var(--gold-hi); letter-spacing: 2px; text-shadow: 2px 2px 0 var(--void); }
+  .cart .floors { font-size: 12px; color: var(--pink); }
+  .cart p { font-size: 12px; line-height: 1.6; color: var(--gray); text-transform: none; letter-spacing: 0.3px; }
+  .save { font-size: 12px; color: var(--green); border-top: 2px dashed var(--dgray); padding-top: 8px; }
+  .save.none { color: var(--dgray); }
+  .go {
+    margin-top: auto; align-self: flex-start;
+    background: var(--red); color: var(--white); border: 3px solid var(--void);
+    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.35), inset 3px 3px 0 rgba(255,255,255,0.25);
+    font: inherit; font-size: 13px; padding: 8px 12px; letter-spacing: 2px;
+  }
+  a.cart:hover .go, a.cart:focus-visible .go { background: var(--orange); }
+
+  /* locked: a loot box nobody has opened yet */
+  .cart.locked { box-shadow: 0 0 0 3px var(--dgray), 6px 6px 0 3px var(--void); cursor: not-allowed; }
+  .cart.locked .label { aspect-ratio: 16 / 9; display: grid; place-items: center;
+    background: repeating-linear-gradient(45deg, #101016 0 10px, #16161e 10px 20px); }
+  .cart.locked .label svg { width: 34%; max-width: 120px; image-rendering: pixelated; }
+  .cart.locked .gen { border-color: var(--dgray); color: var(--dgray); }
+  .cart.locked h2 { color: var(--dgray); }
+  .cart.locked .floors { color: var(--dgray); }
+  .cart.locked .go { background: var(--mortar); color: var(--dgray); box-shadow: none; }
+
+  /* archive: the first, much-too-big version */
+  .archive {
+    display: flex; gap: 14px; align-items: center;
+    background: rgba(0,0,0,0.55); border: 2px dashed var(--dgray);
+    padding: 12px 14px; color: inherit; text-decoration: none; margin-bottom: 30px;
+  }
+  .archive:hover, .archive:focus-visible { border-color: var(--gray); outline: none; background: rgba(0,0,0,0.75); }
+  .archive .skull { font-size: 26px; color: var(--dgray); line-height: 1; }
+  .archive h3 { font-size: 13px; color: var(--gray); letter-spacing: 2px; margin-bottom: 4px; }
+  .archive p { font-size: 12px; color: var(--dgray); line-height: 1.5; text-transform: none; letter-spacing: 0.3px; }
+  .archive .arrow { margin-left: auto; color: var(--dgray); font-size: 14px; }
+
+  footer { text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .back { color: var(--gold); text-decoration: none; font-size: 13px; letter-spacing: 2px; border: 2px solid var(--gold); padding: 8px 12px; background: var(--void); }
+  .back:hover, .back:focus-visible { background: var(--gold); color: var(--void); outline: none; }
+  .fine { color: var(--dgray); font-size: 11px; line-height: 1.6; text-transform: none; letter-spacing: 0.3px; max-width: 520px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai .line::after { animation: none; }
+    a.cart, a.cart:hover, a.cart:active { transition: none; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">&#9670; World Dungeon &#183; Crawler Select &#9670;</div>
+    <h1>Dungeon Crawler <span class="big">Carl</span></h1>
+    <div class="tag">One book per game. One console generation per book.</div>
+  </header>
+
+  <div class="ai" role="status" aria-live="polite">
+    <!-- the System AI: a little TV with a grin (same idea as its in-game portrait) -->
+    <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+      <rect x="4" y="0" width="1" height="3" fill="#7c7c7c"/><rect x="11" y="0" width="1" height="3" fill="#7c7c7c"/>
+      <rect x="5" y="2" width="1" height="1" fill="#7c7c7c"/><rect x="10" y="2" width="1" height="1" fill="#7c7c7c"/>
+      <rect x="1" y="3" width="14" height="11" fill="#ac7c00"/><rect x="2" y="4" width="12" height="9" fill="#000"/>
+      <rect x="3" y="5" width="10" height="7" fill="#005800"/>
+      <rect x="5" y="6" width="2" height="2" fill="#b8f818"/><rect x="9" y="6" width="2" height="2" fill="#b8f818"/>
+      <rect x="4" y="9" width="1" height="1" fill="#b8f818"/><rect x="11" y="9" width="1" height="1" fill="#b8f818"/><rect x="5" y="10" width="6" height="1" fill="#b8f818"/>
+      <rect x="2" y="14" width="2" height="2" fill="#503000"/><rect x="12" y="14" width="2" height="2" fill="#503000"/>
+    </svg>
+    <div>
+      <div class="who">System AI</div>
+      <div class="line" id="ai-line">Welcome to crawler select. Pick a book. Every book is its own game.</div>
+    </div>
+  </div>
+
+  <div class="section">Choose your crawl</div>
+  <div class="books">
+    <a class="cart" href="../crawler-book1/index.html" aria-label="Play Dungeon Crawler Carl: Book One">
+      <div class="label">
+        <img src="book1.png" width="320" height="180" alt="Book One title screen: Carl in his boxers and Princess Donut in front of the dungeon wall">
+        <div class="gen">Gen 1 &#183; 8-bit</div>
+      </div>
+      <div class="body">
+        <h2>Book One</h2>
+        <div class="floors">Floors 1 &amp; 2 &#183; In story order</div>
+        <p>The first book as a 1987 cartridge. Punch your way through the Murder Dozer, the Hoarder, the
+        goblin workshop, the Juicer and the Ball of Swine, then a cinderblock maze where the cameras go live.
+        Cutscenes between stages, loot boxes, a rude System AI, and a cat who outranks you.</p>
+        <div class="save none" id="save-book1">No crawl saved yet</div>
+        <span class="go">Enter the dungeon &#9654;</span>
+      </div>
+    </a>
+
+    <a class="cart" href="../crawler2/index.html" aria-label="Play Dungeon Crawler Carl: Book Two">
+      <div class="label">
+        <img src="book2.png" width="320" height="180" alt="Book Two title screen: the Over City circus at night, with Carl, Donut and Mongo">
+        <div class="gen">Gen 1.5 &#183; Late 8-bit</div>
+      </div>
+      <div class="body">
+        <h2>Book Two</h2>
+        <div class="floors">Floor 3 &#183; The Over City</div>
+        <p>Carl's Doomsday Scenario as a late-life cartridge with the extra sound chip. Eight days on a
+        clock, an undead circus, a talk show, a murdered-hooker mystery in a bird town, and a soul crystal
+        that is about to go off. Walk the streets by day and night. Imports your Book One save.</p>
+        <div class="save none" id="save-book2">No crawl saved yet</div>
+        <span class="go">Enter the Over City &#9654;</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="section">Archive</div>
+  <a class="archive" href="../crawler/index.html">
+    <span class="skull" aria-hidden="true">&#9760;</span>
+    <span>
+      <h3>Dungeon Crawler World &#183; the prototype</h3>
+      <p>The first, much-too-big version: nine floors, overworld maps from Floor 3, skins and companions.
+      Kept for posterity. Separate saves from the book games.</p>
+    </span>
+    <span class="arrow" aria-hidden="true">&#9654;</span>
+  </a>
+
+  <footer>
+    <a class="back" href="../index.html">&#9664; Back to the game room</a>
+    <div class="fine">A fan-made tribute to Dungeon Crawler Carl. Not affiliated with the author or the publisher.
+    Not for sale. Solo play &#183; keyboard, gamepad or touch.</div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Book One progress, read from the game's own save (same site, so same storage). Never required:
+  // if storage is blocked or empty, the card just says there's no crawl yet.
+  function readJSON(key) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+  function book1Status() {
+    var slot = 1;
+    try { var n = parseInt(localStorage.getItem('dcc1_slot'), 10); if (n >= 1 && n <= 3) slot = n; } catch (e) { /* storage blocked */ }
+    var save = readJSON(slot <= 1 ? 'dcc1_save_v1' : 'dcc1_save_v1_s' + slot);
+    if (!save) return null;
+    var run = save.run, meta = save.meta || {}, bits = [];
+    if (run && !run.won) {
+      bits.push('Slot ' + slot + ' · Floor ' + (run.floor || 1) + ' · LV ' + (run.level || 1));
+      if (typeof run.revivals === 'number') bits.push(run.revivals + ' revival' + (run.revivals === 1 ? '' : 's') + ' left');
+      return { text: 'Crawl in progress: ' + bits.join(' · '), live: true };
+    }
+    if (meta.wins > 0 || meta.donutMode) return { text: 'Book beaten' + (meta.wins > 1 ? ' ' + meta.wins + ' times' : '') + ' · Donut mode unlocked', live: true };
+    if (meta.runs > 0) return { text: 'Slot ' + slot + ' · ' + meta.runs + ' crawl' + (meta.runs === 1 ? '' : 's') + ', no wins yet', live: true };
+    return null;
+  }
+  var st = book1Status(), el = document.getElementById('save-book1');
+  if (st && el) { el.textContent = st.text; el.className = 'save'; }
+  function book2Status() {
+    var save = readJSON('dcw2_save_v1');
+    if (!save) return null;
+    var run = save.run, meta = save.meta || {};
+    if (run && !run.won) {
+      var left = Math.max(0, Math.ceil(run.hoursLeft || 0));
+      return { text: 'Crawl in progress: LV ' + (run.level || 13) + ' · ' + Math.floor(left / 24) + 'D ' + (left % 24) + 'H left on the floor', live: true };
+    }
+    if (meta.wins > 0) return { text: 'Book beaten' + (meta.wins > 1 ? ' ' + meta.wins + ' times' : '') + ' · Made it to the Fourth Floor', live: true };
+    if (meta.runs > 0) return { text: meta.runs + ' crawl' + (meta.runs === 1 ? '' : 's') + ', no wins yet', live: true };
+    return null;
+  }
+  var st2 = book2Status(), el2 = document.getElementById('save-book2');
+  if (st2 && el2) { el2.textContent = st2.text; el2.className = 'save'; }
+
+  // The System AI has opinions. One line at a time, typed out like the in-game dialog box.
+  var lines = [
+    'Welcome to crawler select. Pick a book. Every book is its own game.',
+    'Book One runs on a cartridge from 1987. Blowing on it does not help. Do it anyway.',
+    'Every new book gets a new console generation. Progress is a ladder, crawler. Mind the rungs.',
+    'Book Two came out of the box. The Over City has eight days. Do not waste them in the bar.',
+    'Reminder: pits are fatal, plot armor is limited, and the cat is in charge.',
+    'The sponsors are standing by. The sponsors are always standing by.',
+    'That skull down there is the prototype. We do not talk about the prototype.'
+  ];
+  var out = document.getElementById('ai-line');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var i = 0;
+  function show(text) {
+    if (reduce) { out.textContent = text; return; }
+    var k = 0;
+    out.textContent = '';
+    (function type() { k++; out.textContent = text.slice(0, k); if (k < text.length) setTimeout(type, 28); })();
+  }
+  setInterval(function () { i = (i + 1) % lines.length; show(lines[i]); }, 6500);
+})();
+</script>
+</body>
+</html>

@@ -76,8 +76,10 @@
     s.equipped.companion = 'donut';   // companions are found again every crawl
     s.meta.runs = (s.meta.runs || 0) + 1;
     persist();
+    // intro, then the name gag (you type a name, the AI calls you Carl), then floor 1
+    var naming = function () { if (S().nameEntry) go(S().nameEntry, { onDone: function () { G.startFloor(1); } }); else G.startFloor(1); };
     if (S().intro && !DCW.params.has('skipintro')) {
-      go(S().intro, { onDone: function () { s.meta.seenIntro = true; persist(); G.startFloor(1); } });
+      go(S().intro, { onDone: function () { s.meta.seenIntro = true; persist(); naming(); } });
     } else G.startFloor(1);
   };
 
@@ -110,8 +112,10 @@
     persist();
     G.track('floor:' + n);
     var card = S().floorCard;
-    if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } });
-    else G.resumeFloor();
+    var showCard = function () { if (card) go(card, { floor: n, onDone: function () { G.resumeFloor(); } }); else G.resumeFloor(); };
+    // a floor can open with a cold-open cutscene first (floor 7: the Great Race blows up)
+    if (f.coldOpen && S()[f.coldOpen] && !DCW.params.has('skipintro')) go(S()[f.coldOpen], { floor: n, onDone: showCard });
+    else showCard();
   };
 
   // Decide where the player belongs on the current floor.
@@ -513,7 +517,7 @@
       }
       case 'companion': { // companions are rescued, never boxed
         var cg = Math.round(60 * floorScale()); r.gold += cg;
-        return { kind: 'gold', amount: cg, converted: true };
+        return { kind: 'gold', amount: cg, converted: 'companion' };
       }
       case 'skin': {
         var id = rw.id;
@@ -521,7 +525,7 @@
         if (rw.any || !id) { var pool = lockedOf(rw.kind); id = pool.length ? U.pick(pool) : null; }
         if (!id || owned.indexOf(id) >= 0) {
           var conv = Math.round(60 * floorScale()); r.gold += conv;
-          return { kind: 'gold', amount: conv, converted: true };
+          return { kind: 'gold', amount: conv, converted: 'skin' };
         }
         if (rw.kind === 'skin') G.unlockSkin(id, true); else G.unlockCompanion(id, true);
         return { kind: rw.kind, id: id, isNew: true };

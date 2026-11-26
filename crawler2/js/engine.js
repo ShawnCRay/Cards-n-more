@@ -478,7 +478,12 @@
 
   /* ---------------- save ---------------- */
   var SAVE_KEY = 'dcw2_save_v1';
-  var LEGACY_KEYS = { book1: 'dcw_save_v1' };
+  // Book One (crawler-book1) keeps up to 3 slots; the active slot is remembered in dcc1_slot.
+  // The archived prototype (crawler/) is only a fallback when there is no Book One save.
+  function book1Key() {
+    var n = 1; try { n = parseInt(localStorage.getItem('dcc1_slot'), 10) || 1; } catch (e) { n = 1; }
+    return n <= 1 ? 'dcc1_save_v1' : 'dcc1_save_v1_s' + n;
+  }
   function defaultSave() {
     return {
       version: 1,
@@ -502,11 +507,12 @@
     try { var raw = localStorage.getItem(SAVE_KEY); if (raw) s = merge(s, JSON.parse(raw)); } catch (e) { /* storage blocked: play without saving */ }
     DCW.save = s;
     // earlier books' saves (same site = same storage), read-only
-    DCW.legacy = {};
-    Object.keys(LEGACY_KEYS).forEach(function (k) {
+    DCW.legacy = { book1: null };
+    [book1Key(), 'dcc1_save_v1', 'dcw_save_v1'].some(function (key) {
       var v = null;
-      try { var r = localStorage.getItem(LEGACY_KEYS[k]); if (r) v = JSON.parse(r); } catch (e) { v = null; }
-      DCW.legacy[k] = (v && typeof v === 'object') ? v : null;
+      try { var r = localStorage.getItem(key); if (r) v = JSON.parse(r); } catch (e) { v = null; }
+      if (v && typeof v === 'object') { DCW.legacy.book1 = v; DCW.legacy.book1Key = key; return true; }
+      return false;
     });
     return s;
   };

@@ -71,8 +71,9 @@ final report. Do not `git commit`; the lead commits.
 
 ## 3. Engine changes (lead; done before modules start)
 
-- Save key `dcw2_save_v1`. Book 1's save (`dcw_save_v1`, same origin on the website) is read once
-  at boot into `DCW.legacy.book1` (parsed object or null). Read-only.
+- Save key `dcw2_save_v1`. Book One's save (`crawler-book1/`, key `dcc1_save_v1` or its active slot
+  `dcc1_save_v1_s<n>` from `dcc1_slot`; the archived prototype's `dcw_save_v1` as a fallback, same origin on
+  the website) is read once at boot into `DCW.legacy.book1` (parsed object or null). Read-only.
 - `DCW.boot()` also inits `DCW.rooms` and `DCW.show`.
 - Debug: `?debug` as before. Keys in debug: `9` clears the current level, `0` god mode,
   `8` flips day/night (lead, through `DCW.game.debugFlipPhase`).
