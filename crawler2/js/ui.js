@@ -317,6 +317,15 @@
     ctx.drawImage(tmpC, 0, 0, w, h, Math.round(x - (w / 2 | 0) * s), Math.round(y - (h - 3) * s), w * s, h * s);
     ctx.globalAlpha = pa;
   }
+  // Donut riding on Carl's shoulder, same anchor as stage.js (x - 4*face, feet - 17); false if there is no such sprite
+  function shoulderDonut(ctx, x, feetY, face, frame, scale, o) {
+    if (!hasArt('donut_shoulder')) return false;
+    var s = scale || 1, f = face < 0 ? -1 : 1, oo = { frame: frame, flip: f < 0, scale: s };
+    if (o) for (var k in o) oo[k] = o[k];
+    if (s > 1) bigSprite(ctx, 'donut_shoulder', x - 4 * s * f, feetY - 17 * s, oo);
+    else { delete oo.scale; spr(ctx, 'donut_shoulder', x - 4 * f, feetY - 17, oo); }
+    return true;
+  }
   // stand-in faces: key = portrait name without 'p_'
   var FACE = {
     carl: { skin: '#fcd8a8', hair: '#7c3c18', bg: '#0058f8', shirt: '#503000' },
@@ -846,6 +855,7 @@
      ================================================================ */
   function itemsOf(items) { var a = typeof items === 'function' ? items() : items; return (a || []).filter(function (it) { return it && !it.hidden; }); }
   function labelOf(it) { return typeof it.label === 'function' ? it.label() : String(it.label === undefined ? '' : it.label); }
+  function rightOf(it) { var r = typeof it.right === 'function' ? it.right() : it.right; return r === undefined || r === null ? '' : String(r); }
   // items [{label, action(m), disabled, why, hint, right, rightColor, color, keep, icon}], opts {title, titleColor, w, x, y, keep, cancel, onBack, startCloses, kind, fill, border, dim, portrait}
   ui.menu = function (items, opts) {
     opts = opts || {};
@@ -870,7 +880,7 @@
       if (opts.dim !== false) dim(ctx, opts.dim === undefined ? 0.45 : opts.dim);
       var maxTitle = opts.w ? opts.w - 16 : 240;
       var tl = opts.title ? wrap(up(opts.title), maxTitle) : [];
-      var iw = 0; its.forEach(function (it) { iw = Math.max(iw, tw(labelOf(it)) + (it.right ? tw(it.right) + 12 : 0) + (it.icon ? 11 : 0)); });
+      var iw = 0; its.forEach(function (it) { var rt = rightOf(it); iw = Math.max(iw, tw(labelOf(it)) + (rt ? tw(rt) + 12 : 0) + (it.icon ? 11 : 0)); });
       var w = opts.w || Math.max(80, iw + 30, tl.reduce(function (a, l) { return Math.max(a, tw(l) + 16); }, 0));
       var hint = (m.msgT > 0 && m.msg) ? m.msg : (its[m.sel] && its[m.sel].hint) || '';
       var hl = hint ? wrap(up(hint), w - 12).slice(0, 2) : [];
@@ -886,7 +896,7 @@
         var lx = x + 16;
         if (it.icon) { icon(ctx, it.icon, lx, yy); lx += 11; }
         T(labelOf(it), lx, yy + 1, col);
-        if (it.right) T(it.right, x + w - 8, yy + 1, it.disabled ? C.dgray : (it.rightColor || C.gold), { align: 'right' });
+        var rt = rightOf(it); if (rt) T(rt, x + w - 8, yy + 1, it.disabled ? C.dgray : (it.rightColor || C.gold), { align: 'right' });
         yy += 12;
       });
       if (hl.length) { yy += 2; hl.forEach(function (l) { T(l, x + w / 2, yy, m.msgT > 0 ? C.red : C.dgray, { align: 'center', shadow: null }); yy += 10; }); }
@@ -1019,7 +1029,7 @@
     // explosive name popup after cycling
     if (ex && hudS.selT > 0) {
       var en = itemName(ex.id) + ' ×' + ex.n, ew = tw(en) + 8;
-      var ey = timer ? 42 : 15; DCW.box(108, ey, ew, 11, { fill: '#000' }); T(en, 112, ey + 2, ex.n > 0 ? C.yellow : C.red);
+      var ey = timer ? 52 : 15; DCW.box(108, ey, ew, 11, { fill: '#000' }); T(en, 112, ey + 2, ex.n > 0 ? C.yellow : C.red);
     }
     // combo popup
     var combo = h.combo || 0;
@@ -1185,10 +1195,7 @@
       var fr = Math.floor(t * 2);
       bigSprite(ctx, actorName('carl', 'idle'), 50, 84, { scale: 2, skin: equipped('skin'), frame: fr });
       var party = partyList();
-      if (party.indexOf('donut') >= 0 || !party.length) {
-        if (hasArt('donut_shoulder')) bigSprite(ctx, 'donut_shoulder', 56, 50, { scale: 2, frame: fr });
-        else bigSprite(ctx, actorName('donut', 'idle'), 92, 84, { scale: 2, frame: fr, flip: true });
-      }
+      if (party.indexOf('donut') >= 0 || !party.length) bigSprite(ctx, actorName('donut', 'idle'), 92, 84, { scale: 2, frame: fr, flip: true });
       if (party.indexOf('mongo') >= 0) spr(ctx, actorName(compSprite('mongo'), 'idle'), 22, 88, { frame: fr });
       if (party.indexOf('katia') >= 0) spr(ctx, actorName('katia', 'idle'), 110, 88, { frame: fr, flip: true });
       var lv = run.level || 13, need = xpNeed(lv), rc = raceClass();
@@ -1505,8 +1512,7 @@
       for (var s = 0; s < 6; s++) R(pv.x + 8 + s * 28, pv.y + 6 + (s % 2) * 4, 1, 1, C.gray);
       var fr = Math.floor((DCW.t || 0) * 2);
       bigSprite(ctx, actorName('carl', 'idle'), pv.x + 70, pv.y + 62, { scale: 2, skin: id2, frame: fr, silhouette: own2 ? null : '#000' });
-      if (hasArt('donut_shoulder')) bigSprite(ctx, 'donut_shoulder', pv.x + 76, pv.y + 28, { scale: 2, frame: fr, silhouette: own2 ? null : '#000' });
-      else bigSprite(ctx, actorName('donut', 'idle'), pv.x + 128, pv.y + 62, { scale: 2, frame: fr, flip: true });
+      bigSprite(ctx, actorName('donut', 'idle'), pv.x + 128, pv.y + 62, { scale: 2, frame: fr, flip: true });
       var yy2 = pv.y + pv.h + 5;
       T(fitText(own2 ? skinName(id2) : 'LOCKED', 168), pv.x, yy2, own2 ? C.gold : C.dgray);
       if (equipped('skin') === id2) T('EQUIPPED', pv.x + pv.w, yy2, C.green, { align: 'right' });
@@ -2226,10 +2232,10 @@
         var on = i === ri;
         if (on) { R(10, yy - 1, 142, 10, '#1c2c5c'); cursor(12, yy); }
         icon(ctx, itemIcon(e.id), 21, yy - 1);
-        var nmc = e.n > 0 ? (on ? C.white : C.gray) : C.ddgray;
-        T(fitText(itemName(e.id), 96), 32, yy, nmc);
+        var isSel = e.kind === 'explosive' && run.selected === e.id;
+        var nmc = isSel ? C.gold : e.n > 0 ? (on ? C.white : C.gray) : C.ddgray;
+        T(fitText(itemName(e.id), 98), 32, yy, nmc);
         T('×' + e.n, 150, yy, e.n > 0 ? C.white : C.dred, { align: 'right' });
-        if (e.kind === 'explosive' && run.selected === e.id) T('●', 3, yy, C.gold, { shadow: null });
       }
       scrollArrows(140, 28, 152, m.scroll, VIS, rs.length);
       var row = rs[ri]; if (!row) return;
@@ -2249,7 +2255,7 @@
       var dl = wrap(up(desc), pw - 12), room = Math.floor((154 - yy2) / 10);
       if (dl.length > room) { dl = dl.slice(0, room - 1); dl.push((blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE'); }
       dl.forEach(function (t, k) { T(t, px + 6, yy2 + k * 10, t.indexOf('READ MORE') >= 0 ? C.white : C.gray); });
-      if (m.msgT > 0) { var mw = tw(m.msg) + 12; DCW.box(160 - mw / 2, 80, mw, 16, { border: m.msgCol }); T(m.msg, 160, 84, m.msgCol, { align: 'center' }); }
+      if (m.msgT > 0) { DCW.box(px + 3, 139, pw - 6, 16, { fill: '#000', border: m.msgCol }); T(fitText(m.msg, pw - 14), px + pw / 2, 143, m.msgCol, { align: 'center' }); }
     };
     return push(m);
   };
@@ -2401,11 +2407,7 @@
       ctx.globalAlpha = 0.25 * (1 - ph); R(sx + Math.sin(t + s) * 3, y - ph * 40, 3, 3, '#bcbcbc'); ctx.globalAlpha = 1;
     }
   }
-  function saucer(ctx, x, y) {
-    x = Math.round(x); y = Math.round(y);
-    R(x - 8, y, 16, 3, '#000'); R(x - 7, y, 14, 2, C.gray); R(x - 3, y - 3, 6, 3, '#000'); R(x - 2, y - 3, 4, 3, C.blue);
-    R(x - 5, y + 1, 1, 1, (Math.floor((DCW.t || 0) * 6) % 2) ? C.red : C.gold); R(x + 4, y + 1, 1, 1, (Math.floor((DCW.t || 0) * 6) % 2) ? C.gold : C.red);
-  }
+
   // procedural rooms (fallbacks for art backdrops)
   function drawGuideRoom(ctx, t) {
     R(0, 0, W, H, '#0c0820');
@@ -2729,14 +2731,14 @@
     idle: function (dt) { this.t += dt; },
     draw: function (ctx) {
       var t = this.t || 0;
-      overSky(ctx, t, true, 150);
-      pdisc(ctx, 52, 132, 26, '#5c0c08'); pdisc(ctx, 52, 132, 20, '#a81000'); // the red sun, sinking
-      ruins(ctx, 150, 21, '#1c0828', t);
-      bigTop(ctx, 268, 150, '#10041c', '#2c0828');
-      rooftops(ctx, 156, 99, '#0a0414', '#ac7c00', t);
-      saucer(ctx, 150 + Math.sin(t * 0.7) * 40, 74 + Math.sin(t * 1.3) * 3);
-      slats(ctx, 162, t, true);
-      R(0, 162, W, 1, '#7c5c3c');
+      if (!drawBg(ctx, 'circus', 60 + t * 8, 0, { night: true, t: t })) {
+        overSky(ctx, t, true, 150);
+        ruins(ctx, 150, 21, '#1c0828', t);
+        rooftops(ctx, 156, 99, '#0a0414', '#ac7c00', t);
+        bigTop(ctx, 252, 158, '#2c0414', '#5c0c2c');
+        slats(ctx, 162, t, true);
+        R(0, 162, W, 1, '#7c5c3c');
+      }
       // logo
       var bob = Math.round(Math.sin(t * 2) * 1);
       T('DUNGEON CRAWLER', 162, 10, '#a81000', { align: 'center', scale: 2, shadow: null });
@@ -2758,8 +2760,7 @@
       var fr = Math.floor(t * 2);
       spr(ctx, actorName(compSprite('mongo'), 'idle'), 22, 166, { frame: fr });
       spr(ctx, actorName('carl', 'idle'), 46, 166, { frame: fr, skin: equipped('skin') });
-      if (hasArt('donut_shoulder')) spr(ctx, 'donut_shoulder', 46, 146, { frame: fr });
-      else spr(ctx, actorName('donut', 'idle'), 66, 166, { frame: fr, flip: true });
+      if (!shoulderDonut(ctx, 46, 166, 1, fr)) spr(ctx, actorName('donut', 'idle'), 66, 166, { frame: fr, flip: true });
       // menu
       var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh, mw = 136;
       DCW.box(160 - mw / 2, my, mw, mh);
@@ -2822,8 +2823,12 @@
     return l.filter(Boolean).map(function (e, i) { return typeof e === 'string' ? { id: e.toLowerCase().replace(/\W+/g, '_'), name: e } : e; });
   }
   function cpShortlist(list) {
-    var marked = list.filter(function (e) { return e.shortlist || e.final; });
-    if (marked.length) return marked.slice(0, 3);
+    var marked = list.filter(function (e) { return e.recommended || e.shortlist || e.final; }).slice(0, 3);
+    if (marked.length) {
+      var hidden = list.filter(function (e) { return marked.indexOf(e) < 0 && !e.locked; });
+      if (hidden.length && !marked.some(function (e) { return !e.locked; })) marked.push({ scroll: true, id: '__scroll', name: 'KEEP SCROLLING', found: hidden.filter(function (e) { return e.found; })[0] || hidden[0] });
+      return marked;
+    }
     if (list.length <= 3) return list.slice();
     var open = list.filter(function (e) { return !e.locked; }).slice(0, 3), needLocked = 3 - open.length, out = [];
     list.forEach(function (e) {
@@ -2834,7 +2839,7 @@
   }
   function an(name) { return /^[AEIOU]/.test(up(name)) ? 'AN ' : 'A '; }
   scenes.classPick = {
-    STEPS: ['intro', 'donut', 'bind', 'mord', 'race', 'class', 'outro', 'done'],
+    STEPS: ['intro', 'race', 'raceAi', 'class', 'classAi', 'donut', 'bind', 'mord', 'outro', 'done'],
     enter: function (p) {
       closeAll();
       this.p = p || {}; this.t = 0; this.phase = 'wait'; this.picked = {}; this.flash = 0; this.flashCol = C.white;
@@ -2851,6 +2856,7 @@
       else if (s === 'bind') { this.phase = 'bind'; this.pt = 0; }
       else if (s === 'mord') talk(d.mordecaiLines && lineList(d.mordecaiLines).length ? d.mordecaiLines : CP_FB.mordecaiLines);
       else if (s === 'race' || s === 'class') this.startPick(s);
+      else if (s === 'raceAi' || s === 'classAi') { if (lineList(d[s]).length) talk(d[s]); else this.next(); }
       else if (s === 'outro') talk(d.outro && lineList(d.outro).length ? d.outro : CP_FB.outro);
       else this.finish();
     },
@@ -2873,6 +2879,7 @@
     },
     choose: function () {
       var self = this, e = this.short[this.sel]; if (!e) return;
+      if (e.scroll) { this.phase = 'scroll'; this.pt = 0; this.tick = 0; sfx('menu_select'); return; }
       if (e.locked) {
         sfx('error'); this.cardShake = 0.45;
         ui.say([{ who: 'SYSTEM AI', text: e.locked === true ? 'LOCKED. DON\'T TAKE IT PERSONALLY. ACTUALLY, DO.' : e.locked }]);
@@ -2913,7 +2920,19 @@
         this.pt += dt;
         if (this.pt > 1.1 || (this.pt > 0.3 && P('confirm'))) {
           this.phase = 'cards'; this.pt = 0;
-          if (this.kind === 'class' && !this.collapsed) { this.phase = 'quake'; this.collapse(); }
+          var cd = cpData();
+          if (this.kind === 'class' && !this.collapsed && (lineList(cd.collapse).length || !cd.carlClasses)) { this.phase = 'quake'; this.collapse(); }
+        }
+        return;
+      }
+      if (this.phase === 'scroll') {
+        this.pt += dt; this.tick -= dt;
+        if (this.tick <= 0) { sfx('menu_move', { pitch: 0.8 + this.pt * 0.4 }); this.tick = 0.04 + this.pt * this.pt * 0.08; }
+        if (this.pt > 2.2) {
+          var sc = this.short[this.sel], f = sc && sc.found;
+          if (f) this.short[this.sel] = f;
+          this.phase = 'cards'; sfx('unlock'); this.flash = 0.7; this.flashCol = C.gold;
+          ui.announce('FOUND ONE', { sub: up((f && f.name) || ''), color: C.gold, time: 1.6 });
         }
         return;
       }
@@ -2944,7 +2963,7 @@
         }
         if (this.pt > 0.5) { bubble(ctx, 'WHAT?!', 254, GY - 50, { w: 40 }); }
       }
-      if (this.phase === 'roll' || this.phase === 'narrow' || this.phase === 'cards' || this.phase === 'quake' || this.phase === 'chosen') {
+      if (this.phase === 'roll' || this.phase === 'narrow' || this.phase === 'cards' || this.phase === 'quake' || this.phase === 'chosen' || this.phase === 'scroll') {
         dim(ctx, 0.55);
         var title = this.kind === 'race' ? 'CHOOSE YOUR RACE' : 'CHOOSE YOUR CLASS';
         if (this.phase === 'roll' || this.phase === 'narrow') {
@@ -2954,7 +2973,7 @@
             var nm = up(this.list[Math.floor(this.pt * 14) % this.list.length].name);
             var big = tw(nm, 2) <= 224;
             T(nm, 160, big ? 64 : 68, C.white, { align: 'center', scale: big ? 2 : 1 });
-            T('THE AI IS FLIPPING THROUGH ' + this.list.length + ' OPTIONS...', 160, 96, blink(3) ? C.gray : C.dgray, { align: 'center', shadow: null });
+            T('THE AI IS SHUFFLING THE OPTIONS...', 160, 96, blink(3) ? C.gray : C.dgray, { align: 'center', shadow: null });
           } else {
             T('THE AI HAS NARROWED IT', 160, 60, C.white, { align: 'center' });
             T('DOWN TO THREE.', 160, 72, C.white, { align: 'center' });
@@ -2962,26 +2981,38 @@
           }
         } else {
           T(title, 160, 8, C.gold, { align: 'center' });
-          var n = this.short.length, cw = 94, gap = 8, x0c = Math.round(160 - (n * cw + (n - 1) * gap) / 2);
+          var n = this.short.length, cw = n >= 4 ? 74 : 94, gap = n >= 4 ? 4 : 8, x0c = Math.round(160 - (n * cw + (n - 1) * gap) / 2);
           this.short.forEach(function (e, i) {
             var sel = i === self.sel, cx = x0c + i * (cw + gap), cy = 22 - (sel ? 3 : 0);
             if (sel && self.cardShake > 0) cx += Math.round(Math.sin(t * 60) * 3);
-            DCW.box(cx, cy, cw, 82, { fill: e.locked ? '#1c1018' : '#102010', border: sel ? (blink(4) ? C.white : C.gold) : e.locked ? C.ddgray : C.green });
-            if (e.locked) icon(ctx, 'lock', cx + cw / 2 - 12, cy + 6, { scale: 3 });
-            else { T('★', cx + cw / 2, cy + 8, blink(2) ? C.gold : C.yellow, { align: 'center', scale: 3 }); }
-            wrap(up(e.name), cw - 8).slice(0, 3).forEach(function (l, k) { T(l, cx + cw / 2, cy + 36 + k * 10, e.locked ? C.gray : C.white, { align: 'center' }); });
-            DCW.box(cx + 10, cy + 66, cw - 20, 11, { fill: e.locked ? '#5c0000' : '#005800', border: e.locked ? C.red : C.green });
-            T(e.locked ? 'LOCKED' : 'AVAILABLE', cx + cw / 2, cy + 68, C.white, { align: 'center', shadow: null });
+            var rolling = e.scroll && self.phase === 'scroll';
+            DCW.box(cx, cy, cw, 82, { fill: e.scroll ? '#101830' : e.locked ? '#1c1018' : '#102010', border: sel ? (blink(4) ? C.white : C.gold) : e.scroll ? C.blue : e.locked ? C.ddgray : C.green });
+            if (rolling) {
+              var rn = up(self.list[Math.floor(self.pt * Math.max(4, 22 - self.pt * 9)) % self.list.length].name);
+              wrap(rn, cw - 8).slice(0, 3).forEach(function (l, k) { T(l, cx + cw / 2, cy + 30 + k * 10, C.white, { align: 'center' }); });
+              T('▼', cx + cw / 2, cy + 68, blink(6) ? C.gold : C.yellow, { align: 'center' });
+              return;
+            }
+            if (e.scroll) T('?', cx + cw / 2, cy + 8, blink(2) ? C.blue : C.white, { align: 'center', scale: 3 });
+            else if (e.locked) icon(ctx, 'lock', cx + cw / 2 - 12, cy + 6, { scale: 3 });
+            else T('★', cx + cw / 2, cy + 8, blink(2) ? C.gold : C.yellow, { align: 'center', scale: 3 });
+            wrap(up(e.name), cw - 6).slice(0, 3).forEach(function (l, k) { T(l, cx + cw / 2, cy + 36 + k * 10, e.locked ? C.gray : C.white, { align: 'center' }); });
+            if (!e.scroll) {
+              DCW.box(cx + 6, cy + 66, cw - 12, 11, { fill: e.locked ? '#5c0000' : '#005800', border: e.locked ? C.red : C.green });
+              T(e.locked ? 'LOCKED' : cw < 90 ? 'OPEN' : 'AVAILABLE', cx + cw / 2, cy + 68, C.white, { align: 'center', shadow: null });
+            }
           });
           var e2 = this.short[this.sel];
           if (!ui.isOpen('say')) DCW.box(10, 110, 300, 48, { fill: '#0f1630' });
           if (e2 && !ui.isOpen('say')) {
-            T(up(e2.name), 18, 115, e2.locked ? C.gray : C.gold);
-            wrap(up(e2.desc || ''), 286).slice(0, 3).forEach(function (l, k) { T(l, 18, 126 + k * 10, C.white); });
+            var desc = e2.scroll ? 'THE AI RECOMMENDS THESE THREE. THE LIST HAS A LOT MORE. YOU COULD KEEP SCROLLING. THE AI WOULD RATHER YOU DIDN\'T.' : (e2.desc || '');
+            T(up(e2.name), 18, 115, e2.scroll ? C.blue : e2.locked ? C.gray : C.gold);
+            if (e2.recommended) T('AI RECOMMENDED', 302, 115, C.purple, { align: 'right', shadow: null });
+            wrap(up(desc), 286).slice(0, 3).forEach(function (l, k) { T(l, 18, 126 + k * 10, C.white); });
           }
           if (this.phase === 'cards') T('◀▶: CHOOSE   ' + bn('confirm') + ': PICK', 160, 164, C.gray, { align: 'center' });
         }
-      } else T("THE GAME GUIDE'S ROOM", 4, 4, C.gold, { shadow: '#000' });
+      } else if (!ui.isOpen('say')) T("THE GAME GUIDE'S ROOM", 4, 4, C.gold, { shadow: '#000' });
       if (this.flash > 0) { ctx.globalAlpha = clamp(this.flash, 0, 1) * 0.8; R(0, 0, W, H, this.flashCol); ctx.globalAlpha = 1; }
     }
   };
@@ -2997,7 +3028,9 @@
   function cineSprite(a, moving) {
     if (a.anim === undefined && !moving && hasArt(a.sprite)) return a.sprite;
     var base = a.sprite.replace(/_(idle|run|walk|talk|act)$/, '');
-    return actorName(base, a.anim || (moving ? 'walk' : 'idle'));
+    var name = actorName(base, moving && (!a.anim || a.anim === 'idle') ? 'walk' : (a.anim || 'idle'));
+    if (!hasArt(name) && hasArt(a.sprite)) name = a.sprite;
+    return name;
   }
   scenes.cinema = {
     enter: function (p) {
@@ -3017,12 +3050,13 @@
       var s = this.shots[this.i] || {};
       this.shot = s; this.st = 0; this.talking = false; this.waitLeft = 0;
       if (s.actors !== undefined) this.actors = arr(s.actors).map(cineActor);
+      else if (s.bg !== undefined && (!this.view || this.view.bg !== s.bg)) this.actors = [];
       else this.actors.forEach(function (a) { if (a.move) { a.x = a.move.x1; a.y = a.move.y1; a.move = null; } a.say = null; });
       if (s.bg !== undefined) this.view = { bg: s.bg, night: !!s.night, camX: s.camX || 0, camY: s.camY || 0, pan: s.pan || 0, t0: this.t };
       else if (this.view && s.night !== undefined) this.view.night = !!s.night;
       if (s.music !== undefined) { if (s.music) music(s.music); else tryCall(DCW.audio, 'stopMusic', []); }
       arr(s.sfx).forEach(function (n) { sfx(n); });
-      if (s.shake && DCW.shake) DCW.shake(+s.shake || 3, s.shakeTime || 0.5);
+      if (s.shake && DCW.shake) DCW.shake(+s.shake < 1.5 ? Math.round(2 + s.shake * 5) : +s.shake, s.shakeTime || 0.5);
       if (s.flash) { this.flash = 1; this.flashCol = s.flash === true ? C.white : s.flash; }
       this.fadeIn = s.fade ? 1 : 0;
       var lines = lineList(s.lines);
@@ -3464,7 +3498,7 @@
   function behindCounter(ctx, name, x, counterTop, o) {
     var inf = artInfo(name) || { h: 26 };
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, counterTop); ctx.clip();
-    spr(ctx, name, x, counterTop + Math.round(inf.h * 0.45), o);
+    spr(ctx, name, x, counterTop + Math.round(inf.h * 0.38), o);
     ctx.restore();
   }
   scenes.inn = {
@@ -3684,7 +3718,7 @@
       sfx('menu_select');
       if (o.id === 'door') this.leave();
       else if (o.id === 'bouncer') this.sayPick('door', 'CLARABELLE');
-      else if (o.id === 'quint') { var q = pick(this.lines('quint')); ui.openShop(this.shopId, { greet: typeof q === 'string' ? q : q && q.text }); }
+      else if (o.id === 'quint') { var ql = this.club.lines && lineList(this.club.lines.quint), q = ql && ql.length ? pick(ql) : (shopDef(this.shopId) ? null : pick(CLUB_FB.quint)); ui.openShop(this.shopId, q ? { greet: typeof q === 'string' ? q : q.text } : {}); }
       else if (o.id === 'dance') this.startDance();
       else if (o.id === 'bar') this.sayPick('bar', 'DONUT');
     },
@@ -3783,7 +3817,7 @@
       if (this.phase === 'story') { this.pager.update(dt); return; }
       if (this.phase === 'credits') {
         this.ct += dt * (Dn('confirm') || Dn('jump') ? 5 : 1);
-        if (P('start') || this.ct * 18 > this.credits.length * 14 + H + 20) { this.phase = 'stats'; this.ct = 0; sfx('fanfare'); }
+        if (P('start') || this.ct * 18 > this.credits.length * 14 + this.credits.filter(function (l) { return l.big; }).length * 10 + H + 40) { this.phase = 'stats'; this.ct = 0; sfx('fanfare'); }
         return;
       }
       this.ct += dt;
@@ -3796,26 +3830,25 @@
         bands(ctx, ['#000000', '#140000', '#280404', '#3c0808'], 0, H);
         VIG.collapse(ctx, t, 0, 30, W, 120);
         var k = clamp(this.ct / 0.5, 0, 1);
+        ctx.globalAlpha = 0.7 * k; R(0, 32, W, 58, '#000'); if (this.ct > 1.2) R(0, 132, W, 26, '#000'); ctx.globalAlpha = 1;
         T('THE FLOOR HAS', 160, 40 - Math.round((1 - k) * 60), C.white, { align: 'center', scale: 2 });
         T('COLLAPSED', 160, 60 - Math.round((1 - k) * 60), C.red, { align: 'center', scale: 3 });
-        if (this.ct > 1.2) T('GAME OVER', 160, 140, blink(2) ? C.red : C.dred, { align: 'center', scale: 2 });
+        if (this.ct > 1.2) T('GAME OVER', 160, 138, blink(2) ? C.red : C.orange, { align: 'center', scale: 2 });
         return;
       }
       if (this.phase === 'story') { R(0, 0, W, H, '#000'); this.pager.draw(ctx); return; }
       R(0, 0, W, H, '#05030c'); stars(ctx, t, 6, 110);
       if (this.phase === 'credits') {
-        var y0 = H + 10 - this.ct * 18;
+        var yy = H + 10 - this.ct * 18;
         this.credits.forEach(function (l, i) {
-          var yy = y0 + i * 14; if (yy < -20 || yy > H) return;
-          var first = i === 0, big = first || l.big;
-          var fits = tw(l.text, 2) <= 300;
-          T(l.text, 160, yy, l.color || (first ? C.gold : l.head ? C.pink : C.white), { align: 'center', scale: big && fits ? 2 : 1 });
+          var first = i === 0, big = (first || l.big) && tw(l.text, 2) <= 300;
+          if (yy > -20 && yy < H) T(l.text, 160, yy, l.color || (first ? C.gold : l.head ? C.pink : C.white), { align: 'center', scale: big ? 2 : 1 });
+          yy += big ? 24 : 14;
         });
         var rx = (t * 40) % 360 - 20;
         spr(ctx, actorName(compSprite('mongo'), 'walk'), rx - 22, 176, { frame: Math.floor(t * 10) });
         spr(ctx, actorName('carl', 'walk'), rx, 176, { frame: Math.floor(t * 10), skin: equipped('skin') });
-        if (hasArt('donut_shoulder')) spr(ctx, 'donut_shoulder', rx, 156, { frame: Math.floor(t * 4) });
-        else spr(ctx, actorName('donut', 'walk'), rx + 18, 176, { frame: Math.floor(t * 10) });
+        if (!shoulderDonut(ctx, rx, 176, 1, Math.floor(t * 4))) spr(ctx, actorName('donut', 'walk'), rx + 18, 176, { frame: Math.floor(t * 10) });
         T(bn('start') + ': SKIP', 314, 4, C.ddgray, { align: 'right', shadow: null });
         return;
       }

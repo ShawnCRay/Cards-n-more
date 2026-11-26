@@ -71,6 +71,12 @@
    glass_broken     level a3_depot (quest sex_workers done, fools_glass starts)
    doomsday         level a3_depot (+ item doomsday: CARL'S DOOMSDAY SCENARIO)
    escaped          level a3_escape (win: true)
+   OPTIONAL / RECORDS
+   temple_done restroom_done park_done   optional levels x_temple x_restroom x_park
+   seen_ruins seen_circus seen_stairs seen_east seen_crater seen_east_stairs
+                    one-shot guards of the AI flavor events (events.sets)
+   Flags game.js / ui.js may key off: donut_asleep/donut_awake (party), mongo_big,
+   katia_joined, freeballing, xistera, fang_caps, circus_gone, magistrate, doomsday.
 
    ---------------------------------------------------------------------------
    TRACK EVENTS used by achievements (game.js + stage.js emit; see lead notes):
@@ -105,6 +111,18 @@
    - D.mordecaiHints: [{when:{flags,notFlags}, text}] story hints Mordecai gives
      at the inn before falling back to the random D.mordecai tips.
    - shops[id].lines / inns[id].lines: keeper chatter. shop item `limit` = per run.
+   - level.quest may be an ARRAY of {start}|{done} (a3_depot finishes one quest and
+     starts the next). level.bossMusic: track for the boss part of a side level.
+   - plant.finale 'handoff' (a3_depot): at T, BOMB hands the detonator to Katia,
+     no blast here (the depot blows in a3_escape's outro). Default = the big blast.
+   - room.rooms[i].intro: AI line when the ring starts. room.finale.kind/name/meter
+     are labels for the HUD; rooms.js reads seconds/worms/rate/lines/doneLines/music.
+   - area.enemiesAfter {flag, day, night}: replaces area.enemies once flag is set
+     (circus_park after circus_gone).
+   - D.layouts[id] (climb/drop rows, also inlined as level.layout), D.streetRows[id]
+     (also inlined as area.rows), chunks[id].theme (the set it was drawn for; the
+     level's theme decides the look).
+   - events gives also take {item, n} for key items; events.npc fires on talk.
    - achievements[id].box null = no prize (YELLOW-BELLIED CHICKENSHIT, EARLY BIRD).
    Text rules: uppercase ASCII + the font's glyphs, no em dashes, <= 160 chars.
    ========================================================================== */
@@ -305,28 +323,28 @@
   /* ---------------- enemies (ids fixed by DESIGN 6.4) ---------------- */
   D.enemies = {
     lemur: { name: 'FORMER CIRCUS LEMUR', level: 8, tier: 1, hp: 11, dmg: 2, speed: 44, w: 12, h: 14, ai: 'perch',
-      projectile: 'knife', shootEvery: 2.2, aggro: 150, dropRange: 40, xp: 5, gold: [1, 4], sprite: 'lemur', hiddenUntilSeen: true,
+      projectile: 'knife', shootEvery: 2.2, aggro: 150, dropRange: 40, xp: 3, gold: [1, 4], sprite: 'lemur', hiddenUntilSeen: true,
       flavor: "RED FUR, A PAINTED HUMAN SKULL FOR A FACE AND A BANDOLIER OF KNIVES. THE CUTEST THING ON THIS FLOOR. THAT IS THE PROBLEM WITH THIS FLOOR." },
     stilt_clown: { name: 'TERROR THE CLOWN', level: 10, tier: 1, hp: 30, dmg: 3, speed: 46, w: 14, h: 44, ai: 'stilt',
-      reach: 28, aggro: 170, fearImmune: true, kb: 0.4, xp: 16, gold: [4, 10], sprite: 'stilt_clown',
+      reach: 28, aggro: 170, fearImmune: true, kb: 0.4, xp: 10, gold: [4, 10], sprite: 'stilt_clown',
       flavor: "ELEVEN FEET OF CLOWN, MOST OF IT STILT, ALL OF IT FUSED. NO EYES, NO NOSE, ONE MOUTH. FEAR DOES NOTHING. IT HAS NO ROOM LEFT FOR FEAR." },
     fat_clown: { name: 'CLAMMY-TYPE CLOWN', level: 9, tier: 1, hp: 18, dmg: 2, speed: 34, w: 20, h: 18, ai: 'jumper',
-      jump: 240, aggro: 140, kb: 0.6, xp: 6, gold: [2, 5], sprite: 'fat_clown',
+      jump: 240, aggro: 140, kb: 0.6, xp: 4, gold: [2, 5], sprite: 'fat_clown',
       flavor: "SHORT, THREE TIMES AS WIDE AND WEARING A GOWN THAT WAS PINK BEFORE THE CATACLYSM. BOUNCES ON ITS BELLY. HAS A LOT OF TEETH FOR A CLOWN." },
     mold_lion: { name: 'MOLD LION', level: 15, tier: 1, hp: 22, dmg: 3, speed: 50, w: 26, h: 16, ai: 'charger',
-      chargeSpeed: 190, aggro: 160, regrow: true, regrowTime: 8, xp: 12, gold: [3, 8], sprite: 'mold_lion',
+      chargeSpeed: 190, aggro: 160, regrow: true, regrowTime: 8, xp: 8, gold: [3, 8], sprite: 'mold_lion',
       flavor: "A LION WITH A MANE OF PINK AND GREEN WORMS AND ONE GLOWING EMERALD EYE. KILL IT AND IT GETS BACK UP. BURN IT AND IT DOES NOT. JUST SAYING." },
     giraffe: { name: 'ARTILLERY GIRAFFE', level: 12, tier: 1, hp: 40, dmg: 3, speed: 8, w: 24, h: 40, ai: 'launcher',
-      spawn: 'lemur', spawnEvery: 5, maxSpawn: 3, aggro: 220, kb: 0.1, armor: 1, xp: 18, gold: [5, 12], sprite: 'giraffe',
+      spawn: 'lemur', spawnEvery: 5, maxSpawn: 3, aggro: 220, kb: 0.1, armor: 1, xp: 12, gold: [5, 12], sprite: 'giraffe',
       flavor: "THE CIRCUS TAUGHT IT TO CATCH LEMURS ON ITS NECK. THE CATACLYSM TAUGHT IT TO THROW THEM. AT YOU. FROM ACROSS THE STREET." },
     street_urchin: { name: 'STREET URCHIN', level: 8, tier: 1, hp: 14, dmg: 2, speed: 60, w: 14, h: 14, ai: 'urchin',
-      neutral: true, nightOnly: true, angerTime: 1, xp: 5, gold: [0, 3], sprite: 'street_urchin',
+      neutral: true, nightOnly: true, angerTime: 1, xp: 3, gold: [0, 3], sprite: 'street_urchin',
       flavor: "A KNEE-HIGH SPIKY TUMBLEWEED WITH A JANITOR'S WORK ETHIC. IT ONLY WANTS THE TRASH. STAND BETWEEN IT AND THE TRASH. SEE WHAT HAPPENS." },
     brain_boiler: { name: 'BRAIN BOILER', level: 10, tier: 1, hp: 12, dmg: 1, speed: 16, w: 16, h: 20, ai: 'floater', flying: true,
-      projectile: 'psionic', shootEvery: 3.2, aggro: 160, fearImmune: true, xp: 6, gold: [1, 4], sprite: 'brain_boiler',
+      projectile: 'psionic', shootEvery: 3.2, aggro: 160, fearImmune: true, xp: 4, gold: [1, 4], sprite: 'brain_boiler',
       flavor: "A SQUID THAT GOT STUCK INSIDE AN UMBRELLA AND DECIDED TO MAKE IT EVERYBODY'S PROBLEM. ITS PSIONIC RING GIVES YOU A HEADACHE. IT IS ALSO A HEADACHE." },
     incubus: { name: 'INCUBUS', level: 14, tier: 1, hp: 24, dmg: 3, speed: 40, w: 14, h: 22, ai: 'charm',
-      charmTime: 2, charmEvery: 5, aggro: 140, xp: 12, gold: [3, 9], sprite: 'incubus',
+      charmTime: 2, charmEvery: 5, aggro: 140, xp: 8, gold: [3, 9], sprite: 'incubus',
       flavor: "SQUARE JAW, BAT WINGS, AND A SMILE THAT FLIPS YOUR LEFT AND RIGHT. YOUR GUIDE IS ONE OF THESE NOW. DO NOT TELL HIM HE IS THE PRETTY ONE." },
     berserker: { name: 'SHAMBLING BERSERKER', level: 12, tier: 2, hp: 60, dmg: 4, speed: 22, w: 26, h: 44, ai: 'berserker',
       darkMul: 4, berserkSpeed: 120, aggro: 150, armor: 1, kb: 0.2, xp: 26, gold: [6, 14], sprite: 'berserker',
@@ -383,7 +401,7 @@
      hp ~ 35-45x the expected punch damage at that point (45-90 s with the party). */
   D.bosses = {
     terror_big: { name: 'TERROR THE CLOWN', title: 'THE TALL ONE AT THE END OF THE STREET', level: 12,
-      hp: 110, dmg: 3, w: 24, h: 56, sprite: 'terror_big', xp: 60, gold: [20, 40], flying: false, fearImmune: true,
+      hp: 110, dmg: 3, w: 24, h: 56, sprite: 'terror_big', xp: 40, gold: [20, 40], flying: false, fearImmune: true,
       phases: [
         { below: 1.0, speed: 46, pattern: ['walk:1.5', 'charge', 'idle:1', 'shoot:knife:2', 'walk:1', 'jump_slam', 'idle:1.2'] },
         { below: 0.5, speed: 60, pattern: ['charge', 'idle:0.6', 'spawn:lemur:2', 'jump_slam', 'shockwave', 'shoot:knife:3', 'idle:0.9'] }
@@ -394,7 +412,7 @@
       loot: 'silver', unlock: null },
 
     heather: { name: 'HEATHER THE BEAR', title: 'LEVEL 19 NEIGHBORHOOD BOSS', level: 19,
-      hp: 240, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 140, gold: [40, 70], flying: false, custard: 0.25,
+      hp: 240, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 100, gold: [40, 70], flying: false, custard: 0.25,
       phases: [
         { below: 1.0, speed: 72, pattern: ['walk:1', 'charge', 'idle:0.8', 'jump_slam', 'idle:1', 'charge', 'charge', 'idle:1.2'] },
         { below: 0.6, speed: 86, pattern: ['worms', 'charge', 'idle:0.6', 'jump_slam', 'worms', 'shockwave', 'charge', 'idle:1'] },
@@ -420,7 +438,7 @@
       loot: 'boss', unlock: null },
 
     vincente: { name: 'VINCENTE', title: 'CITY ELF, 201ST SECURITY GROUP', level: 16,
-      hp: 280, dmg: 3, w: 16, h: 22, sprite: 'vincente', xp: 170, gold: [40, 80], flying: false,
+      hp: 340, dmg: 3, w: 16, h: 22, sprite: 'vincente', xp: 170, gold: [40, 80], flying: false,
       phases: [
         { below: 1.0, speed: 44, pattern: ['walk:1.2', 'shoot:bolt:3', 'idle:0.8', 'meat_hooks', 'walk:1', 'darkness', 'shoot:bolt:2', 'idle:1'] },
         { below: 0.5, speed: 58, pattern: ['darkness', 'teleport', 'shoot:bolt:4', 'meat_hooks', 'spawn:city_elf:1', 'charge', 'spread:bolt:5', 'idle:0.8'] }
@@ -663,9 +681,9 @@
     '............................',
     '............................',
     '............................',
+    '............................',
     '.............?..............',
     '...........=====............',
-    '............................',
     '............................',
     '..e......h.........D........',
     '############################',
@@ -1610,7 +1628,7 @@
     '......oo..............oo........',
     '................................',
     '................................',
-    '..e.....m............e..........',
+    '..e.....m...............e.......',
     '#########...#######...##########',
     '#########...#######...##########'] };
   C.escape_bautista = { theme: 'escape', rows: [
@@ -1779,9 +1797,9 @@
     '........................',
     '........................',
     '........................',
+    '........................',
     '..........?.............',
     '........=====...........',
-    '........................',
     '........................',
     '..h..........D..........',
     '########################',
@@ -1799,7 +1817,7 @@
       'X......................X',
       'X......................X',
       'X......................X',
-      'X..e.......e.....c.....X',
+      'X....e.....e.....c.....X',
       'X...###################X',
       'X......................X',
       'X......................X',
@@ -1823,7 +1841,7 @@
       'X......................X',
       'X......................X',
       'X......................X',
-      'X..e.....bb..bb.....e..X',
+      'X....e...bb..bb.....e..X',
       'X...###################X',
       'X......................X',
       'X......................X',
@@ -1841,7 +1859,7 @@
       'X......................X',
       'X......................X',
       'X......................X',
-      'X......e.....e.....e...X',
+      'X......e.....e..e......X',
       'X#################....#X',
       'X......................X',
       'X......................X',
@@ -1869,8 +1887,8 @@
       'X..====................X',
       'X......................X',
       'X........e.............X',
-      'X.......====...........X',
-      'X......................X',
+      'X.......XXXX...........X',
+      'X.......XXXX...........X',
       'X..............c.......X',
       'X............====......X',
       'X...........f..........X',
@@ -1884,8 +1902,8 @@
       'X........====..........X',
       'X......................X',
       'X......................X',
-      'X...====...............X',
-      'X...........f..........X',
+      'X...XXXX...............X',
+      'X...XXXX....f..........X',
       'X.........e............X',
       'X........====..........X',
       'X......................X',
@@ -1896,18 +1914,18 @@
       'X..................===.X',
       'X......................X',
       'X..............oe......X',
-      'X..............====....X',
-      'X...........f..........X',
+      'X..............XXXX....X',
+      'X...........f..XXXX....X',
       'X......................X',
       'X.........====.........X',
       'X......................X',
       'X......................X',
       'X....====..............X',
       'X......................X',
-      'X..........ec..........X',
-      'X.........====.........X',
       'X......................X',
+      'X.........v............X',
       'X......................X',
+      'X................c.....X',
       'X..............====....X',
       'X......................X',
       'X..P.....c.......h.....X',
@@ -2031,8 +2049,8 @@
       edges: { left: null, right: { area: 'ruins_w', entry: 'left' } },
       npcs: [
         { id: 'mordecai_tour', x: 8, sprite: 'mordecai', phase: 'day', showIf: 'toured', hideIf: 'lemurs_done' },
-        { id: 'town_crier', x: 34, sprite: 'citizen_human', phase: 'day' },
-        { id: 'gate_guard', x: 84, sprite: 'guard', phase: 'day' }
+        { id: 'town_crier', x: 34, sprite: 'citizen_human_walk', phase: 'day' },
+        { id: 'gate_guard', x: 84, sprite: 'guard_walk', phase: 'day' }
       ],
       enemies: { day: [], night: [['street_urchin', 3], ['incubus', 1]] },
       density: { day: 0, night: 0.5 },
@@ -2149,7 +2167,7 @@
       npcs: [
         { id: 'burgundy', x: 18, sprite: 'burgundy', phase: 'day', showIf: 'met_quill', hideIf: 'quill_dead' },
         { id: 'bautista', x: 66, sprite: 'bautista', showIf: 'met_bautista' },
-        { id: 'clerk', x: 104, sprite: 'citizen_skyfowl', phase: 'day' }
+        { id: 'clerk', x: 104, sprite: 'citizen_skyfowl_walk', phase: 'day' }
       ],
       enemies: { day: [], night: [['krasue', 1], ['shadow_leak', 2], ['city_elf', 1]] },
       density: { day: 0, night: 0.5 },
@@ -2167,7 +2185,7 @@
       },
       edges: { left: { area: 'admin', entry: 'right' }, right: null },
       npcs: [
-        { id: 'old_crawler', x: 60, sprite: 'citizen_human' }
+        { id: 'old_crawler', x: 60, sprite: 'citizen_human_walk' }
       ],
       enemies: { day: [['brain_boiler', 2], ['giraffe', 1], ['lemur', 2]], night: [['shadow_leak', 3], ['berserker', 1], ['street_urchin', 2]] },
       density: { day: 0.5, night: 0.8 },
@@ -2321,7 +2339,8 @@
     boss: 'vincente',
     enemies: [['city_elf', 3], ['incubus', 1], ['street_urchin', 1]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
     intro: ["MONGO FOUND WHAT HE WAS SMELLING. SO DID YOU. KRASUE ARE GHOST-CLASS: FISTS, KICKS, MISSILES AND FANG CAPS. NOT BOMBS. FIND THE BODIES."],
-    signs: ["GUMGUM. LEVEL 5 ORC. SHE ASKED FOR HELP AND THE GUIDE SAID NO. SOMEBODY ELSE ANSWERED. THE MARKS ON HER ARE NOT FROM ONE KIND OF MONSTER."],
+    signs: ["SPRAY PAINT ON THE WALL: THE ANGELS ARE WATCHING. SOMEBODY ELSE HAS WRITTEN UNDER IT: SO ARE THE HEADS.",
+      "GUMGUM. LEVEL 5 ORC. SHE ASKED FOR HELP AND THE GUIDE SAID NO. SOMEBODY ELSE ANSWERED. THE MARKS ON HER ARE NOT FROM ONE KIND OF MONSTER."],
     reward: { box: 'boss', xp: 60, gold: 40 },
     sets: ['vincente_dead', 'gumgum_dead', 'has_pass', 'xistera'], gives: [{ item: 'gate_pass', n: 1 }, { item: 'letter', n: 1 }],
     outro: 'alley_after', thenArea: 'settlement' });
@@ -2399,7 +2418,8 @@
       { who: 'BURGUNDY', text: "DON'T HEAL ME. IF MY BODY HEALS, THE CURSE COMES BACK WITH IT. I GET TO DIE A PERSON. PLEASE. LET ME HAVE THAT." },
       { who: 'BURGUNDY', text: "IT WAS NEVER FEATHERFALL. IT WAS QUILL. AND HER HUSBAND. REMEX. GO TO THE DEPOT. THAT IS WHERE HE KEEPS THE LIGHT." }
     ] }],
-    signs: ["MAGISTRATE FEATHERFALL, LEVEL 32 DARK CLERIC. STRAPPED UPSIDE DOWN TO A WHEEL. FEATHERLESS. MILKY EYES. DEAD FOR YEARS. HE STILL SIGNED THINGS."],
+    signs: ["THE ROOM IS MUTED TO SPELLS. EVEN THE CAT'S TORCH FLICKERS. SOMETHING IN HERE ATE A LOT OF LIGHT AND WANTS MORE.",
+      "MAGISTRATE FEATHERFALL, LEVEL 32 DARK CLERIC. STRAPPED UPSIDE DOWN TO A WHEEL. FEATHERLESS. MILKY EYES. DEAD FOR YEARS. HE STILL SIGNED THINGS."],
     reward: { box: 'gold', xp: 250, gold: 80 },
     sets: ['nest_done', 'burgundy_dead', 'met_bautista'], gives: [{ item: 'kimaris', n: 1 }],
     outro: 'nest_after', thenArea: 'admin' });
@@ -2738,7 +2758,7 @@
         L(CARL, "SORRY TO DISAPPOINT. DONUT, MONGO, WE'RE LEAVING. RIGHT NOW. WALK, DON'T RUN, DON'T LOOK AT THE TATTOOS.") ] },
       { bg: 'basement', night: true, flash: '#ffffff', shake: 0.8, sfx: 'hurt', wobble: 4, lines: [
         L(CARL, "SOMETHING HIT ME. I DIDN'T SEE IT. I DIDN'T SEE ANYTHING. THE FLOOR IS COMING UP VERY FAST."),
-        L(AI, "ACHIEVEMENT! LAZARUS! YOU TOOK A SPELL ABOVE LEVEL 15 TO THE FACE AND LIVED. LIKE THE BIG GUY IN THAT RABBIT BOOK, YOU NEVER SAW IT COMING. UNLIKE HIM, YOU GOT UP.") ] },
+        L(AI, "ACHIEVEMENT! LAZARUS! A SPELL ABOVE LEVEL 15 TO THE FACE, AND YOU LIVED. LIKE THE BIG GUY IN THAT RABBIT BOOK, YOU NEVER SAW IT COMING. UNLIKE HIM, YOU GOT UP.") ] },
       { bg: 'basement', night: true, fade: true, actors: [A('carl_hurt', 80), A('donut_down', 150), A('mongo_idle', 260, { flip: true }), A('cage', 260)], lines: [
         L(AI, "FIFTEEN HOURS LATER..."),
         L(CARL, "DONUT IS FLOATING IN A GIANT WATER LILY. SHE'S ASLEEP. SHE'S DROOLING. MONGO IS IN A CAGE AND HE IS NOT HAPPY ABOUT IT. NEITHER AM I.") ] },
@@ -2790,7 +2810,7 @@
       { bg: 'panel:bigtop_vine', sfx: 'worm_squish', lines: [
         L(AI, "RINGMASTER GRIMALDI IS WILTING! THE POISON IS IN THE ROOTS! THE CITY BOSS IS DYING SLOWLY, WHICH IS OUR FAVORITE SPEED!"),
         L('ZEV', "CARL! CARL. THE VENGEANCE OF THE DAUGHTER PRODUCERS ARE SCREAMING AT ME. GRIMALDI IS THEIR STAR. YOU'RE KILLING THEIR STAR ON A TUESDAY."),
-        L(CARL, "TELL THEM I'VE GOT A BETTER EPISODE. A BIG ONE. THE LONG LOST LOVE, THE BANISHED BRIDE, THE TEARFUL REUNION. LIKE GERALDO OPENING THAT VAULT, ONLY SOMETHING'S INSIDE."),
+        L(CARL, "TELL THEM I'VE GOT A BETTER EPISODE. THE BANISHED BRIDE, THE TEARFUL REUNION. LIKE GERALDO OPENING THAT VAULT, EXCEPT THIS TIME SOMETHING'S INSIDE."),
         L('ZEV', "THEY SAY YES. ON ONE CONDITION. YOU APPEAR IN THEIR SHOW ON THE SIXTH FLOOR. LATER. WHEN THEY CALL. OH, AND YOU HAVE TO KEEP HIM ALIVE NOW.") ] },
       { bg: 'circus', night: true, actors: [A('carl_idle', 100), A('apollon', 210, { flip: true })], lines: [
         L(CARL, "WISP ARMOR SPELL. READ THE BOOK, CAST IT, NO MIND CONTROL. THEN I EAT THE WORM ICE CREAM SO THE VINE CAN TALK TO ME. THIS IS THE PLAN. I MADE THIS PLAN."),
@@ -2840,7 +2860,7 @@
         L(CARL, "I WAS NEVER GOING TO WEAR PANTS AGAIN ANYWAY. I'M AT PEACE WITH IT."),
         L(DONUT, "MONGO GOT FANG CAPS! THEY CLICK ON LIKE LEGO! NOW HE CAN BITE GHOSTS! AND I GOT ACUTE EARS. I CAN HEAR EVERYTHING NOW. CARL, YOUR STOMACH IS VERY LOUD.") ] },
       { bg: 'inn_narwhal', sfx: 'achievement', actors: crew(90).concat([A('mordecai', 170, { flip: true })]), lines: [
-        L(AI, "ACHIEVEMENT! ONE QUADRILLION! YOU ARE AMONG THE FIRST TEN CRAWLERS TO PASS A QUADRILLION VIEWS! A GOLD FAN BOX IS ON ITS WAY! IT HAS FANS IN IT! NOT LITERAL FANS!"),
+        L(AI, "ACHIEVEMENT! ONE QUADRILLION! AMONG THE FIRST TEN CRAWLERS TO PASS A QUADRILLION VIEWS! A GOLD FAN BOX IS COMING! IT HAS FANS IN IT! NOT LITERAL FANS!"),
         L(MORD, "AND A PILE OF EXPLOSIVES FROM THE QUEST. DYNAMITE AND HOB-LOBBERS. CARL, TRY NOT TO BLOW UP THE INN. FITZ HAS ALREADY STARTED A TAB FOR ME.") ] }
     ],
 
@@ -2867,7 +2887,7 @@
       { bg: 'settlement', fade: true, music: 'sad', actors: crew(90).concat([A('gumgum', 200, { flip: true })]), lines: [
         L('GUMGUM', "OUTSIDE THE GATE. EVERY MORNING. MORE OF THEM. NOBODY KNOWS WHO THEY ARE. NOBODY CLAIMS THEM. I BURY THEM. NOBODY HELPS ME BURY THEM."),
         L(CARL, "FIFTEEN. MAYBE MORE. ALL WOMEN. ALL DEAD, ALL DUMPED LIKE TRASH. SOMETHING'S BEEN DRINKING FROM THEM."),
-        L(AI, "NEW QUEST! THE SEX WORKERS WHO FELL FROM THE HEAVENS! BODIES APPEAR EVERY DAWN AND NOBODY CAN SAY WHERE FROM. FIND OUT WHY. A TOWN IS WAITING. OR NOT. MOSTLY NOT."),
+        L(AI, "NEW QUEST! THE SEX WORKERS WHO FELL FROM THE HEAVENS! BODIES APPEAR EVERY DAWN AND NOBODY CAN SAY WHERE FROM. FIND OUT WHY. NOBODY ELSE IS GOING TO."),
         L(DONUT, "WE ARE DOING THIS ONE, CARL. I DON'T CARE WHAT MORDECAI SAYS. HE WORKS FOR ME NOW.") ] }
     ],
 
@@ -2899,9 +2919,9 @@
         L(CARL, "GUMGUM. THE KRASUE DID THIS. SHE CAME ASKING FOR HELP AND SHE DIED IN AN ALLEY, JUST LIKE HER MOTHER.") ] },
       { bg: 'alley', night: true, actors: crew(90), lines: [
         L(CARL, "SHE HAD A GATE PASS TO THE ADMIN DISTRICT, SIGNED BY MAGISTRATE FEATHERFALL. AND A LETTER. SCRIBBLY WRITING. NECROMANCER STUFF, I THINK."),
-        L(DONUT, "FITZ SAID THE MAGISTRATE IS A DARK CLERIC WHO CONTROLS THE UNDEAD. CARL, THIS IS LIKE A LAW AND ORDER. THE ONE WITH THE GOOD DETECTIVE. WE ARE THE GOOD DETECTIVE.") ] },
+        L(DONUT, "FITZ SAID THE MAGISTRATE IS A DARK CLERIC WHO CONTROLS THE UNDEAD. CARL, THIS IS LIKE LAW AND ORDER. THE ONE WITH THE GOOD DETECTIVE. WE ARE THE GOOD DETECTIVE.") ] },
       { bg: 'inn_narwhal', sfx: 'lootbox_open', flash: '#f8b800', actors: crew(90), lines: [
-        L(AI, "GOLD FAN BOXES! CARL RECEIVES: A XISTERA! THE BASKET SCOOP FROM JAI ALAI! STRAP IT TO YOUR RIGHT ARM AND FLING YOUR INVENTORY AT PEOPLE AT A HUNDRED MILES AN HOUR!"),
+        L(AI, "GOLD FAN BOXES! CARL RECEIVES: A XISTERA! THE BASKET SCOOP FROM JAI ALAI! STRAP IT TO YOUR RIGHT ARM AND FLING YOUR INVENTORY AT A HUNDRED MILES AN HOUR!"),
         L(CARL, "HOB-LOBBERS. STRAIGHT AND FAST. CESTA PUNTA. I'M GOING TO BE A JAI ALAI GOD. A VERY SPECIFIC GOD."),
         L(DONUT, "MINE IS A PICTURE. OF BEA. AND ME. FROM BEFORE. I DON'T WANT TO TALK ABOUT IT. I'M GOING TO KEEP IT. I'M GOING TO KEEP IT VERY SAFE.") ] }
     ],
@@ -2915,7 +2935,7 @@
         L('MISS QUILL', "THE MAGISTRATE IS NOT SEEING VISITORS. THE MAGISTRATE IS NEVER SEEING VISITORS. STATE YOUR BUSINESS SO I CAN DENY IT."),
         L(CARL, "WOMEN ARE TURNING UP DEAD AT YOUR GATE EVERY MORNING."),
         L('MISS QUILL', "WERE ANY OF THEM SKYFOWL? NO? THEN THE MAGISTRATE WILL NOT CARE. AND IF HE WILL NOT CARE, I WILL NOT DISTURB HIM."),
-        L(CARL, "THREE HUNDRED STUFFED ANIMALS ON THE SHELVES BEHIND HER, ALL TAGGED. IT'S A BEANIE BABY COLLECTION FROM HELL. SHE'S GUARDING THAT DOOR LIKE IT'S THE LAST ONE ON EARTH.") ] },
+        L(CARL, "THREE HUNDRED STUFFED ANIMALS ON THE SHELVES BEHIND HER, ALL TAGGED. A BEANIE BABY COLLECTION FROM HELL. SHE GUARDS THAT DOOR LIKE IT'S THE LAST ONE ON EARTH.") ] },
       { bg: 'office', shake: 0.3, sfx: 'crate_break', actors: crew(80).concat([A('quill', 220, { flip: true })]), lines: [
         L(CARL, "EVIDENCE. ONE OF THE WOMEN FROM THE GATE. FROM MY INVENTORY. ONTO YOUR DESK. AND ALL OVER YOUR LITTLE DOLLS."),
         L('MISS QUILL', "MY FIGURES! GUARDS! GUARDS! OH. OH, YOU HAVE A SIGNED PASS. FINE. FINE! THE MAGISTRATE ONLY COMES OUT AT NIGHT! NOW LOOK WHAT YOU DID! I NEED A RAG!") ] },
@@ -2938,7 +2958,7 @@
       { bg: 'settlement', lines: [
         L(AI, "PREVIOUSLY ON DUNGEON CRAWLER WORLD! TONIGHT'S RECAP: THE CRAWLERS WHO PICKED THEIR CLASSES WITH STYLE!"),
         L(AI, "HEKLA, LEADER OF BRYNHILD'S DAUGHTERS! SHE TOOK THE AMAZONIAN UPGRADE AND IS NOW SEVEN FEET OF SAPPHIRE-EYED MUSCLE IN A VALKYRIE HELMET!"),
-        L(AI, "LUCIA MAR, THIRTEEN YEARS OLD, SOCCER JERSEY OVER GLOWING SILVER ARMOR, AND HER DOGS! SHE TRASHED THE DESPERADO CLUB LAST NIGHT. THE CLUB WOULD LIKE HER BACK. TO SUE HER."),
+        L(AI, "LUCIA MAR! THIRTEEN, A SOCCER JERSEY OVER GLOWING SILVER ARMOR, AND HER DOGS! SHE TRASHED THE DESPERADO CLUB LAST NIGHT. THE CLUB WANTS HER BACK. TO SUE HER."),
         L(CARL, "THEY SHOW THIS ON A BIG SCREEN IN THE MIDDLE OF TOWN. LIKE THE SUPER BOWL. IF THE SUPER BOWL KILLED PEOPLE. IT DOES, A LITTLE.") ] }
     ],
 
@@ -3017,7 +3037,7 @@
         L(CARL, "FEATHERFALL. THE MAGISTRATE. STRAPPED UPSIDE DOWN ON A WHEEL, DRIED OUT LIKE JERKY. DEAD FOR YEARS. THE SYSTEM GAVE US THE KILL ANYWAY."),
         L(CARL, "ALL WEEK I'VE BEEN ACTING LIKE MEETING THIS GUY WAS A NIGHTMARE ON ELM STREET THING. DON'T FALL ASLEEP, HE'LL GET YOU. HE WAS NEVER GOING TO GET ANYBODY.") ] },
       { bg: 'nest', night: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('burgundy', 230, { flip: true })]), lines: [
-        L('BURGUNDY', "QUILL LURED US HERE. JOBS AT THE DESPERADO CLUB, SHE SAID. THE ELVES BROUGHT US TO REMEX. SOME OF US BECAME THOSE THINGS. THE REST BECAME THE BODIES AT THE GATE."),
+        L('BURGUNDY', "QUILL LURED US HERE. JOBS AT THE DESPERADO CLUB, SHE SAID. THE ELVES BROUGHT US TO REMEX. SOME BECAME THOSE THINGS. THE REST BECAME THE BODIES AT THE GATE."),
         L('BURGUNDY', "BY DAY WE WORKED THE MALL. PLUCKED A FEATHER FROM EVERY SKYFOWL WHO CAME THROUGH. I NEVER KNEW WHY. PLEASE. BEFORE IT COMES BACK."),
         L(DONUT, "I'LL DO IT. IT SHOULD BE SOMEONE WHO LISTENED. GOODBYE, BURGUNDY. YOU WERE A PERSON. YOU WERE A PERSON THE WHOLE TIME.") ] },
       { bg: 'nest', night: true, sfx: 'missile', actors: crew(80, { bigMongo: true, katia: true }), lines: [
@@ -3039,19 +3059,19 @@
     remex: [
       { bg: 'panel:remex', music: 'sad', fade: true, lines: [
         L('REMEX', "DON'T COME CLOSER. PLEASE. DON'T BLOW ME UP. I AM REMEX. I WAS THE MAGISTRATE, BEFORE. I WAS HER HUSBAND."),
-        L(AI, "REMEX! SOUL LEECH CAPACITOR! LEVEL 1! EVER USE A OUIJA BOARD AND THINK, I WISH GRANDPA COULD COME BACK AND ALSO DO SOME CHORES? THIS IS THAT. THE CHORE IS SOULS.") ] },
+        L(AI, "REMEX! SOUL LEECH CAPACITOR! LEVEL 1! EVER USE A OUIJA BOARD AND THINK, I WISH GRANDPA COULD COME BACK AND DO CHORES? THIS IS THAT. THE CHORE IS SOULS.") ] },
       { bg: 'depot', night: true, actors: crew(70, { bigMongo: true, katia: true }).concat([A('remex', 240, { flip: true })]), lines: [
         L('REMEX', "QUILL BROUGHT ME BACK. I HOLD SOULS. THE CRYSTAL HOLDS WHAT I HOLD. THE GUARDS RUN ON IT. AND HER SPELL RAN ON IT. THE FINAL WAR."),
         L('REMEX', "THREE GENERATIONS OF CASTING. ONE NIGHT LEFT. EVERYONE IN THE OVER CITY WOULD DIE BUT THE SKYFOWL AND THE CHICKADEES. THE FEATHERS MARKED WHO TO SPARE."),
         L('REMEX', "SHE'S DEAD. NOBODY IS DRAWING THE POWER DOWN. THE CRYSTAL IS FULL. IT IS GOING TO BREAK. I AM SO SORRY. I WAS NEVER ALLOWED TO SAY NO.") ] },
       { bg: 'depot', night: true, sfx: 'glass_crack', shake: 0.6, lines: [
         L(AI, "QUEST COMPLETE! THE SEX WORKERS WHO FELL FROM THE HEAVENS! SOLVED! A SILVER QUEST BOX! HOLD THAT THOUGHT."),
-        L(AI, "NEW GROUP QUEST! THE FOOLS WHO BROKE THE GLASS! A VERY OLD SPELL JUST SNAPPED. IN SEVEN MINUTES, EVERYTHING WITHIN 45 SQUARE KILOMETERS EXPLODES. YOU ARE THE HOSTS. NO, YOU CANNOT OPT OUT. YES, IT IS YOUR FAULT."),
+        L(AI, "NEW GROUP QUEST! THE FOOLS WHO BROKE THE GLASS! A VERY OLD SPELL JUST SNAPPED. IN SEVEN MINUTES, 45 SQUARE KILOMETERS EXPLODE. YES, IT IS YOUR FAULT."),
         L(CARL, "THE CASE. THE SHEOL GLASS CASE. KIMARIS, OUT. CRYSTAL, IN. LID ON. LID ON. LID. ON.") ] },
       { bg: 'panel:glass_case', sfx: 'clockwork', lines: [
         L(CARL, "IT FITS. IT'S HUMMING. IT'S STILL GOING TO BLOW, IT JUST CAN'T, AS LONG AS IT'S IN THE CASE. AND AS LONG AS THE CASE IS IN ME. IN MY INVENTORY.") ] },
       { bg: 'panel:doomsday', flash: '#f878f8', sfx: 'unlock', lines: [
-        L(AI, "NEW ITEM! CARL'S DOOMSDAY SCENARIO! A FULLY CHARGED SOUL CRYSTAL IN A SHEOL GLASS REAPER CASE. IT CAN NEVER LEAVE YOUR INVENTORY. IF IT DOES, BYE BYE EVERYTHING."),
+        L(AI, "NEW ITEM! CARL'S DOOMSDAY SCENARIO! A FULLY CHARGED SOUL CRYSTAL IN A SHEOL GLASS REAPER CASE. IT CAN NEVER LEAVE YOUR INVENTORY. IF IT DOES: BYE BYE."),
         L(AI, "ALSO, THE SPELL IS STILL COLLAPSING! FOUR PRECURSOR BURSTS ARE COMING, THEN THE BIG ONE! THE EASTERN STAIRWELL HAS OPENED! RUN, CRAWLERS! RUN!"),
         L(DONUT, "CARL. CARL! YOU ARE A BOMB NOW. YOU ARE A WALKING BOMB. I AM SITTING ON A BOMB'S SHOULDER.") ] }
     ],
@@ -3068,8 +3088,8 @@
         L(AI, "AND WE HAVE A BLAST! THE DEPOT EXPLOSION TEARS THE SPELL APART BEFORE IT FINISHES! THE CRAWLERS ARE THROUGH THE DOOR! THE THIRD FLOOR IS BEHIND THEM!") ] },
       { bg: 'panel:greenroom', music: 'ending', fade: true, lines: [
         L('ODETTE', "WELCOME BACK TO MY GREEN ROOM, DARLINGS. TWO AND A HALF DAYS LATER, AND THE WHOLE GALAXY IS STILL TALKING ABOUT IT. SIT. HAVE A DRINK. YOU EARNED IT."),
-        L('ODETTE', "YOUR LITTLE DEPOT BOMB BLUNTED THE FINAL BLAST. THOUSANDS OF NPCS LIVED. DOZENS OF CRAWLERS LIVED. THE BANDIT ACHIEVEMENT TURNED EIGHTY-THREE QUEST BOXES CELESTIAL."),
-        L('ODETTE', "BORANT SPENT ITS ONE VETO OF THE SEASON TO CANCEL THEM. ONE CRAWLER OPENED HIS FIRST. AND YOURS? YOURS SLIPPED THROUGH BEFORE THE PAPERWORK DID. DON'T TELL ANYONE."),
+        L('ODETTE', "YOUR LITTLE DEPOT BOMB BLUNTED THE FINAL BLAST. THOUSANDS OF NPCS LIVED. DOZENS OF CRAWLERS TOO. THE BANDIT ACHIEVEMENT MADE EIGHTY-THREE BOXES CELESTIAL."),
+        L('ODETTE', "BORANT SPENT ITS ONE VETO OF THE SEASON TO CANCEL THEM. ONE CRAWLER OPENED HIS FIRST. AND YOURS? IT SLIPPED THROUGH BEFORE THE PAPERWORK. DON'T TELL ANYONE."),
         L('ODETTE', "THE LEADERBOARD DRAFT HAS YOU SIXTH, CARL. DONUT, SEVENTH. BE CAREFUL. A GOD HAS NOTICED YOU, HEKLA WANTS YOUR CAT, AND THERE IS A PRICE ON BOTH YOUR HEADS."),
         L(DONUT, "SEVENTH? SEVENTH? I AM THE PRINCESS. I AM NOT SEVENTH. THERE HAS BEEN A MISTAKE. I WANT TO SPEAK TO THE LEADERBOARD'S MANAGER."),
         L(AI, "AND CARL, FOR ONCE, HAD NOTHING CLEVER TO SAY. HE SAID ONE WORD. WE BLEEPED IT. THE AUDIENCE CHEERED ANYWAY. SEE YOU ON FLOOR FOUR, CRAWLERS!") ] }
@@ -3220,7 +3240,7 @@
     donutLines: [
       L(DONUT, "I AM KEEPING MY RACE. I AM A CAT. IT IS NOT A RACE, IT IS A LIFESTYLE AND A PRIVILEGE."),
       L(DONUT, "AND FOR MY CLASS I AM CHOOSING... FORMER CHILD ACTOR. I WAS ON TELEVISION AS A KITTEN, CARL. I WAS IN A COMMERCIAL. FOR LITTER. I WAS THE BEFORE AND THE AFTER."),
-      L(AI, "FORMER CHILD ACTOR! CHARISMA FOR DAYS! AND A CLASS FEATURE: THE MANAGER. THE GAME GUIDE IN THE ROOM IS NOW BOUND TO YOU AS YOUR PERSONAL MANAGER. CONGRATULATIONS!"),
+      L(AI, "FORMER CHILD ACTOR! CHARISMA FOR DAYS! AND A CLASS FEATURE: THE MANAGER. THE GAME GUIDE IN THE ROOM IS NOW BOUND TO YOU AS YOUR MANAGER. CONGRATULATIONS!"),
       L(DONUT, "ODETTE TOLD ME TO DO IT. SHE SAID A MANAGER KEEPS YOU ALIVE IN THIS BUSINESS. SHE SAID HIRE THE BEST ONE IN THE ROOM. YOU ARE THE ONLY ONE IN THE ROOM.")
     ],
     mordecaiLines: [
@@ -3736,7 +3756,7 @@
     { when: { flags: ['show_done'], notFlags: ['apito_done'] }, text: "THE EDUCATION CENTER IS THE MILITIA'S HOUSE. THE MAP SAYS CORRUPT TEMPLE. GO BY DAY, WHEN THEY'RE TEACHING. THEY CAN'T CAST DARKNESS IN DAYLIGHT AS WELL." },
     { when: { flags: ['katia_joined'], notFlags: ['mongo_big'] }, text: "THE BACK ALLEY FILLS WITH SHADOW LEAKS AT NIGHT. EASY XP. YOUR DINOSAUR IS CLOSE TO SOMETHING. I CAN SMELL IT ON HIM. IT SMELLS LIKE GROWTH. AND FEET." },
     { when: { flags: ['mongo_big'], notFlags: ['quill_dead'] }, text: "THE MAGISTRATE COMES OUT AT NIGHT. SO DOES QUILL'S LITTLE FLYING HEAD ARMY. CLIMB THE OUTSIDE, PLANT THE STICKS, BLOW IT FROM THE NEXT ROOF. I DIDN'T SAY THAT." },
-    { when: { flags: ['nest_done'], notFlags: ['depot_rigged'] }, text: "THE GUARD DEPOT. THE SWORDSMEN SIT IN THERE ALL NIGHT, FROZEN, RECHARGING. WHATEVER POWERS THEM IS IN THERE. WHATEVER POWERS THEM IS WHAT QUILL WANTED. GO AT NIGHT." }
+    { when: { flags: ['nest_done'], notFlags: ['depot_rigged'] }, text: "THE GUARD DEPOT. THE SWORDSMEN SIT IN THERE ALL NIGHT, FROZEN, RECHARGING. WHATEVER POWERS THEM IS WHAT QUILL WANTED. GO AT NIGHT." }
   ];
 
   D.story = {

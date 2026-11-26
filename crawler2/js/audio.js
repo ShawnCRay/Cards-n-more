@@ -956,7 +956,7 @@
       parts: {
         A: { p1: mA, v1: T(mA, -12), p2: CP('3210321032103210', chA, 4), v2: CP('1-------2-------', chA, 4), tr: riff, sw: riff,
           dm: B(RB(dr, 7), fill), nz: B(hatC, RB(hat, 7)), sb: CP('0...............', chA.slice(0, 7), 4) + ' | ' + P('0...0...0...0...', 'A', 3) },
-        B: { sw: '@sawL ' + mB, v1: HC(mB, chB, 16), p1: T(mB, 12), p2: CP('0-2-3-2-0-2-3-2-', chB, 4), v2: CP('1---------------', chB, 4),
+        B: { sw: '@sawL ' + mB, v1: HC(mB, chB, 16), p1: mB, p2: CP('0-2-3-2-0-2-3-2-', chB, 4), v2: CP('1---------------', chB, 4),
           tr: CP('0-------0-------', chB, 2), dm: RB(Dr('k.......s.......'), 3) + ' | ' + Dr('k.....k.s...s.ss') + ' | ' + RB(Dr('k.......s.......'), 3) + ' | ' + Dr('k.k.s.k.ssssS!.S!.'),
           nz: B(hatC, RB(Dr('h...h...h...h...'), 7)), sb: '@timp ' + CP('0...........0...', chB, 2) },
         A2: { p1: mA, v1: HC(mA, chA, 16), p2: CP('0123012301230123', chA, 4), v2: CP('1-------2-------', chA, 4), tr: riff, sw: riff,
@@ -984,9 +984,9 @@
       parts: {
         A: { p1: mA, v1: HC(mA, chA, 16), p2: harp(chA), v2: CP('1-------1-------', chA, 4), tr: regal(chA), sw: regal(chA),
           sb: CP('0.......2.......', chA.slice(0, 7), 2) + ' | C3 C3 C3 C3 C3 C3 C3 C3 F2 F2 F2 F2 F2:2 F2:2', dm: B(RB(dr, 3), drF, RB(dr, 3), drF), nz: nzA },
-        B: { p1: mB, v1: HC(mB, chB, 16), p2: harp(chB), v2: '@chirp ' + CP('......2.2.....4.', chB, 6), tr: regal(chB), sw: regal(chB),
+        B: { p1: mB, v1: HC(mB, chB, 16), p2: harp(chB), v2: '@chirp ' + CP('......2.2.....4.', chB, 5), tr: regal(chB), sw: regal(chB),
           sb: CP('0...............', chB, 2), dm: B(RB(dr, 3), drF, RB(dr, 3), drF), nz: nzA },
-        A2: { p1: mA, v1: HC(mA, chA, 16, 5), p2: harp(chA), v2: '@chirp ' + CP('..4.........2.2.', chA, 6), tr: regal(chA), sw: '@sawL ' + T(mA, -12),
+        A2: { p1: mA, v1: HC(mA, chA, 16, 5), p2: harp(chA), v2: '@chirp ' + CP('..4.........2.2.', chA, 5), tr: regal(chA), sw: '@sawL ' + T(mA, -12),
           sb: CP('0.......2.......', chA.slice(0, 7), 2) + ' | C3 C3 C3 C3 C3 C3 C3 C3 F2 F2 F2 F2 F2:2 F2:2', dm: B(RB(dr, 3), drF, RB(dr, 3), drF), nz: nzA }
       },
       mix: { sw: 0.85 },
@@ -1008,7 +1008,7 @@
       inst: { p1: I('lead50', { v: 0.08 }), p2: I('pluck', { v: 0.1 }), tr: 'bass', v1: I('vreed', { v: 0.135 }), v2: 'vpad', sw: I('sawP', { v: 0.045 }), dm: 'slap', sb: 'slap' }, mix: { dm: 0.85 },
       parts: {
         A: { v1: mA, p2: oud(chA), tr: doum(chA), sw: CP('0---------------', chA, 3), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq },
-        B: { v1: mB, p1: T(mB, 12), p2: oud(chB), tr: doum(chB), sw: CP('0---------------', chB, 3), v2: CP('1---------------', chB, 4), dm: B(RB(dar, 3), darF, RB(dar, 3), darF), nz: riq,
+        B: { v1: mB, p1: T(mB, -12), p2: oud(chB), tr: doum(chB), sw: CP('0---------------', chB, 3), v2: CP('1---------------', chB, 4), dm: B(RB(dar, 3), darF, RB(dar, 3), darF), nz: riq,
           sb: RB(Dr('....c.......c...'), 8) },
         A2: { v1: mA, p1: HC(mA, chA, 16), p2: oud(chA), tr: doum(chA), sw: CP('0---------------', chA, 3), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq,
           sb: CP('0..0..0.0.......', chA, 2) }
@@ -1299,7 +1299,8 @@
   var GAIN = { title: 1.06, intro: 0.92, village: 0.89, village_night: 0.86, ruins: 0.79, ruins_night: 0.86, circus: 1.32, bigtop: 1.06, heather: 0.96,
     boss: 1.09, settlement: 0.96, market: 1.08, club: 0.82, show: 1.22, dark: 1.31, climb: 1.01, escape: 1.12, inn: 0.97, cutscene: 0.81, sad: 0.81,
     results: 1.06, gameover: 0.92, lootbox: 1.02, ending: 0.88, credits: 0.82 };
-  Object.keys(GAIN).forEach(function (n) { if (SONGS[n] && SONGS[n].gain == null) SONGS[n].gain = GAIN[n]; });
+  var MUSIC_TRIM = 0.85; // whole-score trim: about 2 dB hotter than book 1 at the default volume, SFX still on top
+  Object.keys(GAIN).forEach(function (n) { if (SONGS[n] && SONGS[n].gain == null) SONGS[n].gain = GAIN[n] * MUSIC_TRIM; });
 
   // Book 1 track names other modules may still ask for during the move to book 2 (resolved silently).
   var ALIAS = { safe: 'inn', boss_final: 'boss', floor1: 'ruins', floor2: 'ruins', floor3: 'circus', floor4: 'ruins', floor5: 'ruins_night',
@@ -1352,6 +1353,7 @@
       noise(e, o, t, { hz: 3800 * p, hz2: 220, dur: 1.1, v: 0.6, sus: 0.05 });
       noise(e, o, t + 0.02, { hz: 900, hz2: 120, dur: 0.9, v: 0.25, short: true });
       tone(e, o, t, { w: 'tri', f: 120 * p, f2: 28, dur: 0.6, v: 0.6 });
+      samp(e, o, t, 'kick', { rate: 0.62 * p, v: 0.45 }); // DPCM thump for weight
       return t + 1.1;
     },
     missile: function (e, o, t, p) {
@@ -1422,6 +1424,7 @@
       noise(e, o, t, { hz: 3000 * p, hz2: 700, dur: 1.35, v: 0.45, a: 0.06, sus: 0.3, trem: { rate: 23, depth: 0.7 } });
       noise(e, o, t, { hz: 6000, hz2: 2000, dur: 1.0, v: 0.08, short: true, a: 0.05 });
       tone(e, o, t, { w: 'p50', f: 150 * p, f2: 70 * p, dur: 1.35, v: 0.2, vib: 160, vibR: 9, sus: 0.3, a: 0.05 });
+      samp(e, o, t + 0.02, 'whoa', { rate: 0.42 * p, rate2: 0.3 * p, v: 0.32 }); // slowed vocal growl
       return tone(e, o, t, { w: 'p25', f: 100 * p, f2: 55 * p, dur: 1.35, v: 0.14, vib: 220, vibR: 11, sus: 0.3, a: 0.05 });
     },
     boss_die: function (e, o, t, p) {
@@ -1533,7 +1536,8 @@
       });
       tone(e, o, t + 0.2, { w: 'p12', f: 1300 * p, f2: 2100 * p, dur: 0.3, v: 0.04, a: 0.05 });
       tone(e, o, t + 0.45, { w: 'p12', f: 1500 * p, f2: 2400 * p, dur: 0.28, v: 0.035, a: 0.05 });
-      return t + 1.5;
+      samp(e, o, t, 'cheer', { v: 0.22, a: 0.15 });
+      return t + 1.9;
     },
     engine: function (e, o, t, p) { // short rev: stepped pitch rise + sag, putt-putt noise; soft ends so ~0.4s retriggers overlap cleanly
       var d = 0.4, st = [], k;

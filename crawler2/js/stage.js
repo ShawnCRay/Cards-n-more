@@ -179,13 +179,14 @@
   }
 
   /* ---------------- art helpers ---------------- */
-  var artHas = {};
+  var artHas = {}, missingArt = {};
   function hasArt(name) {
     var c = artHas[name];
     if (c !== undefined) return c;
     var a = ART();
     c = has(a, 'sprite') && (has(a, 'has') ? !!call(a, 'has', name) : true);
     artHas[name] = c;
+    if (!c && name) missingArt[name] = true;
     return c;
   }
   function firstArt(list) { for (var i = 0; i < list.length; i++) if (list[i] && hasArt(list[i])) return list[i]; return list[list.length - 1]; }
@@ -432,7 +433,7 @@
     var bd = enemyDef(bodyId);
     var body = makeEnemy(bodyId, fx, fy, false, false);
     body.ai = 'kbody'; body.isBody = true; body.hostile = false; body.objSprite = 'krasue_body';
-    if (!(D().enemies || {})[bodyId]) { body.hp = body.maxHp = Math.max(6, num(bd.hp, 14)); body.w = 14; body.h = 20; body.x = fx - 7; body.y = fy - 20; }
+    if (!(D().enemies || {})[bodyId]) { body.hp = body.maxHp = Math.max(6, num(enemyDef('krasue').bodyHp, num(bd.hp, 14))); body.w = 14; body.h = 20; body.x = fx - 7; body.y = fy - 20; }
     var head = makeEnemy('krasue', fx, fy - 40, false, true);
     head.body = body; body.head = head;
     head.y = fy - 44; head.baseY = head.y;
@@ -440,7 +441,7 @@
   }
   function pickEnemyId(def, ch, rnd) {
     var pool = ch === 'E' ? def.elite : ch === 'f' ? def.flyers : def.enemies;
-    if (S.mode === 'street') { var ph = S.night ? 'night' : 'day'; pool = (def.enemies && def.enemies[ph]) || null; if (ch === 'f' && def.flyers) pool = def.flyers[ph] || def.flyers; }
+    if (S.mode === 'street') { pool = streetList(); if (ch === 'f' && def.flyers) pool = def.flyers[S.night ? 'night' : 'day'] || def.flyers; }
     if (!pool || !pool.length) pool = Array.isArray(def.enemies) ? def.enemies : null;
     if (!pool || !pool.length) return 'lemur';
     var p = pool.map(function (e) { return Array.isArray(e) ? e : [e, 1]; });
@@ -753,7 +754,7 @@
     return false;
   }
   function krasueVanish(e) {
-    e.state = 'gone'; e.respawnT = K.krasueRegrow; e.hp = 0; e.vx = 0; e.vy = 0;
+    e.state = 'gone'; e.respawnT = num(e.def.regrowTime, K.krasueRegrow); e.hp = 0; e.vx = 0; e.vy = 0;
     sfx('krasue_shriek'); smoke(cx(e), cy(e), 6); debris(cx(e), cy(e), 10, '#a81000', 120);
     numText(cx(e), e.y - 10, 'SHRIEK!', '#f878f8');
     if (!S.krasueHinted) { S.krasueHinted = true; toast('THE HEAD WILL BE BACK. FIND THE BODY.', { title: 'KRASUE', icon: 'skull', color: '#f878f8', time: 3.5 }); }
@@ -766,7 +767,7 @@
     if (e.parent) e.parent.kids = Math.max(0, (e.parent.kids || 1) - 1);
     // mold lions come back once unless burned
     if (e.regrow && !e.regrown && opts.kind !== 'fire' && !e.isAdd) {
-      S.regrows.push({ id: e.id, x: cx(e), y: e.y + e.h, t: K.regrowTime, elite: e.elite, face: e.face, sprite: e.sprite });
+      S.regrows.push({ id: e.id, x: cx(e), y: e.y + e.h, t: num(d.regrowTime, K.regrowTime), elite: e.elite, face: e.face, sprite: e.sprite });
       sfx('enemy_die', { pitch: 0.8 }); smoke(cx(e), cy(e), 3);
       debris(cx(e), cy(e), 10, '#58d854', 100); debris(cx(e), cy(e), 6, '#f878f8', 90);
       numText(cx(e), e.y - 12, 'IT TWITCHES...', '#58d854');
@@ -951,7 +952,7 @@
       var B = S.boss;
       if (bossHittable(B)) {
         var rs = bossRects(B, kind === 'boomy');
-        for (i = 0; i < rs.length; i++) if (circHit(x, y, radius, rs[i])) { damageActor(B, dmg * (B.facade && kind === 'boomy' ? 3 : 1), { kind: kind, hitX: cx(rs[i]), hitY: cy(rs[i]) }); break; }
+        for (i = 0; i < rs.length; i++) if (circHit(x, y, radius, rs[i])) { damageActor(B, dmg * (B.facade && kind === 'boomy' ? num(B.def.boomyMul, 3) : 1), { kind: kind, hitX: cx(rs[i]), hitY: cy(rs[i]) }); break; }
       }
       for (i = 0; i < S.objects.length; i++) {
         var ob = S.objects[i];
@@ -1488,7 +1489,7 @@
       for (var i = 0; i < S.objects.length; i++) {
         var o = S.objects[i];
         if (o.kind === 'detonator' && overlap(P, { x: o.x - 4, y: o.y - 4, w: o.w + 8, h: o.h + 8 })) {
-          if (S.plant.planted >= S.plant.need) { detonate(); return; }
+          if (S.plant.planted >= S.plant.need) { if (S.plant.finale === 'handoff') handoff(); else detonate(); return; }
           sfx('error'); numText(cx(o), o.y - 10, 'CHARGES ' + S.plant.planted + '/' + S.plant.need, '#f83800');
           return;
         }
@@ -2020,7 +2021,7 @@
       aggro: num(d.aggro, 96), st: 0, timer: 0.5 + Math.random(), state: 'patrol', flash: 0, stun: 0, hurtT: 0, active: false,
       onGround: false, baseY: 0, t: Math.random() * 6, kids: 0, sprite: d.sprite || id, objSprite: d.objSprite || null, color: AI_COLORS[ai] || '#ac7c00', tele: 0,
       hostile: !neutral && !citizen && ai !== 'kbody', citizen: citizen, magicOnly: !!d.magicOnly, fearImmune: !!d.fearImmune,
-      darkMul: num(d.darkMul, 0), regrow: !!d.regrow, isBody: ai === 'kbody', lostT: 0, invuln: ai === 'guard'
+      darkMul: num(d.darkMul, 0), regrow: !!d.regrow, isBody: ai === 'kbody', lostT: 0, invuln: ai === 'guard' || !!d.invulnerable
     };
     e.baseY = e.y;
     if (flyerSlot && !flying) e.y = fy - h;
@@ -2257,7 +2258,7 @@
         e.tele = e.timer < 0.5 ? 1 : 0;
         if (e.timer <= 0) {
           e.timer = num(e.def.spawnEvery, 4);
-          if ((e.kids || 0) < num(e.def.maxKids, 3)) {
+          if ((e.kids || 0) < num(e.def.maxKids, num(e.def.maxSpawn, 3))) {
             var kid = spawnEnemy(e.def.spawn || 'lemur', cx(e), e.y + e.h, { parent: e, noLoot: true, face: U.sign(dx) || 1 });
             kid.vy = -120; kid.vx = kid.face * 40; kid.init = true;
             e.kids = (e.kids || 0) + 1;
@@ -2310,7 +2311,7 @@
     // ---- book 2 ----
     perch: function (e, dt, dx, dy, adx, near, vis) {
       var pd = e.def;
-      if (!e.init) { e.init = true; e.perched = e.state !== 'flung'; e.hidden = e.perched; e.timer = 0.8 + Math.random(); }
+      if (!e.init) { e.init = true; e.perched = e.state !== 'flung'; e.hidden = e.perched && pd.hiddenUntilSeen !== false; e.timer = 0.8 + Math.random(); }
       if (e.state === 'flung') { var v0 = e.vx; gravMove(e, dt); if (!e.onGround) e.vx = v0; else { e.state = 'patrol'; e.vx = 0; if (onScreen(e)) dust(cx(e), e.y + e.h, 2); } return; }
       if (e.perched) {
         e.vx = 0;
@@ -2361,7 +2362,7 @@
         e.timer -= dt; e.tele = e.timer < 0.5 ? 1 : 0;
         if (e.timer <= 0) {
           e.timer = num(e.def.spawnEvery, 3.5);
-          if ((e.kids || 0) < num(e.def.maxKids, 3)) {
+          if ((e.kids || 0) < num(e.def.maxKids, num(e.def.maxSpawn, 3))) {
             var P = S.player, kid = spawnEnemy(e.def.spawn || 'lemur', cx(e), e.y + 8, { parent: e, noLoot: true, state: 'flung', init: true, perched: false, hidden: false });
             var T = U.clamp(adx / 120, 0.6, 1.3);
             kid.vx = (cx(P) - cx(e)) / T; kid.vy = (P.y - kid.y - 0.5 * K.gravity * T * T) / T; kid.face = U.sign(dx) || 1;
@@ -2392,7 +2393,7 @@
           else if (e.eatT > 1.6) { tg.gone = true; e.eatT = 0; e.target = null; smoke(cx(tg), cy(tg), 2); if (onScreen(e)) sfx('crate_break', { vol: 0.4, pitch: 1.4 }); }
         }
         // Carl standing in its way for a second makes it mad
-        if (overlap(e, P) && P.state !== 'dead') { e.blockT = (e.blockT || 0) + dt; if (e.blockT > 1) provoke(e); }
+        if (overlap(e, P) && P.state !== 'dead') { e.blockT = (e.blockT || 0) + dt; if (e.blockT > num(e.def.angerTime, 1)) provoke(e); }
         else e.blockT = Math.max(0, (e.blockT || 0) - dt * 0.5);
       } else patrol(e, dt, e.speed * 0.6);
       gravMove(e, dt);
@@ -2415,7 +2416,7 @@
     berserker: function (e, dt, dx, dy, adx, near) {
       if (e.state === 'tele') { e.st += dt; e.vx = 0; e.tele = 1; if (e.st > 0.35) { e.state = 'dash'; e.st = 0; sfx('boss_roar', { pitch: 1.6, vol: 0.5 }); } }
       else if (e.state === 'dash') {
-        e.st += dt; e.tele = 0; e.vx = e.face * num(e.def.chargeSpeed, 170);
+        e.st += dt; e.tele = 0; e.vx = e.face * num(e.def.berserkSpeed, num(e.def.chargeSpeed, 170));
         if (Math.random() < 0.4) dust(cx(e) - e.face * 8, e.y + e.h, 1);
         if (e.st > 0.8 || (e.onGround && !groundAhead(e)) || e.hitWall) { e.state = 'rest'; e.st = 0; e.vx = 0; }
       } else if (e.state === 'rest') { e.st += dt; e.vx = U.approach(e.vx, 0, 500 * dt); if (e.st > 0.6) e.state = 'patrol'; }
@@ -2456,7 +2457,7 @@
         return;
       }
       e.atkCd = (e.atkCd || 0) - dt;
-      var hx = body ? cx(body) : (e.homeX === undefined ? (e.homeX = cx(e)) : e.homeX), hy = body ? body.y - 28 : e.baseY;
+      var hx = body ? cx(body) : (e.homeX === undefined ? (e.homeX = cx(e)) : e.homeX), hy = body ? body.y - 28 : e.baseY, leash = num(e.def.leash, K.krasueLeash);
       var lure = null, ld = K.decoyLure;
       for (var i = 0; i < S.allies.length; i++) { var a = S.allies[i]; if (a.kind !== 'decoy') continue; var d = dist(cx(a), cy(a), cx(e), cy(e)); if (d < ld) { ld = d; lure = a; } }
       var planting = P.state === 'plant' && dist(cx(P), cy(P), cx(e), cy(e)) < K.plantSee;
@@ -2466,7 +2467,7 @@
       else if (near) {
         if (e.atkCd <= 0) { tx = cx(P); ty = cy(P) - 2; sp *= 1.5; e.tele = 1; }
         else { tx = cx(P) - (U.sign(dx) || 1) * 46; ty = P.y - 36; e.tele = 0; }
-        if (body && dist(tx, ty, hx, hy) > K.krasueLeash * 1.7) { tx = hx + U.clamp(tx - hx, -K.krasueLeash, K.krasueLeash); ty = hy; }
+        if (body && dist(tx, ty, hx, hy) > leash * 1.7) { tx = hx + U.clamp(tx - hx, -leash, leash); ty = hy; }
       } else { tx = hx + Math.sin(e.t * 0.9) * 36; ty = hy + Math.sin(e.t * 2.1) * 8; e.tele = 0; }
       flyToward(e, tx, ty, sp, 260, dt);
       e.face = e.vx < -5 ? -1 : e.vx > 5 ? 1 : e.face;
@@ -2494,7 +2495,8 @@
         if (e.charmT <= 0 && adx < 110) {
           e.charmT = num(e.def.charmEvery, 4);
           var P = S.player;
-          fireProj(e.def.projectile || 'charm', cx(e) + e.face * 6, e.y + e.h * 0.35, cx(P), cy(P), { charm: num(e.def.charmTime, 2), dmg: 0, speed: 110, color: '#f878f8' });
+          var cp = fireProj(e.def.projectile || 'charm', cx(e) + e.face * 6, e.y + e.h * 0.35, cx(P), cy(P), { charm: num(e.def.charmTime, 2), dmg: 0, speed: 110, color: '#f878f8' });
+          if (!(D().projectiles || {})[cp.id]) cp.sprite = firstArt(['charm', 'psionic']);
           sfx('missile', { pitch: 1.6, vol: 0.5 });
         }
       } else { patrol(e, dt, e.speed * 0.6); e.tele = 0; }
@@ -2533,7 +2535,7 @@
     var best = null, bd = 420, i, o, d;
     for (i = 0; i < S.objects.length; i++) {
       o = S.objects[i];
-      if ((o.kind === 'trash' && !o.gone) || (o.kind === 'barricade' && !o.broken)) { d = Math.abs(cx(o) - cx(e)) + Math.abs(cy(o) - cy(e)) * 2; if (o.kind === 'barricade') d *= 0.5; if (d < bd) { bd = d; best = o; } }
+      if ((o.kind === 'trash' && !o.gone) || (o.kind === 'barricade' && !o.broken)) { d = Math.abs(cx(o) - cx(e)) + Math.abs(cy(o) - cy(e)) * 2; if (o.kind === 'barricade') d *= 0.2; if (d < bd) { bd = d; best = o; } }
     }
     for (i = 0; i < S.corpses.length; i++) { o = S.corpses[i]; if (o.gone || o.t <= 0) continue; d = Math.abs(cx(o) - cx(e)) + Math.abs(cy(o) - cy(e)) * 2; if (d < bd) { bd = d; best = o; } }
     return best;
@@ -2581,7 +2583,7 @@
       if (!dead && P.state !== 'dead' && overlap(p, P)) {
         dead = true;
         if (p.charm) {
-          if (!(P.inv > 0) && !S.god) { P.charmT = p.charm; numText(cx(P), P.y - 8, 'CHARMED!', '#f878f8'); sfx('missile', { pitch: 0.6 }); track('charmed'); }
+          if (!(P.inv > 0)) { P.charmT = p.charm; numText(cx(P), P.y - 8, 'CHARMED!', '#f878f8'); sfx('missile', { pitch: 0.6 }); track('charmed'); }
         } else { hurtPlayer(p.dmg, cx(p), { cause: 'PROJECTILE' }); hitSpark(cx(p), cy(p)); }
       }
       if (!dead && M && M.heldT <= 0 && overlap(p, M)) { dead = true; stunMongo(M, cx(p)); }
@@ -2624,7 +2626,8 @@
     var spName = (d.sprite || 'dispenser') + '_body';
     var lay = (DCW.artActorsKit && DCW.artActorsKit.dispenserLayout) || null;
     var bsz = artSize(spName, 140, 62);
-    var w = num(d.w, bsz.w), h = num(d.h, bsz.h), sp = S.bossSpawn, a = S.arena;
+    // the body art decides the size (parts are laid out on it); data w/h only applies without art
+    var w = hasArt(spName) ? bsz.w : num(d.w, bsz.w), h = hasArt(spName) ? bsz.h : num(d.h, bsz.h), sp = S.bossSpawn, a = S.arena;
     var hp = Math.max(1, Math.round(num(d.hp, 120)));
     var B = { isBoss: true, facade: true, id: id, def: d, x: U.clamp(sp.x - w / 2, a.x0 + TS, Math.max(a.x0 + TS, a.x1 - TS - w)), y: sp.y - h, w: w, h: h, vx: 0, vy: 0, face: -1,
       hp: hp, maxHp: hp, phases: sortPhases(d, ['reveal:3', 'spit:spit:3', 'reveal:3', 'sweep', 'cloak']), phase: 0, pIdx: 0, move: null, flash: 0, flying: true,
@@ -2691,7 +2694,8 @@
     if (B.ticketDropped || B.cured || !S.arena) return;
     var t = B.def.ticket || B.def.custard || (B.id === 'heather' ? {} : null);
     if (!t) return;
-    if (typeof t !== 'object') t = {};
+    if (typeof t === 'number') t = { below: t };
+    else if (typeof t !== 'object') t = {};
     if (B.hp / B.maxHp >= num(t.below, 0.25)) return;
     B.ticketDropped = true;
     var P = S.player;
@@ -3335,7 +3339,7 @@
     }
   }
   function streetList() {
-    var a = S.def, ph = S.night ? 'night' : 'day', l = a.enemies && a.enemies[ph];
+    var a = S.def, ph = S.night ? 'night' : 'day', src = (a.enemiesAfter && a.enemiesAfter.flag && flag(a.enemiesAfter.flag)) ? a.enemiesAfter : a.enemies, l = src && src[ph];
     return Array.isArray(l) ? l : (Array.isArray(a.enemies) ? a.enemies : []);
   }
   function streetDensity() {
@@ -3377,7 +3381,7 @@
   }
   function setupStreet(params) {
     var run = getRun();
-    S.street = { spawnT: 2.5, crimeCd: 0, alarmT: 0, doorCd: 0.4, edgeCd: 0.8, stT: 0, guardT: 0, guards: 0, eventsSent: false };
+    S.street = { spawnT: 2.5, crimeCd: 0, alarmT: 0, doorCd: 0.4, edgeCd: 0.3, stT: 0, guardT: 0, guards: 0, eventsSent: false };
     var entry = params.entry, x = null, y = null, face = 1, i;
     if (entry && typeof entry === 'object' && entry.x !== undefined) x = +entry.x;
     else if (entry === 'right') { x = S.L.pxW - 24; face = -1; }
@@ -3385,6 +3389,8 @@
       for (i = 0; i < S.objects.length; i++) { var o = S.objects[i]; if (o.kind === 'sdoor' && o.ch === entry) { x = cx(o); y = o.fy; break; } }
     }
     if (x === null && entry === undefined && run.areaX !== null && run.areaX !== undefined && run.area === S.areaId) x = run.areaX;
+    var edges = S.def.edges || {};
+    if (x === null && S.start && (entry === 'start' || (entry === 'left' && !edges.left) || (entry === 'right' && !edges.right) || entry === undefined)) { x = S.start.x; y = S.start.y; face = 1; }
     if (x === null || isNaN(x)) x = 24;
     x = U.clamp(x, 12, S.L.pxW - 12);
     S.start = { x: x, y: y !== null ? y : streetGround(x), face: face };
@@ -3489,7 +3495,7 @@
     var sv = S.def.survival || {};
     var bar = null;
     for (var i = 0; i < S.objects.length; i++) if (S.objects[i].kind === 'barricade') { bar = S.objects[i]; break; }
-    if (bar) { bar.hp = bar.maxHp = num(sv.barricadeHp, 40); }
+    if (bar) { bar.hp = bar.maxHp = num(sv.barricadeHp, num(sv.guardHp, 40)); }
     var spots = S.waveSpots && S.waveSpots.length ? S.waveSpots : [{ x: 24, y: streetGround(24) }, { x: S.L.pxW - 24, y: streetGround(S.L.pxW - 24) }];
     S.surv = { t: num(sv.seconds, 90), total: num(sv.seconds, 90), rate: num(sv.rate, 1.6), max: num(sv.max, 8), waves: sv.waves || S.def.enemies || [['street_urchin', 1]],
       spawnT: 1.5, spots: spots, bar: bar, broken: false, dawn: false };
@@ -3544,7 +3550,7 @@
     var n = 0;
     for (var i = 0; i < S.objects.length; i++) if (S.objects[i].kind === 'charge') n++;
     var need = num((S.def.plant || {}).charges, n);
-    S.plant = { need: Math.min(need, n), planted: 0, detonated: false, chain: null, boomT: 0 };
+    S.plant = { need: Math.min(need, n), planted: 0, detonated: false, chain: null, boomT: 0, finale: (S.def.plant || {}).finale || 'blast' };
   }
   function detonate() {
     var pl = S.plant;
@@ -3558,9 +3564,18 @@
     for (var i = 0; i < S.objects.length; i++) { var o = S.objects[i]; if (o.kind === 'charge' && o.planted) pl.chain.push({ at: 0.15 + (k++) * 0.22, x: cx(o), y: cy(o) }); }
     track('detonate');
   }
+  // the depot: charges set, the detonator goes to Katia (the blast happens later, in the escape)
+  function handoff() {
+    var pl = S.plant;
+    pl.detonated = true; pl.handoff = true;
+    sfx('fanfare'); flash('#58f898', 0.15);
+    announce('DETONATOR HANDED OFF', { color: '#58f898', time: 2.2, sub: (S.def.plant && S.def.plant.handoffSub) || 'KATIA HAS THE BUTTON NOW' });
+    track('handoff');
+    startVictory('door'); S.endT = 2.2;
+  }
   function updPlantMode(dt) {
     var pl = S.plant;
-    if (!pl.detonated || S.done) return;
+    if (!pl.detonated || pl.handoff || S.done) return;
     pl.boomT += dt;
     for (var i = pl.chain.length - 1; i >= 0; i--) {
       var c = pl.chain[i];
@@ -3602,8 +3617,8 @@
   function dumpExplosives(P) {
     var n = 0;
     EXPLOSIVES.forEach(function (id) {
-      var c = Math.min(itemCount(id), 8);
-      for (var k = 0; k < c && n < 14; k++) { if (useItem(id, 1)) { launchX(P, id === 'smoke' ? 'smoke' : id, false, { vx: P.face * U.rand(60, 190), vy: -U.rand(160, 300) }); n++; } }
+      var c = itemCount(id);
+      for (var k = 0; k < c; k++) { if (useItem(id, 1)) { launchX(P, id === 'smoke' ? 'smoke' : id, false, { vx: P.face * U.rand(60, 190), vy: -U.rand(160, 300) }); n++; } }
     });
     if (n) { numText(cx(P), P.y - 10, 'DUMPED ' + n + '!', '#f8d878'); track('dump'); } else sfx('error');
   }
@@ -4459,6 +4474,7 @@
     },
     get state() { return S; },
     K: K,
+    missingArt: function () { return Object.keys(missingArt).sort(); },
     playerX: function () { return S && S.player ? Math.round(cx(S.player)) : null; },
     mode: function () { return S ? S.mode : null; },
     debugClear: debugClear, debugGod: debugGod, debugWarp: debugWarp, debugWarpBoss: debugWarp,

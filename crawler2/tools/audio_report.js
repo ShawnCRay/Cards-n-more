@@ -1,4 +1,4 @@
-// Usage: node crawler2/tools/audio_report.js [name ...] [--no-live] [--raw-only]
+// Usage: node crawler2/tools/audio_report.js [name ...] [--no-live]
 // Headless check of crawler2/js/audio.js: checks every SFX and music name in DESIGN.md section 13
 // (plus book 1's SFX set) exists, renders every track and SFX through an OfflineAudioContext (same
 // graph code as live), prints duration / peak / RMS / loudness / silence stats and pattern warnings,

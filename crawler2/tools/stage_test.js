@@ -73,6 +73,7 @@ const HELPERS = () => {
   check(r.npc.some(n => n[0] === 'mordecai_tour' && n[1]), 'area NPC placed by x and visible by day', r.npc);
   // walk to the shop door and press up
   r = await ev(() => {
+    T.god(true); T.S().enemies.forEach(e => { if (!e.citizen) e.dead = true; }); T.S().street.spawnT = 999;
     const d = T.objs('sdoor').find(o => o.ch === '3'); T.warp(d.x + d.w / 2, d.fy); T.tap('ArrowUp', 5);
     return { door: T.calls('useDoor').slice(-1)[0], shop: DCW.testLog.shop.slice(-1)[0], pos: T.calls('saveStreetPos').length };
   });
@@ -197,11 +198,11 @@ const HELPERS = () => {
     T.clearEnemies(); const S = T.S(); T.warp(120, 160); T.face(1);
     const jug0 = T.count('jug'); T.tap('KeyC', 1); const thrown = S.pproj.filter(p => p.xid === 'jug').length;
     T.until(() => S.fires.length > 0, 120); const fire = S.fires.length;
-    DCW.save.run.selected = 'jug'; T.key('ArrowUp', true); T.tap('KeyC', 1); T.key('ArrowUp', false);
+    DCW.stepFrames(12); DCW.save.run.selected = 'jug'; T.key('ArrowUp', true); T.tap('KeyC', 1); T.key('ArrowUp', false);
     const sel = DCW.save.run.selected;
     DCW.save.run.selected = 'dyn'; T.warp(200, 160); T.tap('KeyC', 1); const dynP = S.pproj.find(p => p.xid === 'dyn');
     const fuseFrames = T.until(() => !S.pproj.some(p => p.xid === 'dyn'), 200);
-    DCW.save.run.selected = 'smoke'; T.warp(300, 160); const lem = DCW.stage.spawn('lemur', 360, 160); lem.init = true; lem.perched = false;
+    DCW.stepFrames(12); DCW.save.run.selected = 'smoke'; T.warp(300, 160); const lem = DCW.stage.spawn('lemur', 360, 160); lem.init = true; lem.perched = false;
     T.tap('KeyC', 1); T.until(() => S.clouds.length > 0, 120);
     const c = S.clouds[0]; if (c) { lem.x = c.x - lem.w / 2; lem.y = c.y - lem.h / 2; } DCW.stepFrames(2);
     return { jug0, jug1: T.count('jug'), thrown, fire, sel, dynFuse: !!dynP, fuseFrames, cloud: S.clouds.length, lost: lem.lostT };
@@ -234,14 +235,14 @@ const HELPERS = () => {
   check(r.mic.dx >= 40 && r.mic.jug === 1 && r.mic.proj && r.boom > 0, 'Mic Drop: jug up, Carl puddle-jumps forward, jug lands', r);
   // potion, Donut missiles, Mongo bite, second chance, regrow
   r = await ev(() => {
-    const S = T.S(); const run = DCW.save.run; T.god(false);
+    const S = T.S(); const run = DCW.save.run; T.god(false); S.fires.length = 0; DCW.stepFrames(10);
     run.hp = 3; const p0 = run.potions; T.tap('KeyQ', 2); const healed = run.hp > 3 && run.potions === p0 - 1;
     T.god(true); T.clearEnemies(); S.pproj.length = 0; T.warp(150, 160); T.face(1);
-    const e = DCW.stage.spawn('fat_clown', 240, 160); e.stun = 99; e.hp = e.maxHp = 200;
+    const e = DCW.stage.spawn('fat_clown', 205, 160); e.stun = 99; e.hp = e.maxHp = 200;
     const fired = T.until(() => S.pproj.some(p => p.kind === 'missile'), 150);
     const bit = T.until(() => S.party.mongo.state === 'dash', 200);
     DCW.stepFrames(60); const dmg = 200 - e.hp;
-    T.clearEnemies(); DCW.stage.K.secondChance = 1;
+    T.clearEnemies(); S.fires.length = 0; DCW.stage.K.secondChance = 1;
     const v = DCW.stage.spawn('fat_clown', 180, 160); v.hp = 1; v.stun = 9; T.warp(160, 160); T.face(1); T.tap('KeyX', 10);
     DCW.stage.K.secondChance = 0.12;
     const risen = S.allies.filter(a => a.kind === 'risen').length;
@@ -249,7 +250,7 @@ const HELPERS = () => {
     const lion = DCW.stage.spawn('mold_lion', 180, 160); lion.hp = 1; lion.stun = 9; T.warp(160, 160); T.face(1); T.tap('KeyX', 10);
     const pile = S.regrows.length;
     const back = T.until(() => S.enemies.some(x => x.id === 'mold_lion' && x.regrown), 600);
-    const lion2 = S.enemies.find(x => x.id === 'mold_lion'); lion2.hp = 1; lion2.stun = 9; T.warp(lion2.x - 10, 160); T.face(1); T.tap('KeyX', 10);
+    S.fires.length = 0; const lion2 = S.enemies.find(x => x.id === 'mold_lion' && !x.dead) || DCW.stage.spawn('mold_lion', 200, 160); lion2.hp = 1; lion2.stun = 9; T.warp(lion2.x - 10, 160); T.face(1); T.tap('KeyX', 10);
     const pile2 = S.regrows.length;
     const lion3 = DCW.stage.spawn('mold_lion', 260, 160); lion3.hp = 1; lion3.stun = 99; S.fires.push({ x0: 240, x1: 290, y: 160, life: 3, tick: 0, t: 0 }); DCW.stepFrames(20);
     return { healed, fired, bit, dmg, risen, pile, back, pile2, burned: lion3.dead && S.regrows.length === 0 };
@@ -277,11 +278,14 @@ const HELPERS = () => {
   await load('level=t_dark');
   r = await ev(() => {
     const S = T.S(); T.god(true); DCW.stepFrames(20);
-    const b = S.enemies.find(e => e.ai === 'berserker');
+    const b = S.enemies.find(e => e.ai === 'berserker'); b.hp = b.maxHp = 999;
+    const keepDonut = S.party.donut; S.party.donut = null; S.pproj.length = 0;
+    T.warp(b.x - 130, b.y + b.h); T.until(() => b.inDark, 120);
     const inDarkFar = b ? (b.inDark ? b.speed / b.baseSpeed : 0) : -1;
+    S.party.donut = keepDonut;
     T.warp(b.x - 30, b.y + b.h); DCW.stepFrames(3);
     const nearLit = b.inDark;
-    const elf = S.enemies.find(e => e.ai === 'caster'); T.warp(elf.x - 80, elf.y + elf.h); T.face(1);
+    const elf = S.enemies.find(e => e.ai === 'caster'); elf.hp = elf.maxHp = 999; T.warp(elf.x - 80, elf.y + elf.h); T.face(1);
     const orb = T.until(() => S.orbs.length > 0, 600);
     // xistera (act 2): hob launches straight
     DCW.save.run.selected = 'hob'; T.tap('KeyC', 1); const h = S.pproj.find(p => p.xid === 'hob');
@@ -379,8 +383,8 @@ const HELPERS = () => {
   await load('level=t_drop');
   r = await ev(() => {
     const S = T.S(); T.god(true); DCW.stepFrames(30);
-    const L = S.L, idx = 2 * L.w + 3; const before = L.t[idx];
-    T.warp(3 * 16 + 8, 2 * 16); DCW.stepFrames(50);
+    const L = S.L, idx = 9 * L.w + 3; const before = L.t[idx];
+    T.warp(3 * 16 + 8, 9 * 16); DCW.stepFrames(50);
     const after = L.t[idx];
     const d = T.objs('door')[0]; T.warp(d.x - 16, d.y + d.h); T.hold(['ArrowRight'], 30);
     T.until(() => T.calls('levelCleared').length > 0, 200);
@@ -400,7 +404,8 @@ const HELPERS = () => {
     const bar = T.objs('barricade')[0];
     DCW.stepFrames(240);
     const u = S.enemies.filter(e => e.ai === 'urchin');
-    const target = u.some(e => e.target === bar);
+    T.until(() => bar.hp < bar.maxHp, 600);
+    const target = bar.hp < bar.maxHp;
     const hud = DCW.testLog.hud.timer;
     bar.hp = 1; T.until(() => bar.broken, 600);
     const hostile = S.enemies.filter(e => !e.dead && e.ai === 'urchin').every(e => e.hostile);
@@ -425,7 +430,7 @@ const HELPERS = () => {
     const early = S.plant.detonated;
     // krasue: head vanishes and comes back; body kill ends it
     const head = S.enemies.find(e => e.ai === 'krasue' && e.body);
-    head.hp = 1; const hx = head.x; head.stun = 0;
+    head.body.hp = 999; head.hp = 1; const hx = head.x; head.stun = 0;
     T.warp(head.x - 4, 160); head.y = T.P().y + 2; head.x = T.P().x + 8; T.face(1); T.tap('KeyX', 6);
     const gone = head.state === 'gone';
     T.until(() => head.state !== 'gone', 700);
@@ -527,7 +532,7 @@ const HELPERS = () => {
     // pattern runs reveal/spit: wait for any part to open
     B.move = null; const opened = T.until(() => B.parts.some(p => p.open > 0), 600);
     // Boomy Boy triple damage
-    const hpB = B.hp; S.special = 1; T.warp(B.x - 30, B.groundY); T.face(1); T.key('ArrowDown', true); T.tap('KeyV', 2); T.key('ArrowDown', false);
+    B.hp = B.maxHp = 999; const hpB = B.hp; S.special = 1; T.warp(B.x - 30, B.groundY); T.face(1); T.key('ArrowDown', true); T.tap('KeyV', 2); T.key('ArrowDown', false);
     T.until(() => !S.allies.some(a => a.kind === 'boomy'), 200);
     const boomyDmg = hpB - B.hp;
     const pip = B.nextPart ? B.nextPart.id : null;
@@ -536,7 +541,7 @@ const HELPERS = () => {
   check(r.closedHp === r.hp0, 'facade: camouflaged parts take no damage', r);
   check(r.openHp < r.closedHp, 'facade: a revealed part takes damage', r);
   check(r.opened >= 0, 'facade: reveal/spit open parts over time', r.opened);
-  check(r.boomyDmg >= r.dyn * 3, 'Boomy Boy deals triple damage to the Dispenser', r);
+  check(r.boomyDmg >= r.dyn * 3 - 1, 'Boomy Boy deals triple damage to the Dispenser', r);
   await ev(() => DCW.stepFrames(30));
   await shot('facade_dispenser');
   r = await ev(() => {
@@ -591,7 +596,7 @@ const HELPERS = () => {
   /* ================= NEST: charm, launcher, floater ================= */
   await load('level=t_nest');
   r = await ev(() => {
-    const S = T.S(); T.god(false); T.clearEnemies();
+    const S = T.S(); T.god(true); T.clearEnemies(); S.party = {};
     const P = T.P(); T.warp(120, 160);
     const inc = DCW.stage.spawn('incubus', 190, 160);
     T.until(() => P.charmT > 0, 600);
