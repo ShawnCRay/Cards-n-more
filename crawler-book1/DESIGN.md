@@ -73,7 +73,7 @@ Death in a stage: existing revive/continue flow, retry the same stage.
 | stage | `f1_hall` | THE FIRST HALLWAY. Tutorial stage: torchlit stone tunnel, rats, a couple of goblins, official dungeon signs teach the controls. Short. (ch 2) |
 | stage | `f1_dozer_chase` | MURDER DOZER! Chase stage: the Goblin Murder Dozer (pursuer) grinds after you; run right, jump pits, goblins on top throw junk; the end door is Mordecai's guild hall. (ch 2-3) |
 | cut | `f1_mordecai` | Mordecai the Rat Hooligan. Donut insults his mother. HUD and inventory switch on. Donut learns Magic Missile (flag `missile`). The dozer is still idling outside the door. (ch 3-7) |
-| safe | `guild` | Mordecai's tutorial guild hall: open the first boxes (Trollskin Shirt, Toad Cudgel, Enhanced Pet Biscuit, Crown of the Sepsis Whore...), tips, rest. |
+| safe | `guild` | The tutorial guild hall, where Mordecai works as their assigned game guide (he doesn't run the guild): open the first boxes (Trollskin Shirt, Toad Cudgel, Enhanced Pet Biscuit, Crown of the Sepsis Whore...), tips, rest. |
 | stage | `f1_dozer` | Boss: THE MURDER DOZER (mini-boss) in the hallway outside the guild. Armored front, hit the boiler on its back, or bomb it. Its blast is enchanted to hit the nearest non-goblin. (ch 3) |
 | stage | `f1_llamas` | LLAMA COUNTRY. Bad Llamas (lava spit; punch the glowing throat pouch for an instant kill), rats. A llama drops the quest item `meth` (Baggie of Trailer-Park-Grade Meth). Scatterers start showing up. (ch 8) |
 | stage | `f1_scatter` | SCATTERER ALLEY. Scatterers and brood guardians; stomping them is the point (Smush). (ch 8-10) |
@@ -426,6 +426,7 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
 ## Character notes (lead)
+- **Mordecai:** their assigned game guide, nothing more. He doesn't own or run the guild halls. He's gruff, tired and rude about them ("the worst crawlers I've seen to date"), and only grudgingly fond.
 - **Hekla:** Donut idolizes her through Book Two; that only sours in Book Three. In Books One and Two, Donut only ever gushes about her and wants to impress her. She never gripes about her or distrusts her.
 
 ## Pet biscuits (lead)

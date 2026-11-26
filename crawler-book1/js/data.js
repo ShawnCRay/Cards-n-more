@@ -1869,7 +1869,7 @@
 
   /* ================= SAFE ROOMS ================= */
   D.safeRooms = {
-    guild: { name: "MORDECAI'S GUILD HALL", theme: 'safe_guild', music: 'safe', npc: 'mordecai',
+    guild: { name: 'THE TUTORIAL GUILD HALL', theme: 'safe_guild', music: 'safe', npc: 'mordecai',
       services: ['mordecai', 'boxes', 'rest'],
       greet: [
         mord1("YOUR ACHIEVEMENTS CAME WITH BOXES. OPEN THEM AT THE TABLE. THE SHOW WANTS EVERY UNBOXING ON CAMERA, EVEN WHEN NOBODY'S WATCHING YET."),
@@ -1975,7 +1975,7 @@
         "BORANT LEGAL: REMINDER THAT URINATING IN A HALLWAY VOIDS ALL WARRANTIES ON YOUR BODY. WE ARE NOT KIDDING. PLEASE STOP ASKING."
       ] },
 
-    bugaboo: { name: "MORDECAI'S FLOOR TWO GUILD", theme: 'safe_bugaboo', music: 'safe', npc: 'mordecai',
+    bugaboo: { name: 'THE FLOOR TWO GUILD HALL', theme: 'safe_bugaboo', music: 'safe', npc: 'mordecai',
       services: ['mordecai', 'boxes', 'rest', 'tv'],
       greet: [
         mord2("DON'T. SAY. A WORD. YES, I'M A BUGABOO NOW. SEVEN FEET OF HAIR, NO NECK, OWL EYES. THE PRODUCERS THINK IT'S HILARIOUS."),
@@ -2053,7 +2053,8 @@
     f1_mordecai: { music: 'safe', panels: [
       { bg: 'safe_guild', fx: 'shake', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mordecai_f1_idle', 214, true)], lines: [
         nar("THE GUILD DOOR SLAMS. OUTSIDE, THE MURDER DOZER GRINDS TO A STOP AND JUST... IDLES. WAITING. THE GOBLINS ON TOP ARE SINGING."),
-        mord1("IN. SIT. TOUCH NOTHING. I'M MORDECAI. I RUN THIS TUTORIAL GUILD, AND YOU TWO ARE ALREADY THE WORST CRAWLERS I'VE HAD TODAY.")] },
+        mord1("IN. SIT. TOUCH NOTHING. I'M MORDECAI. I'M YOUR GAME GUIDE. NOT YOUR FRIEND, NOT YOUR DAD. YOUR GUIDE."),
+        mord1("I'VE WATCHED A LOT OF CRAWLERS COME THROUGH THAT DOOR. YOU TWO ARE THE WORST I'VE SEEN TO DATE. AND IT'S BEEN A LONG DATE.")] },
       { bg: 'safe_guild', actors: [A('carl_idle', 110), A('donut_idle', 168), A('mordecai_f1_idle', 214, true)], lines: [
         nar("DONUT LEAPS OFF CARL'S SHOULDER, KNOCKS A BRASS URN OFF THE SHELF, AND STARTS DIGGING IN WHAT SPILLS OUT LIKE IT'S A FRESH LITTER BOX."),
         mord1("...THAT'S MY MOTHER."),
