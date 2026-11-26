@@ -2923,23 +2923,36 @@
     draw: function (g, st) {
       bands(g, PW_, 0, PH_, ['#020c14', '#04121c', '#061824', '#08202c', '#0a2430']);
       noiseCloud(g, 0, 0, PW_, PH_, 13, ['#0c2c38', '#123c48'], function (x, y) { return 0.55 + 0.35 * Math.sin(x / 19 + y / 13); }, 0.7);
-      var skin = '#9cc8c0', sk2 = '#7ca8a4', skL = '#c8ece4', ink = '#1c3c4c';
-      // shoulders and arms (cropped at the collarbone), long neck, narrow face
+      var skin = '#a4e4fc', sk2 = '#3cbcfc', skL = '#d8f8fc', hair = '#06121c', hairL = '#0c3c48';
+      // long dark hair falling behind her shoulders
+      blob(g, 128, 34, 27, 28, hair); R(g, 97, 34, 18, 78, hair); R(g, 141, 34, 18, 78, hair);
+      line(g, 102, 46, 104, 110, hairL); line(g, 153, 46, 151, 110, hairL); line(g, 109, 24, 111, 66, hairL);
+      // neck, shoulders and chest: the skin the tattoos swim on (the face stays clear)
       var mask = mkCanvas(PW_, PH_), mg = g2(mask);
       [g, mg].forEach(function (q) {
-        blob(q, 128, 106, 62, 16, skin); R(q, 66, 100, 124, 12, skin); R(q, 120, 62, 16, 36, skin);
-        blob(q, 128, 44, 15, 21, skin); tri(q, 128, 58, 22, 9, skin, true);
-        tri(q, 106, 36, 1, 1, skin); line(q, 113, 40, 100, 30, skin); line(q, 113, 41, 100, 31, skin); line(q, 113, 42, 102, 33, skin);
-        line(q, 143, 40, 156, 30, skin); line(q, 143, 41, 156, 31, skin); line(q, 143, 42, 154, 33, skin);
+        blob(q, 128, 104, 54, 36, skin); R(q, 121, 50, 14, 22, skin);                            // tapering shoulders
+        blob(q, 112, 90, 17, 14, skin); blob(q, 144, 90, 17, 14, skin);
       });
       st.misc.push(mask);
-      R(g, 119, 62, 2, 30, sk2); R(g, 136, 62, 1, 30, sk2); blob(g, 122, 38, 4, 6, skL);
-      // hair swept back, small horns, the face
-      blob(g, 128, 27, 15, 9, '#0c1018'); R(g, 113, 26, 4, 22, '#0c1018'); R(g, 139, 26, 4, 22, '#0c1018');
-      line(g, 121, 22, 117, 13, '#e8e0c8'); line(g, 122, 22, 118, 13, '#c8c0a8'); line(g, 134, 22, 138, 13, '#e8e0c8'); line(g, 135, 22, 139, 13, '#c8c0a8');
-      R(g, 120, 40, 6, 2, '#0c1018'); R(g, 130, 40, 6, 2, '#0c1018'); st.lamps.push([121, 40], [131, 40]);
-      R(g, 127, 44, 2, 6, sk2); R(g, 123, 54, 10, 1, '#3c1c24'); P(g, 124, 55, '#fcfcfc'); P(g, 131, 55, '#fcfcfc');
-      R(g, 112, 66, 1, 1, ink);
+      // give the chest its form: a crescent of shade under each curve, a highlight on top
+      blob(g, 112, 92, 17, 13, sk2); blob(g, 112, 89, 16, 12, skin); blob(g, 107, 83, 5, 3, skL);
+      blob(g, 144, 92, 17, 13, sk2); blob(g, 144, 89, 16, 12, skin); blob(g, 139, 83, 5, 3, skL);
+      R(g, 127, 82, 2, 22, sk2);                                                                // cleavage
+      line(g, 104, 72, 121, 69, sk2); line(g, 135, 69, 152, 72, sk2);                       // collarbones
+      R(g, 121, 50, 2, 16, sk2);
+      // the face
+      blob(g, 128, 33, 16, 20, skin); blob(g, 121, 28, 5, 6, skL);
+      line(g, 113, 33, 101, 23, skin); line(g, 113, 34, 101, 24, skin); line(g, 113, 35, 103, 26, skin);   // pointed ears
+      line(g, 143, 33, 155, 23, skin); line(g, 143, 34, 155, 24, skin); line(g, 143, 35, 153, 26, skin);
+      blob(g, 128, 16, 17, 8, hair); R(g, 111, 16, 6, 22, hair); R(g, 139, 16, 6, 22, hair);               // hairline, side locks
+      line(g, 120, 11, 116, 2, '#e8e0c8'); line(g, 121, 11, 117, 2, '#c8c0a8'); line(g, 135, 11, 139, 2, '#e8e0c8'); line(g, 136, 11, 140, 2, '#c8c0a8');
+      line(g, 116, 26, 125, 25, hair); line(g, 131, 25, 140, 26, hair);                                     // brows
+      R(g, 117, 29, 9, 4, '#fcfcfc'); R(g, 120, 29, 5, 4, '#00e8e8'); R(g, 122, 30, 2, 2, '#004058');       // almond eyes
+      R(g, 131, 29, 9, 4, '#fcfcfc'); R(g, 132, 29, 5, 4, '#00e8e8'); R(g, 134, 30, 2, 2, '#004058');
+      R(g, 116, 28, 11, 1, '#020608'); R(g, 130, 28, 11, 1, '#020608'); P(g, 115, 27, '#020608'); P(g, 141, 27, '#020608');
+      st.lamps.push([120, 29], [132, 29]);
+      R(g, 127, 36, 2, 6, sk2);                                                                              // nose
+      R(g, 122, 45, 12, 2, '#e40058'); R(g, 123, 47, 10, 2, '#a80020'); P(g, 124, 45, '#f8a4c0');           // full red lips
     },
     anim: function (ctx, t, st) {
       // tattoos: sharks, a dragon, an oni mask, a sea serpent, swimming over the skin
