@@ -334,6 +334,7 @@
     coin: ['..kkkk..', '.kyyyyk.', 'kyywyyYk', 'kyywyyYk', 'kyywyyYk', 'kyyyyYYk', '.kYYYYk.', '..kkkk..'],
     bomb: ['.....yo.', '....k...', '..kkkk..', '.kGGGGk.', 'kGwGGGGk', 'kGGGGGGk', '.kGGGGk.', '..kkkk..'],
     jug: ['...ro...', '...yr...', '..kNNk..', '.kNnnNk.', 'kNwnnnNk', 'kNnnnnNk', '.kNnnNk.', '..kkkk..'],
+    magic: ['...kk...', '..kmmk..', '.kmwwmk.', 'kmwwwwmk', '.kmwwmk.', '..kmmk..', '.k.kk.k.', 'k......k'],
     biscuit: ['........', '.kkkkkk.', 'kYyyyyYk', 'kyYyyYyk', 'kyyYyyyk', 'kYyyyyYk', '.kkkkkk.', '........'],
     potion: ['..kkk...', '..kwk...', '.kkwkk..', 'kppwppk.', 'kpwpppk.', 'kppppPk.', '.kPPPk..', '..kkk...'],
     star: ['...k....', '..kyk...', 'kkkykkk.', 'kyyyyyk.', '.kyyyk..', '.kykyk..', 'kyk.kyk.', 'kk...kk.'],
@@ -774,7 +775,8 @@
     T(hpStr, 77, 3, low ? C.red : tainted ? C.green : C.white);
     var x = Math.max(111, 77 + tw(hpStr) + 4); // 3-digit HP pushes the row right instead of overlapping
     function counter(ic, val, col) { icon(ctx, ic, x, 2); var s2 = String(val === undefined ? '-' : val); T(s2, x + 9, 3, col || C.white); x += 9 + tw(s2) + 5; }
-    counter(h.jugs ? 'jug' : 'bomb', h.bombs);
+    if (h.magic) { if (h.magic === 'ready') { icon(ctx, 'magic', x, 2); x += 13; } } // Donut mode: the bomb button is her Magic Missile
+    else counter(h.jugs ? 'jug' : 'bomb', h.bombs);
     counter('potion', h.potions);
     if (h.biscuits > 0) counter('biscuit', h.biscuits);
     counter('coin', fitText(h.gold || 0, 30), C.gold);

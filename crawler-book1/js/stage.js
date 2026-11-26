@@ -1015,6 +1015,12 @@
   }
   function throwBomb(P) {
     var run = getRun();
+    // Donut mode: the bomb button is her Magic Missile (no ammo, just a cooldown)
+    if (P.hero === 'donut') {
+      if (flag('missile')) castMissile(P);
+      else if (!(S.specialMsgT > 0)) { S.specialMsgT = 1.2; sfx('error'); numText(cx(P), P.y - 6, 'NO SPELLS YET', '#bcbcbc'); }
+      return;
+    }
     if ((run.bombs || 0) <= 0) { sfx('error'); numText(cx(P), P.y - 4, 'NO BOMBS', '#f83800'); return; }
     run.bombs--;
     P.throwT = 0.2;
@@ -1171,8 +1177,7 @@
       if (I.pressed('attack') && !(P.flickT > 0)) {
         if (down && P.onGround) { setCrouch(P, false); P.state = 'kick'; P.st = 0; P.hitList = []; P.kickTracked = false; sfx('kick'); }
         else if (down && !P.onGround) { P.state = 'airkick'; P.st = 0; P.hitList = []; P.jumping = false; sfx('kick'); }
-        else if (P.hero === 'donut' && flag('missile')) castMissile(P);
-        else { setCrouch(P, false); startPunch(P, (P.chainT > 0 && P.lastPIdx < 2) ? P.lastPIdx + 1 : 0); }
+        else { setCrouch(P, false); startPunch(P, (P.chainT > 0 && P.lastPIdx < 2) ? P.lastPIdx + 1 : 0); } // Donut: a paw swipe
       } else if (I.pressed('bomb')) {
         throwBomb(P);
       }
@@ -1417,7 +1422,7 @@
   /* ---------------- companion (Donut; Mongo as the f2_return extra ally) ---------------- */
   var COMP_DEFAULTS = {
     donut: { name: 'PRINCESS DONUT', ability: 'missile', cooldown: 1.6, power: 2, special: { name: 'MAGIC MISSILE BARRAGE' } },
-    carl: { name: 'CARL', ability: 'bite', cooldown: 0.9, power: 3, special: { name: 'GODDAMNIT, DONUT' }, sprite: 'carl' },
+    carl: { name: 'CARL', ability: 'bite', cooldown: 0.9, power: 3, special: { name: 'BAREFOOT JUSTICE', kind: 'stomp' }, sprite: 'carl' },
     mongo: { name: 'MONGO', ability: 'bite', cooldown: 1.2, power: 3, special: { name: 'MONGO RAMPAGE' } }
   };
   var COMP_COLORS = { missile: '#f8f8f8', bite: '#58d854' };
@@ -1537,6 +1542,7 @@
     C.t += dt; C.actT -= dt;
     if (P.state === 'dead' || P.state === 'pit') { C.vx = 0; return; }
     var def = C.def, power = num(def.power, 1) * C.pw;
+    if (C.state === 'stomp') { updCarlStomp(C, dt); return; }
     if (C.state === 'rampage') { // MONGO RAMPAGE (only if Mongo is ever the main companion)
       C.rt -= dt;
       C.x += C.face * 330 * dt; C.y = P.y + P.h - C.h;
@@ -1630,6 +1636,69 @@
       C.cd = used ? cool : 0.25;
     }
   }
+  // Donut mode: Carl's special. He leaps, and one enormous bare foot comes down on everything on screen.
+  // The System AI has feelings about Carl's feet, and says so every time.
+  function startCarlStomp(C) {
+    var P = S.player;
+    if (C.away) { C.away = false; C.x = cx(P) - P.face * 20 - C.w / 2; C.y = P.y + P.h - C.h; }
+    C.state = 'stomp'; C.st = 0; C.vy = -400; C.vx = 0; C.onGround = false; C.actT = 1;
+    sfx('jump', { pitch: 0.8 });
+  }
+  function carlStompImpact(C) {
+    var st = stats(), power = num(C.def.power, 3) * num(C.pw, 1);
+    var dmg = Math.round(power * 5 + num(st.kickDmg, 3) * 1.5), n = 0;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e.dead || e.state === 'hang' || e.state === 'latched' || !onScreen(e, 8)) continue;
+      e.active = true;
+      if (damageActor(e, dmg, { kind: 'stomp', kb: 60, dir: cx(e) < cx(C) ? -1 : 1, srcX: cx(C) })) n++;
+      numText(cx(e), e.y - 6, 'SQUISH!', '#f8d878');
+    }
+    if (bossHittable(S.boss)) damageBoss(S.boss, Math.round(dmg * 1.5), { kind: 'comp', raw: true, srcX: cx(C) });
+    var Pp = S.player;
+    S.bigFoot = { x: U.clamp(cx(C), S.cam.x + 36, S.cam.x + W - 36), gy: Pp.onGround ? Pp.y + Pp.h : groundBelow(cx(C), C.y + 2), face: C.face || Pp.face, t: 0 }; // on the floor Donut's fighting on
+    sfx('explosion', { pitch: 0.6 }); sfx('kick', { pitch: 0.7 }); DCW.shake(6, 0.5); DCW.freeze(8);
+    for (var k = -6; k <= 6; k++) dust(cx(C) + k * 24, C.y + C.h, 2);
+    numText(cx(C), C.y - 24, 'BAREFOOT JUSTICE!', '#f8d878', 2);
+    track('carl_stomp');
+    var feet = (D().ai || {}).carlFeet;
+    if (feet && feet.length) { S.quipT = 0; toast(U.pick(feet), { title: 'SYSTEM AI', icon: 'eye', color: '#f878f8', time: 4 }); S.quipT = 8; }
+  }
+  function updCarlStomp(C, dt) {
+    C.st += dt;
+    C.vy = Math.min(C.vy + K.gravity * 1.3 * dt, K.fallMax * 1.4);
+    moveBody(C, dt, C.vy > 0); // straight through thin platforms on the way down
+    if ((C.st > 0.2 && C.onGround) || C.st > 1.6 || C.y > S.L.pxH) { if (C.y > S.L.pxH) teleportComp(C, S.player); C.state = 'follow'; carlStompImpact(C); }
+  }
+  // a giant bare foot (pixel art at 2x), toes toward where Carl faces, its shin running up out of frame
+  var BIGFOOT = [
+    '.......kkkkkkk................',
+    '......ksssssssk...............',
+    '......ksssssssk...............',
+    '......ksssssssk...............',
+    '......ksssssssk.......kk.kk.kk',
+    '......kssssssskkkkkkkksnksnksk',
+    '.....ksssssssssssssssssskssskk',
+    '....kssssssssssssssssssssssssk',
+    '...ksssssssssssssssssssssssssk',
+    '...kssSsssssssssssssssssssssk.',
+    '...kSSSSSSSSSSSSSSSSSSSSSSSk..',
+    '....kkkkkkkkkkkkkkkkkkkkkkk...'];
+  var BIGFOOT_PAL = { k: '#000000', s: '#fca044', S: '#e45c10', n: '#fcfcfc' };
+  function drawBigFoot(ctx, camX, camY) {
+    var F = S.bigFoot; if (!F) return;
+    if (F.t > 0.5) return;
+    var sc = 2, fw = BIGFOOT[0].length * sc, fh = BIGFOOT.length * sc;
+    var gy = Math.round(F.gy - camY), drop = Math.min(1, F.t / 0.08);
+    var top = Math.round(gy - fh - (1 - drop) * 140); // slams down from the sky, sits a beat, gone
+    var x0 = Math.round(F.x - camX - fw / 2), flip = F.face < 0;
+    ctx.fillStyle = '#000000'; ctx.fillRect(x0 + (flip ? fw - 15 * sc : 6 * sc), 0, 9 * sc, Math.max(0, top + 2)); // shin outline
+    ctx.fillStyle = BIGFOOT_PAL.s; ctx.fillRect(x0 + (flip ? fw - 14 * sc : 7 * sc), 0, 7 * sc, Math.max(0, top + 2));
+    for (var y = 0; y < BIGFOOT.length; y++) for (var x = 0; x < BIGFOOT[y].length; x++) {
+      var c = BIGFOOT_PAL[BIGFOOT[y][x]]; if (!c) continue;
+      ctx.fillStyle = c; ctx.fillRect(x0 + (flip ? (BIGFOOT[y].length - 1 - x) : x) * sc, top + y * sc, sc, sc);
+    }
+  }
   function missileDmg(power) { return Math.max(1, Math.round(power) + Math.round(num(stats().missileDmg, 0))); }
   function fireMissile(x, y, target, dmg, face) {
     S.pproj.push({ kind: 'missile', x: x - 3, y: y - 3, w: 6, h: 6, vx: (face || 1) * 40, vy: -110, target: target, life: 2.6, dmg: dmg, t: 0 });
@@ -1668,6 +1737,8 @@
       if (bossHittable(S.boss)) targets.push(S.boss);
       S.missileQueue = S.missileQueue || [];
       for (i = 0; i < 16; i++) S.missileQueue.push({ at: i * 0.06, target: targets.length ? targets[i % targets.length] : null, dmg: Math.max(2, Math.round(power * 1.6) + Math.round(num(stats().missileDmg, 0))) });
+    } else if (def.special && def.special.kind === 'stomp') {
+      startCarlStomp(C);
     } else {
       C.state = 'rampage'; C.rt = num(def.special && def.special.time, 0) || 1.8; C.hitList = [];
       C.x = S.cam.x - 16; C.face = 1;
@@ -3055,6 +3126,7 @@
     var run = getRun();
     buildLevel(params.stageId || (run && run.currentStage) || firstStageId());
     S.player = makePlayer(S.start.x, S.start.y);
+    try { var tb = document.querySelector('#touch .btn.bomb'); if (tb) tb.textContent = heroDonut() ? 'MAGIC' : 'BOMB'; } catch (e) { /* no touch overlay */ }
     S.lastSafe = { x: S.start.x, y: S.start.y };
     // coming back to a stage after dying: start at the last checkpoint flag (the layout is seeded
     // per run, so it's the same flag in the same place); earlier flags count as already touched
@@ -3103,6 +3175,7 @@
     if (S.taintMsgT > 0) S.taintMsgT -= dt;
     if (S.specialMsgT > 0) S.specialMsgT -= dt;
     if (S.gripeT > 0) S.gripeT -= dt;
+    if (S.bigFoot) { S.bigFoot.t += dt; if (S.bigFoot.t > 0.5) S.bigFoot = null; }
     if (S.lockMsgT > 0 && S.ride) S.lockMsgT -= dt;
     call(G(), 'tick', dt);
     if (S.introPending && S.t > 0.5) { var line = S.introPending; S.introPending = null; say(line); }
@@ -3254,6 +3327,7 @@
       } else spr(ctx, 'missile', cx(q) - camX, q.y + q.h + 1 - camY, Math.floor(q.t * 12), q.vx < 0, null, 6, 6, '#f878f8');
     }
     // particles
+    drawBigFoot(ctx, camX, camY);
     for (i = 0; i < S.parts.length; i++) drawPart(ctx, S.parts[i], camX, camY);
     // floating numbers
     for (i = 0; i < S.nums.length; i++) {
@@ -3663,7 +3737,7 @@
     viewersOff: false, taint: 0, biscuits: 0, jugs: false, pursuer: null };
   function drawHud(ctx) {
     var run = getRun(), st = stats(), B = S.boss;
-    hud.hp = Math.max(0, run.hp); hud.maxHp = st.maxHp; hud.bombs = run.bombs || 0; hud.potions = run.potions || 0;
+    hud.hp = Math.max(0, run.hp); hud.maxHp = st.maxHp; hud.bombs = run.bombs || 0; hud.magic = heroDonut() ? (flag('missile') ? 'ready' : 'none') : null; hud.potions = run.potions || 0;
     hud.special = compCanSpecial() ? S.special : null;
     hud.gold = run.gold || 0; hud.level = run.level || 1; hud.xpFrac = U.clamp((run.xp || 0) / xpNeed(run.level || 1), 0, 1);
     hud.views = run.views || 0; hud.combo = S.combo; hud.companion = S.comp ? S.comp.id : null;

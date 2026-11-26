@@ -425,6 +425,12 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
+## Donut mode controls (lead)
+- **Attack:** always a paw swipe (the punch chain, drawn as claws).
+- **Bomb button:** her homing Magic Missile, with no ammo and just a cooldown. Before she learns it, it says "NO SPELLS YET". The HUD shows a magic icon instead of the bomb count, and the touch button reads MAGIC.
+- **Carl's special, BAREFOOT JUSTICE** (`special.kind: 'stomp'`): Carl leaps, dropping through thin platforms, and a giant bare foot with its shin running out of frame slams onto the floor. Every mob on screen takes heavy damage and gets a "SQUISH!", and bosses take 1.5x. Each stomp gets a line from `D.ai.carlFeet`.
+- **Running joke:** the System AI has a thing for Carl's feet. Keep it comic, never explicit.
+
 ## Boss phases are full health bars (lead)
 Every boss phase is its own full health bar. When a bar empties and another phase is left, the boss enters it immediately at full health, with the phase banner and a "FULL HEALTH!" pop. Only the last bar kills it. `D.bosses[id].hp` is per bar, set so the whole fight is about 1.5x the old single-bar length. Two-phase bosses: Murder Dozer 53, Hoarder 173, Chieftain 203, Ralph 405. Three-phase bosses: Juicer 190, Ball of Swine 200, Krakaren 230. A phase's `below` value no longer triggers anything.
 
