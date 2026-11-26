@@ -425,6 +425,9 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
+## Character notes (lead)
+- **Hekla:** Donut idolizes her through Book Two; that only sours in Book Three. In Books One and Two, Donut only ever gushes about her and wants to impress her. She never gripes about her or distrusts her.
+
 ## Pet biscuits (lead)
 Biscuits only matter in Ralph's dog pound: four dingo cages, and any cage not fed by his second phase opens. They're scarce on purpose, so a crawl can arrive short.
 - **World cap:** the world hands out at most 4 per crawl (`D.biscuitRules.found`), counting Mordecai's 2. `run.biscuitsFound` tracks it, and `G.biscuitsLeftToFind()` reports what's left. Loot boxes no longer drop biscuits.
@@ -434,7 +437,7 @@ Biscuits only matter in Ralph's dog pound: four dingo cages, and any cage not fe
 
 ## Donut's running gag (lead)
 When Donut is upset she uses one formula: "X? CARL. YOU KNOW HOW I FEEL ABOUT X." It runs through the whole series, so use it whenever she's put out, and keep it short and flat. The joke is the repetition.
-- **Cutscenes:** bad lighting on the recap, Hekla's hair, being left on the floor, Carl's Jug O'Boom credit, Pork Boy taking her ratings. Her plot-armor line is "PLOT ARMOR? CARL. YOU KNOW HOW I FEEL ABOUT PLOT ARMOR."
+- **Cutscenes:** bad lighting on the recap, being left on the floor, Carl's Jug O'Boom credit, Pork Boy taking her ratings. Her plot-armor line is "PLOT ARMOR? CARL. YOU KNOW HOW I FEEL ABOUT PLOT ARMOR."
 - **In play:** `D.donutGripes` maps a mob id (or one `_`-separated part of it) or a damage kind (`wet`, `fire`, `spikes`, `bomb`) to a gripe. When one hurts the player, Donut says it in a pink toast. Each gripe plays once per crawl (`run.gripes`), at most one every 20 s, and only once she can talk. Contact hits pass `mob: e.id`. Enemy shots remember their shooter, so death screens now name the shooter instead of "PROJECTILE".
 
 ## Tools
