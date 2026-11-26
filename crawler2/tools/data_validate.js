@@ -176,6 +176,7 @@ for (const [id, b] of Object.entries(D.bosses)) {
   text(w + '.name', b.name, 24); text(w + '.title', b.title, 40); texts(w + '.intro', b.intro, 1); text(w + '.defeat', b.defeat);
   if (!TIERS.includes(b.loot)) err(w + ': loot tier ' + b.loot);
   if (b.unlock && b.unlock.skin && !SKINS.includes(b.unlock.skin)) err(w + ': unlock skin ' + b.unlock.skin);
+  if (b.curedLines) lines(w + '.curedLines', b.curedLines, 1);
   if (!b.phases || !b.phases.length || b.phases[0].below !== 1) err(w + ': first phase must have below 1.0');
   let last = 2;
   (b.phases || []).forEach((ph, i) => {
@@ -513,6 +514,7 @@ for (const [id, a] of Object.entries(A)) {
   if (!a.guarded && (a.citizens || []).length) warn(w + ': citizens in an unguarded area');
   if (a.signpost && !rows.join('').includes('p')) err(w + ': signpost true but no p');
   if (a.signs) texts(w + '.signs', a.signs, 1);
+  if (a.signpostText) text(w + '.signpostText', a.signpostText);
   // walkable end to end
   const seen = reach(rows, [[1, 9], [2, 9]], true);
   if (![...seen].some(k => +k.split(',')[0] >= W - 2)) err(w + ': street not walkable end to end');
@@ -549,10 +551,16 @@ for (const [id, l] of Object.entries(LV)) {
   if (!l.reward || !TIERS.includes(l.reward.box)) err(w + ': reward box');
   (l.sets || []).forEach(f => { if (typeof f !== 'string') err(w + ': sets'); });
   (l.gives || []).forEach((g, i) => checkGive(w + '.gives[' + i + ']', g));
-  [].concat(l.quest || []).forEach(q => { const qid = q.start || q.done; if (!D.quests[qid]) err(w + ': quest ' + qid); });
+  if (Array.isArray(l.quest)) err(w + ': quest must be an object {start, done} (arrays inside are fine)');
+  if (l.quest) ['start', 'done'].forEach(k => [].concat(l.quest[k] || []).forEach(qid => { if (!D.quests[qid]) err(w + ': quest ' + qid); }));
   if (l.party) l.party.forEach(p => { if (!['donut', 'mongo', 'katia'].includes(p)) err(w + ': party ' + p); });
   if (l.swap && l.swap !== 'mongo') err(w + ': swap');
   if (l.signs) texts(w + '.signs', l.signs, 1);
+  if (l.rescueLines) lines(w + '.rescueLines', l.rescueLines, 1);
+  if (l.rescueFlag && !PRODUCED.has(l.rescueFlag)) produce(l.rescueFlag, 'rescue ' + id);
+  ['detonateSub'].forEach(k => { if (l[k]) text(w + '.' + k, l[k], 60); });
+  if (l.plant && l.plant.handoffSub) text(w + '.plant.handoffSub', l.plant.handoffSub, 60);
+  if (l.debrisProj && !D.projectiles[l.debrisProj]) err(w + ': debrisProj ' + l.debrisProj);
   (l.npcs || []).forEach((n, i) => { if (!ACTOR_SPRITES.has(n.sprite)) err(w + '.npcs[' + i + ']: sprite ' + n.sprite); lines(w + '.npcs[' + i + '].lines', n.lines, 1); });
   if (l.kind === 'show') {
     if (!D.show[l.show]) err(w + ': show ' + l.show);
@@ -648,7 +656,7 @@ const evIds = new Set();
   if (wh.phase && !['day', 'night'].includes(wh.phase)) err(w + ': phase');
   if (e.cinema) cinemaRef(w, e.cinema); else lines(w + '.lines', e.lines, 1);
   (e.gives || []).forEach((g, k) => checkGive(w + '.gives[' + k + ']', g));
-  if (e.quest) { const qid = e.quest.start || e.quest.done; if (!D.quests[qid]) err(w + ': quest ' + qid); }
+  if (e.quest) ['start', 'done'].forEach(k => [].concat(e.quest[k] || []).forEach(qid => { if (!D.quests[qid]) err(w + ': quest ' + qid); }));
   if (e.level && !LV[e.level]) err(w + ': level ' + e.level);
   if (e.npc && !(A[e.area].npcs || []).some(n => n.id === e.npc)) err(w + ': npc ' + e.npc + ' not in area ' + e.area);
   if (!(e.sets || []).length) warn(w + ': event sets no flag (it would repeat if once is off)');
@@ -660,7 +668,7 @@ for (const [id, list] of Object.entries(D.talk || {})) {
 }
 (D.mordecaiHints || []).forEach((h, i) => { useFlag((h.when || {}).flags, 'mordecaiHints[' + i + ']'); useFlag((h.when || {}).notFlags, 'mordecaiHints[' + i + ']'); text('mordecaiHints[' + i + ']', h.text); });
 texts('mordecai', D.mordecai, 20);
-for (const k of 'floorClear stageClear death levelUp lootbox revive boxEmpty lowHp bigCombo flee night day crime ban collapse'.split(' ')) texts('ai.' + k, (D.ai || {})[k], 3);
+for (const k of 'floorClear stageClear death levelUp lootbox revive boxEmpty lowHp bigCombo flee night day crime ban collapse cockroach guardKill earlyStairs edge'.split(' ')) texts('ai.' + k, (D.ai || {})[k], 3);
 for (const [k, v] of Object.entries(D.ai || {})) if (!/^(floorClear|stageClear|death|levelUp|lootbox|revive|boxEmpty|lowHp|bigCombo|flee|night|day|crime|ban|collapse)$/.test(k)) texts('ai.' + k, v, 1);
 for (const [name, por] of Object.entries(D.who || {})) { if (!PORTRAITS.includes(por)) err('who.' + name + ': portrait ' + por); }
 

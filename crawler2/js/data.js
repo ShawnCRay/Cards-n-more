@@ -359,7 +359,7 @@
       magicOnly: true, bodyHp: 34, leash: 96, regrowTime: 8, aggro: 170, xp: 34, gold: [6, 14], sprite: 'krasue',
       flavor: "A FLYING HEAD THAT BROUGHT ITS ORGANS ALONG FOR THE TRIP. GHOST-CLASS. KILL THE HEAD AND IT COMES BACK. FIND THE BODY. WRECK THE BODY." },
     shadow_leak: { name: 'SHADOW LEAK', level: 14, tier: 2, hp: 14, dmg: 2, speed: 52, w: 14, h: 14, ai: 'swarm', flying: true,
-      magicOnly: true, aggro: 180, xp: 16, gold: [1, 4], sprite: 'shadow_leak',
+      magicOnly: true, group: 3, aggro: 180, xp: 16, gold: [1, 4], sprite: 'shadow_leak',
       flavor: "A PUFF OF HUNGRY SMOKE WITH A COLD TOUCH. GHOST-CLASS, SO BOMBS PASS RIGHT THROUGH. FISTS DO NOT. FREE XP, IF YOU ARE THE KIND OF PERSON WHO HITS SMOKE." },
     ruin_flocker: { name: 'RUIN FLOCKER', level: 18, tier: 3, hp: 26, dmg: 4, speed: 70, w: 16, h: 12, ai: 'flyer', flying: true,
       aggro: 200, xp: 14, gold: [2, 6], sprite: 'ruin_flocker',
@@ -412,6 +412,9 @@
       loot: 'silver', unlock: null },
 
     heather: { name: 'HEATHER THE BEAR', title: 'LEVEL 19 NEIGHBORHOOD BOSS', level: 19,
+      curedLines: [
+        { who: 'SYSTEM AI', text: "CUSTARD! THE TICKET CAME UP CUSTARD! IT HEALS! THE WORMS ARE DYING! THE BEAR IS... THE BEAR IS JUST A BEAR AGAIN!" },
+        { who: 'CARL', text: "SHE'S SLOWING DOWN. SHE'S OLD AND SHE'S TIRED AND SHE'S NOT ANGRY ANYMORE. I'M SORRY, HEATHER. LET'S FINISH THIS GENTLY." } ],
       hp: 240, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 100, gold: [40, 70], flying: false, custard: 0.25,
       phases: [
         { below: 1.0, speed: 72, pattern: ['walk:1', 'charge', 'idle:0.8', 'jump_slam', 'idle:1', 'charge', 'charge', 'idle:1.2'] },
@@ -2055,7 +2058,7 @@
       enemies: { day: [], night: [['street_urchin', 3], ['incubus', 1]] },
       density: { day: 0, night: 0.5 },
       citizens: ['citizen_human', 'citizen_human', 'chickadee'],
-      signpost: true
+      signpost: true, signpostText: "THE ROCK HUMS. ESCAPE PLAN: STAIRS 6 KM EAST. MEDIUM SKYFOWL SETTLEMENT 34 KM EAST. SAFE ROOM: THE BELLY-RUBBED PUG."
     },
 
     ruins_w: {
@@ -2071,7 +2074,7 @@
       npcs: [],
       enemies: { day: [['lemur', 3], ['brain_boiler', 2]], night: [['street_urchin', 3], ['lemur', 1], ['mold_lion', 1]] },
       density: { day: 0.4, night: 0.7 },
-      citizens: [], signpost: true
+      citizens: [], signpost: true, signpostText: "THE ROCK HUMS. WEST RUINS MAPPED. A CIRCUS TO THE EAST. A CORRUPT TEMPLE HERE. NO SAFE ROOMS, NO SYMPATHY."
     },
 
     circus_park: {
@@ -2097,7 +2100,7 @@
       enemies: { day: [['lemur', 3], ['fat_clown', 2]], night: [['fat_clown', 2], ['stilt_clown', 1], ['street_urchin', 2], ['lemur', 2]] },
       density: { day: 0.5, night: 0.8 },
       enemiesAfter: { flag: 'circus_gone', day: [['brain_boiler', 2]], night: [['street_urchin', 3]] },
-      citizens: [], signpost: true
+      citizens: [], signpost: true, signpostText: "THE ROCK HUMS. GRIMALDI'S PARK MAPPED. THE BIG TOP SITS ON SOMETHING. THE MAP CAN'T SAY WHAT YET."
     },
 
     ruins_e: {
@@ -2115,7 +2118,7 @@
       ],
       enemies: { day: [['brain_boiler', 3], ['lemur', 2], ['giraffe', 1]], night: [['street_urchin', 3], ['incubus', 1], ['berserker', 1]] },
       density: { day: 0.5, night: 0.8 },
-      citizens: [], signpost: true
+      citizens: [], signpost: true, signpostText: "THE ROCK HUMS. EAST ROAD MAPPED. A NEIGHBORHOOD BOSS AT THE OLD Y. A RESTROOM. THE SETTLEMENT GATES TO THE EAST."
     },
 
     settlement: {
@@ -2148,7 +2151,7 @@
       enemies: { day: [], night: [['street_urchin', 2], ['incubus', 2]] },
       density: { day: 0, night: 0.5 },
       citizens: ['citizen_skyfowl', 'citizen_skyfowl', 'chickadee', 'citizen_human'],
-      signpost: true
+      signpost: true, signpostText: "THE ROCK HUMS. SETTLEMENT MAPPED. ONE INN, FIVE GENERAL STORES, ONE PUB WITH A RED DOOR IN THE BACK."
     },
 
     admin: {
@@ -2172,7 +2175,7 @@
       enemies: { day: [], night: [['krasue', 1], ['shadow_leak', 2], ['city_elf', 1]] },
       density: { day: 0, night: 0.5 },
       citizens: ['citizen_skyfowl', 'citizen_skyfowl', 'chickadee'],
-      signpost: true
+      signpost: true, signpostText: "THE ROCK HUMS. ADMINISTRATIVE DISTRICT MAPPED. MUNICIPAL BUILDING. GUARD DEPOT. A LOT OF EMPTY OFFICES."
     },
 
     east_stairs: {
@@ -2189,7 +2192,7 @@
       ],
       enemies: { day: [['brain_boiler', 2], ['giraffe', 1], ['lemur', 2]], night: [['shadow_leak', 3], ['berserker', 1], ['street_urchin', 2]] },
       density: { day: 0.5, night: 0.8 },
-      citizens: [], signpost: true
+      citizens: [], signpost: true, signpostText: "THE ROCK HUMS. EASTERN STAIRWELL FOUND. STATUS: SEALED. CONDITION FOR OPENING: CLASSIFIED. AND DRAMATIC."
     }
   };
 
@@ -2257,7 +2260,10 @@
 
   lv('a1_solo', { name: 'ALONE IN THE LAIR', act: 1, kind: 'side', theme: 'basement', night: true, solo: true, music: 'dark', hours: 2,
     chunks: { start: 'basement_wake', pool: BASEMENT, count: 3, end: 'basement_end', insert: ['basement_cage'] },
-    rescue: 'mongo',
+    rescue: 'mongo', rescueFlag: 'mongo_freed',
+    rescueLines: [
+      { who: 'MONGO', text: "MREEEEEEP! MREEP MREEP! *HE HEADBUTTS CARL IN THE STOMACH, LICKS HIS FACE AND BITES HIS EAR, IN THAT ORDER*" },
+      { who: 'CARL', text: "YEAH, BUDDY. I MISSED YOU TOO. EASY ON THE EAR. I NEED THAT EAR." } ],
     enemies: [['mold_lion', 2], ['fat_clown', 2], ['lemur', 2]], elite: [['stilt_clown', 1]], flyers: [['brain_boiler', 1]],
     intro: ["CARL, ALONE. NO CAT ON THE SHOULDER, NO DINOSAUR AT THE HEEL. JUST A MAN, HIS BOXERS AND A WAR GAUNTLET. RATINGS ARE THROUGH THE ROOF."],
     npcs: [{ id: 'signet_lair', sprite: 'signet', lines: [
@@ -2399,7 +2405,7 @@
 
   lv('a3_plant', { name: "MISS QUILL'S RECEPTION", act: 3, kind: 'plant', theme: 'office', night: true, music: 'dark', hours: 2,
     chunks: { start: 'office_start', pool: ['office_shelf_a', 'office_shelf_b', 'office_shelf_c'], count: 3, end: 'office_roof_end' },
-    plant: { charges: 3 },
+    plant: { charges: 3 }, detonateSub: 'MISS QUILL IS NO LONGER ACCEPTING VISITORS',
     enemies: [['city_elf', 2], ['shadow_leak', 1]], flyers: [['shadow_leak', 1]],
     intro: 'plant_intro',
     signs: [
@@ -2426,7 +2432,7 @@
 
   lv('a3_depot', { name: 'THE GUARD DEPOT', act: 3, kind: 'plant', theme: 'depot', night: true, music: 'dark', hours: 3,
     chunks: { start: 'depot_start', pool: ['depot_a', 'depot_b', 'depot_c', 'depot_d'], count: 5, end: 'depot_end' },
-    plant: { charges: 10, finale: 'handoff' },
+    plant: { charges: 10, finale: 'handoff', handoffSub: 'KATIA HAS THE BUTTON. SHE IS HOLDING IT VERY GENTLY.' },
     enemies: [['city_elf', 3], ['shadow_leak', 1]], elite: [['berserker', 1]], flyers: [['shadow_leak', 1]],
     intro: 'depot_plan',
     signs: [
@@ -2435,12 +2441,12 @@
     ],
     reward: { box: 'platinum', xp: 200, gold: 80 },
     sets: ['depot_rigged', 'glass_broken', 'doomsday'], gives: [{ item: 'detonator', n: 1 }, { item: 'doomsday', n: 1 }],
-    quest: [{ done: 'sex_workers' }, { start: 'fools_glass' }],
+    quest: { done: 'sex_workers', start: 'fools_glass' },
     outro: 'remex', next: 'a3_escape' });
 
   lv('a3_escape', { name: 'THE FOOLS WHO BROKE THE GLASS', act: 3, kind: 'escape', theme: 'escape', night: true, music: 'escape', hours: 1,
     chunks: { start: 'escape_start', pool: ESCAPE, count: 12, end: 'escape_end', insert: ['escape_bautista'] },
-    escape: { seconds: 420, bursts: [360, 270, 180, 90] },
+    escape: { seconds: 420, bursts: [360, 270, 180, 90], cause: 'THE GLASS BROKE' }, debrisProj: 'bolt',
     enemies: [['ruin_flocker', 2], ['berserker', 1], ['city_elf', 1]], elite: [['berserker', 1]], flyers: [['ruin_flocker', 3]],
     intro: ["SEVEN MINUTES! THE EASTERN STAIRWELL IS OPEN! FOUR MAGIC BURSTS ARE COMING BEFORE THE BIG ONE! EACH ONE CHANGES THE RULES! RUN!"],
     npcs: [{ id: 'bautista_run', sprite: 'bautista', lines: [
@@ -3447,7 +3453,7 @@
     carl_magistrate: { name: 'MAGISTRATE CARL', desc: 'A SASH OF OFFICE, A CHAIN OF OFFICE AND NOTHING ELSE OF OFFICE. LONG LIVE THE MAGISTRATE.',
       perk: { gold: 0.2, def: 1 }, how: 'BECOME THE MAGISTRATE OF THE MEDIUM SKYFOWL SETTLEMENT.' },
     carl_primal: { name: 'PRIMAL CARL', desc: 'WAR PAINT, A HIDE CLOAK AND THE STARE OF THE FIRST SPECIES TO CONQUER THE UNIVERSE. STILL NO PANTS.',
-      perk: { dmg: 1, speed: 0.05 }, how: 'REACH LEVEL 20 AS A PRIMAL.' }
+      perk: { dmg: 1, speed: 0.05 }, how: 'REACH LEVEL 20 AS A PRIMAL, OR GET OFF THE THIRD FLOOR ALIVE.' }
   };
 
   /* achievements: event matches DCW.game.track names; count = counter threshold.
@@ -3697,6 +3703,26 @@
     craft: [
       "ALCHEMY! MOONSHINE PLUS RAG PLUS FIRE EQUALS ONE JUG O'BOOM AND ONE VERY UPSET FIRE MARSHAL.",
       "CRAFTED! IT IS STILL MOSTLY MOONSHINE. IT IS NOW ALSO MOSTLY EXPLOSIVE."
+    ],
+    cockroach: [
+      "PRINCESS DONUT'S COCKROACH SKILL ACTIVATES! ZERO HIT POINTS AND STILL ALIVE! UNCONSCIOUS, BUT ALIVE! THE URCHINS ARE COMING FOR YOU NOW, CARL!",
+      "THE BARRICADE IS DOWN! THE CAT SURVIVED A HIT THAT SHOULD HAVE ENDED HER! THE TUMBLEWEEDS HAVE NOTICED YOU INSTEAD. GOOD LUCK!",
+      "COCKROACH! LIKE THE BUG THAT SURVIVES THE APOCALYPSE, THE PRINCESS ENDURES! SHE IS VERY ANNOYED ABOUT THE COMPARISON. LATER."
+    ],
+    guardKill: [
+      "DEATH PENALTY! THE VILLAGE GUARD SWORDSMAN CARRIED OUT THE SENTENCE PERSONALLY. HE WAS VERY THOROUGH.",
+      "JUSTICE, OVER CITY STYLE! ONE CRIME, ONE SWORD, ONE CRAWLER IN TWO PIECES! THE TOWN THANKS YOU FOR YOUR COOPERATION.",
+      "YOU HAVE BEEN EXECUTED BY A LEVEL 75 PUBLIC SERVANT! HE WILL BE HOME IN TIME FOR DINNER. YOU WILL NOT."
+    ],
+    earlyStairs: [
+      "TAKE THE STAIRS NOW? THE FLOOR STILL HAS DAYS ON THE CLOCK. YOU WILL MISS EVERYTHING. EVERYTHING, CRAWLER. THE GOOD STUFF.",
+      "LEAVE EARLY? THE SETTLEMENT, THE TALK SHOW, THE EXPLOSIONS. ALL OF IT, GONE. THERE IS NO PRIZE FOR EARLY. WE CHECKED.",
+      "THE STAIRS ARE RIGHT THERE. SO IS THE REST OF THE STORY. ARE YOU SURE? MORDECAI IS SHAKING HIS HEAD SO HARD HIS HORNS RATTLE."
+    ],
+    edge: [
+      "NOTHING THAT WAY BUT THREE HUNDRED THOUSAND SQUARE KILOMETERS OF RUINS. AND FOG. AND THINGS IN THE FOG.",
+      "THE MAP ENDS HERE, CRAWLER. NOT THE WORLD. JUST THE PART WE BUILT A STORY FOR.",
+      "THAT WAY LIES THE REST OF THE OVER CITY. THE REST OF THE OVER CITY DOES NOT HAVE YOUR QUEST IN IT."
     ],
     rest: [
       "SWEET DREAMS, CRAWLER! THE CLOCK KEPT TICKING WHILE YOU SLEPT. IT ALWAYS DOES.",
