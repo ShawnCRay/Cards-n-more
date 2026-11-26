@@ -250,6 +250,7 @@
     var lv = G.levelDef(r.levelId);
     if (lv && (lv.solo || lv.swap)) return [];
     if (lv && Array.isArray(lv.party)) return lv.party.slice();
+    if (G.flag('donut_asleep') && !G.flag('donut_awake')) return [];
     var p = ['donut', 'mongo'];
     if (G.flag('katia_joined')) p.push('katia');
     if (G.flag('mongo_away')) p.splice(p.indexOf('mongo'), 1);
@@ -418,8 +419,8 @@
   };
   function runEvent(ev, done) {
     var r = G.run;
-    r.events[ev.id] = true; persist();
     var finish = function () {
+      r.events[ev.id] = true;
       arr(ev.sets).forEach(function (f) { G.setFlag(f); });
       applyGives(ev.gives);
       applyQuest(ev.quest);
@@ -440,6 +441,7 @@
     if (!lv) { toast('LEVEL MISSING: ' + levelId, { color: '#f83800' }); return; }
     eventBusy = false;
     r.levelId = levelId; r.inInn = null; r.inClub = null; r.levelStartHp = r.hp;
+    if (lv.startGives && !r.events['sg_' + levelId]) { r.events['sg_' + levelId] = true; applyGives(lv.startGives); }
     persist();
     var start = function () {
       var sc;

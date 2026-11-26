@@ -111,8 +111,11 @@
    - D.mordecaiHints: [{when:{flags,notFlags}, text}] story hints Mordecai gives
      at the inn before falling back to the random D.mordecai tips.
    - shops[id].lines / inns[id].lines: keeper chatter. shop item `limit` = per run.
-   - level.quest may be an ARRAY of {start}|{done} (a3_depot finishes one quest and
-     starts the next). level.bossMusic: track for the boss part of a side level.
+   - level.clearToExit: the exit stays shut until every enemy is dead (a1_lions).
+   - level.startGives [{item,n}]: topped up on entering (only if the player has fewer);
+     a2_dispenser guarantees 2 dynamite for the Boomy Boy. Optional for game.js.
+   - level.quest is {start, done}; either may be an id or an array (a3_depot finishes
+     one quest and starts the next). level.bossMusic: track for the boss part of a side level.
    - plant.finale 'handoff' (a3_depot): at T, BOMB hands the detonator to Katia,
      no blast here (the depot blows in a3_escape's outro). Default = the big blast.
    - room.rooms[i].intro: AI line when the ring starts. room.finale.kind/name/meter
@@ -2108,9 +2111,9 @@
       guarded: false, rows: R.ruins_e,
       doors: {
         '1': { kind: 'level', target: 'x_restroom', label: 'RESTROOM', sprite: 'door_wood' },
-        '2': { kind: 'level', target: 'a2_divider', label: "THE DIVIDER'S CORPSE", sprite: 'alley_mouth', showIf: 'met_quill',
+        '2': { kind: 'level', target: 'a2_divider', label: 'THE Y', sprite: 'door_wood', showIf: 'met_quill',
                phase: 'night', lockText: 'A DEAD BOSS LIES OUT THERE. THE ELVES ONLY COME TO IT AFTER DARK. REST AT THE NARWHAL: WAIT FOR NIGHT.' },
-        '3': { kind: 'level', target: 'a2_dispenser', label: 'THE Y', sprite: 'door_wood', showIf: 'settled' }
+        '3': { kind: 'level', target: 'a2_dispenser', label: 'THE BREATHING BLOCK', sprite: 'alley_mouth', showIf: 'settled' }
       },
       edges: { left: { area: 'circus_park', entry: 'right' }, right: { area: 'settlement', entry: 'left' } },
       npcs: [
@@ -2249,7 +2252,7 @@
     sets: ['collapse_done', 'met_signet'],
     outro: 'signet_meet', next: 'a1_lions' });
 
-  lv('a1_lions', { name: "SIGNET'S BASEMENT", act: 1, kind: 'side', theme: 'basement', music: 'boss', hours: 16,
+  lv('a1_lions', { name: "SIGNET'S BASEMENT", act: 1, kind: 'side', theme: 'basement', music: 'boss', hours: 16, clearToExit: true,
     chunks: { start: 'basement_land', pool: [], count: 0, end: 'basement_lion_pit' },
     enemies: [['mold_lion', 1]], elite: [['mold_lion', 1]], flyers: [['brain_boiler', 1]],
     intro: ["SIX LEVEL 15 MOLD LIONS. YOU ARE LEVEL 13 AND IN YOUR UNDERWEAR. THE ODDS BOARD JUST FELL OFF THE WALL.",
@@ -2321,11 +2324,11 @@
     outro: 'dawn', thenArea: 'circus_park' });
 
   /* ======================= ACT 2: THE SETTLEMENT ======================= */
-  lv('a2_dispenser', { name: 'THE Y', act: 2, kind: 'facade', theme: 'ymca', music: 'boss', hours: 3,
+  lv('a2_dispenser', { name: 'THE BREATHING BLOCK', act: 2, kind: 'facade', theme: 'ruins', music: 'boss', hours: 3,
     chunks: { start: 'ymca_start', pool: [], count: 0, end: 'ymca_facade' },
-    boss: 'dispenser',
+    boss: 'dispenser', startGives: [{ item: 'dyn', n: 2 }],
     enemies: [['brain_boiler', 3]], flyers: [['brain_boiler', 1]],
-    intro: ["A BIG OLD BUILDING WITH A FADED SIGN. THE LETTERS THAT ARE LEFT SPELL Y. JUST Y. DONUT'S EARS ARE TWITCHING.",
+    intro: ["A WHOLE CITY BLOCK OF DEAD BRICK. ONE OF THE WALLS IS BREATHING. DONUT'S EARS ARE TWITCHING.",
       "PRO TIP FROM YOUR SPONSORS: DOWN + SPECIAL WITH DYNAMITE IN YOUR POCKETS. WE HAVE NAMED IT ALREADY. WE ARE VERY EXCITED."],
     signs: ["NOTICE: POOL CLOSED. GYM CLOSED. LOCKER ROOM CLOSED. THE WALL IS OPEN. THE WALL IS ALWAYS OPEN. THE WALL HAS A MOUTH."],
     reward: { box: 'boss', xp: 60, gold: 50 },
@@ -2352,10 +2355,10 @@
     sets: ['vincente_dead', 'gumgum_dead', 'has_pass', 'xistera'], gives: [{ item: 'gate_pass', n: 1 }, { item: 'letter', n: 1 }],
     outro: 'alley_after', thenArea: 'settlement' });
 
-  lv('a2_divider', { name: "THE DIVIDER'S CORPSE", act: 2, kind: 'side', theme: 'ruins', dark: true, night: true, music: 'dark', hours: 3,
+  lv('a2_divider', { name: "THE Y: THE DIVIDER'S CORPSE", act: 2, kind: 'side', theme: 'ymca', dark: true, night: true, music: 'dark', hours: 3,
     chunks: { start: 'ruins_start', pool: RUINS_DARK, count: 4, end: 'divider_end' },
     enemies: [['city_elf', 3], ['berserker', 2]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
-    intro: ["SOMEBODY KILLED A NEIGHBORHOOD BOSS OUT HERE AND LEFT IT. THE ELVES ARE WAITING FOR WHOEVER COMES TO LOOK. STAY IN THE CAT'S LIGHT.",
+    intro: ["A BIG OLD BUILDING WITH A FADED SIGN. THE LETTERS THAT ARE LEFT SPELL Y. JUST Y.", "SOMEBODY KILLED A NEIGHBORHOOD BOSS IN THE POOL AND LEFT IT. THE ELVES ARE WAITING FOR WHOEVER COMES TO LOOK. STAY IN THE CAT'S LIGHT.",
       "SHAMBLING BERSERKERS GET FOUR TIMES STRONGER IN THE DARK. THE ELVES MAKE THE DARK. YOU CAN DO THAT MATH. WE ALREADY DID. IT IS BAD."],
     signs: ["THE DIVIDER. NEIGHBORHOOD BOSS. A WHALE WITH TWO LONG NECKS, LIKE SOMEBODY ORDERED NESSIE TWICE. DECEASED. VERY BLOATED. DO NOT POKE."],
     reward: { box: 'gold', xp: 100, gold: 50 },
@@ -2365,7 +2368,7 @@
   lv('a2_danger_zone', { name: 'DANGER ZONE WITH RIPPER WONTON', act: 2, kind: 'show', theme: 'studio', show: 'danger_zone', music: 'show', hours: 3,
     intro: 'greenroom',
     reward: { box: 'fan', xp: 80, gold: 40 },
-    sets: ['show_done', 'manasa_dead'],
+    sets: ['show_done', 'manasa_dead'], gives: [{ item: 'jug', n: 3 }, { item: 'moonshine', n: 2 }],
     outro: 'blast', thenArea: 'settlement' });
 
   lv('a2_apito', { name: 'APITO EDUCATION CENTER', act: 2, kind: 'side', theme: 'school', music: 'settlement', hours: 3,
@@ -2507,7 +2510,7 @@
     { done: 'bigtop_done', text: 'BREAK INTO THE BIG TOP AT NIGHT', area: 'circus_park' },
     { done: 'circus_gone', text: 'GET BACK TO DONUT', area: 'circus_park' },
     { done: 'settled', text: 'TAKE THE EAST ROAD TO TOWN', area: 'settlement' },
-    { done: 'dispenser_done', text: 'KILL THE DISPENSER AT THE Y', area: 'ruins_e' },
+    { done: 'dispenser_done', text: 'KILL THE DISPENSER ON THE EAST RD', area: 'ruins_e' },
     { done: 'quest_sw', text: 'FIND GUMGUM OUTSIDE THE GATE', area: 'ruins_e' },
     { done: 'club_known', text: 'MORDECAI WANTS YOU IN TOWN', area: 'settlement' },
     { done: 'mongo_done', text: 'CATCH MONGO', area: 'settlement' },
@@ -2548,7 +2551,8 @@
     { id: 'settlement_arrival', area: 'settlement', when: { notFlags: ['settled'] }, cinema: 'settlement_arrival',
       sets: ['settled', 'freeballing', 'fang_caps', 'quadrillion'],
       gives: [{ item: 'dyn', n: 4 }, { item: 'hob', n: 4 }, { item: 'upgrade_scroll', n: 1 }, { item: 'fang_caps', n: 1 }, { item: 'sepsis_crown', n: 1 }] },
-    { id: 'gumgum_ask', area: 'settlement', when: { flags: ['settled'], notFlags: ['gumgum_asked'] }, cinema: 'gumgum_ask', sets: ['gumgum_asked'] },
+    { id: 'gumgum_ask', area: 'settlement', when: { flags: ['settled'], notFlags: ['gumgum_asked'] }, cinema: 'gumgum_ask', sets: ['gumgum_asked'],
+      gives: [{ item: 'dyn', n: 2 }] },
     { id: 'gumgum_bodies', area: 'ruins_e', when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, cinema: 'gumgum_bodies',
       sets: ['quest_sw'], quest: { start: 'sex_workers' } },
     { id: 'desperado_tour', area: 'settlement', when: { flags: ['quest_sw'], notFlags: ['club_known'] }, cinema: 'desperado_tour',
@@ -3821,7 +3825,7 @@
     { when: { flags: ['lions_done'], notFlags: ['heather_done'] }, text: "THE BEAR IS A BOSS ON SKATES. YOU CAN'T OUTRUN HER, SO DON'T STOP. WHEN YOU CAN'T RUN ANY MORE, FIGHT. AND WATCH THE WORMS." },
     { when: { flags: ['heather_done'], notFlags: ['bigtop_done'] }, text: "THE BLOOD PLAN. POISON YOURSELF. DRIP ON THE ROOTS. STAY ALIVE WHILE IT WORKS. AND BREAK THOSE TENT POLES. THE BIG TOP OPENS AT NIGHT." },
     { when: { flags: ['circus_gone'], notFlags: ['settled'] }, text: "EAST. THE SETTLEMENT. THIRTY-FOUR KILOMETERS OF RUIN AND THEN FOUR ROOMS AT TWENTY GOLD. I'VE ALREADY BOOKED MINE. I'VE ALREADY STARTED A TAB." },
-    { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "THE Y ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. AND TRY THAT DYNAMITE TRICK. ON IT, NOT ON ME." },
+    { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "A BLOCK ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. AND TRY THAT DYNAMITE TRICK. ON IT, NOT ON ME." },
     { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS OUT PAST THE GATE WITH A SHOVEL. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT IN YOUR STUPID DECENT FACE." },
     { when: { flags: ['quest_sw'], notFlags: ['club_known'] }, text: "FINE. IF YOU'RE DOING THIS, DO IT RIGHT. COME FIND ME IN TOWN. THERE'S A DOOR IN THE BACK OF THE PUB AND A HOBGOBLIN WHO SELLS DYNAMITE." },
     { when: { flags: ['mongo_bolted'], notFlags: ['vincente_dead'] }, text: "WHERE IS YOUR DINOSAUR? WHY ARE YOU HERE? WHY ARE YOU TALKING TO ME? GO GET YOUR DINOSAUR." },

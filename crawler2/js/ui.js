@@ -677,7 +677,8 @@
     'ZEV': 'p_zev', 'ODETTE': 'p_odette', 'LUCIA': 'p_lucia', 'LUCIA MAR': 'p_lucia',
     'EUNICE': 'p_eunice', 'EDGE DANCER': 'p_edge_dancer', 'EDGE-DANCER': 'p_edge_dancer', 'TALON': 'p_talon', 'LUCKY': 'p_lucky',
     'MANASA': 'p_manasa', 'TUCKER': 'p_tucker', "PRINCESS D'NADIA": 'p_dnadia', "D'NADIA": 'p_dnadia', 'DNADIA': 'p_dnadia',
-    'FEATHERFALL': 'p_featherfall', 'MAGISTRATE FEATHERFALL': 'p_featherfall', 'BOPCA': 'p_bopca'
+    'FEATHERFALL': 'p_featherfall', 'MAGISTRATE FEATHERFALL': 'p_featherfall', 'BOPCA': 'p_bopca',
+    'RICKY JOE': 'p_ricky_joe', 'TALON STRONG': 'p_talon', 'TERROR THE CLOWN': 'p_terror_big'
   };
   ui.WHO_PORTRAIT = WHO_PORTRAIT;
   function portraitFor(who) {
@@ -2897,7 +2898,7 @@
         self.flash = 1; self.flashCol = C.white;
         ui.announce(self.kind === 'race' ? 'RACE CHOSEN' : 'CLASS CHOSEN', { sub: up(e.name), color: C.gold, time: 1.8 });
         self.phase = 'chosen'; self.waitT = 1.9;
-      }, { yes: 'DO IT', no: 'HMM, WAIT' });
+      }, { yes: 'DO IT', no: 'HMM, WAIT', def: 'yes' });
     },
     finish: function () {
       if (this.doneFlag) return; this.doneFlag = true;

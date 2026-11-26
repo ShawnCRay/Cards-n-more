@@ -71,7 +71,7 @@ fs.mkdirSync(SHOTS, { recursive: true });
       if (stall > 400) throw new Error('stalled at ' + sig);
       if (w.fading) { await step(8); continue; }
       if (w.blocking) {   // confirm prompts default to NO: the walker always says yes (it never uses the early stairs)
-        await page.evaluate(() => { const t = DCW.ui.top && DCW.ui.top(); if (t && t.kind === 'confirm') { DCW.pressKey('up', 2); DCW.stepFrames(3); } DCW.pressKey('confirm', 2); });
+        await page.evaluate(() => { const t = DCW.ui.top && DCW.ui.top(); if (t && t.kind === 'confirm' && t.sel !== 0) { DCW.pressKey('up', 2); DCW.stepFrames(3); } DCW.pressKey('confirm', 2); });
         await step(6); continue;
       }
       const key = w.scene + ':' + (w.levelId || w.area || '');

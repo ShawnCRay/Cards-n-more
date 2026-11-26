@@ -446,6 +446,13 @@ function checkLayout(w, rows, kind) {
   const seen0 = reach(rows, [P], false);
   if (!near(seen0, Dd[0], Dd[1]) && !quiet) warn(w + ': D needs crates broken');
   if (count(rows, 'c') < 2) warn(w + ': vertical level with fewer than 2 checkpoints');
+  // Carl is 2 tiles tall: every walkable floor cell needs 2 free tiles above it (stage.js note)
+  for (let y = 1; y < H - 1; y++) for (let x = 0; x < W; x++) {
+    const c = rows[y][x], below = rows[y + 1][x];
+    if (SOLID.has(c) || c === 'L' || !SUPPORT.has(below) || below === 'H') continue;
+    const up = rows[y - 1][x];
+    if (SOLID.has(up) || up === 'L' || up === '=') err(w + ': floor at ' + x + ',' + (y + 1) + ' has only 1 tile of headroom');
+  }
   // climb: falling never leaves the map (bottom row solid)
   if (kind === 'climb' && !/^[X#]+$/.test(rows[H - 1])) err(w + ': climb bottom row must be solid');
 }
@@ -564,6 +571,7 @@ for (const [id, l] of Object.entries(LV)) {
   ['detonateSub'].forEach(k => { if (l[k]) text(w + '.' + k, l[k], 60); });
   if (l.plant && l.plant.handoffSub) text(w + '.plant.handoffSub', l.plant.handoffSub, 60);
   if (l.debrisProj && !D.projectiles[l.debrisProj]) err(w + ': debrisProj ' + l.debrisProj);
+  (l.startGives || []).forEach((g, i) => checkGive(w + '.startGives[' + i + ']', g));
   (l.npcs || []).forEach((n, i) => { if (!ACTOR_SPRITES.has(n.sprite)) err(w + '.npcs[' + i + ']: sprite ' + n.sprite); lines(w + '.npcs[' + i + '].lines', n.lines, 1); });
   if (l.kind === 'show') {
     if (!D.show[l.show]) err(w + ': show ' + l.show);
