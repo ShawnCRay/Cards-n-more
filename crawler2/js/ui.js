@@ -2672,9 +2672,10 @@
       var y = 23;
       T('THESE CAME OVER FROM FLOOR 1 TO 2:', 14, y, C.gray); y += 13;
       icon(ctx, 'star', 14, y - 1); T('SKINS UNLOCKED: ' + nSkins, 26, y, C.yellow); y += 10;
-      var nm = skins.slice(0, 6).map(skinName);
+      var nmax = sum.carry ? 2 : 6;
+      var nm = skins.slice(0, nmax).map(skinName);
       for (var i = 0; i < nm.length; i += 2) { T(fitText(nm[i], 136), 30, y, C.white); if (nm[i + 1]) T(fitText(nm[i + 1], 136), 170, y, C.white); y += 9; }
-      if (skins.length > 6) { T('AND ' + (skins.length - 6) + ' MORE', 30, y, C.dgray); y += 9; }
+      if (skins.length > nmax) { T('AND ' + (skins.length - nmax) + ' MORE', 30, y, C.dgray); y += 9; }
       y += 3;
       icon(ctx, 'eye', 14, y - 1); T('BOOK 1 ACHIEVEMENTS ON RECORD: ' + (sum.achievements || 0), 26, y, C.white); y += 10;
       icon(ctx, 'star', 14, y - 1); T('BOOK 1 WINS: ' + (sum.wins || 0), 26, y, C.white); y += 12;
@@ -2685,7 +2686,11 @@
         y += 12;
       }
       T('TITLE: ' + up(ttl), 14, y, C.pink); y += 10;
-      T('LEVELS AND STATS STAYED ON FLOOR 2. RULES.', 14, y, C.dgray, { shadow: null });
+      var cr = sum.carry;
+      if (cr) {
+        T('YOUR CRAWLER CARRIES ON: LV ' + cr.level + '  ' + fmtNum(cr.views) + ' VIEWS', 14, y, C.green); y += 9;
+        T('STR ' + cr.stats.str + ' CON ' + cr.stats.con + ' DEX ' + cr.stats.dex + ' INT ' + cr.stats.int + '  ' + cr.gold + ' GOLD' + (cr.boxes.length ? '  +' + cr.boxes.length + ' BOXES' : ''), 14, y, C.white, { shadow: null });
+      } else T('NO BOOK ONE CRAWLER ON FILE. YOU START FRESH.', 14, y, C.dgray, { shadow: null });
       DCW.box(10, 128, 300, 32, { fill: '#1c0c34' });
       faceSlot(ctx, 'p_ai', 11, 128, m.t < 1.5, 4);
       wrap(up(quip), 260).slice(0, 2).forEach(function (l, k) { T(l, 48, 134 + k * 10, C.white); });

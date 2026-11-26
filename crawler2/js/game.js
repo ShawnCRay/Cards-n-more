@@ -69,6 +69,11 @@
 
   G.init = function () {
     var p = DCW.params;
+    // imported before crawlers carried over: pick the Book One crawler up now
+    try {
+      var m0 = DCW.save.meta, old0 = DCW.legacy && DCW.legacy.book1;
+      if (m0.imported && !m0.carry && old0) { var c0 = makeCarry((old0.meta && old0.meta.carry) || old0.run); if (c0) { m0.carry = c0; persist(); } }
+    } catch (e) { /* keep going without it */ }
     if (DCW.debug && (p.has('level') || p.has('area') || p.has('scene') || p.has('cinema'))) { G.debugStart(); return; }
     G.toTitle(true);
   };
@@ -85,6 +90,8 @@
     s.meta.runs = (s.meta.runs || 0) + 1;
     var r = s.run;
     r.hp = G.playerStats().maxHp;
+    // a continuous crawl: the Book One crawler walks in as they left Floor 2
+    if (s.meta.carry) applyCarry(r, s.meta.carry);
     // book 1 veterans get their bonus boxes in every new crawl
     (s.meta.legacyBoxes || []).forEach(function (t) { r.boxes.push({ tier: t, from: 'BOOK 1 VETERAN' }); });
     persist();
@@ -681,8 +688,11 @@
     return (sk && sk.perk) || {};
   }
   function mul(v) { if (!v) return 1; return v < 1 ? 1 + v : v; }
-  function Lof(r) { return Math.max(1, (r.level || 13) - 12); }
-  G.xpNeed = function (level) { var L = Math.max(1, (level || 13) - 12); return Math.round(25 * Math.pow(L, 1.5)); };
+  // L counts levels gained on this floor's scale. A fresh crawler starts at level 13 (L 1); a carried
+  // Book One crawler keeps their own level number, and L starts at 1 wherever they arrive (lvBase).
+  function lvBase(r) { return (r && typeof r.lvBase === 'number') ? r.lvBase : 12; }
+  function Lof(r) { return Math.max(1, (r.level || 13) - lvBase(r)); }
+  G.xpNeed = function (level) { var L = Math.max(1, (level || 13) - lvBase(G.run)); return Math.round(25 * Math.pow(L, 1.5)); };
   G.playerStats = function () {
     var r = G.run || makeRun();
     var b = r.bonus || {};
@@ -949,10 +959,52 @@
     s.meta.legacyBoxes = boxes;
     s.meta.imported = { skins: skins.length, achievements: achs, wins: wins };
     s.meta.legacyTitle = L.title || 'BOOK 1 VETERAN';
+    var carry = makeCarry((old.meta && old.meta.carry) || old.run);
+    if (carry) {
+      s.meta.carry = carry;
+      if (carry.skin && (D().skins || {})[carry.skin] && s.unlocks.skins.indexOf(carry.skin) >= 0) s.equipped.skin = carry.skin;
+    }
     G.track('import');
     persist();
-    return { skins: skins, achievements: achs, wins: wins, boxes: boxes, title: s.meta.legacyTitle };
+    return { skins: skins, achievements: achs, wins: wins, boxes: boxes, title: s.meta.legacyTitle, carry: carry };
   };
+
+  // Book One crawler -> what walks onto Floor 3. Book One stats start at 3 each.
+  function makeCarry(src) {
+    if (!src || typeof src !== 'object' || !src.stats || !src.level) return null;
+    var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d; };
+    return {
+      level: Math.max(1, n(src.level, 1)), xp: Math.max(0, n(src.xp, 0)), statPoints: Math.max(0, n(src.statPoints, 0)),
+      stats: { str: n(src.stats.str, 3), con: n(src.stats.con, 3), dex: n(src.stats.dex, 3), int: n(src.stats.int, 3) },
+      bonusHp: Math.max(0, n(src.bonus && src.bonus.hp, 2) - 2),   // Book One hands out 2 just for starting
+      gold: Math.max(0, n(src.gold, 0)), potions: Math.max(0, n(src.potions, 0)), bombs: Math.max(0, n(src.bombs, 0)),
+      views: Math.max(0, n(src.views, 0)), kills: Math.max(0, n(src.kills, 0)),
+      boxes: (Array.isArray(src.boxes) ? src.boxes : []).filter(function (b) { return b && b.tier; }).slice(0, 20).map(function (b) { return { tier: b.tier, from: 'BOOK ONE' }; }),
+      name: typeof src.name === 'string' ? src.name.slice(0, 16) : null,
+      skin: (DCW.legacy && DCW.legacy.book1 && DCW.legacy.book1.equipped && DCW.legacy.book1.equipped.skin) || null,
+      fromWin: !!src.won
+    };
+  }
+  function applyCarry(r, c) {
+    r.level = c.level;
+    r.lvBase = c.level - 1;
+    // stats carry as they are; Floor 3's starting line is the floor, so nobody arrives weaker than a fresh crawler
+    var base = r.stats;
+    r.stats = { str: Math.max(base.str, c.stats.str), con: Math.max(base.con, c.stats.con), dex: Math.max(base.dex, c.stats.dex), int: Math.max(base.int, c.stats.int) };
+    r.statPoints = c.statPoints;
+    r.bonus.hp = c.bonusHp;
+    r.xp = Math.min(c.xp, G.xpNeed(r.level) - 1);
+    r.gold = Math.max(r.gold, c.gold);
+    r.potions = Math.max(r.potions, c.potions);
+    r.items.hob = (r.items.hob || 0) + c.bombs;     // Book One's bombs are hob-lobbers by Floor 2
+    r.views = c.views; r.kills = c.kills;
+    r.fanTier = 0; while (r.fanTier < FAN_TIERS.length && r.views >= FAN_TIERS[r.fanTier]) r.fanTier++;
+    c.boxes.forEach(function (b) { r.boxes.push({ tier: b.tier, from: b.from }); });
+    if (c.name) r.name = c.name;
+    r.carried = true;
+    r.hp = G.playerStats().maxHp;
+  }
+  G.carry = function () { return (DCW.save && DCW.save.meta && DCW.save.meta.carry) || null; };
 
   /* ---------------- debug entry ---------------- */
   // ?debug&level=ID | &area=ID | &cinema=ID | &scene=title|classPick|inn|club|map|ending|death|results

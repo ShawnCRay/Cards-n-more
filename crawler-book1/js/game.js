@@ -371,6 +371,16 @@
     var r = G.run, m = DCW.save.meta;
     if (r) r.won = true;
     m.wins = (m.wins || 0) + 1;
+    // Book Two picks the crawl up from here: keep the crawler as they finished Floor 2,
+    // since the run itself is cleared when you leave the ending
+    if (r) {
+      try {
+        var keep = JSON.parse(JSON.stringify(r));
+        ['cleared', 'roamersDown', 'biscuitSpots', 'seenRooms', 'currentStage', 'room', 'owPos', 'pendingAmbush'].forEach(function (k) { delete keep[k]; });
+        keep.won = true; keep.savedAt = Date.now();
+        m.carry = keep;
+      } catch (e) { /* a missing carry just means Book Two starts fresh */ }
+    }
     // beating the book unlocks Donut mode (shared by every save slot)
     if (!G.donutModeUnlocked()) { m.donutMode = true; DCW.save.settings.donutMode = true; m.donutModeNew = true; }
     m.donutMode = true; DCW.save.settings.donutMode = true;
