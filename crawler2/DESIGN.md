@@ -74,6 +74,12 @@ final report. Do not `git commit`; the lead commits.
 - Save key `dcw2_save_v1`. Book One's save (`crawler-book1/`, key `dcc1_save_v1` or its active slot
   `dcc1_save_v1_s<n>` from `dcc1_slot`; the archived prototype's `dcw_save_v1` as a fallback, same origin on
   the website) is read once at boot into `DCW.legacy.book1` (parsed object or null). Read-only.
+- **Continuous crawl.** Book One saves its finished crawler in `meta.carry` when you win (the run itself
+  is cleared when you leave the ending). Book Two's import builds `save.meta.carry` from that snapshot,
+  or from a Book One run still on disk, and every new crawl starts as that crawler: same level number
+  (`run.lvBase = level - 1`, so Floor 3's scale starts at L 1 there), stats carried as they are with
+  Floor 3's starting stats as the floor, bonus hp, xp, stat points, views, gold, potions, bombs as
+  hob-lobbers, unopened boxes, name and skin. Without a carry, a crawl starts fresh at level 13.
 - `DCW.boot()` also inits `DCW.rooms` and `DCW.show`.
 - Debug: `?debug` as before. Keys in debug: `9` clears the current level, `0` god mode,
   `8` flips day/night (lead, through `DCW.game.debugFlipPhase`).
