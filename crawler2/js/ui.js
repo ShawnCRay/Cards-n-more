@@ -3068,7 +3068,8 @@
       var lines = lineList(s.lines);
       if (lines.length) {
         this.talking = true;
-        ui.say(lines, { pos: s.pos, onDone: function () { self.talking = false; self.waitLeft = s.wait !== undefined ? +s.wait : 0.25; }, onSkip: function () { self.finish(); } });
+        var pos = s.pos || ((this.view && typeof this.view.bg === 'string' && this.view.bg.indexOf('panel:') !== 0 && this.actors.length) ? 'top' : 'bottom');
+        ui.say(lines, { pos: pos, onDone: function () { self.talking = false; self.waitLeft = s.wait !== undefined ? +s.wait : 0.25; }, onSkip: function () { self.finish(); } });
       } else this.waitLeft = s.wait !== undefined ? +s.wait : 2;
     },
     finish: function () {
