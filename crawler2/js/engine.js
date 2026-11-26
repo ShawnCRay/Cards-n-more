@@ -68,6 +68,12 @@
   function fit() {
     var wrap = document.getElementById('wrap');
     var vw = window.innerWidth, vh = window.innerHeight;
+    // honour any padding the host page puts around the game (e.g. a side gutter)
+    try {
+      var cs = getComputedStyle(document.body), host = wrap.parentElement || document.body;
+      var px = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight), py = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      if (px > 0 || py > 0) { vw = Math.min(vw, host.clientWidth - px); vh = Math.min(vh, host.clientHeight - py); }
+    } catch (e) { /* keep window size */ }
     var s = Math.min(vw / DCW.W, vh / DCW.H);
     if (s >= 2) s = Math.floor(s); // crisp integer scale when there is room
     var w = Math.floor(DCW.W * s), h = Math.floor(DCW.H * s);
