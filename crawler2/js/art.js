@@ -3909,17 +3909,22 @@
     if (f) { g.globalAlpha = 0.35; R(g, 2, 1, 24, 46, '#58b8f8'); g.globalAlpha = 1; }
     else { P(g, 2, 10, '#a4e4fc'); P(g, 25, 26, '#a4e4fc'); P(g, 5, 40, '#a4e4fc'); }
   });
-  // Big Top tent pole: tall barber stripes; frames 0-2 = intact, cracked, splintering
-  proc('tent_pole', 20, 120, 3, function (g, f) {
-    R(g, 2, 112, 16, 8, '#5c5c64'); R(g, 2, 112, 16, 1, '#9c9ca4'); R(g, 4, 109, 12, 3, '#7c7c84');
-    for (var y = 10; y < 109; y++) for (var x = 5; x < 15; x++) P(g, x, y, (((x + y * 0.6) | 0) >> 2) & 1 ? '#c81c2c' : '#e8dcc0');
-    R(g, 5, 10, 1, 99, '#fcfcfc'); R(g, 14, 10, 1, 99, '#5c0c14');
-    R(g, 3, 4, 14, 6, '#c8a040'); R(g, 3, 4, 14, 1, '#f8d878'); R(g, 9, 0, 2, 4, '#7c7c84'); R(g, 11, 0, 6, 3, '#a8182c');
-    if (f >= 1) { line(g, 6, 40, 12, 52, '#2c0c0c'); line(g, 12, 52, 8, 60, '#2c0c0c'); line(g, 13, 74, 7, 84, '#2c0c0c'); P(g, 11, 47, '#2c0c0c'); }
-    if (f >= 2) {
-      line(g, 5, 56, 14, 64, '#1c0404'); line(g, 14, 64, 6, 72, '#1c0404'); R(g, 5, 62, 10, 2, '#1c0404');
-      R(g, 15, 58, 3, 1, '#e8dcc0'); R(g, 2, 66, 3, 1, '#c81c2c'); P(g, 16, 54, '#e8dcc0'); P(g, 1, 70, '#e8dcc0'); line(g, 7, 24, 13, 34, '#2c0c0c');
+  // Big Top tent pole: tall barber stripes; frames 0-3 = intact, cracked, splitting, about to snap
+  proc('tent_pole', 24, 120, 4, function (g, f) {
+    R(g, 2, 112, 20, 8, '#5c5c64'); R(g, 2, 112, 20, 1, '#9c9ca4'); R(g, 4, 108, 16, 4, '#7c7c84'); R(g, 4, 108, 16, 1, '#9c9ca4');
+    var lean = f >= 3 ? 1 : 0;
+    for (var y = 10; y < 108; y++) {
+      var off = lean && y < 60 ? Math.round((60 - y) / 25) : 0;
+      for (var x = 6; x < 18; x++) P(g, x + off, y, (((x + y * 0.6) | 0) >> 2) & 1 ? '#c81c2c' : '#e8dcc0');
+      P(g, 6 + off, y, '#fcfcfc'); P(g, 17 + off, y, '#5c0c14'); P(g, 16 + off, y, (((16 + y * 0.6) | 0) >> 2) & 1 ? '#8c1020' : '#b0a488');
     }
+    var o2 = lean ? 2 : 0;
+    R(g, 4 + o2, 4, 16, 6, '#c8a040'); R(g, 4 + o2, 4, 16, 1, '#f8d878'); R(g, 4 + o2, 9, 16, 1, '#7c5c18'); R(g, 11 + o2, 0, 2, 4, '#7c7c84'); R(g, 13 + o2, 0, 7, 3, '#a8182c');
+    R(g, 5, 60, 14, 3, '#c8a040'); R(g, 5, 60, 14, 1, '#f8d878');
+    var K2 = '#1c0404';
+    if (f >= 1) { line(g, 8, 38, 14, 50, K2); line(g, 14, 50, 10, 58, K2); line(g, 15, 72, 9, 84, K2); P(g, 13, 45, K2); }
+    if (f >= 2) { line(g, 7, 64, 16, 70, K2); line(g, 16, 70, 8, 78, K2); line(g, 9, 24, 15, 34, K2); R(g, 18, 66, 3, 1, '#e8dcc0'); P(g, 4, 74, '#c81c2c'); P(g, 19, 62, '#e8dcc0'); }
+    if (f >= 3) { R(g, 6, 66, 12, 2, K2); line(g, 6, 88, 17, 96, K2); R(g, 19, 64, 4, 1, '#e8dcc0'); R(g, 1, 69, 4, 1, '#c81c2c'); P(g, 21, 60, '#e8dcc0'); P(g, 2, 74, '#e8dcc0'); P(g, 20, 70, '#c81c2c'); }
   });
   // the Fireball-or-Custard scratch ticket
   proc('scratch_ticket', 16, 12, 2, function (g, f) {
@@ -3932,11 +3937,12 @@
     R(g, 2, 7, 10, 3, '#a4e4fc'); R(g, 3, 10, 8, 1, '#6cb4d4'); R(g, 4, 11, 6, 1, '#a4e4fc');
     blob(g, 7, 5 + (f ? 0 : 1), 4, 2, '#f8d878'); R(g, 3, 6, 8, 2, '#f8d878'); R(g, 5, 3 + (f ? 0 : 1), 4, 1, '#c87c30'); P(g, 5, 5, '#fce0a8');
   });
-  // ring junk Carl throws into the screen: a spinning juggling club (4 frames)
+  // ring junk Carl throws into the screen: 0 bottle, 1 shoe, 2 pie, 3 juggling pin
   proc('ring_junk', 12, 12, 4, function (g, f) {
-    var a = f * Math.PI / 4, cx = 6, cy = 6;
-    for (var i = -4; i <= 4; i++) { var x = Math.round(cx + Math.cos(a) * i), y = Math.round(cy + Math.sin(a) * i); var r0 = i > 0 ? 2 : 1; R(g, x - (r0 > 1 ? 1 : 0), y - (r0 > 1 ? 1 : 0), r0, r0, i > 1 ? '#fcfcfc' : i > -1 ? '#e40058' : '#fcfcfc'); }
-    P(g, Math.round(cx - Math.cos(a) * 5), Math.round(cy - Math.sin(a) * 5), '#f8b800');
+    if (f === 0) { R(g, 5, 0, 2, 3, '#3c8c3c'); R(g, 4, 3, 4, 8, '#2c7c3c'); R(g, 4, 3, 1, 8, '#58d854'); R(g, 4, 6, 4, 3, '#e8d8b0'); P(g, 5, 7, '#c81c2c'); R(g, 5, 0, 2, 1, '#a87c48'); }
+    else if (f === 1) { R(g, 1, 6, 6, 4, '#7c4418'); R(g, 6, 7, 5, 3, '#7c4418'); R(g, 1, 10, 10, 1, '#2c1c10'); R(g, 1, 6, 6, 1, '#a86c30'); P(g, 8, 7, '#e8d8b0'); P(g, 9, 8, '#e8d8b0'); R(g, 2, 4, 4, 2, '#5c3010'); }
+    else if (f === 2) { R(g, 1, 7, 10, 3, '#c8a070'); R(g, 0, 8, 12, 1, '#a87c48'); blob(g, 6, 6, 4, 2, '#fcfcfc'); P(g, 6, 3, '#e40058'); P(g, 4, 6, '#e8e8e8'); R(g, 2, 9, 8, 1, '#7c5c30'); }
+    else { R(g, 5, 1, 2, 2, '#e40058'); R(g, 4, 3, 4, 4, '#fcfcfc'); R(g, 4, 5, 4, 1, '#e40058'); R(g, 5, 7, 2, 4, '#fcfcfc'); P(g, 5, 4, '#bcbcbc'); R(g, 4, 10, 4, 1, '#e40058'); }
   });
   // fire strip (the Jug O'Boom aftermath), 3 frames
   proc('fire', 16, 18, 3, function (g, f) {
@@ -3960,9 +3966,9 @@
 
   /* ---- book 2 projectiles ---- */
   proc('worm', 12, 6, 2, function (g, f) { // parasite worm, wriggling
-    for (var x = 1; x < 11; x++) { var y = 2 + Math.round(Math.sin(x * 0.9 + f * 2) * 1.2); R(g, x, y, 1, 2, x > 8 ? '#e8a0a0' : '#c86070'); }
-    P(g, 10, 2 + Math.round(Math.sin(9 + f * 2)), '#2c0c0c');
-  }, { outline: '#3c0810' });
+    for (var x = 1; x < 11; x++) { var y = 2 + Math.round(Math.sin(x * 0.9 + f * 2) * 1.2); R(g, x, y, 1, 2, x > 8 ? '#fcfcfc' : (x & 1 ? '#e8e0c8' : '#c8c0a8')); }
+    P(g, 10, 2 + Math.round(Math.sin(9 + f * 2) * 1.2), '#8c1c1c');
+  }, { outline: '#2c2418' });
   proc('spit', 10, 10, 2, function (g, f) { // a glob of acid spit
     disc(g, 5, 5, 3 + f, '#58a000'); disc(g, 5, 5, 2, '#a8d838'); P(g, 4, 3, '#e0f8a0'); if (f) { P(g, 1, 8, '#58a000'); P(g, 9, 2, '#a8d838'); }
   }, { outline: '#1c3c00' });

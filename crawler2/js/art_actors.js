@@ -1175,6 +1175,8 @@
   defs.carl_crouch = squash(defs.carl_idle, { 16: 1, 17: 1, 19: 1, 24: 1, 25: 1 });
   defs.carl_back_duck = squash(defs.carl_back_idle, { 16: 1, 17: 1, 19: 1, 24: 1, 25: 1 });
   K.CARL_PAL = CARL_PAL;
+  // where Donut sits, as offsets from Carl's feet anchor (sprite x, y passed to art.sprite), facing right
+  K.carlShoulder = { side: { dx: -7, dy: -12 }, back: { dx: -7, dy: -12 }, note: 'draw donut_shoulder / donut_back with its bottom-centre at (carlX + dx, carlY + dy); mirror dx when Carl faces left' };
 })();
 
 
@@ -1236,9 +1238,30 @@
   pspr('donut_idle', DP, DW, DH, 2, function (g, i) { donut(g, { pose: 'stand', bx: 2, by: 1, tail: i, blink: i === 1 }); });
   pspr('donut_run', DP, DW, DH, 2, function (g, i) { donut(g, { pose: i ? 'run1' : 'run0', bx: 2, by: i ? 0 : 1, tail: i ? 0 : 1 }); });
   pspr('donut_cast', DP, DW, DH, 1, function (g) { donut(g, { pose: 'cast', bx: 1, by: 1, mouth: true, paw: true }); });
-  pspr('donut_shoulder', DP, 20, 23, 2, function (g, i) { donut(g, { pose: 'sit', bx: 1, by: 2, tail: i, blink: i === 1 }); });
+  // riding on Carl's shoulder: a compact sitting Donut (sized to perch beside his head)
+  function donutSmall(g, i, back) {
+    var tl = i ? 1 : 0;
+    poly(g, [[3, 11], [1, 13], [2 - tl, 15]], 'o', 2); px(g, 1, 14, 'd'); px(g, 2 - tl, 15, 'd');                  // tail hanging down
+    oval(g, 6.5, 11.5, 4.5, 3.5, 'o'); oval(g, 4.5, 10.5, 2, 1.5, 'd');
+    if (!back) { oval(g, 8.5, 12, 2, 2.5, 'w'); rect(g, 6, 15, 2, 1, 'w'); rect(g, 9, 15, 2, 1, 'w'); }
+    else { px(g, 9, 13, 'O'); rect(g, 4, 15, 2, 1, 'w'); rect(g, 8, 15, 2, 1, 'w'); }
+    oval(g, 7, 5.5, 4.6, 3.8, 'o');
+    tri(g, 3, 3, 4, 0 - (back && i ? 1 : 0), 6, 2, 'd'); tri(g, 11, 3, 10, 0, 8, 2, 'O');                           // ears
+    if (back) { oval(g, 5, 5, 2.5, 3, 'd'); px(g, 9, 4, 'O'); px(g, 10, 7, 'O'); px(g, 2, 7, 'o'); px(g, 12, 7, 'o'); }
+    else {
+      rect(g, 3, 4, 3, 4, 'd');                                                                                     // tortie mask
+      if (i) { rect(g, 4, 5, 2, 1, 'x'); rect(g, 9, 5, 2, 1, 'x'); }
+      else { px(g, 4, 5, 'e'); px(g, 5, 5, 'x'); px(g, 9, 5, 'e'); px(g, 10, 5, 'x'); }
+      rect(g, 6, 7, 4, 2, 'w'); px(g, 7, 7, 'n'); px(g, 12, 6, 'o');
+    }
+    K.stamp(g, ['y.y.y', 'yyryy'], 5, -1);                                                                         // crown
+  }
+  pspr('donut_shoulder', DP, 15, 17, 2, function (g, i) { var t = K.blank(15, 17); donutSmall(t, i, false); K.stamp(g, t, 0, 1); });
   pspr('donut_down', DP, 24, 16, 1, function (g) { donut(g, { pose: 'down', bx: 0, by: 0 }); });
   alias('donut_act', 'donut_cast');
+  // Donut seen from behind, sitting on Carl's shoulder in the into-the-screen rooms: back of the fluffy head,
+  // ears, the crown on top, tail draped down over his shoulder. Frame 1: tail swish + ear twitch.
+  pspr('donut_back', DP, 15, 17, 2, function (g, i) { var t = K.blank(15, 17); donutSmall(t, i, true); K.stamp(g, t, 0, 1); });
 
   /* ---- Mongo: velociraptor with pink, red and blue feathers, beady eyes, black collar ----
    * One painter at any size: k = scale (1 small, 1.7 big). Unit coords are for a 22x16 raptor. */
@@ -2194,7 +2217,7 @@
   /* ---- HEATHER THE BEAR (L19 neighborhood boss): eight-foot black bear on roller skates, a flaming skull for a
    *      face with round red eyes, a tattered pink clown hat cockeyed on the skull, a pleated ruff, a pink tutu,
    *      and front paws replaced by dozens of glowing white worms ---- */
-  var HP = { f: C.g0, F: C.p0, d: C.K, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, w: C.W, W: C.g1, z: C.W, Z: C.t3, b: C.o3, B: C.n2, x: C.r1, X: C.g1, t: C.y1 };
+  var HP = { f: C.g0, F: C.y0, d: C.K, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, w: C.W, W: C.g1, z: C.W, Z: C.t3, b: C.o3, B: C.n2, x: C.r1, X: C.g1, t: C.y1 };
   function heather(g, p) {
     var a = p.a, i = p.i;
     var lean = a === 'attack' ? 4 : a === 'hurt' ? -3 : a === 'walk' ? 2 : 0;
@@ -2524,7 +2547,7 @@
     if (f === 1) { rect(g, 9, 18, 15, 4, 'K'); for (k = 0; k < 7; k++) { tri(g, 9 + k * 2, 18, 10 + k * 2, 18, 9 + k * 2, 20, 'w'); } }
     else { rect(g, 9, 18, 15, 2, 'r'); for (k = 0; k < 7; k++) px(g, 10 + k * 2, 19, 'w'); }
   });
-  portrait('p_heather', { f: C.g0, F: C.p0, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, e: C.K }, BG_FOE, function (g, f) {
+  portrait('p_heather', { f: C.g0, F: C.y0, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, e: C.K }, BG_FOE, function (g, f) {
     oval(g, 16, 30, 15, 6, 'f'); for (var k = 0; k < 8; k++) tri(g, 2 + k * 4, 24, 6 + k * 4, 24, 4 + k * 4, 29, k % 2 ? 'w' : 'S');
     var fl = [[5, 10], [8, 4], [13, 2], [19, 2], [24, 5], [27, 11]];
     fl.forEach(function (q, n) { tri(g, q[0] - 3, q[1] + 6, q[0] + 3, q[1] + 6, q[0] + (n % 2 ? 1 : -1), q[1] - 3 - (f === 2 ? 1 : 0), n % 2 ? 'o' : 'y'); px(g, q[0], q[1] + 3, 'Y'); });
@@ -2775,4 +2798,4 @@
   });
 })();
 
-//@@REST
+

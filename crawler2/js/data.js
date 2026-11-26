@@ -1,658 +1,611 @@
 /* ==========================================================================
-   DCW DATA - all game content as plain data under DCW.data (owner: content)
-   Schema is the "Data contract" in crawler/DESIGN.md. Validate with:
-     node crawler/tools/data_validate.js        (structure, maps, chunks, text)
-     node crawler/tools/data_render.js f3_s1    (ASCII render of a stage)
+   DCW DATA, BOOK 2: CARL'S DOOMSDAY SCENARIO (the Third Floor, the Over City)
+   Owner: content. All game content and text as plain data under DCW.data.
+   Contract: crawler2/DESIGN.md section 6 (+ the lead's game.js field notes).
+   Validate:  node crawler2/tools/data_validate.js   (add --render <id> to print
+              a level / area / layout, --flow to print the story chain)
 
-   OPTIONAL SCHEMA ADDITIONS (all safe to ignore):
-   - enemies[id].tier: the floor the enemy's base stats are balanced for.
-   - DCW.data.floorScale[n-1] = {hp, dmg, xp, gold} multipliers per floor, and
-     DCW.data.enemyFor(id, floor) -> shallow copy of the enemy with hp/dmg/xp/gold
-     scaled from its home `tier` to `floor` (never scales down). Gameplay may use
-     it so a floor-1 bat is still a threat when it shows up on floor 7.
-   - stages[id].owMarker: overworld marker sprite for the entrance
-     ('ow_door' | 'ow_manhole' | 'ow_tent' | 'ow_cave'). Boss/safe/stairs use
-     the fixed ow_boss / ow_safe / ow_stairs markers.
-   - stages[id].reward.box may be absent (ambush stages give only xp).
-   - lootTables[tier].guaranteed: [reward, ...] always granted on top of the
-     rolls (legendary always has a cosmetic, boss always has a potion).
-   - shop give kinds beyond the Reward list: {kind:'revival', count} adds run
-     revivals; {kind:'box', tier} adds an unopened loot box to run.boxes.
-   - skins[id].perk keys: dmg (+flat damage), def (+flat damage reduction),
-     hp (+max hp), speed (+move multiplier, e.g. 0.1), gold / views (+multiplier,
-     e.g. 0.2), bombs (+bombs at floor start), doubleJump (true).
-   - companions[id].special.time: seconds the special lasts (0 = instant).
-   - bosses[id].final: true on the last boss (beating it wins the game).
-   - achievements[id].unlock: {skin:id} | {companion:id} granted with the box.
-   - companions[id].bonus {views} (zev) / bombChance (squeaks): ability tuning hints.
-   - boxTiers[tier].rank (1-5) for sorting; projectiles.missile (friendly:true)
-     for Donut; D.version, D.themes, D.owThemes are informational.
-   UPDATE 2 (quests, rescues, levers; binding spec in DESIGN.md):
-   - D.questItems[id] = {name, floor, sprite:'qi_*', desc, hint}. hint says where
-     the item is (shown on padlocked exit doors).
-   - stages[id].questItem / .rescue / .exitNeeds, stages[id].chunks.insert:
-     chunk ids spliced into the middle of the generated list (data_render.js
-     assumes after start + floor(count/2) picks). Q and R only appear in insert
-     chunks, never in pool chunks, so each stage has exactly one.
-   - floor.locks[ch] = {needs, text}: text is optional flavor (<= 100 chars).
-   - floor.companion (floors 2-7), floor.hints (Mordecai rumors, 3-5 lines).
-   - companions[id].rescueLines: 1-2 lines said when freed from the cage/egg.
-   - No companion rewards in loot tables, no companion boss/achievement unlocks.
-   - Chunk chars S (lever, on ground) and L (gate, solid until any S in the
-     same chunk is punched). lv_* chunks are general lever puzzles in pools.
-     node crawler/tools/data_render.js --chain prints every floor's chain.
-   Chunk notes: moving platforms '<' '>' 'v' are ONE char each, placed on the
-   platform's starting (center) tile, with >= 3 free tiles of travel each way
-   ('<' starts moving left, '>' right, 'v' down). Arena chunks (with 'K') are
-   open on the left (rows 5-9) and walled on the right.
-   Balance targets (see data_render.js --balance, assumes ~all kills, side
-   areas done, ~2 ambushes per floor): enter F2 at ~L3, F4 ~L8, F9 ~L19, finish
-   ~L21. Regular enemies take 2-4 punches at that level; bosses ~40-55 punches.
-   Spawned adds (boss spawn:, cultist) are extra xp on top.
-   UPDATE 3 (floor 10 races, floor 11 parade; binding spec in DESIGN.md):
-   - D.racers[id] = {name, title, vehicle, sprite:'racer_<id>', portrait:'p_racer_<id>',
-     speed, accel, hp, aggression 0..1, weapon: projectile id|null, skill 0..1,
-     lines: [trash talk], boss?: true}. ids: goblin_bike skull_chariot
-     beetle_mount steam_buggy champion (champion = the boss racer).
-   - D.truck = {name, sprite:'truck', speed:170, accel:140, hp:30}. Truck upgrades
-     are quest items with a `truck` field ({hp}|{speed}|{mines:true}); float parts
-     are quest items with a `float` field ('confetti'|'spotlight'|'balloons'|'banner').
-   - stages kind 'race': theme 'raceway', race:{rivals:[ids], place:N[, boss:id]}.
-     Race chunks are named race_*; only they use r Z J O F. Rivals take the start
-     chunk's r spots in reading order (left to right). One F in race_finish.
-     Design rules (truck ~170 px/s; a held jump flies ~7 tiles and ~3.5 up; a J pad
-     launch ~7+ tiles even when jump is not held): plain gaps <= 4 tiles, 5 tile gaps
-     have a J pad right at the edge, overpasses '=' sit at row 7 (3 above the road,
-     2 free rows under them) and are entered from a J pad, crates 'b' are single
-     and get rammed, no oil within 9 tiles before a gap (a spin-out cannot jump).
-     Checked by data_validate.js (truck reach), data3_race_sim.js (truck physics)
-     and data3_race_play.js (the real engine, playwright).
-     race_q_billboard holds a Q on its overpass (heat 2 truck upgrade).
-   - stages kind 'parade': theme 'parade', boss, parade:{speed, waves:[[enemy,w]]};
-     parade_* street chunks then arena_marshal (K). Floor 9's showrunner is no
-     longer final: bosses.grand_marshal.final = true (ending + gold skin there).
-   - floor.locks[ch] = {needs:'id'} | {needs:['id',...]} (all required) |
-     {afterCleared:'stageId'}. floor.overworld.npcs = [{racer, x, y, lines}].
-     Floor 11 has no stairs X. owMarker 'ow_garage' (race) / 'ow_float' (parade).
-   - floorScale has 11 entries; enemyFor clamps to its length.
+   ---------------------------------------------------------------------------
+   STORY FLAGS (run.flags). Every flag below is set by exactly the source named.
+   Fixed names used by gameplay: freeballing xistera fang_caps mongo_big katia_joined
+   ---------------------------------------------------------------------------
+   ACT 1, THE CIRCUS
+   toured           event 'tour' (village, first entry)
+   map_village      event 'tour' (also every signpost rock sets map_<areaId>)
+   lemurs_done      level a1_lemurs (clear)         -> unlocks a1_bodies door
+   pug_scene        event 'pug_vomit' (village, after lemurs_done)
+   bodies_done      level a1_bodies                 -> unlocks a1_collapse door
+   collapse_done    level a1_collapse
+   met_signet       level a1_collapse               (MEET AN ELITE achievement)
+   lions_done       level a1_lions
+   knocked_out      level a1_lions                  (LAZARUS achievement; +15 h)
+   donut_asleep     level a1_lions   party rule: while donut_asleep && !donut_awake,
+                                     Donut and Mongo are NOT with Carl on the streets
+   mongo_caged      level a1_lions
+   solo_done        level a1_solo
+   mongo_freed      level a1_solo
+   heather_done     level a1_heather
+   has_ticket       level a1_heather (+ item big_top_ticket) -> Big Top door
+   saw_grimaldi     event 'city_boss' (circus_park, after heather_done) (CITY HALL)
+   bigtop_done      level a1_bigtop  (quest show_must_go_on done)
+   grimaldi_peace   level a1_bigtop
+   circus_gone      level a1_barricade  -> circus doors hide, park stairs show,
+                                           the east gate to ruins_e opens
+   donut_awake      level a1_barricade  (party whole again)
+   panic            level a1_barricade  (the Panic combo has a name now; flavor)
+   ACT 2, THE MEDIUM SKYFOWL SETTLEMENT
+   settled          event 'settlement_arrival' (first entry to settlement)
+   freeballing      event 'settlement_arrival' (kicks/stomps x2)
+   fang_caps        event 'settlement_arrival' (Mongo hurts ghosts)
+   quadrillion      event 'settlement_arrival' (ONE QUADRILLION! achievement)
+   gumgum_asked     event 'gumgum_ask' (settlement, after settled)
+   dispenser_done   level a2_dispenser
+   quest_sw         event 'gumgum_bodies' (talk to GumGum at the gate) (quest sex_workers)
+   club_known       event 'desperado_tour' (settlement, after quest_sw)
+   met_pustule      event 'desperado_tour'  -> Silk Road Market door
+   mongo_bolted     event 'mongo_bolts' (right after the tour) -> a2_mongo
+   mongo_done       level a2_mongo
+   vincente_dead    level a2_alley
+   gumgum_dead      level a2_alley
+   has_pass         level a2_alley (+ items gate_pass, letter) -> admin gate
+   xistera          level a2_alley (the Gold Fan Box opens in the outro)
+   met_quill        event 'quill_desk' (admin, first entry)
+   shelves_rigged   event 'quill_desk'
+   divider_done     level a2_divider
+   show_done        level a2_danger_zone
+   manasa_dead      level a2_danger_zone
+   apito_done       level a2_apito
+   mic_drop         level a2_apito (the Mic Drop has a name now; flavor)
+   katia_joined     event 'katia_meet' (settlement, after apito_done)
+   alley_night_done level a2_alley_night
+   mongo_big        level a2_alley_night (Mongo hits level 13, pony-sized)
+   ACT 3, QUILL'S TOWER AND THE GLASS
+   climb_done       level a3_climb
+   quill_dead       level a3_plant (ASSASSIN! achievement)
+   magistrate       level a3_plant (ULTIMATE EXTREME POWER!, carl_magistrate skin)
+   cockblock        level a3_plant (COCKBLOCK achievement)
+   nest_done        level a3_nest
+   burgundy_dead    level a3_nest
+   met_bautista     level a3_nest
+   depot_rigged     level a3_depot
+   glass_broken     level a3_depot (quest sex_workers done, fools_glass starts)
+   doomsday         level a3_depot (+ item doomsday: CARL'S DOOMSDAY SCENARIO)
+   escaped          level a3_escape (win: true)
+
+   ---------------------------------------------------------------------------
+   TRACK EVENTS used by achievements (game.js + stage.js emit; see lead notes):
+   kill kill:<id> boss:<id> stomp kick bomb_kill multi_bomb crate coin fall
+   combo10 combo25 no_damage_stage secret level_clear clear:<levelId>
+   flag:<name> quest_start quest_done quest_done:<id> rest craft shop box_open
+   death revive flee crime banned level:<n> win early import night day potion
+   Gameplay extras these achievements also listen for (emit if you can):
+   boomy_boy (Boomy Boy used), mic_drop (Mic Drop used), panic (Panic used),
+   plant (a charge planted), krasue_body (a Krasue body destroyed),
+   regrow_burn (a mold lion burned for good), second_chance (Donut raised one)
+
+   ---------------------------------------------------------------------------
+   SCHEMA NOTES beyond DESIGN.md (all optional for readers):
+   - enemies[id].tier = home act (1-3) of the base stats. D.actScale[act-1] +
+     D.enemyFor(id, act) scale a copy up to a later act (never down).
+   - enemies: bodyHp/leash/regrowTime (krasue), charmTime (incubus), reach
+     (stilt clown), orbEvery/orbTime (city elf darkness orbs), invulnerable (guard).
+   - bosses.heather.custard = 0.25: hp fraction where the custard ticket drops.
+     bosses.dispenser.parts / boomyMul / facade:true for the facade boss.
+   - level.party = ['mongo']: overrides game.party() inside that level.
+   - level.final / win: true on a3_escape. level.next / thenArea / thenEntry.
+   - level.chunks for plant levels: every pool chunk holds the same number of C,
+     so plant.charges = count * C-per-chunk whatever the seeded order.
+   - Survival levels use only chunks.start (one fixed 20-col screen, end: null).
+   - survival.guardHp: barricade hp. escape.bursts are seconds REMAINING.
+   - area.rows N chars map to area.npcs in order (npcs[i].x = that column, tiles).
+     area.rows 'P' = spawn for a new run (no entry given).
+   - area.signs: texts for 'n' signs in a street, in order.
+   - items[id].bonus {str|con|dex|int|hp}: passive bonus while held (key items).
+   - D.who: speaker name -> portrait id (merge into the UI's WHO_PORTRAIT).
+   - D.mordecaiHints: [{when:{flags,notFlags}, text}] story hints Mordecai gives
+     at the inn before falling back to the random D.mordecai tips.
+   - shops[id].lines / inns[id].lines: keeper chatter. shop item `limit` = per run.
+   - achievements[id].box null = no prize (YELLOW-BELLIED CHICKENSHIT, EARLY BIRD).
+   Text rules: uppercase ASCII + the font's glyphs, no em dashes, <= 160 chars.
    ========================================================================== */
 (function () {
   'use strict';
   var DCW = window.DCW = window.DCW || {};
-  var D = DCW.data = DCW.data || {};
+  var D = DCW.data = {};
 
-  D.version = 1;
+  D.version = 2;
 
-  D.themes = ['sewer', 'cave', 'city', 'circus', 'swamp', 'train', 'bubble', 'forest', 'castle', 'ruin', 'warzone', 'safe', 'raceway', 'parade'];
-  D.owThemes = ['ow_city', 'ow_rail', 'ow_reef', 'ow_woods', 'ow_manor', 'ow_waste', 'ow_war', 'ow_suburb', 'ow_parade'];
+  D.meta = {
+    title: 'DUNGEON CRAWLER WORLD',
+    subtitle: "BOOK 2: CARL'S DOOMSDAY SCENARIO",
+    floor: 3, floorName: 'THE OVER CITY',
+    startArea: 'village', startEntry: 'left',
+    startCinema: 'arrival',            // before the class pick (the guide's room)
+    afterClassCinema: 'floor_open',    // after it (Floor 2 collapses, the clock starts)
+    startHours: 192, startHour: 7,
+    actOfLevel: true                    // levels carry act 1-3
+  };
+
+  D.themes = ['village', 'ruins', 'circus', 'basement', 'settlement', 'alley', 'admin', 'office', 'nest',
+    'ymca', 'school', 'depot', 'escape', 'restroom', 'temple'];
+  D.backdrops = ['inn_pug', 'inn_narwhal', 'club', 'studio', 'greenroom', 'guide_room'];
+
+  /* speaker name -> portrait (the UI may merge this into WHO_PORTRAIT) */
+  D.who = {
+    'SYSTEM AI': 'p_ai', 'CARL': 'p_carl', 'DONUT': 'p_donut', 'PRINCESS DONUT': 'p_donut', 'MONGO': 'p_mongo',
+    'MORDECAI': 'p_mordecai', 'KATIA': 'p_katia', 'SIGNET': 'p_signet', 'TSARINA SIGNET': 'p_signet',
+    'GRIMALDI': 'p_grimaldi', 'APOLLON': 'p_apollon', 'CLAMMY': 'p_clammy', 'HEATHER': 'p_heather',
+    'GORDO': 'p_gordo', 'FITZ': 'p_fitz', 'CLARABELLE': 'p_clarabelle', 'QUINT': 'p_quint', 'PUSTULE': 'p_pustule',
+    'GUMGUM': 'p_gumgum', 'VINCENTE': 'p_vincente', 'MISS QUILL': 'p_quill', 'BURGUNDY': 'p_burgundy',
+    'REMEX': 'p_remex', 'BAUTISTA': 'p_bautista', 'HEKLA': 'p_hekla', 'RIPPER WONTON': 'p_ripper', 'RIPPER': 'p_ripper',
+    'ZEV': 'p_zev', 'ODETTE': 'p_odette', 'LUCIA MAR': 'p_lucia', 'EUNICE': 'p_eunice',
+    'EDGE DANCER': 'p_edge_dancer', 'TALON STRONG': 'p_talon', 'LUCKY': 'p_lucky'
+  };
+
+  /* ---------------- items (explosive ids fixed: jug hob dyn smoke) ---------------- */
+  D.items = {
+    jug: { name: "CARL'S JUG O'BOOM", kind: 'explosive', icon: 'jug', projectile: 'jug',
+      desc: 'MOONSHINE, A RAG AND A BAD ATTITUDE. LOB IT. IT POPS, THEN THE GROUND BURNS FOR A WHILE. FIRE KILLS MOLD LIONS FOR GOOD.' },
+    hob: { name: 'HOB-LOBBER', kind: 'explosive', icon: 'hob', projectile: 'hob',
+      desc: 'A HOBGOBLIN BOMB SMALLER THAN A BASEBALL. LOB IT, OR WITH THE XISTERA FIRE IT STRAIGHT AND HARD. BURSTS ON IMPACT.' },
+    dyn: { name: 'GOBLIN DYNAMITE', kind: 'explosive', icon: 'dyn', projectile: 'dyn_stick',
+      desc: 'A STICK OF GOBLIN DYNAMITE. 1.6 SECOND FUSE, ENORMOUS OPINION. DOWN + SPECIAL STRAPS IT TO CLOCKWORK MONGOS.' },
+    smoke: { name: 'SMOKE BOMB', kind: 'explosive', icon: 'smoke',
+      desc: 'A HOBGOBLIN SMOKE CURTAIN IN A BALL. ANYTHING INSIDE THE CLOUD FORGETS WHERE YOU ARE FOR FOUR SECONDS.' },
+    moonshine: { name: 'JUG OF MOONSHINE', kind: 'material', sprite: 'qi_moonshine',
+      desc: 'CLEAR, LOUD AND ILLEGAL IN SIX SYSTEMS. CRAFT IT INTO A JUG O\'BOOM AT ANY INN. DO NOT DRINK IT. MORDECAI DRINKS IT.' },
+
+    /* key items (sprites from the fixed qi_* list) */
+    big_top_ticket: { name: 'BIG TOP TICKET', kind: 'key', sprite: 'qi_ticket',
+      desc: 'ADMIT ONE. GRIMALDI\'S TRAVELING CIRCUS, CENTER RING. NO REFUNDS. NO EXITS. NO EXCEPTIONS.' },
+    scratch_ticket: { name: 'FIREBALL OR CUSTARD?', kind: 'key', sprite: 'qi_custard',
+      desc: 'A SCRATCH TICKET THAT TALKS LIKE A PHONE GAME. SCRATCH IT: A HUGE FIREBALL OR A FACE FULL OF CUSTARD. ODDS UNDISCLOSED.' },
+    str_rings: { name: 'TWO RINGS OF +2 STR', kind: 'key', sprite: 'qi_ring', bonus: { str: 2 },
+      desc: 'LOOTED OFF A DEAD CRAWLER NAMED NICA. +2 STRENGTH WHILE YOU WEAR THEM. SHE WOULD HAVE WANTED YOU TO. PROBABLY.' },
+    anklet: { name: 'ANKLET OF THE FALLEN OAK', kind: 'key', sprite: 'qi_anklet',
+      desc: 'DONUT TOOK IT OFF GRACE BAUTISTA 3. ENCHANTED. SOMEBODY IN THIS TOWN IS VERY INTERESTED IN WHOEVER WEARS IT.' },
+    gate_pass: { name: 'GATE PASS', kind: 'key', sprite: 'qi_pass',
+      desc: 'FOUND ON GUMGUM. SIGNED BY MAGISTRATE FEATHERFALL. OPENS THE GATE TO THE ADMINISTRATIVE DISTRICT.' },
+    letter: { name: 'MYSTERIOUS LETTER', kind: 'key', sprite: 'qi_letter',
+      desc: 'WRITTEN IN THE SCRIBBLY LANGUAGE OF NECROMANCERS. SEALED WITH A FEATHER. NOBODY WRITES LETTERS LIKE THIS ABOUT NICE THINGS.' },
+    pet_carrier: { name: 'MAGICAL PET CARRIER', kind: 'key', sprite: 'qi_carrier',
+      desc: 'DONUT BOUGHT IT FOR MONGO. IT FOLDS LIKE A RUBIK\'S CUBE AND MONGO SCREAMS LIKE A TEAKETTLE EVERY TIME HE SEES IT.' },
+    fang_caps: { name: 'FANG CAPS', kind: 'key', sprite: 'qi_caps',
+      desc: 'ENCHANTED CAPS THAT SNAP ONTO MONGO\'S TEETH LIKE LEGO. NOW HIS BITE HURTS GHOSTS. NOW HE IS IMPOSSIBLE.' },
+    upgrade_scroll: { name: 'SCROLL OF UPGRADE', kind: 'key', sprite: 'qi_scroll',
+      desc: 'USED ON THE ENCHANTED BIGBOI BOXERS. FREEBALLING: EVERY ATTACK FROM BELOW THE WAIST HITS TWICE AS HARD.' },
+    sepsis_crown: { name: 'THE SEPSIS CROWN', kind: 'key', sprite: 'qi_crown',
+      desc: 'DONUT\'S CROWN. SHE WOULD LIKE YOU TO STOP CALLING IT A KEY ITEM. SHE WOULD LIKE YOU TO CALL IT HER CROWN.' },
+    kimaris: { name: 'KIMARIS IN A GLASS CASE', kind: 'key', sprite: 'qi_case',
+      desc: 'A STUFFED DEMON DUKE ON A HORSE, SEALED IN A SHEOL GLASS REAPER CASE. FROM MISS QUILL\'S TOP SHELF. THE CASE IS THE VALUABLE PART.' },
+    detonator: { name: 'REMOTE DETONATOR', kind: 'key', sprite: 'qi_key',
+      desc: 'ONE BUTTON. TEN STICKS OF DYNAMITE IN THE GUARD DEPOT. KATIA IS HOLDING IT. DO NOT BUMP KATIA.' },
+    doomsday: { name: "CARL'S DOOMSDAY SCENARIO", kind: 'key', sprite: 'qi_crystal',
+      desc: 'A SOUL CRYSTAL ABOUT TO GO OFF, CAPPED IN A SHEOL GLASS REAPER CASE. IF IT EVER LEAVES YOUR INVENTORY, EVERYTHING NEARBY ENDS.' }
+  };
+
+  D.recipes = {
+    jug: { name: "JUG O'BOOM", needs: { moonshine: 1 }, gives: { jug: 1 },
+      desc: 'ONE JUG OF MOONSHINE, ONE RAG, ONE LIGHTER. CARL HAS ALCHEMY 3 NOW. THIS IS WHAT HE DOES WITH IT.' },
+    jug_batch: { name: "JUG O'BOOM, CASE OF FOUR", needs: { moonshine: 3 }, gives: { jug: 4 },
+      desc: 'BULK BREWING. THREE JUGS OF MOONSHINE MAKE FOUR BOMBS IF YOU SKIM THE RAGS. MORDECAI CALLS THIS WASTE. OF MOONSHINE.' }
+  };
+
+  /* ---------------- shops ----------------
+     give: {item, n} | {potion: n} | {skin: id} | {box: tier}. Prices are act 1 values. */
+  D.shops = {
+    lucky: { name: "LUCKY'S GENERAL GOODS", keeper: 'LUCKY', sprite: 'lucky', portrait: 'p_lucky', items: [
+      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. TASTES LIKE BUBBLE YUM AND REGRET.', price: 30, give: { potion: 1 } },
+      { id: 'moonshine', name: 'JUG OF MOONSHINE', desc: 'FOR CRAFTING JUGS O\'BOOM AT THE INN. LUCKY SWEARS IT IS FOR CLEANING.', price: 12, give: { item: 'moonshine', n: 1 } },
+      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: 'THREE JUGS. LUCKY HAS STOPPED ASKING QUESTIONS.', price: 32, give: { item: 'moonshine', n: 3 } },
+      { id: 'smoke', name: 'SMOKE BOMB', desc: 'ONE SMOKE BOMB. FOR EXITS, ENTRANCES AND MAGIC TRICKS.', price: 18, give: { item: 'smoke', n: 1 } },
+      { id: 'jug', name: "JUG O'BOOM", desc: 'LUCKY MAKES THESE TOO. HIS RAGS ARE WORSE. THEY STILL BURN.', price: 26, give: { item: 'jug', n: 1 } },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A BRONZE BOX FROM THE BACK ROOM. IT RATTLES. LUCKY SAYS THAT IS NORMAL.', price: 45, give: { box: 'bronze' }, limit: 3 }
+    ], lines: [
+      "WELCOME TO LUCKY'S! EVERYTHING IS LUCKY EXCEPT THE PRICES, THE STOCK, AND ME.",
+      "GUARDS OUTSIDE? GOOD. MEANS NOBODY ROBS ME. MEANS NOBODY ROBS YOU EITHER. EXCEPT ME. WITH PRICES.",
+      "MOONSHINE IS FOR CLEANING. THAT IS MY STORY AND I AM STICKING TO IT.",
+      "YOU SMELL LIKE CLOWN. EVERYBODY SMELLS LIKE CLOWN THIS WEEK. THE CIRCUS IS IN TOWN."
+    ] },
+    edge_dancer: { name: "LUCKY'S GENERAL GOODS (SETTLEMENT)", keeper: 'EDGE DANCER', sprite: 'edge_dancer', portrait: 'p_edge_dancer', items: [
+      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. SKYFOWL GRADE. SAME POTION, MORE FEATHERS IN IT.', price: 30, give: { potion: 1 } },
+      { id: 'potion3', name: 'POTION THREE PACK', desc: 'THREE POTIONS. A DISCOUNT FOR THE FLIGHTLESS. EDGE DANCER INSISTS IT IS NOT AN INSULT.', price: 80, give: { potion: 3 } },
+      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: 'THREE JUGS FOR CRAFTING. THE SKYFOWL DRINK IT FROM SAUCERS. DO NOT ASK.', price: 32, give: { item: 'moonshine', n: 3 } },
+      { id: 'smoke2', name: 'SMOKE BOMB PAIR', desc: 'TWO SMOKE BOMBS. FOR WHEN ONE DRAMATIC EXIT IS NOT ENOUGH.', price: 34, give: { item: 'smoke', n: 2 } },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A SILVER BOX. EDGE DANCER FOUND IT ON A ROOF. HE FINDS A LOT OF THINGS ON ROOFS.', price: 90, give: { box: 'silver' }, limit: 2 }
+    ], lines: [
+      "YES, THIS IS ALSO LUCKY'S. LUCKY IS A FRANCHISE. LUCKY IS EVERYWHERE. DO NOT THINK ABOUT IT TOO HARD.",
+      "WELCOME, GROUND PERSON. PLEASE WIPE YOUR FEET. ALL OF THEM. YOU HAVE GLITTER ON THEM, WHY DO YOU HAVE GLITTER ON THEM.",
+      "THE MAGISTRATE NEVER COMES DOWN TO THE SHOPS. MISS QUILL HANDLES EVERYTHING. MISS QUILL IS VERY ORGANIZED.",
+      "A FLIGHTLESS CUSTOMER WITH GOLD. THE MODERN WORLD IS AMAZING."
+    ] },
+    talon: { name: "TALON STRONG'S OUTFITTERS", keeper: 'TALON STRONG', sprite: 'talon', portrait: 'p_talon', items: [
+      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. TALON CALLS IT A RECOVERY BEVERAGE.', price: 32, give: { potion: 1 } },
+      { id: 'skin_jacket', name: 'JACKET AND JEANS', desc: 'AN OUTFIT. PANTS INCLUDED. THE AUDIENCE WILL WRITE LETTERS.', price: 220, give: { skin: 'carl_jacket' }, limit: 1 },
+      { id: 'skin_toga', name: 'THE SENATOR', desc: 'A BEDSHEET TOGA. SKYFOWL FIND IT DIGNIFIED. NOBODY ELSE DOES.', price: 260, give: { skin: 'carl_toga' }, limit: 1 },
+      { id: 'skin_kilt', name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICK. FREEBALLING APPROVED, WHICH TALON SAYS LIKE IT IS A FEATURE.', price: 300, give: { skin: 'carl_kilt' }, limit: 1 },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A GOLD BOX. TALON WON IT AT CARDS. TALON CHEATS AT CARDS.', price: 180, give: { box: 'gold' }, limit: 1 }
+    ], lines: [
+      "TALON STRONG. STRONG IS THE LAST NAME. IT IS ALSO A LIFESTYLE.",
+      "CLOTHES MAKE THE CRAWLER. YOU, FOR EXAMPLE, ARE MADE OF A JACKET AND ONE BAD DECISION.",
+      "I HAVE PANTS. I HAVE SEVERAL PANTS. I AM NOT JUDGING. I AM SELLING.",
+      "THE ELVES OF THE 201ST BUY UNIFORMS HERE. THEY PAY IN EXACT CHANGE. CREEPY PEOPLE PAY IN EXACT CHANGE."
+    ] },
+    pustule: { name: 'HOBGOBS AND BOOM STICKS', keeper: 'PUSTULE', sprite: 'pustule', portrait: 'p_pustule', items: [
+      { id: 'hob4', name: 'HOB-LOBBERS, FOUR', desc: 'FOUR HOB-LOBBERS. FUSED OR IMPACT, PUSTULE ADJUSTS THEM WITH HER TEETH.', price: 40, give: { item: 'hob', n: 4 } },
+      { id: 'hob10', name: 'HOB-LOBBERS, TEN', desc: 'TEN HOB-LOBBERS. A BULK DISCOUNT AND A SMILE THAT OOZES. LITERALLY.', price: 90, give: { item: 'hob', n: 10 } },
+      { id: 'dyn', name: 'GOBLIN DYNAMITE', desc: 'ONE STICK. LONG FUSE, SHORT TEMPER. BIG BLAST.', price: 30, give: { item: 'dyn', n: 1 } },
+      { id: 'dyn3', name: 'GOBLIN DYNAMITE, THREE', desc: 'THREE STICKS. ENOUGH TO REDECORATE A MANTA RAY.', price: 80, give: { item: 'dyn', n: 3 } },
+      { id: 'smoke3', name: 'SMOKE CURTAINS, THREE', desc: 'HOBGOBLIN SMOKE CURTAINS. PUSTULE SAYS THEY SMELL LIKE LAVENDER. THEY SMELL LIKE PUSTULE.', price: 45, give: { item: 'smoke', n: 3 } },
+      { id: 'moonshine3', name: 'HOBGOBLIN HOOCH, THREE', desc: 'THREE JUGS OF MOONSHINE. STRONGER THAN LUCKY\'S. THE JUGS ARE SWEATING.', price: 30, give: { item: 'moonshine', n: 3 } }
+    ], lines: [
+      "WELL HELLO, SUGAR. HOBGOBS AND BOOM STICKS, OPEN ALL NIGHT. YOU BLOW IT UP, I PROBABLY SOLD IT.",
+      "LIKE THE SHIRT? IT'S A UNICORN IN SUNGLASSES. IT'S THE COOLEST THING I OWN AND I OWN A LOT OF DYNAMITE.",
+      "DON'T STARE AT THE SORE, HONEY. IT KNOWS WHEN YOU STARE.",
+      "MORDECAI'S FRIENDS GET THE GOOD FUSES. EVERYBODY ELSE GETS THE FUN FUSES.",
+      "SMOKE CURTAINS ARE BACK IN STOCK. I TOLD YOU I'D HAVE THEM. PUSTULE KEEPS HER PROMISES. AND HER FINGERS. MOSTLY."
+    ] },
+    quint: { name: "QUINT'S PHARMACY", keeper: 'QUINT', sprite: 'quint', portrait: 'p_quint', items: [
+      { id: 'potion2', name: 'HEALTH POTION, TWO', desc: 'TWO POTIONS, MEMBER PRICE. QUINT DOES NOT SMILE WHEN HE SAYS MEMBER PRICE.', price: 50, give: { potion: 2 } },
+      { id: 'potion5', name: 'HEALTH POTION, FIVE', desc: 'FIVE POTIONS. FOR CRAWLERS WITH PLANS. OR WITHOUT THEM.', price: 115, give: { potion: 5 } },
+      { id: 'starter', name: "ALCHEMIST'S STARTER KIT", desc: 'FIVE JUGS OF MOONSHINE AND A FUNNEL. MORDECAI BOUGHT ONE TOO. HIS IS ALREADY EMPTY.', price: 55, give: { item: 'moonshine', n: 5 } },
+      { id: 'skin_pajamas', name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SLIPPERS JUMP TWICE. QUINT WILL NOT SAY WHERE HE GOT THEM.', price: 350, give: { skin: 'carl_pajamas' }, limit: 1 },
+      { id: 'box_gold', name: 'UNDER THE COUNTER', desc: 'A GOLD BOX. NO QUESTIONS. QUINT WAS A CRAWLER ONCE. HE KNOWS WHAT YOU NEED.', price: 200, give: { box: 'gold' }, limit: 2 }
+    ], lines: [
+      "PHARMACY. QUINT. WHAT DO YOU NEED.",
+      "I WAS A CRAWLER ONCE. NOW I'M HALF DJINN, HALF GARBAGE SCOWL AND ALL PHARMACIST. DON'T ASK HOW. IT DOESN'T GET BETTER.",
+      "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS.",
+      "YES, THE VOICE IS REAL. NO, I WON'T SAY THE LINE. EVERYBODY WANTS THE LINE.",
+      "DON'T DIE IN THE CLUB. THE CLEANUP FEE IS RIDICULOUS."
+    ] }
+  };
+
+  D.inns = {
+    pug: { name: 'THE BELLY-RUBBED PUG', price: 10, keeper: 'gordo', keeperName: 'GORDO', theme: 'inn_pug', lines: [
+      "WELCOME TO THE PUG. TEN GOLD A NIGHT. FOOD COSTS NOW. THE SHOW SAYS IT BUILDS CHARACTER. I SAY IT BUILDS PROFIT.",
+      "DON'T MIND THE SMELL. THAT'S ME. WET MOSS. IT'S A BOPCA THING. YOU GET USED TO IT. NOBODY GETS USED TO IT.",
+      "YOUR GUIDE CAME IN THROUGH THE WALL AGAIN. HE DOES THAT. HE ALSO DOES THE OTHER THING. ON THE FLOOR. I CLEANED IT.",
+      "THREE TVS, A FIREPLACE AND A STEW THAT IS MOSTLY STEW. YOU'RE WELCOME."
+    ] },
+    narwhal: { name: 'THE ONE-EYED NARWHAL', price: 20, keeper: 'fitz', keeperName: 'FITZ', theme: 'inn_narwhal', lines: [
+      "ONE-EYED NARWHAL. FOUR ROOMS. TWENTY GOLD. THE NARWHAL HAD TWO EYES WHEN I HUNG IT UP. DON'T ASK.",
+      "THE MAGISTRATE? FEATHERFALL. DARK CLERIC. CONTROLS THE UNDEAD, THEY SAY. NOBODY'S SEEN HIM IN YEARS. NOBODY ASKS.",
+      "SKYFOWL DRINK UPSTAIRS. EVERYBODY ELSE DRINKS DOWN HERE. THAT'S THE WHOLE TOWN IN ONE SENTENCE.",
+      "YOUR BIRD-MAN GUIDE, OR WHATEVER HE IS THIS WEEK, OWES ME FOR SIX BOTTLES. TELL HIM FITZ SAID HI. TELL HIM FITZ SAID PAY."
+    ] }
+  };
 
   /* ---------------- enemy scaling (optional helper) ----------------
-     Index = floor-1. hp tracks expected punch damage at that floor's natural
-     level; dmg tracks expected max hp; xp tracks the level curve. */
-  D.floorScale = [
+     tier = home act of the base stats. Expected punch damage: act 1 ~3-8, act 2 ~9-12,
+     act 3 ~12-16. Max hp: act 1 16-26, act 2 26-34, act 3 34-44. */
+  D.actScale = [
     { hp: 1.0, dmg: 1.0, xp: 1.0, gold: 1.0 },
-    { hp: 1.8, dmg: 1.4, xp: 1.8, gold: 1.4 },
-    { hp: 2.5, dmg: 1.8, xp: 2.2, gold: 1.8 },
-    { hp: 3.4, dmg: 2.2, xp: 2.5, gold: 2.2 },
-    { hp: 4.5, dmg: 2.7, xp: 3.1, gold: 2.6 },
-    { hp: 5.4, dmg: 3.1, xp: 3.7, gold: 3.0 },
-    { hp: 6.3, dmg: 3.5, xp: 5.1, gold: 3.4 },
-    { hp: 7.0, dmg: 3.9, xp: 5.5, gold: 3.8 },
-    { hp: 8.2, dmg: 4.4, xp: 5.8, gold: 4.2 },
-    { hp: 9.0, dmg: 4.8, xp: 6.2, gold: 4.6 },
-    { hp: 9.8, dmg: 5.2, xp: 6.6, gold: 5.0 }
+    { hp: 1.9, dmg: 1.4, xp: 1.8, gold: 1.4 },
+    { hp: 2.6, dmg: 1.8, xp: 2.4, gold: 1.8 }
   ];
-  D.enemyFor = function (id, floor) {
+  D.enemyFor = function (id, act) {
     var e = D.enemies && D.enemies[id];
     if (!e) return null;
-    var top = D.floorScale.length;
+    var top = D.actScale.length;
     var t = Math.max(1, Math.min(top, e.tier || 1));
-    var f = Math.max(1, Math.min(top, floor || t));
+    var f = Math.max(1, Math.min(top, act || t));
     var out = {}, k;
     for (k in e) if (Object.prototype.hasOwnProperty.call(e, k)) out[k] = e[k];
-    if (f <= t) return out;
-    var a = D.floorScale[t - 1], b = D.floorScale[f - 1];
+    if (f <= t || e.citizen || e.invulnerable) return out;
+    var a = D.actScale[t - 1], b = D.actScale[f - 1];
     out.hp = Math.max(1, Math.round(e.hp * b.hp / a.hp));
     out.dmg = Math.max(1, Math.round(e.dmg * b.dmg / a.dmg));
-    out.xp = Math.max(1, Math.round(e.xp * b.xp / a.xp));
+    out.xp = Math.max(0, Math.round(e.xp * b.xp / a.xp));
+    if (e.bodyHp) out.bodyHp = Math.round(e.bodyHp * b.hp / a.hp);
     if (e.gold) out.gold = [Math.round(e.gold[0] * b.gold / a.gold), Math.round(e.gold[1] * b.gold / a.gold)];
     out.scaledFrom = t;
     return out;
   };
 
-  /* ---------------- enemies ----------------
-     Balance: floor N regular enemy ~2-4 punches at the natural level
-     (punch dmg F1 2, F2 4, F3 5-6, F4 7-8, F5 10, F6 12, F7 14, F8 15-16, F9 18).
-     Contact dmg ~ maxHp/10. xp tuned for ~L3-4 by F2, ~L8 by F4, ~L20 by F9. */
+  /* ---------------- enemies (ids fixed by DESIGN 6.4) ---------------- */
   D.enemies = {
-    /* floor 1 */
-    rat: { name: 'TUTORIAL RAT', tier: 1, hp: 3, dmg: 1, speed: 28, w: 12, h: 8, ai: 'walker',
-      xp: 1, gold: [0, 1], sprite: 'rat', kb: 1.2,
-      flavor: "A RAT. IN A SEWER. GROUNDBREAKING. IT HAS SEEN THINGS AND IT WANTS TO SHOW YOU." },
-    roach: { name: 'SEWER ROACH', tier: 1, hp: 2, dmg: 1, speed: 48, w: 10, h: 6, ai: 'walker',
-      xp: 1, gold: [0, 1], sprite: 'roach', kb: 1.4,
-      flavor: "SURVIVED THREE APOCALYPSES. WILL NOT SURVIVE YOUR FOOT. PROBABLY." },
-    goblin: { name: 'GOBLIN GRUNT', tier: 1, hp: 6, dmg: 1, speed: 40, w: 12, h: 16, ai: 'chaser',
-      aggro: 110, xp: 3, gold: [1, 3], sprite: 'goblin',
-      flavor: "SMALL, GREEN, AND DEEPLY OFFENDED BY YOUR PANTS SITUATION." },
-    bat: { name: 'DRIP BAT', tier: 1, hp: 3, dmg: 1, speed: 50, w: 12, h: 10, ai: 'flyer', flying: true,
-      xp: 1, gold: [0, 1], sprite: 'bat',
-      flavor: "FLAPS AT FACE HEIGHT ON PURPOSE. NOBODY KNOWS WHY. NOBODY LIKES IT." },
-
-    /* floor 2 */
-    goblin_archer: { name: 'GOBLIN ARCHER', tier: 2, hp: 9, dmg: 2, speed: 34, w: 12, h: 16, ai: 'shooter',
-      projectile: 'arrow', shootEvery: 2.4, aggro: 150, xp: 4, gold: [1, 4], sprite: 'goblin_archer',
-      flavor: "FAILED ARCHERY SCHOOL TWICE. STILL BETTER AT IT THAN YOU ARE AT DODGING." },
-    goblin_brute: { name: 'GOBLIN BRUTE', tier: 2, hp: 26, dmg: 2, speed: 36, w: 18, h: 22, ai: 'charger',
-      chargeSpeed: 150, aggro: 130, armor: 1, kb: 0.4, xp: 13, gold: [4, 9], sprite: 'goblin_brute',
-      flavor: "HIS NECK IS WIDER THAN HIS HEAD. THIS IS NOT A COMPLIMENT, AND ALSO IT IS." },
-    grub: { name: 'CAVE GRUB', tier: 2, hp: 6, dmg: 1, speed: 18, w: 12, h: 8, ai: 'walker',
-      xp: 2, gold: [0, 2], sprite: 'grub', kb: 1.2,
-      flavor: "SQUISHY. SLOW. DELICIOUS, ACCORDING TO GOBLINS. DO NOT ASK GOBLINS ABOUT FOOD." },
-    shaman: { name: 'GOBLIN SHAMAN', tier: 2, hp: 12, dmg: 2, speed: 26, w: 12, h: 18, ai: 'shooter',
-      projectile: 'fireball', shootEvery: 2.8, aggro: 160, xp: 7, gold: [2, 6], sprite: 'shaman',
-      flavor: "TOOK ONE ONLINE COURSE IN FIRE MAGIC. PASSED. BARELY. AIMS FOR THE BOXERS." },
-    juicer_minion: { name: 'JUICED GOBLIN', tier: 2, hp: 15, dmg: 2, speed: 46, w: 16, h: 20, ai: 'chaser',
-      aggro: 140, jump: 200, xp: 6, gold: [2, 5], sprite: 'juicer_minion',
-      flavor: "SKIPS LEG DAY. SKIPS EVERY DAY THAT IS NOT CHEST DAY. VEINS HAVE VEINS." },
-
-    /* floor 3 */
-    clown: { name: 'HOBO CLOWN', tier: 3, hp: 15, dmg: 2, speed: 40, w: 14, h: 20, ai: 'jumper',
-      jump: 230, aggro: 140, xp: 5, gold: [2, 6], sprite: 'clown',
-      flavor: "HONKS WHEN HIT. HONKS WHEN SAD. HONKS AT NIGHT. NOBODY SLEEPS ON FLOOR THREE." },
-    clown_brute: { name: 'STRONGMAN CLOWN', tier: 3, hp: 42, dmg: 3, speed: 34, w: 20, h: 24, ai: 'hopper',
-      jump: 260, aggro: 150, armor: 1, kb: 0.3, xp: 18, gold: [6, 14], sprite: 'clown_brute',
-      flavor: "THE DUMBBELL IS PAINTED FOAM. THE FIST IS NOT. LEARN THE DIFFERENCE FAST." },
-    skyfowl: { name: 'SKYFOWL', tier: 3, hp: 12, dmg: 2, speed: 62, w: 16, h: 12, ai: 'flyer', flying: true,
-      xp: 5, gold: [1, 4], sprite: 'skyfowl',
-      flavor: "A PIGEON THAT GOT INTO THE LOOT. NOW IT HAS TALONS AND OPINIONS." },
-    swamp_troll: { name: 'SWAMP TROLL', tier: 3, hp: 38, dmg: 3, speed: 30, w: 20, h: 24, ai: 'chaser',
-      aggro: 120, armor: 1, kb: 0.3, xp: 16, gold: [5, 12], sprite: 'swamp_troll',
-      flavor: "SMELLS LIKE A GYM BAG LEFT IN A POND. BECAUSE THAT IS WHAT HE IS, MOSTLY." },
-    gator: { name: 'BOG GATOR', tier: 3, hp: 18, dmg: 3, speed: 34, w: 22, h: 10, ai: 'charger',
-      chargeSpeed: 170, aggro: 120, xp: 7, gold: [2, 6], sprite: 'gator',
-      flavor: "ALL MOUTH, NO MANNERS. HAS NEVER ONCE SAID SEE YOU LATER." },
-
-    /* floor 4 */
-    steam_goblin: { name: 'STEAM GOBLIN', tier: 4, hp: 22, dmg: 3, speed: 34, w: 14, h: 18, ai: 'bomber',
-      projectile: 'bottle', shootEvery: 2.6, aggro: 160, xp: 6, gold: [3, 8], sprite: 'steam_goblin',
-      flavor: "BUILT HIS OWN BACKPACK BOILER. IT LEAKS. HE THROWS THE LEAKS AT YOU." },
-    conductor: { name: 'THE CONDUCTOR', tier: 4, hp: 52, dmg: 3, speed: 36, w: 16, h: 22, ai: 'charger',
-      chargeSpeed: 190, aggro: 170, armor: 1, kb: 0.3, xp: 17, gold: [8, 16], sprite: 'conductor',
-      flavor: "TICKETS, PLEASE. NO TICKET? THEN YOU ARE THE TICKET. PUNCHED. HARD." },
-    rail_rat: { name: 'RAIL RAT', tier: 4, hp: 18, dmg: 3, speed: 52, w: 14, h: 10, ai: 'jumper',
-      jump: 210, aggro: 130, xp: 5, gold: [2, 5], sprite: 'rail_rat',
-      flavor: "A RAT THAT LIVES ON TRAINS. FASTER THAN YOUR RAT. ANGRIER THAN YOUR RAT." },
-
-    /* floor 5 */
-    fishman: { name: 'DEEP FISHMAN', tier: 5, hp: 30, dmg: 3, speed: 42, w: 14, h: 20, ai: 'chaser',
-      aggro: 140, jump: 220, xp: 7, gold: [3, 9], sprite: 'fishman',
-      flavor: "HALF FISH, HALF MAN, ALL CARDIO. MOIST HANDSHAKE. AVOID THE HANDSHAKE." },
-    jelly: { name: 'STING JELLY', tier: 5, hp: 22, dmg: 3, speed: 30, w: 14, h: 14, ai: 'flyer', flying: true,
-      xp: 6, gold: [2, 7], sprite: 'jelly',
-      flavor: "FLOATS. GLOWS. STINGS. HAS NO BRAIN AND IS STILL WINNING AGAINST YOU." },
-    crab: { name: 'CHROME CRAB', tier: 5, hp: 64, dmg: 4, speed: 30, w: 18, h: 12, ai: 'walker',
-      armor: 2, kb: 0.3, xp: 17, gold: [8, 18], sprite: 'crab',
-      flavor: "ARMORED. SIDEWAYS. FURIOUS. KICK IT FROM ABOVE, THE SHELL IS ALL BRAG." },
-
-    /* floor 6 */
-    hunter: { name: 'TROPHY HUNTER', tier: 6, hp: 34, dmg: 4, speed: 36, w: 14, h: 20, ai: 'shooter',
-      projectile: 'arrow', shootEvery: 2.0, aggro: 180, xp: 9, gold: [4, 10], sprite: 'hunter',
-      flavor: "PAID A LOT OF MONEY TO SHOOT YOU. WOULD LIKE A REFUND. DO NOT GIVE HIM ONE." },
-    hound: { name: 'BLOOD HOUND', tier: 6, hp: 30, dmg: 4, speed: 50, w: 20, h: 12, ai: 'charger',
-      chargeSpeed: 210, aggro: 170, xp: 8, gold: [3, 8], sprite: 'hound',
-      flavor: "GOOD BOY. NOT YOUR GOOD BOY. SOMEBODY ELSE'S VERY BAD GOOD BOY." },
-    masked_noble: { name: 'MASKED NOBLE', tier: 6, hp: 90, dmg: 5, speed: 40, w: 14, h: 22, ai: 'shooter',
-      projectile: 'knife', shootEvery: 1.8, aggro: 170, armor: 2, kb: 0.3, xp: 26, gold: [12, 24], sprite: 'masked_noble',
-      flavor: "OLD MONEY, NEW KNIVES. CONSIDERS YOU A SPORTING INCONVENIENCE." },
-
-    /* floor 7 */
-    ghoul: { name: 'MANOR GHOUL', tier: 7, hp: 42, dmg: 4, speed: 40, w: 14, h: 20, ai: 'chaser',
-      aggro: 140, xp: 11, gold: [4, 10], sprite: 'ghoul',
-      flavor: "USED TO BE THE BUTLER. STILL DOES THE DISHES. THE DISHES ARE CRAWLERS NOW." },
-    gargoyle: { name: 'GARGOYLE', tier: 7, hp: 40, dmg: 5, speed: 54, w: 18, h: 16, ai: 'flyer', flying: true,
-      armor: 2, xp: 12, gold: [4, 11], sprite: 'gargoyle',
-      flavor: "SPENT FOUR HUNDRED YEARS ON A ROOF FROWNING. NOW IT GETS TO FROWN AT YOU UP CLOSE." },
-    skeleton: { name: 'BONE THROWER', tier: 7, hp: 34, dmg: 4, speed: 34, w: 12, h: 20, ai: 'bomber',
-      projectile: 'rock', shootEvery: 2.2, aggro: 170, xp: 10, gold: [3, 9], sprite: 'skeleton',
-      flavor: "THROWS HIS OWN BONES. ALWAYS HAS SPARES. DO NOT ASK WHERE THE SPARES COME FROM." },
-
-    /* floor 8 */
-    mutant: { name: 'RUIN MUTANT', tier: 8, hp: 50, dmg: 5, speed: 44, w: 18, h: 22, ai: 'chaser',
-      aggro: 150, jump: 210, xp: 12, gold: [5, 12], sprite: 'mutant',
-      flavor: "THREE ARMS. TWO OPINIONS. ONE GOAL: HUGGING YOU UNTIL YOU POP." },
-    drone: { name: 'SURVEY DRONE', tier: 8, hp: 34, dmg: 4, speed: 60, w: 14, h: 10, ai: 'flyer', flying: true,
-      projectile: 'laser_orb', shootEvery: 3.0, aggro: 180, xp: 10, gold: [4, 10], sprite: 'drone',
-      flavor: "FILMING YOU FOR THE HIGHLIGHT REEL. ALSO SHOOTING YOU. MULTITASKER." },
-    golem: { name: 'SCRAP GOLEM', tier: 8, hp: 130, dmg: 6, speed: 26, w: 22, h: 24, ai: 'hopper',
-      jump: 250, aggro: 150, armor: 3, kb: 0.1, xp: 32, gold: [14, 28], sprite: 'golem',
-      flavor: "MADE OF CARS, FRIDGES AND ONE VERY CONFUSED VENDING MACHINE. STILL SELLS SODA." },
-
-    /* floor 9 */
-    soldier: { name: 'FACTION SOLDIER', tier: 9, hp: 54, dmg: 5, speed: 40, w: 14, h: 20, ai: 'shooter',
-      projectile: 'bolt', shootEvery: 1.8, aggro: 180, xp: 12, gold: [6, 14], sprite: 'soldier',
-      flavor: "SIGNED UP FOR GLORY. GOT A HELMET THAT DOES NOT FIT AND YOU." },
-    sniper: { name: 'ROOF SNIPER', tier: 9, hp: 40, dmg: 6, speed: 0, w: 14, h: 20, ai: 'turret',
-      projectile: 'laser_orb', shootEvery: 2.4, aggro: 240, xp: 12, gold: [6, 14], sprite: 'sniper',
-      flavor: "HAS NOT MOVED IN NINE HOURS. HAS A JAR. DO NOT THINK ABOUT THE JAR." },
-    war_beast: { name: 'WAR BEAST', tier: 9, hp: 150, dmg: 7, speed: 36, w: 24, h: 18, ai: 'charger',
-      chargeSpeed: 220, aggro: 190, armor: 3, kb: 0.1, xp: 34, gold: [16, 32], sprite: 'war_beast',
-      flavor: "SOMEBODY PUT ARMOR ON A RHINO AND TOLD IT YOU INSULTED ITS MOTHER." },
-    cultist: { name: 'SHOW CULTIST', tier: 9, hp: 46, dmg: 5, speed: 0, w: 14, h: 22, ai: 'spawner',
-      spawn: 'skeleton', spawnEvery: 5, aggro: 200, xp: 13, gold: [6, 14], sprite: 'cultist',
-      flavor: "WORSHIPS THE RATINGS. CHANTS THE SPONSOR NAMES. SUMMONS BONY BACKUP DANCERS." }
+    lemur: { name: 'FORMER CIRCUS LEMUR', level: 8, tier: 1, hp: 11, dmg: 2, speed: 44, w: 12, h: 14, ai: 'perch',
+      projectile: 'knife', shootEvery: 2.2, aggro: 150, dropRange: 40, xp: 5, gold: [1, 4], sprite: 'lemur', hiddenUntilSeen: true,
+      flavor: "RED FUR, A PAINTED HUMAN SKULL FOR A FACE AND A BANDOLIER OF KNIVES. THE CUTEST THING ON THIS FLOOR. THAT IS THE PROBLEM WITH THIS FLOOR." },
+    stilt_clown: { name: 'TERROR THE CLOWN', level: 10, tier: 1, hp: 30, dmg: 3, speed: 46, w: 14, h: 44, ai: 'stilt',
+      reach: 28, aggro: 170, fearImmune: true, kb: 0.4, xp: 16, gold: [4, 10], sprite: 'stilt_clown',
+      flavor: "ELEVEN FEET OF CLOWN, MOST OF IT STILT, ALL OF IT FUSED. NO EYES, NO NOSE, ONE MOUTH. FEAR DOES NOTHING. IT HAS NO ROOM LEFT FOR FEAR." },
+    fat_clown: { name: 'CLAMMY-TYPE CLOWN', level: 9, tier: 1, hp: 18, dmg: 2, speed: 34, w: 20, h: 18, ai: 'jumper',
+      jump: 240, aggro: 140, kb: 0.6, xp: 6, gold: [2, 5], sprite: 'fat_clown',
+      flavor: "SHORT, THREE TIMES AS WIDE AND WEARING A GOWN THAT WAS PINK BEFORE THE CATACLYSM. BOUNCES ON ITS BELLY. HAS A LOT OF TEETH FOR A CLOWN." },
+    mold_lion: { name: 'MOLD LION', level: 15, tier: 1, hp: 22, dmg: 3, speed: 50, w: 26, h: 16, ai: 'charger',
+      chargeSpeed: 190, aggro: 160, regrow: true, regrowTime: 8, xp: 12, gold: [3, 8], sprite: 'mold_lion',
+      flavor: "A LION WITH A MANE OF PINK AND GREEN WORMS AND ONE GLOWING EMERALD EYE. KILL IT AND IT GETS BACK UP. BURN IT AND IT DOES NOT. JUST SAYING." },
+    giraffe: { name: 'ARTILLERY GIRAFFE', level: 12, tier: 1, hp: 40, dmg: 3, speed: 8, w: 24, h: 40, ai: 'launcher',
+      spawn: 'lemur', spawnEvery: 5, maxSpawn: 3, aggro: 220, kb: 0.1, armor: 1, xp: 18, gold: [5, 12], sprite: 'giraffe',
+      flavor: "THE CIRCUS TAUGHT IT TO CATCH LEMURS ON ITS NECK. THE CATACLYSM TAUGHT IT TO THROW THEM. AT YOU. FROM ACROSS THE STREET." },
+    street_urchin: { name: 'STREET URCHIN', level: 8, tier: 1, hp: 14, dmg: 2, speed: 60, w: 14, h: 14, ai: 'urchin',
+      neutral: true, nightOnly: true, angerTime: 1, xp: 5, gold: [0, 3], sprite: 'street_urchin',
+      flavor: "A KNEE-HIGH SPIKY TUMBLEWEED WITH A JANITOR'S WORK ETHIC. IT ONLY WANTS THE TRASH. STAND BETWEEN IT AND THE TRASH. SEE WHAT HAPPENS." },
+    brain_boiler: { name: 'BRAIN BOILER', level: 10, tier: 1, hp: 12, dmg: 1, speed: 16, w: 16, h: 20, ai: 'floater', flying: true,
+      projectile: 'psionic', shootEvery: 3.2, aggro: 160, fearImmune: true, xp: 6, gold: [1, 4], sprite: 'brain_boiler',
+      flavor: "A SQUID THAT GOT STUCK INSIDE AN UMBRELLA AND DECIDED TO MAKE IT EVERYBODY'S PROBLEM. ITS PSIONIC RING GIVES YOU A HEADACHE. IT IS ALSO A HEADACHE." },
+    incubus: { name: 'INCUBUS', level: 14, tier: 1, hp: 24, dmg: 3, speed: 40, w: 14, h: 22, ai: 'charm',
+      charmTime: 2, charmEvery: 5, aggro: 140, xp: 12, gold: [3, 9], sprite: 'incubus',
+      flavor: "SQUARE JAW, BAT WINGS, AND A SMILE THAT FLIPS YOUR LEFT AND RIGHT. YOUR GUIDE IS ONE OF THESE NOW. DO NOT TELL HIM HE IS THE PRETTY ONE." },
+    berserker: { name: 'SHAMBLING BERSERKER', level: 12, tier: 2, hp: 60, dmg: 4, speed: 22, w: 26, h: 44, ai: 'berserker',
+      darkMul: 4, berserkSpeed: 120, aggro: 150, armor: 1, kb: 0.2, xp: 26, gold: [6, 14], sprite: 'berserker',
+      flavor: "THIRTEEN FEET OF STITCHED-TOGETHER LEFTOVERS. SLOW IN THE LIGHT. IN THE DARK IT GETS FOUR TIMES WORSE, WHICH IS A NUMBER WE MEASURED." },
+    city_elf: { name: 'CITY ELF OF THE 201ST', level: 16, tier: 2, hp: 30, dmg: 3, speed: 38, w: 12, h: 20, ai: 'caster',
+      projectile: 'bolt', shootEvery: 2.4, orbEvery: 7, orbTime: 6, aggro: 170, xp: 15, gold: [4, 10], sprite: 'city_elf',
+      flavor: "UNIFORMED MILITIA OF THE 201ST SECURITY GROUP. THEY THINK THE SKYFOWL ARE ANGELS. THEY CAST DARKNESS LIKE IT IS A HOBBY. IT IS THEIR WHOLE PERSONALITY." },
+    wand_bearer: { name: 'WAND BEARER', level: 17, tier: 2, hp: 34, dmg: 3, speed: 34, w: 12, h: 20, ai: 'caster',
+      projectile: 'bolt', shootEvery: 2.0, orbEvery: 9, orbTime: 5, aggro: 180, xp: 16, gold: [5, 12], sprite: 'wand_bearer',
+      flavor: "TEACHING STAFF OF THE APITO EDUCATION CENTER. THE CURRICULUM IS WAND, WAND AND MORE WAND. TODAY'S LESSON IS YOU." },
+    krasue: { name: 'KRASUE', level: 16, tier: 2, hp: 32, dmg: 4, speed: 44, w: 16, h: 24, ai: 'krasue', flying: true,
+      magicOnly: true, bodyHp: 34, leash: 96, regrowTime: 8, aggro: 170, xp: 34, gold: [6, 14], sprite: 'krasue',
+      flavor: "A FLYING HEAD THAT BROUGHT ITS ORGANS ALONG FOR THE TRIP. GHOST-CLASS. KILL THE HEAD AND IT COMES BACK. FIND THE BODY. WRECK THE BODY." },
+    shadow_leak: { name: 'SHADOW LEAK', level: 14, tier: 2, hp: 14, dmg: 2, speed: 52, w: 14, h: 14, ai: 'swarm', flying: true,
+      magicOnly: true, aggro: 180, xp: 16, gold: [1, 4], sprite: 'shadow_leak',
+      flavor: "A PUFF OF HUNGRY SMOKE WITH A COLD TOUCH. GHOST-CLASS, SO BOMBS PASS RIGHT THROUGH. FISTS DO NOT. FREE XP, IF YOU ARE THE KIND OF PERSON WHO HITS SMOKE." },
+    ruin_flocker: { name: 'RUIN FLOCKER', level: 18, tier: 3, hp: 26, dmg: 4, speed: 70, w: 16, h: 12, ai: 'flyer', flying: true,
+      aggro: 200, xp: 14, gold: [2, 6], sprite: 'ruin_flocker',
+      flavor: "RAGGED FEATHERED BATS THAT NEST IN THE RUINS AND PANIC WHEN THE MAGIC GOES WEIRD. THE MAGIC IS VERY WEIRD RIGHT NOW. THEY ARE VERY PANICKED." },
+    guard: { name: 'VILLAGE GUARD SWORDSMAN', level: 75, tier: 1, hp: 9999, dmg: 99, speed: 34, w: 18, h: 34, ai: 'guard',
+      invulnerable: true, fearImmune: true, kb: 0, xp: 0, gold: [0, 0], sprite: 'guard',
+      flavor: "LEVEL 75. FULL PLATE. A BLADE AS LONG AS YOU. NO JAIL ON THIS FLOOR, JUST THE ONE SENTENCE. HE CARRIES IT OUT HIMSELF." },
+    citizen_human: { name: 'TOWNSPERSON', level: 1, tier: 1, hp: 1, dmg: 0, speed: 20, w: 12, h: 20, ai: 'citizen',
+      citizen: true, xp: 0, gold: [0, 0], sprite: 'citizen_human',
+      flavor: "A DESCENDANT OF THE CATACLYSM SURVIVORS. WORTH ZERO XP. HURTING ONE IS A CRIME. THE GUARDS DO NOT DO WARNINGS." },
+    citizen_skyfowl: { name: 'SKYFOWL CITIZEN', level: 3, tier: 1, hp: 1, dmg: 0, speed: 22, w: 14, h: 24, ai: 'citizen',
+      citizen: true, xp: 0, gold: [0, 0], sprite: 'citizen_skyfowl',
+      flavor: "AN EAGLE-HEADED ARISTOCRAT WHO THINKS YOUR FEET ARE A SOCIAL STATEMENT. THEY ARE. WORTH ZERO XP AND ONE DEATH PENALTY." },
+    chickadee: { name: 'CHICKADEE', level: 1, tier: 1, hp: 1, dmg: 0, speed: 28, w: 10, h: 12, ai: 'citizen',
+      citizen: true, xp: 0, gold: [0, 0], sprite: 'chickadee',
+      flavor: "A SMALL, ROUND BIRD PERSON. THE SKYFOWL'S FAVORITE COUSINS. DO NOT PUNCH THE CHICKADEE. EVERYONE WILL SEE YOU PUNCH THE CHICKADEE." }
   };
 
   /* ---------------- projectiles ---------------- */
   D.projectiles = {
+    knife:     { sprite: 'knife',     w: 8,  h: 3,  speed: 180, dmg: 2, gravity: 0,   life: 2.5 },
+    bolt:      { sprite: 'bolt',      w: 8,  h: 4,  speed: 190, dmg: 3, gravity: 0,   life: 2.5 },
+    worm:      { sprite: 'worm',      w: 8,  h: 4,  speed: 46,  dmg: 2, gravity: 320, life: 5, crawl: true },
+    spit:      { sprite: 'spit',      w: 10, h: 8,  speed: 130, dmg: 3, gravity: 200, life: 3 },
+    psionic:   { sprite: 'psionic',   w: 12, h: 12, speed: 70,  dmg: 2, gravity: 0,   life: 3, ring: true },
+    missile:   { sprite: 'missile',   w: 8,  h: 4,  speed: 220, dmg: 2, gravity: 0,   life: 2, friendly: true },
+    /* book 1 set, kept for compatibility (nothing in book 2 fires them) */
     arrow:     { sprite: 'arrow',     w: 8, h: 3, speed: 150, dmg: 1, gravity: 0,   life: 3 },
     rock:      { sprite: 'rock',      w: 6, h: 6, speed: 120, dmg: 1, gravity: 360, life: 3 },
     fireball:  { sprite: 'fireball',  w: 8, h: 8, speed: 110, dmg: 2, gravity: 0,   life: 3 },
     bubble:    { sprite: 'bubble',    w: 8, h: 8, speed: 60,  dmg: 1, gravity: -20, life: 4.5 },
-    bolt:      { sprite: 'bolt',      w: 8, h: 4, speed: 200, dmg: 2, gravity: 0,   life: 2.5 },
     bottle:    { sprite: 'bottle',    w: 6, h: 8, speed: 120, dmg: 2, gravity: 380, life: 3 },
     laser_orb: { sprite: 'laser_orb', w: 7, h: 7, speed: 130, dmg: 2, gravity: 0,   life: 3.5 },
-    knife:     { sprite: 'knife',     w: 8, h: 3, speed: 180, dmg: 2, gravity: 0,   life: 2.5 },
     spore:     { sprite: 'spore',     w: 6, h: 6, speed: 50,  dmg: 1, gravity: 30,  life: 5 },
-    note:      { sprite: 'note',      w: 7, h: 8, speed: 100, dmg: 1, gravity: 0,   life: 3.5 },
-    missile:   { sprite: 'missile',   w: 8, h: 4, speed: 220, dmg: 2, gravity: 0,   life: 2, friendly: true }
+    note:      { sprite: 'note',      w: 7, h: 8, speed: 100, dmg: 1, gravity: 0,   life: 3.5 }
   };
 
   /* ---------------- bosses ----------------
-     hp ~ 40x the expected punch damage at that point; 45-90 s fights.
-     Projectile dmg in bosses' attacks uses the projectile table; contact uses boss dmg. */
+     hp ~ 35-45x the expected punch damage at that point (45-90 s with the party). */
   D.bosses = {
-    hoarder: { name: 'THE HOARDER', title: 'MOTHER OF A THOUSAND ROACHES',
-      hp: 120, dmg: 2, w: 48, h: 32, sprite: 'hoarder', xp: 45, gold: [40, 70], flying: false,
+    terror_big: { name: 'TERROR THE CLOWN', title: 'THE TALL ONE AT THE END OF THE STREET', level: 12,
+      hp: 110, dmg: 3, w: 24, h: 56, sprite: 'terror_big', xp: 60, gold: [20, 40], flying: false, fearImmune: true,
       phases: [
-        { below: 1.0, speed: 34, pattern: ['walk:2', 'charge', 'idle:1.2', 'spawn:roach:2', 'walk:1.5', 'jump_slam', 'idle:1.4'] },
-        { below: 0.5, speed: 48, pattern: ['charge', 'idle:0.8', 'rain:rock:5', 'spawn:roach:3', 'jump_slam', 'idle:1', 'charge', 'idle:0.8'] }
+        { below: 1.0, speed: 46, pattern: ['walk:1.5', 'charge', 'idle:1', 'shoot:knife:2', 'walk:1', 'jump_slam', 'idle:1.2'] },
+        { below: 0.5, speed: 60, pattern: ['charge', 'idle:0.6', 'spawn:lemur:2', 'jump_slam', 'shockwave', 'shoot:knife:3', 'idle:0.9'] }
       ],
-      intro: ["OUR FIRST BOSS! SHE HAS NOT THROWN ANYTHING AWAY SINCE 1987, INCLUDING HER FEELINGS.",
-        "SHE IS GUARDING A PILE OF CRAP AND SHE WILL DIE FOR IT. LET'S HELP HER WITH THAT."],
-      defeat: "THE HOARDER IS DOWN! HER COLLECTION OF EMPTY YOGURT CUPS WILL BE AUCTIONED FOR CHARITY.",
-      loot: 'boss', unlock: { skin: 'carl_jacket' } },
+      intro: ["THAT CLOWN IS STANDING ON STILTS. THE STILTS ARE STANDING ON MORE CLOWN. IT IS CLOWN ALL THE WAY DOWN.",
+        "FEAR WILL NOT WORK ON THIS ONE, CRAWLER. FISTS MIGHT. KICK THE STILTS. KICK THEM LIKE THEY OWE YOU MONEY."],
+      defeat: "TERROR THE CLOWN HAS FALLEN DOWN! IT TOOK A WHILE! THERE WAS A LOT OF HIM TO FALL!",
+      loot: 'silver', unlock: null },
 
-    juicer: { name: 'THE JUICER', title: 'GOBLIN KING OF GAINS',
-      hp: 200, dmg: 2, w: 40, h: 40, sprite: 'juicer', xp: 85, gold: [70, 110], flying: false,
+    heather: { name: 'HEATHER THE BEAR', title: 'LEVEL 19 NEIGHBORHOOD BOSS', level: 19,
+      hp: 240, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 140, gold: [40, 70], flying: false, custard: 0.25,
       phases: [
-        { below: 1.0, speed: 44, pattern: ['walk:1.5', 'charge', 'idle:1', 'shoot:bottle:3', 'walk:1', 'jump_slam', 'idle:1.2'] },
-        { below: 0.6, speed: 58, pattern: ['charge', 'charge', 'idle:0.8', 'spawn:juicer_minion:2', 'jump_slam', 'shockwave', 'idle:1'] },
-        { below: 0.25, speed: 72, pattern: ['charge', 'shockwave', 'jump_slam', 'shockwave', 'rain:bottle:6', 'idle:0.8'] }
+        { below: 1.0, speed: 72, pattern: ['walk:1', 'charge', 'idle:0.8', 'jump_slam', 'idle:1', 'charge', 'charge', 'idle:1.2'] },
+        { below: 0.6, speed: 86, pattern: ['worms', 'charge', 'idle:0.6', 'jump_slam', 'worms', 'shockwave', 'charge', 'idle:1'] },
+        /* the custard ticket drops at 25%: grab it and she slows down for the finish */
+        { below: 0.25, speed: 24, pattern: ['walk:2', 'idle:2.5', 'walk:1.5', 'idle:2'] }
       ],
-      intro: ["HE BENCHES GOBLINS. HE CURLS GOBLINS. HE HAS NEVER ONCE STRETCHED.",
-        "CRAWLER, PLEASE WELCOME THE JUICER! HIS PROTEIN SHAKE IS MOSTLY LIGHTER FLUID!"],
-      defeat: "THE JUICER HAS TAPPED OUT! SOMEBODY PLEASE SPOT HIM. NO? FAIR.",
+      intro: ["HEATHER THE BEAR! FORTY YEARS ON ROLLER SKATES! RETIREMENT WAS WEEKS AWAY WHEN THE CATACLYSM HIT. NOW SHE HUNTS FOR THE CLOWNS.",
+        "FLAMING SKULL, FRONT PAWS MADE OF WORMS AND A PINK TUTU. SHE DOES NOT FEEL PITY. SHE DOES NOT FEEL REMORSE. SHE DOES DO A NICE SPIN."],
+      defeat: "HEATHER THE BEAR HAS SKATED HER LAST ROUTINE. NEIGHBORHOOD BOSS DOWN! YOUR MAP JUST GOT A LITTLE SMARTER.",
       loot: 'boss', unlock: null },
 
-    ringmaster: { name: 'THE RINGMASTER', title: 'MASTER OF THE MIDWAY',
-      hp: 280, dmg: 3, w: 32, h: 44, sprite: 'ringmaster', xp: 120, gold: [100, 150], flying: false,
+    dispenser: { name: 'THE DISPENSER', title: 'NEIGHBORHOOD BOSS, WALL SPECIES', level: 20, facade: true,
+      hp: 320, dmg: 3, w: 192, h: 112, sprite: 'dispenser', xp: 240, gold: [60, 100], flying: false,
+      parts: ['eye', 'mouth', 'wing'], boomyMul: 3,
       phases: [
-        { below: 1.0, speed: 50, pattern: ['walk:1.5', 'spread:note:5', 'idle:1', 'spawn:clown:2', 'teleport', 'shoot:knife:3', 'idle:1.2'] },
-        { below: 0.5, speed: 66, pattern: ['teleport', 'spread:note:7', 'summon_spikes', 'spawn:clown:2', 'teleport', 'rain:bottle:6', 'charge', 'idle:0.8'] }
+        { below: 1.0, speed: 0, pattern: ['reveal', 'spit:spit:3', 'idle:1.5', 'cloak', 'reveal', 'idle:1', 'sweep', 'idle:2', 'cloak'] },
+        { below: 0.55, speed: 0, pattern: ['reveal', 'spit:spit:5', 'sweep', 'cloak', 'reveal', 'spawn:brain_boiler:2', 'idle:1', 'reveal', 'sweep', 'idle:1.2', 'cloak'] },
+        { below: 0.25, speed: 0, pattern: ['reveal', 'sweep', 'spit:spit:6', 'reveal', 'sweep', 'cloak', 'reveal', 'idle:0.8'] }
       ],
-      intro: ["LADIES, GENTLEMEN, AND THINGS WITH TOO MANY TEETH! THE GREATEST SHOW UNDER THE GROUND!",
-        "THE RINGMASTER HAS TAMED LIONS, CLOWNS, AND ONE TAX AUDITOR. YOU ARE NEXT ON THE BILL."],
-      defeat: "THE SHOW IS OVER! THE CLOWNS ARE UNIONIZING! SOMEBODY GRAB THE HAT!",
-      loot: 'boss', unlock: { skin: 'carl_clown' } },
-
-    engineer: { name: 'THE ENGINEER', title: 'IRON HEART OF THE TANGLE',
-      hp: 360, dmg: 3, w: 56, h: 40, sprite: 'engineer', xp: 150, gold: [140, 200], flying: false,
-      phases: [
-        { below: 1.0, speed: 40, pattern: ['walk:2', 'charge', 'idle:1', 'spawn:steam_goblin:2', 'shoot:bolt:3', 'laser', 'idle:1.2'] },
-        { below: 0.55, speed: 58, pattern: ['charge', 'shockwave', 'laser', 'rain:bottle:6', 'charge', 'spawn:rail_rat:3', 'idle:0.8'] }
-      ],
-      intro: ["ALL ABOARD! THE ENGINEER IS HALF GOBLIN, HALF LOCOMOTIVE, AND ZERO PERCENT ON SCHEDULE.",
-        "HE HAS NOT STOPPED FOR A PASSENGER IN SIX HUNDRED YEARS. HE IS NOT STARTING WITH YOU."],
-      defeat: "THE ENGINEER HAS BEEN DERAILED! DELAYS EXPECTED ON ALL LINES! FOREVER!",
+      intro: ["THAT BUILDING IS LOOKING AT YOU. NO, REALLY. THAT IS NOT A WALL, CRAWLER. THAT IS A MANTA RAY WEARING A WALL.",
+        "THE DISPENSER! IT DISPENSES DEATH. AND SPIT. MOSTLY SPIT. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. THE CAT'S EARS KNOW WHERE TO LOOK."],
+      defeat: "THE DISPENSER IS OUT OF ORDER! PERMANENTLY! A CLOCKWORK DINOSAUR CARRYING DYNAMITE IS NOW THE TOP STORY IN NINE SYSTEMS!",
       loot: 'boss', unlock: null },
 
-    tidemother: { name: 'THE TIDEMOTHER', title: 'QUEEN OF THE BUBBLE SEA',
-      hp: 440, dmg: 4, w: 56, h: 48, sprite: 'tidemother', xp: 195, gold: [180, 260], flying: false,
+    vincente: { name: 'VINCENTE', title: 'CITY ELF, 201ST SECURITY GROUP', level: 16,
+      hp: 280, dmg: 3, w: 16, h: 22, sprite: 'vincente', xp: 170, gold: [40, 80], flying: false,
       phases: [
-        { below: 1.0, speed: 36, pattern: ['walk:1.5', 'spread:bubble:5', 'idle:1', 'spawn:jelly:2', 'summon_spikes', 'shoot:bubble:4', 'idle:1.2'] },
-        { below: 0.5, speed: 50, pattern: ['spread:bubble:8', 'laser', 'spawn:fishman:2', 'rain:bubble:8', 'shockwave', 'summon_spikes', 'idle:0.8'] }
+        { below: 1.0, speed: 44, pattern: ['walk:1.2', 'shoot:bolt:3', 'idle:0.8', 'meat_hooks', 'walk:1', 'darkness', 'shoot:bolt:2', 'idle:1'] },
+        { below: 0.5, speed: 58, pattern: ['darkness', 'teleport', 'shoot:bolt:4', 'meat_hooks', 'spawn:city_elf:1', 'charge', 'spread:bolt:5', 'idle:0.8'] }
       ],
-      intro: ["SHE HAS SEVEN HUNDRED CHILDREN AND SHE HAS NAMED NONE OF THEM. SHE WILL NOT NAME YOU EITHER.",
-        "THE TIDEMOTHER, EVERYBODY! BRING A TOWEL. BRING TWO. BRING A WILL."],
-      defeat: "THE TIDEMOTHER IS DOWN! LOW TIDE, BABY! SOMEBODY CALL HER KIDS. ALL OF THEM.",
-      loot: 'boss', unlock: { skin: 'carl_hazmat' } },
-
-    butcher: { name: 'THE BUTCHER', title: 'GAMEKEEPER OF THE GROUNDS',
-      hp: 520, dmg: 4, w: 40, h: 44, sprite: 'butcher', xp: 240, gold: [220, 320], flying: false,
-      phases: [
-        { below: 1.0, speed: 46, pattern: ['walk:1.5', 'charge', 'shoot:knife:3', 'idle:0.9', 'spawn:hound:2', 'jump_slam', 'idle:1.1'] },
-        { below: 0.6, speed: 60, pattern: ['charge', 'spread:knife:5', 'jump_slam', 'shockwave', 'spawn:hunter:1', 'charge', 'idle:0.8'] },
-        { below: 0.25, speed: 74, pattern: ['charge', 'charge', 'rain:knife:8', 'jump_slam', 'shockwave', 'spread:knife:7', 'idle:0.6'] }
-      ],
-      intro: ["THE HUNT IS OVER, CRAWLER. THE PROCESSING BEGINS. THAT IS HIS JOKE. HE ONLY HAS THE ONE.",
-        "THE BUTCHER RUNS THESE GROUNDS FOR RICH PEOPLE WHO WANT YOUR HEAD ON A WALL. SMILE FOR THE TAXIDERMIST!"],
-      defeat: "THE BUTCHER HAS BEEN, AND I CANNOT STRESS THIS ENOUGH, TENDERIZED!",
-      loot: 'boss', unlock: null },
-
-    bride: { name: 'THE BRIDE', title: 'LADY OF THE BEDLAM MANOR',
-      hp: 600, dmg: 5, w: 36, h: 48, sprite: 'bride', xp: 340, gold: [260, 360], flying: true,
-      phases: [
-        { below: 1.0, speed: 52, pattern: ['hover:1.5', 'swoop', 'idle:0.8', 'spread:fireball:5', 'teleport', 'spawn:ghoul:2', 'hover:1.2'] },
-        { below: 0.5, speed: 68, pattern: ['teleport', 'laser', 'swoop', 'rain:fireball:8', 'spawn:skeleton:2', 'teleport', 'summon_spikes', 'hover:0.8'] }
-      ],
-      intro: ["SHE WAS LEFT AT THE ALTAR THREE CENTURIES AGO. SHE HAS BEEN WORKING THROUGH IT. VIOLENTLY.",
-        "SPEAK NOW OR FOREVER HOLD YOUR PIECES, CRAWLER. I MEAN THE PIECES SHE IS ABOUT TO MAKE."],
-      defeat: "THE BRIDE HAS FINALLY BEEN GIVEN AWAY! TO THE AFTERLIFE! NO REFUNDS ON THE GIFTS!",
-      loot: 'boss', unlock: { skin: 'carl_bodyguard' } },
-
-    overseer: { name: 'THE OVERSEER', title: 'ALL SEEING EYE OF THE RUIN',
-      hp: 680, dmg: 5, w: 48, h: 40, sprite: 'overseer', xp: 380, gold: [300, 420], flying: true,
-      phases: [
-        { below: 1.0, speed: 46, pattern: ['hover:1.2', 'laser', 'shoot:laser_orb:4', 'spawn:drone:2', 'swoop', 'hover:1.2'] },
-        { below: 0.6, speed: 60, pattern: ['laser', 'teleport', 'spread:laser_orb:7', 'summon_spikes', 'swoop', 'spawn:mutant:1', 'laser', 'hover:0.8'] },
-        { below: 0.3, speed: 74, pattern: ['laser', 'laser', 'rain:laser_orb:10', 'teleport', 'spread:laser_orb:9', 'summon_spikes', 'hover:0.6'] }
-      ],
-      intro: ["THE OVERSEER WAS BUILT TO WATCH. IT HAS WATCHED EVERYTHING. IT HAS NOTES ON YOUR FORM.",
-        "ONE EYE, NINE LASERS, ZERO CHILL. THE NETWORK WOULD LIKE TO REMIND YOU NOT TO BLINK."],
-      defeat: "THE OVERSEER HAS STOPPED WATCHING! FIRST TIME IN A THOUSAND YEARS! IT LOOKS SO PEACEFUL!",
-      loot: 'boss', unlock: { skin: 'carl_kilt' } },
-
-    // Floor 9's big boss. Since Update 3 he is NOT the end of the game (see grand_marshal).
-    showrunner: { name: 'THE SHOWRUNNER', title: 'PRODUCER OF THE APOCALYPSE',
-      hp: 950, dmg: 6, w: 48, h: 56, sprite: 'showrunner', xp: 600, gold: [500, 700], flying: false,
-      phases: [
-        { below: 1.0, speed: 48, pattern: ['walk:1.5', 'spread:note:6', 'teleport', 'spawn:soldier:2', 'shoot:laser_orb:4', 'idle:1', 'laser', 'idle:1'] },
-        { below: 0.66, speed: 62, pattern: ['teleport', 'laser', 'rain:fireball:10', 'spawn:war_beast:1', 'summon_spikes', 'spread:note:9', 'charge', 'idle:0.8'] },
-        { below: 0.33, speed: 78, pattern: ['teleport', 'laser', 'laser', 'rain:laser_orb:12', 'shockwave', 'summon_spikes', 'spawn:cultist:2', 'jump_slam', 'spread:bolt:11', 'idle:0.6'] }
-      ],
-      intro: ["WELL, WELL, WELL. THE BAREFOOT BOY AND HIS CAT. YOU WERE SUPPOSED TO BE A FUNNY EPISODE ONE DEATH.",
-        "I GREENLIT THIS PLANET. I CAN CANCEL IT. ROLL CAMERA, KILL THE LIGHTS, AND KILL THE CRAWLER.",
-        "THIS IS THE MIDSEASON FINALE, CRAWLER! THE RATINGS HAVE NEVER BEEN HIGHER! I AM NOT EVEN MAD ABOUT IT!"],
-      defeat: "THE SHOWRUNNER HAS BEEN CANCELLED! THE NETWORK IS SPEECHLESS! THEY JUST ORDERED TWO MORE FLOORS. IMMEDIATELY.",
-      loot: 'boss', unlock: null },
-
-    // Floor 11 finale: a towering alien grand marshal on a throne float, with a sash,
-    // a giant baton and a confetti habit. Beating him wins the game (gold skin via G.win).
-    grand_marshal: { name: 'THE GRAND MARSHAL', title: 'HIGH POOBAH OF THE PROCESSION', final: true,
-      hp: 1150, dmg: 7, w: 56, h: 64, sprite: 'grand_marshal', xp: 700, gold: [650, 900], flying: false,
-      phases: [
-        // baton and brass: marching band blasts, baton lunges, balloon minions, confetti balloons
-        { below: 1.0, speed: 44, pattern: ['walk:1.5', 'spread:note:6', 'idle:0.9', 'spawn:jelly:2', 'charge', 'idle:1', 'rain:bubble:8', 'jump_slam', 'idle:1'] },
-        // the throne float rolls: spotlight beam, clown honor guard, fireworks, drum stomp
-        { below: 0.66, speed: 58, pattern: ['teleport', 'laser', 'spawn:clown:2', 'rain:fireball:10', 'shockwave', 'spread:note:9', 'charge', 'idle:0.8'] },
-        // grand finale: everything at once, plus a big balloon release
-        { below: 0.33, speed: 74, pattern: ['laser', 'spawn:jelly:3', 'summon_spikes', 'rain:laser_orb:12', 'charge', 'shockwave', 'spread:bolt:11', 'jump_slam', 'idle:0.6'] }
-      ],
-      intro: ["MAKE WAY! MAKE WAY! THE GRAND MARSHAL APPROACHES! BOW, WAVE, OR BE FLATTENED. THOSE ARE YOUR ONLY THREE OPTIONS.",
-        "I HAVE LED TEN THOUSAND PARADES ON NINE HUNDRED WORLDS. NOT ONE OF THEM HAD A FOOD TRUCK. THIS IS AN OUTRAGE.",
-        "BAND! A MARCH! BALLOONS! INFLATE! CRAWLER, YOU ARE OUT OF STEP, AND I WILL BE CORRECTING YOUR POSTURE. WITH THIS BATON."],
-      defeat: "THE GRAND MARSHAL HAS BEEN DETHRONED! THE BAND IS STILL PLAYING! NOBODY KNOWS HOW TO MAKE THE BAND STOP!",
+      intro: ["THE ELF WITH THE BURNING HAND! HE SAYS HE IS A GUARDIAN OF ANGELS. HE IS STANDING OVER A DEAD ORC. CHOOSE WHICH PART TO BELIEVE.",
+        "HE HAS A SCROLL OF MEAT HOOKS AND HE KNOWS HOW TO USE IT. HIDE THE DINOSAUR. OR DO NOT. THE DINOSAUR SEEMS TO WANT THIS."],
+      defeat: "VINCENTE HAS BEEN KICKED IN THE ONE PLACE EVERY SPECIES AGREES ON. THEN A CAT TOOK HIS HEAD. THE DINOSAUR IS KEEPING IT.",
       loot: 'boss', unlock: null }
   };
 })();
-
 /* ==========================================================================
-   CHUNKS - 12 rows each, all rows equal width (16-48). Ground rows 10-11 are
-   solid '#' at both edges so any chunk can follow any chunk. Rows 5-9 at the
-   edge columns are open. Player jump: <= 3 tiles up, <= 4 tiles across.
+   MAPS: chunks (12 rows, ground rows 10-11 at both edges), vertical layouts
+   (climb / drop, 24 cols), and street rows for the areas.
+   Authored with crawler2/tools source data; edit the rows directly if you like,
+   then run node crawler2/tools/data_validate.js.
+   Legend: book 1 (. # X = ^ ~ H b o h m ? e E f P D K < > v c n $ Q R S L) +
+   0-9 A-F street doors, p signpost, N friendly NPC, C charge spot, Y decoy spot,
+   T detonation spot, k Krasue body, t trash pile, w wave spawn, G guard statue,
+   B barricade.
    ========================================================================== */
 (function () {
   'use strict';
   var D = window.DCW.data;
   var C = D.chunks = {};
 
-  /* ---------- shared ---------- */
-  C.end_door = { rows: [
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '..o.o.o.........',
-    '................',
-    '.........D......',
-    '################',
-    '################'] };
-
-  C.amb_start = { rows: [
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '................',
-    '..P.............',
-    '################',
-    '################'] };
-
-  C.amb_a = { rows: [
+  /* ---------- village ---------- */
+  C.village_gate_start = { theme: 'village', rows: [
     '................................',
     '................................',
-    '................................',
-    '................................',
-    '..........f..........f..........',
-    '................................',
-    '................................',
-    '......====..........====........',
-    '................................',
-    '....e....e....E.....e.....e.....',
-    '################################',
-    '################################'] };
-
-  C.amb_b = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '.............f..............',
-    '............................',
-    '..........e......e..........',
-    '........============........',
-    '............................',
-    '...e......E......e......e...',
-    '############################',
-    '############################'] };
-
-  C.amb_c = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '........f..............f........',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '......b..................b......',
-    '...e..b....e...$...e.....b.e....',
-    '################################',
-    '################################'] };
-
-  /* side-area treasure chunks (shared by all floors' side stages) */
-  C.sx_a = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '...........ooooo................',
-    '..........=======...............',
-    '................................',
-    '................................',
-    '......====..............bbbb....',
-    '........................b..b....',
-    '..e...........$.....e...b?.b..e.',
-    '################################',
-    '################################'] };
-
-  C.sx_b = { rows: [
-    '..........................?.....',
-    '........................=====...',
-    '................................',
-    '................................',
-    '...................>............',
-    '................................',
-    '..........ooooo.................',
-    '..........=====.................',
-    '................................',
-    '..e.....o.o.o.^^^^.o.o.o...e....',
-    '################################',
-    '################################'] };
-
-  C.sx_c = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '.........ooooooooo..........',
-    '........===========.........',
-    '............................',
-    '..e..$......E.......$...e...',
-    '############################',
-    '############################'] };
-
-  /* ---------- FLOOR 1: sewer (gentle) ---------- */
-  C.f1_tut_start = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '.....................ooo................',
-    '......o.o.o.........=====...............',
-    '........................................',
-    '..P.n.........bb.......n.....e....n..e..',
-    '########################################',
-    '########################################'] };
-
-  C.f1_tut_mid = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '......o.o.o.........................',
-    '.....=======........................',
-    '..........................bbb.......',
-    '.n.......e........m.n.....bbb.e.e...',
-    '####################################',
-    '####################################'] };
-
-  C.f1_start = { rows: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '...........o.o.o........',
-    '........................',
-    '..P........e........b...',
-    '########################',
-    '########################'] };
-
-  C.f1_a = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '..........ooo...............',
-    '.........=====..............',
-    '............................',
-    '...e...........e.......b....',
-    '########~~~~~###############',
-    '############################'] };
-
-  C.f1_b = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '.....................f......',
-    '............................',
-    '..........ooo...............',
-    '............................',
-    '..c...e................e....',
-    '##########...###############',
-    '##########...###############'] };
-
-  C.f1_c = { rows: [
     '................................',
     '................................',
     '................................',
     '................................',
     '..............ooo...............',
-    '.............H====..............',
-    '.............H..................',
-    '........XXX..H.......XXX........',
-    '.......XXXX..H.......XXXX.......',
-    '..e...XXXXX..H...e...XXXXX...e..',
+    '.............=====..............',
+    '................................',
+    '..P..n.....n.......n.....n......',
     '################################',
     '################################'] };
 
-  C.f1_d = { rows: [
+  /* ---------- ruins ---------- */
+  C.ruins_start = { theme: 'ruins', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '.........=====..........',
+    '........................',
+    '..P.............e.......',
+    '########################',
+    '########################'] };
+  C.ruins_a = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '..............ooo...............',
+    '........................e.......',
+    '..........e............XXX......',
+    '.........XXX...........XXX......',
+    '.....===.XXX......===..XXX......',
+    '.........XXX...........XXX......',
+    '.........XXX....e......XXX......',
+    '################################',
+    '################################'] };
+  C.ruins_b = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................f...............',
+    '................................',
+    '..........ooooo.................',
+    '................................',
+    '................................',
+    '..c....e...........e............',
+    '###########.bb.#################',
+    '###########....#################'] };
+  C.ruins_c = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '.............S........X.........',
+    '............====......L.........',
+    '......................L.........',
+    '...e..................L...e..$..',
+    '################################',
+    '################################'] };
+  C.ruins_d = { theme: 'ruins', rows: [
     '............................',
     '............................',
     '............................',
     '............................',
-    '............................',
-    '............................',
-    '..............ooo...........',
-    '.............=====..........',
-    '............................',
-    '...e...b.....e.....$....e...',
+    '............oooo............',
+    '..............E.............',
+    '............XXXX............',
+    '.........XXXXXXXXXX.........',
+    '......XXXXXXXXXXXXXXXX......',
+    '...XXXXXXXXXXXXXXXXXXXXXX.e.',
     '############################',
     '############################'] };
-
-  C.f1_e = { rows: [
+  C.ruins_e = { theme: 'ruins', rows: [
     '................................',
-    '................................',
-    '................................',
-    '................................',
+    '..........ooo...................',
+    '........H...$...................',
+    '........HXXXXXX.................',
+    '........H.......................',
+    '........H...........f...........',
+    '........H.......................',
+    '........H.......................',
+    '........H.......................',
+    '..t.....H...e......t....e.......',
+    '################################',
+    '################################'] };
+  C.ruins_f = { theme: 'ruins', rows: [
     '................................',
     '................................',
     '..............f.................',
-    '........ooo....ooo....ooo.......',
     '................................',
-    '..c..e.......e......e.......e...',
-    '########...####...####...#######',
-    '########...####...####...#######'] };
-
-  C.f1_f = { rows: [
+    '............ooooo...............',
+    '..........=========.............',
+    '................................',
+    '................................',
+    '....=====...........=====.......',
+    '..e.......E..........e.....e....',
+    '################################',
+    '################################'] };
+  C.ruins_g = { theme: 'ruins', rows: [
     '............................',
     '............................',
     '............................',
     '............................',
-    '...............ooo..........',
-    '..............=====.........',
     '............................',
-    '.......====.................',
+    '.........ooooo..............',
     '............................',
-    '..e........^^^^.........e...',
+    '...........>................',
+    '............................',
+    '..e.....^^^^^^^^......e.....',
     '############################',
     '############################'] };
-
-  C.f1_g = { rows: [
-    'XXXXXXXXXXXXXX..................',
-    'XXXXXXXXXXXXXX..................',
-    'XXXXXXXXXXXXXX..................',
-    'XXXXXXXXXXXXXX.........f........',
-    'XXXXXXXXXXXXXX..................',
+  C.ruins_h = { theme: 'ruins', rows: [
     '................................',
-    '..o.o.o.o.o................ooo..',
-    '..........................=====.',
-    '......b.........................',
-    '..e...b....e.........e.....h....',
-    '################~~~~############',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..............ooo...............',
+    '.........e...........e..........',
+    '.........XX..........XX.........',
+    '.........XX.....E....XX.....h...',
+    '################################',
     '################################'] };
-
-  C.arena_hoarder = { rows: [
+  C.ruins_i = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '...............f................',
+    '................................',
+    '............oooooooo............',
+    '...........X========X...........',
+    '..........XX........XX..........',
+    '.........XXX........XXX.........',
+    '..c.....XXXX........XXXX....e...',
+    '############........############',
+    '############........############'] };
+  C.ruins_end = { theme: 'ruins', rows: [
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '..o.o.o.............',
+    '....................',
+    '.........D..........',
+    '####################',
+    '####################'] };
+  C.arena_terror = { theme: 'ruins', rows: [
     'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
     'X..................................X',
     'X..................................X',
@@ -665,813 +618,805 @@
     '..c......................K.........X',
     '####################################',
     '####################################'] };
+  C.ruins_bodies = { theme: 'ruins', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '.........ooo..........ooo...........',
+    '........=====........=====..........',
+    '....................................',
+    '..n..$.......n..$........n..$...e...',
+    '####################################',
+    '####################################'] };
+  C.ruins_barricade = { theme: 'ruins', rows: [
+    'XXXXXXXXXXXXXXXXXXXX',
+    'X..................X',
+    'X..................X',
+    'X..................X',
+    'X..........w.......X',
+    'X.......=======....X',
+    'X..................X',
+    'X...............w..X',
+    'X..............==..X',
+    'X.B..P....t......w.X',
+    '####################',
+    '####################'] };
+  C.divider_end = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.............e..................',
+    '..........XXXXXXX...............',
+    '.........XXXXXXXXX..............',
+    '........XXXXXXXXXXX.............',
+    '..n....XXXXXXXXXXXXX....E...D...',
+    '################################',
+    '################################'] };
+  C.park_end = { theme: 'ruins', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '.............?..............',
+    '...........=====............',
+    '............................',
+    '............................',
+    '..e......h.........D........',
+    '############################',
+    '############################'] };
+  C.park_a = { theme: 'ruins', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '......ooo............ooo........',
+    '.....=====..........=====.......',
+    '................................',
+    '................................',
+    '...........======...............',
+    '................................',
+    '..e.....t........E.......t..e...',
+    '################################',
+    '################################'] };
 
-  /* ---------- FLOOR 2: cave ---------- */
-  C.f2_start = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXX......XXXXXXXXXXX',
-    'XXXX..............XXXXXX',
-    'X.......................',
+  /* ---------- circus ---------- */
+  C.circus_start = { theme: 'circus', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
     '........................',
     '........................',
     '........................',
     '...........ooo..........',
-    '..........=====.........',
-    '..P...............e.....',
+    '........................',
+    '..P....n................',
     '########################',
     '########################'] };
-
-  C.f2_a = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXX.........XXXXXXXXXXXX',
-    'XXXXXX......................XXXX',
-    '..........................f.....',
-    '................ooo.............',
-    '...................e............',
-    '................XXXXXX..........',
-    '................XXXXXX..........',
-    '...........===..XXXXXX..........',
-    '...e............XXXXXX....e.....',
+  C.circus_a = { theme: 'circus', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.............ooo................',
+    '............=====...............',
+    '................................',
+    '.....e.................e........',
+    '###############...##############',
+    '###############...##############'] };
+  C.circus_b = { theme: 'circus', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.............ooo................',
+    '................................',
+    '..............b.................',
+    '.......b......b.......b....e....',
     '################################',
     '################################'] };
-
-  C.f2_b = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXX..............XXXXXXXXXX',
-    'XXX..........................XXX',
-    '................................',
-    '................................',
-    '...........f....................',
-    '............ooooo...............',
-    '................................',
-    '..............>.................',
-    '..c..e.....................e....',
-    '#########............###########',
-    '#########............###########'] };
-
-  C.f2_c = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXX......XXXXXXXXXXX',
-    'XXXX..................XXXXXX',
+  C.circus_c = { theme: 'circus', rows: [
     '............................',
     '............................',
-    '.o.o.o.o.o.o.o.o.o.o.o.o.o..',
-    '.............b..............',
-    '...e....e....b...e....bb..e.',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............ooo.e...........',
+    '..........XXXXXXX...........',
+    '.......XXXXXXXXXXXXX........',
     '############################',
     '############################'] };
-
-  C.f2_d = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXX.......XXXXXXXXXXXXXX',
-    'XXXXXX........?..........XXXXXXX',
-    '.............====...............',
-    '...........................f....',
-    '..........ooo.....e.............',
-    '.........HXXXXXXXXXXX...........',
-    '.........H......................',
-    '.........H......................',
-    '....e....H...............e......',
+  C.circus_d = { theme: 'circus', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..............oooooo............',
+    '................................',
+    '..............XXXXXX............',
+    '..............XXXXXX............',
+    '..e.........b.XXXXXX.....e......',
     '################################',
     '################################'] };
-
-  C.f2_e = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXX...........XXXXXXXXXX',
-    'XX..........................',
+  C.circus_e = { theme: 'circus', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '...............f................',
+    '................................',
+    '.........oo........oo...........',
+    '................................',
+    '................................',
+    '....e..................e........',
+    '##########..#########..#########',
+    '##########..#########..#########'] };
+  C.circus_f = { theme: 'circus', rows: [
     '............................',
-    '.............ooo............',
     '............................',
-    '.............e..............',
-    '............XXXX............',
-    '............XXXX............',
-    '..e......^^^XXXX^^^.....e...',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '..........ooooo.............',
+    '............................',
+    '............................',
+    '.....e.....^^^.........e....',
     '############################',
     '############################'] };
+  C.arena_heather = { theme: 'circus', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X......................................X',
+    'X......................................X',
+    'X......................................X',
+    'X......................................X',
+    '.......................................X',
+    '.......................................X',
+    '......====..............====...........X',
+    '.......................................X',
+    '..c.......................K............X',
+    '########################################',
+    '########################################'] };
 
-  C.f2_f = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXX.........XXXXXXXXXX',
-    'XXXXX...........................',
-    '................................',
-    '...................f............',
-    '................................',
-    '.........ooo.......oooo.........',
-    '...................====.........',
-    '................................',
-    '..c..e.........e.........e....e.',
-    '#########...#######....#########',
-    '#########...#######....#########'] };
-
-  C.f2_g = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXX..................XXXXXXXXX',
-    'XXXX............................XXXX',
-    '....................................',
-    '....................................',
-    '....................................',
-    '........ooo..............ooo........',
-    '.......=====............=====.......',
-    '....................................',
-    '...e.......b...E.....$.......e......',
-    '####################################',
-    '####################################'] };
-
-  C.f2_h = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXX..............XXXXXXX',
-    '..........ooo.e.............',
-    '........=========...........',
-    '............................',
-    '............................',
-    '...====............====.....',
-    '............................',
-    '..e.......^^^^^^.......e....',
-    '############################',
-    '############################'] };
-
-  C.arena_juicer = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X....................................X',
-    'X....................................X',
-    'X....................................X',
-    'X....................................X',
-    '.....................................X',
-    '.....................................X',
-    '........====..........====...........X',
-    '.....................................X',
-    '..c...........h............K.........X',
-    '######################################',
-    '######################################'] };
-
-  /* ---------- FLOOR 3: city / circus / swamp ---------- */
-  C.f3_start = { rows: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '............ooo.........',
-    '...........=====........',
-    '..P.................e...',
-    '########################',
-    '########################'] };
-
-  C.f3_a = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '............f...................',
-    '.........ooo........oooo........',
-    '................................',
-    '....XXXX.......XXXXX.......XXX..',
-    '.ce.XXXX.....e.XXXXX.......XXX..',
-    '#########...########....########',
-    '#########...########....########'] };
-
-  C.f3_b = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '.........................oooo...',
-    '.........................====...',
-    '................................',
-    '......................v.........',
-    '................................',
-    '............>...................',
-    '..c..e...................e......',
-    '#######~~~~~~~~~~~##############',
-    '################################'] };
-
-  C.f3_c = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................f...............',
-    '................................',
-    '......ooo.........ooo...........',
-    '.....=====.......=====..........',
-    '................................',
-    '..e.........e...............e...',
-    '####~~~~~~~####~~~~~~~~#########',
-    '################################'] };
-
-  C.f3_d = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '.............ooo............',
-    '............=====...........',
-    '....XXX.................XX..',
-    '..e.XXX....e...b..E.....XX..',
-    '############################',
-    '############################'] };
-
-  C.f3_e = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '......................f.............',
-    '....................................',
-    '...........ooo.......ooo............',
-    '....................................',
-    '...........>.........<..............',
-    '..c...e..........................e..',
-    '########.....................#######',
-    '########.....................#######'] };
-
-  C.f3_f = { rows: [
-    '................................',
-    '.........................?......',
-    '........................===.....',
-    '..................oooo..........',
-    '..................====..........',
-    '................................',
-    '............ooo.................',
-    '...........=====................',
-    '....bb..........................',
-    '..e.bb....e.......E........e....',
-    '################################',
-    '################################'] };
-
-  C.f3_g = { rows: [
-    '............................',
-    '............................',
-    '.............ooooo..........',
-    '............HXXXXXX.........',
-    '............HXXXXXX.........',
-    '............HXXXXXX.........',
-    '............HXXXXXX.....f...',
-    '............HXXXXXX.........',
-    '............HXXXXXX.........',
-    '..e......e..HXXXXXX..^^..e..',
-    '############################',
-    '############################'] };
-
-  C.f3_h = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '..........f.............f.......',
-    '................................',
-    '........oooo...oooo.............',
-    '........====...====.............',
-    '.ce.......................E.....',
-    '#######~~~~~~~~~~~~~############',
-    '################################'] };
-
-  C.arena_ringmaster = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X....................................X',
-    'X....................................X',
-    'X....................................X',
-    'X....................................X',
-    '.....................................X',
-    '.....................................X',
-    '.....====.........====.........====..X',
-    '.....................................X',
-    '..c.......................K..........X',
-    '######################################',
-    '######################################'] };
-
-  /* ---------- FLOOR 4: train / city ---------- */
-  C.f4_start = { rows: [
-    '........................',
-    '........................',
+  /* ---------- basement ---------- */
+  C.basement_land = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXX........XXXXXXXXXXXX',
     '........................',
     '........................',
     '........................',
     '........................',
     '........................',
     '.........ooo............',
-    '........=====...........',
-    '..P.............e.......',
+    '........................',
+    '..P.....n...............',
+    '########################',
+    '########################'] };
+  C.basement_lion_pit = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X..........................................X',
+    'X..........................................X',
+    'X..........................................X',
+    'X..........................................X',
+    '............................................',
+    '...........oo...........oo..................',
+    '..........====..........====................',
+    '............................................',
+    '..c....e....e.....e......e.....e....e....D..',
+    '############################################',
+    '############################################'] };
+  C.basement_wake = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXX',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '.............ooo........',
+    '........................',
+    '..P.....N.......n.......',
+    '########################',
+    '########################'] };
+  C.basement_a = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXXXX....................XXXXXX',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..........ooooo.................',
+    '.........=======................',
+    '................................',
+    '..e.......................e.....',
+    '##########~~~~~#################',
+    '################################'] };
+  C.basement_b = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.............bbb................',
+    '......bb.....b.b................',
+    '..e...bb.....b$b......e.........',
+    '################################',
+    '################################'] };
+  C.basement_c = { theme: 'basement', rows: [
+    '............................',
+    '...........H................',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '...........HXXX.............',
+    '..e........HXXX......e......',
+    '############################',
+    '############################'] };
+  C.basement_d = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'XXXX........................XXXX',
+    '................................',
+    '................................',
+    '................................',
+    '.......oo.............oo........',
+    '................................',
+    '.....======.........======......',
+    '................................',
+    '..e...^^^^.....e....^^^^........',
+    '################################',
+    '################################'] };
+  C.basement_cage = { theme: 'basement', rows: [
+    '................................',
+    '................................',
+    '....................X...........',
+    '......H..S..........X...........',
+    '......HXXXX.........X...........',
+    '......H.............X...........',
+    '......H.............X...........',
+    '......H.............L...........',
+    '......H.............L...........',
+    '..e...H.......e.....L....R....e.',
+    '################################',
+    '################################'] };
+  C.basement_end = { theme: 'basement', rows: [
+    'XXXXXXXXXXXXXXXXXXXX',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '..o.o.o.............',
+    '....................',
+    '..........D.........',
+    '####################',
+    '####################'] };
+
+  /* ---------- settlement ---------- */
+  C.settlement_start = { theme: 'settlement', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.settlement_a = { theme: 'settlement', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.....ooo.........ooo............',
+    '....=====.......=====...........',
+    '................................',
+    '..e.....b.....e......b...e......',
+    '################################',
+    '################################'] };
+  C.settlement_b = { theme: 'settlement', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '............oooooo..............',
+    '..............e.................',
+    '............XXXXXX..............',
+    '............XXXXXX..............',
+    '..e.........XXXXXX......e.......',
+    '################################',
+    '################################'] };
+  C.settlement_c = { theme: 'settlement', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '..........f.................',
+    '............................',
+    '...........ooo..............',
+    '............................',
+    '............................',
+    '....e...............e.......',
+    '############...#############',
+    '############...#############'] };
+  C.settlement_d = { theme: 'settlement', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..........oooooooo..............',
+    '................................',
+    '.........==========.............',
+    '................................',
+    '..e......b.....e.....b....e.....',
+    '################################',
+    '################################'] };
+  C.settlement_alley_end = { theme: 'settlement', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..o.o.o.................',
+    '........................',
+    '............D...........',
     '########################',
     '########################'] };
 
-  C.f4_a = { rows: [
+  /* ---------- alley ---------- */
+  C.alley_start = { theme: 'alley', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P....t..n.............',
+    '########################',
+    '########################'] };
+  C.alley_a = { theme: 'alley', rows: [
+    '................................',
+    '................................',
+    '.................ooo............',
+    '................................',
+    '................=====...........',
+    '................................',
+    '................................',
+    '.........====...................',
+    '..XX..................XX........',
+    '..XX..t....e..........XX.t...e..',
+    '################################',
+    '################################'] };
+  C.alley_b = { theme: 'alley', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.......f........................',
+    '..............ooo...............',
+    '.............=====..............',
+    '................................',
+    '..e.......k..........t.....e....',
+    '################################',
+    '################################'] };
+  C.alley_c = { theme: 'alley', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '.............S........X.........',
+    '............====......L.........',
+    '......................L.........',
+    '..t.e.................L....e.$..',
+    '################################',
+    '################################'] };
+  C.alley_d = { theme: 'alley', rows: [
+    '.......XXXXXXXXXXXXXX.......',
+    '.......XXXXXXXXXXXXXX.......',
+    '.......XXXXXXXXXXXXXX.......',
+    '.......XXXXXXXXXXXXXX.......',
+    '.......XXXXXXXXXXXXXX.......',
+    '............................',
+    '............................',
+    '.........o.o.o.o............',
+    '............................',
+    '..e.......e......e..........',
+    '############################',
+    '############################'] };
+  C.alley_e = { theme: 'alley', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.........ooo....................',
+    '................................',
+    '................................',
+    '......XX.......XX...............',
+    '..e...XX..^^^..XX....e..........',
+    '################################',
+    '################################'] };
+  C.alley_f = { theme: 'alley', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '.............ooo................',
+    '...........H..k.................',
+    '...........HXXXXX...............',
+    '...........HXXXXX...............',
+    '...........HXXXXX...............',
+    '...........HXXXXX...............',
+    '..e........HXXXXX......e........',
+    '################################',
+    '################################'] };
+  C.alley_gumgum = { theme: 'alley', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '............ooo.....................',
+    '...........=====....................',
+    '....................................',
+    '..n.......k.......E.......k.........',
+    '####################################',
+    '####################################'] };
+  C.alley_swarm = { theme: 'alley', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '.....f.......f.......f.......f......',
+    '....................................',
+    '..........f..........f..............',
+    '....................................',
+    '.......=====.........=====..........',
+    '....................................',
+    '..e.......e.......e.......e.........',
+    '####################################',
+    '####################################'] };
+  C.arena_vincente = { theme: 'alley', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X......................................X',
+    'X......................................X',
+    'X......................................X',
+    'X......................................X',
+    '.......................................X',
+    '.......................................X',
+    '.....=====............=====............X',
+    '.......................................X',
+    '..c.......................K............X',
+    '########################################',
+    '########################################'] };
+  C.alley_end = { theme: 'alley', rows: [
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '..o.o.o.............',
+    '....................',
+    '..........D.........',
+    '####################',
+    '####################'] };
+
+  /* ---------- ymca ---------- */
+  C.ymca_start = { theme: 'ymca', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n........h........',
+    '########################',
+    '########################'] };
+  C.ymca_facade = { theme: 'ymca', rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X......................................X',
+    'X......................................X',
+    'X......................................X',
+    'X.......=====..............=====.......X',
+    '.......................................X',
+    '.......................................X',
+    '...=====.........======.........=====..X',
+    '.......................................X',
+    '..c.................K..................X',
+    '########################################',
+    '########################################'] };
+
+  /* ---------- school ---------- */
+  C.school_start = { theme: 'school', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.school_a = { theme: 'school', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '........ooo..........ooo........',
+    '.......=====.........=====......',
+    '................................',
+    '..e...b.b.......e....b.b...e....',
+    '################################',
+    '################################'] };
+  C.school_b = { theme: 'school', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '...........ooo.....ooo..........',
+    '............e.......e...........',
+    '.......HXXXXXXXXXXXXXXXXH.......',
+    '.......H........X.......H.......',
+    '.......H........X.......H.......',
+    '.......H........X.......H.......',
+    '..e....H........X.......H...e...',
+    '################################',
+    '################################'] };
+  C.school_c = { theme: 'school', rows: [
+    '................................',
+    '................................',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '.............S........X.........',
+    '............====......L.........',
+    '......................L.........',
+    '..b.e.................L..h.e.$..',
+    '################################',
+    '################################'] };
+  C.school_d = { theme: 'school', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '........oooooo..............',
+    '........======..............',
+    '............................',
+    '..e.................e.......',
+    '#########~~~~~~#############',
+    '############################'] };
+  C.school_eunice = { theme: 'school', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................ooo.............',
+    '...................=====............',
+    '....................................',
+    '..N...N..........E..........e.......',
+    '####################################',
+    '####################################'] };
+  C.school_end = { theme: 'school', rows: [
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '..o.o.o.............',
+    '....................',
+    '..........D.........',
+    '####################',
+    '####################'] };
+
+  /* ---------- office ---------- */
+  C.office_start = { theme: 'office', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.office_shelf_a = { theme: 'office', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '.............ooo....................',
+    '............=====...................',
+    '....................................',
+    '....................................',
+    '.......=======......................',
+    '....................................',
+    '..Y.......C.............k.....e.....',
+    '####################################',
+    '####################################'] };
+  C.office_shelf_b = { theme: 'office', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '......................ooo...........',
+    '............k.......................',
+    '..........==========................',
+    '....................................',
+    '..e.....Y...........C...............',
+    '####################################',
+    '####################################'] };
+  C.office_shelf_c = { theme: 'office', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..........ooo...................',
+    '.........=====..................',
+    '................................',
+    '..k.......Y........C.....e......',
+    '################################',
+    '################################'] };
+  C.office_roof_end = { theme: 'office', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '...............T............',
+    '...........XXXXXXXX.........',
+    '..........XXXXXXXXXX........',
+    '.........XXXXXXXXXXXX.......',
+    '..n.....XXXXXXXXXXXXXX......',
+    '############################',
+    '############################'] };
+
+  /* ---------- nest ---------- */
+  C.nest_start = { theme: 'nest', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........hh............',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.nest_a = { theme: 'nest', rows: [
     '................................',
     '................................',
     '................................',
     '................................',
     '.................f..............',
-    '....ooooooo.......ooooooo.......',
-    '.......e..............e.........',
-    '...XXXXXXXXX......XXXXXXXXX.....',
-    '...XXXXXXXXX......XXXXXXXXX.....',
-    '..cXXXXXXXXX..e...XXXXXXXXX..e..',
-    '################################',
-    '################################'] };
-
-  C.f4_b = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '...........................f....',
-    '................................',
-    '.........ooo.......ooo..........',
-    '................................',
-    '..........>.........<...........',
-    '..c..e.......................e..',
-    '#######...................######',
-    '#######...................######'] };
-
-  C.f4_c = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
-    '................................',
-    '.....ooo............ooo.........',
-    '................................',
-    '......e.............e...........',
-    '...=========......=========.....',
-    '................................',
-    '..e.......b..e..........$....e..',
-    '################################',
-    '################################'] };
-
-  C.f4_d = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '..............f.............',
-    '....oooo....oooo....oooo....',
-    '....====....====....====....',
-    '............................',
-    '..e.^^^^^^^^^^^^^^^^^^^^..e.',
-    '############################',
-    '############################'] };
-
-  C.f4_e = { rows: [
-    '................................',
-    '.....................?..........',
-    '...................HXXX.........',
-    '...................H............',
-    '...................H............',
-    '...................H............',
-    '...................H............',
-    '...................H............',
-    '......bb...........H............',
-    '..e...bb...E.......H.......e....',
-    '################################',
-    '################################'] };
-
-  C.f4_f = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '...............f................f...',
-    '....................................',
-    '....................................',
-    '............ooo......ooo............',
-    '...........=====....=====...........',
-    '....................................',
-    '..c..e.....................e.....e..',
-    '#########..................#########',
-    '#########..................#########'] };
-
-  C.f4_g = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
-    '...o.o.o.....=====.....o.o.o....',
-    '.........b..............b.......',
-    '..e......b...e...$...e..b....e..',
-    '################################',
-    '################################'] };
-
-  C.f4_h = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '..........ooooo.............',
-    '........e.........e.........',
-    '.....H===============H......',
-    '.....H...............H......',
-    '.....H...............H......',
-    '.....H...............H......',
-    '..e..H...^^^^^^^.....H...e..',
-    '############################',
-    '############################'] };
-
-  C.arena_engineer = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    '.......................................X',
-    '.......................................X',
-    '......====..................====.......X',
-    '.......................................X',
-    '..c.......................K............X',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- FLOOR 5: bubble / swamp ---------- */
-  C.f5_start = { rows: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '...........ooo..........',
-    '..........=====.........',
-    '..P..............e......',
-    '########################',
-    '########################'] };
-
-  C.f5_a = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '..........ooo.........ooo.......',
-    '................................',
-    '................................',
-    '...........v..........v.........',
-    '................................',
-    '................................',
-    '..c..e..........e...........e...',
-    '#######~~~~~~~~##~~~~~~~~~######',
-    '################################'] };
-
-  C.f5_b = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '...................ooo..........',
-    '................................',
-    '..................e.............',
-    '...............XXXXXXX..........',
-    '...........XXXXXXXXXXX.....f....',
-    '.......XXXXXXXXXXXXXXX..........',
-    '..e....XXXXXXXXXXXXXXX....e.....',
-    '################################',
-    '################################'] };
-
-  C.f5_c = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXX.........XXXXXXXXXXXXXXXXX',
-    'XXXXX.........................XXXXXX',
-    '....................................',
-    '.............f..........f...........',
-    '....................................',
-    '......ooo......oeo......ooo.........',
-    '.....=====....=====....=====........',
-    '....................................',
-    '..c..............................e..',
-    '####~~~~~~~~~~~~~~~~~~~~~~~~~~~~####',
-    '####################################'] };
-
-  C.f5_d = { rows: [
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '............................',
-    '..............ooo...........',
-    '.............=====..........',
-    '............................',
-    '..e.......b..e.....$.....e..',
-    '####~~~~##############~~~###',
-    '############################'] };
-
-  C.f5_e = { rows: [
-    '................................',
-    '.........................?......',
-    '.......................=====....',
-    '................................',
-    '................................',
-    '................................',
-    '.....ooooo..........v...........',
-    '....=======.....................',
-    '................................',
-    '..e...........e.............e...',
-    '################################',
-    '################################'] };
-
-  C.f5_f = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '......f..........f..........f...',
-    '................................',
-    '................................',
-    '............oooo................',
-    '...........======...............',
-    '................................',
-    '..c..e...........^^^.........e..',
-    '##########....##########....####',
-    '##########....##########....####'] };
-
-  C.f5_g = { rows: [
-    '....................................',
-    '....................................',
-    '..............f.....................',
-    '................ooooooo.............',
-    '....................................',
-    '................e.......e...........',
-    '..........H=================X.......',
-    '..........H.................X.......',
-    '..........H.................X.......',
-    '..e.......H......$.......e..X....e..',
-    '####################################',
-    '####################################'] };
-
-  C.arena_tidemother = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    '.......................................X',
-    '.......................................X',
-    '.......===........====........===......X',
-    '.......................................X',
-    '..c........................K...........X',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- FLOOR 6: forest ---------- */
-  C.f6_start = { rows: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '..........ooo...........',
-    '.........=====..........',
-    '..P..............e......',
-    '########################',
-    '########################'] };
-
-  C.f6_a = { rows: [
-    '................................',
-    '................................',
-    '................ooo.............',
-    '...............=====............',
-    '................................',
-    '..........................f.....',
-    '..........XX..........e.........',
-    '...=====..XX.........=====......',
-    '..........XX....................',
-    '..e.......XX..^^^...........e...',
-    '################################',
-    '################################'] };
-
-  C.f6_b = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '..................f.................',
-    '....................................',
-    '....................................',
-    '.........ooo..........ooo...........',
-    '.........===..........===...........',
-    '....................................',
-    '..c..e..........e...............e...',
-    '########......#######......#########',
-    '########......#######......#########'] };
-
-  C.f6_c = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '..................e.....e.......',
-    '.................H=========.....',
-    '.................H..............',
-    '.................H..............',
-    '.........bb......H..............',
-    '..e......bb...e..H.......E......',
-    '################################',
-    '################################'] };
-
-  C.f6_d = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '...............f....................',
-    '......ooo................ooo........',
-    '.....=====..............=====.......',
-    '....................................',
-    '..e....^^^^......e.......^^^^...e...',
-    '####################################',
-    '####################################'] };
-
-  C.f6_e = { rows: [
-    '...........................?....',
-    '.........................=====..',
-    '................................',
-    '................................',
-    '...................<............',
-    '................................',
-    '..........XXXXXX................',
-    '..........X....X................',
-    '...............X................',
-    '..e.....X...h..X..e.......e.....',
-    '################################',
-    '################################'] };
-
-  C.f6_f = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '..........f.........f...........',
-    '................................',
-    '.......oooo......oooo...........',
-    '................................',
-    '................................',
-    '..c..e.....e.........e......e...',
-    '#######....######....###########',
-    '#######....######....###########'] };
-
-  C.f6_g = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '......................ooo...........',
-    '.....................=====..........',
-    '....................................',
-    '...............XXX..................',
-    '...........XXX.XXX......e...........',
-    '.......XXX.XXX.XXX.....XXX..........',
-    '..e....XXX.XXX.XXX..e..XXX.......e..',
-    '####################################',
-    '####################################'] };
-
-  C.arena_butcher = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    '.......................................X',
-    '.......................................X',
-    '.....====.....====.........====........X',
-    '.......................................X',
-    '..c.......................K............X',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- FLOOR 7: castle ---------- */
-  C.f7_start = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXX',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '..........ooo...........',
-    '.........=====..........',
-    '..P..............e......',
-    '########################',
-    '########################'] };
-
-  C.f7_a = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
-    '..........f.............f.......',
-    '................................',
-    '................................',
-    '.......ooo........ooo...........',
-    '......=====......=====..........',
-    '................................',
-    '..c..e.......e............e.....',
-    '######.....######.....##########',
-    '######.....######.....##########'] };
-
-  C.f7_b = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '....................................',
-    '..................f.................',
-    '...............ooo......ooo.........',
-    '....................................',
-    '....................................',
-    '....................................',
-    '............>..........<............',
-    '..c.e...........................e...',
-    '#######~~~~~~~~~~~~~~~~~~~~~~~~#####',
-    '####################################'] };
-
-  C.f7_c = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '.....ooooo..........ooooo.......',
-    '.....e..............e...........',
-    '...H=======.......H=======......',
-    '...H..............H.............',
-    '...H..............H.............',
-    '...H..............H.............',
-    '...H......bb......H.............',
-    '..eH......bb....e.H......E......',
-    '################################',
-    '################################'] };
-
-  C.f7_d = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
-    '..........f.......f.............',
-    '................................',
-    '................................',
-    '.....oooo....oooo....oooo.......',
-    '.....====....====....====.......',
-    '................................',
-    '..e..^^^^^^^^^^^^^^^^^^^^^...e..',
-    '################################',
-    '################################'] };
-
-  C.f7_e = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXX.......XXXXXXX.......XXXXX',
-    '....................................',
-    '....................................',
-    '.....o.o.o.....=====.....o.o.o......',
-    '....................................',
-    '..e....b....e....$....e....b....E...',
-    '####################################',
-    '####################################'] };
-
-  C.f7_f = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
     '................................',
     '...........ooo..................',
+    '..........=====.................',
     '................................',
-    '..........v.........v...........',
+    '..e.....k..........k.......e....',
+    '################################',
+    '################################'] };
+  C.nest_b = { theme: 'nest', rows: [
     '................................',
     '................................',
-    '..c..e.........e..........e.....',
-    '#######.......####.......#######',
-    '#######.......####.......#######'] };
-
-  C.f7_g = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    '................................',
+    '................................',
+    '................................',
+    '..............oo................',
+    '............k...................',
+    '.........========...............',
+    '................................',
+    '..e.....................e.......',
+    '##########~~~~~~################',
+    '################################'] };
+  C.nest_c = { theme: 'nest', rows: [
+    '......XXXXXXXXXXXXXXXX......',
+    '......XXXXXXXXXXXXXXXX......',
+    '......XXXXXXXXXXXXXXXX......',
+    '......XXXXXXXXXXXXXXXX......',
+    '......XXXXXXXXXXXXXXXX......',
     '............................',
-    '......f...........f.........',
+    '.........f.......f..........',
+    '............................',
+    '............................',
+    '..e.........k.........e.....',
+    '############################',
+    '############################'] };
+  C.nest_d = { theme: 'nest', rows: [
+    '................................',
+    '................................',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '.............S........X.........',
+    '............====......L.........',
+    '......................L.........',
+    '..e...................L..k...h..',
+    '################################',
+    '################################'] };
+  C.nest_featherfall = { theme: 'nest', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '...................ooo..............',
+    '..................=====.............',
+    '....................................',
+    '..k.......n.........E........k......',
+    '####################################',
+    '####################################'] };
+  C.nest_burgundy_end = { theme: 'nest', rows: [
     '............................',
     '............................',
     '............................',
-    '........ooo.....ooo.........',
-    '........XXX.....XXX.........',
-    '........XXX.....XXX.........',
-    '..e.....XXX..^^.XXX....e....',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '..o.o.o.....................',
+    '............................',
+    '..h......N.........D........',
     '############################',
     '############################'] };
 
-  C.arena_bride = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    'X............====......====............X',
-    '.......................................X',
-    '.......................................X',
-    '....====.......====.......====.........X',
-    '.......................................X',
-    '..c.......................K............X',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- FLOOR 8: ruin / city ---------- */
-  C.f8_start = { rows: [
+  /* ---------- depot ---------- */
+  C.depot_start = { theme: 'depot', rows: [
     '........................',
     '........................',
     '........................',
@@ -1479,2364 +1424,2124 @@
     '........................',
     '........................',
     '........................',
-    '...........ooo..........',
-    '..........=====.........',
-    '..P...............e.....',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
     '########################',
     '########################'] };
-
-  C.f8_a = { rows: [
+  C.depot_a = { theme: 'depot', rows: [
     '....................................',
     '....................................',
     '....................................',
-    '......................f.............',
-    '....................................',
-    '....................................',
-    '.......ooo............ooo...........',
-    '....................................',
-    '...........XXXX............XXXX.....',
-    '..c..e.....XXXX...e........XXXX..e..',
-    '#######...############...###########',
-    '#######...############...###########'] };
-
-  C.f8_b = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '..............ooo...............',
-    '................................',
-    '................................',
-    '.........f..............f.......',
-    '...............e................',
-    '........>.....XXXX....<.........',
-    '..c.e.........XXXX...........e..',
-    '#####~~~~~~~~~XXXX~~~~~~~~~#####',
-    '################################'] };
-
-  C.f8_c = { rows: [
-    '....................................',
-    '....................................',
-    '...........................?........',
-    '.........................=====......',
-    '....................................',
-    '....ooo...............H.............',
-    '......e...............H.............',
-    '...=======............H.............',
-    '......................H.............',
-    '..e.......^^^^...E....H......e......',
-    '####################################',
-    '####################################'] };
-
-  C.f8_d = { rows: [
-    '................................',
-    '................................',
-    '........f.........f.........f...',
-    '................................',
-    '................................',
-    '................................',
-    '..........oooo......oooo........',
-    '.........======....======.......',
-    '................................',
-    '..c..e....................e.....',
-    '########.............###########',
-    '########.............###########'] };
-
-  C.f8_e = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '...........X..........X.............',
-    '...........X..........X.............',
-    '...........X..........X.............',
-    '...o.o.....X...ooo....X....o.o......',
-    '...........b..........b.............',
-    '..e....e...b...e..$...b....e...E....',
-    '####################################',
-    '####################################'] };
-
-  C.f8_f = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '.................ooo............',
-    '.........e..oooo..e.............',
-    '.......XXXXX....XXXXX...........',
-    '.....XXXXXXX....XXXXX...........',
-    '....XXXXXXXX....XXXXX......f....',
-    '..cXXXXXXXXX....XXXXX.....e.....',
-    '############....################',
-    '############....################'] };
-
-  C.f8_g = { rows: [
-    '....................................',
-    '....................................',
-    '......ooo..............ooo..........',
-    '.......e................e...........',
-    '......XXX..............XXX..........',
-    '......XXX..............XXX..........',
-    '.....HXXX.............HXXX..........',
-    '.....HXXX.............HXXX..........',
-    '.....HXXX.....bb......HXXX..........',
-    '..e..HXXX.....bb..e...HXXX.....e....',
-    '####################################',
-    '####################################'] };
-
-  C.arena_overseer = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X......................................X',
-    'X......................................X',
-    'X......................................X',
-    'X.........====............====.........X',
-    '.......................................X',
-    '.......................................X',
-    '......=====.......====.......=====.....X',
-    '.......................................X',
-    '..c.......................K............X',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- FLOOR 9: warzone ---------- */
-  C.f9_start = { rows: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '...........ooo..........',
-    '..........=====.........',
-    '..P...............e.....',
-    '########################',
-    '########################'] };
-
-  C.f9_a = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '..............f.................f...',
-    '....................................',
-    '......ooo..........ooo..............',
-    '.....XXXXX........XXXXX.............',
-    '.....XXXXX...e....XXXXX.............',
-    '..e..XXXXX..XXX...XXXXX..^^^....e...',
-    '####################################',
-    '####################################'] };
-
-  C.f9_b = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '...........f..............f.........',
-    '.........oooo......oooo.............',
-    '........======....======............',
-    '....................................',
-    '..c..e^^.......^^.............e.....',
-    '#########....######....#############',
-    '#########....######....#############'] };
-
-  C.f9_c = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '................................',
-    '................................',
-    '....o.o.o.......o.o.o...........',
-    '..........b...........b.........',
-    '..e.......b....e...E..b.....e...',
-    '################################',
-    '################################'] };
-
-  C.f9_d = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '..........f.........f..........f....',
-    '....................................',
-    '........ooo...........ooo...........',
-    '.................e..................',
-    '..........>.....XXX.....<...........',
-    '..c..e..........XXX...........e.....',
-    '######..........XXX...........######',
-    '######..........XXX...........######'] };
-
-  C.f9_e = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '.............ooooo..............',
-    '................................',
-    '...............e................',
-    '...........HXXXXXXX.............',
-    '...........HXXXXXXX.............',
-    '...........HXXXXXXX.............',
-    '..e........HXXXXXXX.....E.......',
-    '################################',
-    '################################'] };
-
-  C.f9_f = { rows: [
-    '....................................',
-    '....................................',
-    '......f..........f..........f.......',
     '....................................',
     '....................................',
     '....................................',
     '.............ooo....................',
-    '............=====.........====......',
+    '............=====...................',
     '....................................',
-    '..c..e^^^..........e.........e......',
-    '##########.....########....#########',
-    '##########.....########....#########'] };
-
-  C.f9_g = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '.........ooo.........ooo........',
-    '........=====.......=====.......',
-    '.....bb........bb..........bb...',
-    '..e..bb...e....bb...E..$...bb...',
-    '################################',
-    '################################'] };
-
-  C.arena_showrunner = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X..........................................X',
-    'X..........................................X',
-    'X..........................................X',
-    'X.........====..............====...........X',
-    '...........................................X',
-    '...........................................X',
-    '.....====..........======..........====....X',
-    '...........................................X',
-    '..c.....h...................K..............X',
-    '############################################',
-    '############################################'] };
-  /* ==========================================================================
-     UPDATE 2 CHUNKS: levers (S), gates (L), quest item spots (Q), rescues (R).
-     Q / R chunks are only ever used through stages[id].chunks.insert, so each
-     quest/rescue stage gets exactly one. lv_* chunks are ordinary pool chunks.
-     ========================================================================== */
-
-  /* ---------- general lever puzzles (pool chunks, any theme) ---------- */
-  // gate blocks the way; the lever sits on a ledge you climb to
-  C.lv_gate_climb = { rows: [
-    '......................X.........',
-    '......................X.........',
-    '......................X.........',
-    '..........ooo.........X.........',
-    '.........S............X.........',
-    '........XXXX..........X.........',
-    '......................L.........',
-    '......................L...ooo...',
-    '...===................L.........',
-    '..e..........e........L....e....',
-    '################################',
-    '################################'] };
-
-  // treasure nook: climb over it, punch the bell on the roof, come back down
-  C.lv_cache = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '..................ooooo.........',
-    '.................H....S.........',
-    '.................HXXXXXXXXX.....',
-    '.................HX.o.o.o.X.....',
-    '.................HL.......X.....',
-    '..e..............HL...$...X..e..',
-    '################################',
-    '################################'] };
-
-  // low tunnel with a stash; the lever is up on the tunnel roof
-  C.lv_tunnel = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '....................................',
-    '................e.......S...........',
-    '............XXXXXXXXXXXXXXXX........',
-    '............XXXXXXXXXXXXXXXX........',
-    '.......===..XXXXXXXXXXXXXXXX........',
-    '....................Lo.o.o.X........',
-    '..e.................L..m...X...e....',
+    '..C.....G.....Y.......G.....C....e..',
     '####################################',
     '####################################'] };
-
-  // gate blocks the way; the lever hides in a nook behind a crate
-  C.lv_crates = { rows: [
-    '..................X.........',
-    '..................X.........',
-    '..................X.........',
-    '..................X.........',
-    '..................X.........',
-    '..................X.........',
-    '..................L.........',
-    '..........XXXXXX..L.........',
-    '..........b....X..L.........',
-    '..e.......b.S..X..L...e.....',
+  C.depot_b = { theme: 'depot', rows: [
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '.................ooo................',
+    '................=====...............',
+    '..........bb...........bb...........',
+    '..e.......bb..C....G...bb..C....Y...',
+    '####################################',
+    '####################################'] };
+  C.depot_c = { theme: 'depot', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '...............ooo..............',
+    '..........C.....................',
+    '........======..................',
+    '................................',
+    '...Y.............G......C....e..',
+    '################################',
+    '################################'] };
+  C.depot_d = { theme: 'depot', rows: [
+    '....................................',
+    '....................................',
+    '...............oo...................',
+    '..........H..C......................',
+    '..........HXXXXXXXX.................',
+    '..........H.........................',
+    '..........H.........................',
+    '..........H.........................',
+    '..........H.........................',
+    '..e..Y....H......G......C....G...e..',
+    '####################################',
+    '####################################'] };
+  C.depot_end = { theme: 'depot', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '..o.o.o.....................',
+    '............................',
+    '..h......n......T...........',
     '############################',
     '############################'] };
 
-  /* ---------- floor 1: the lever lesson (end chunk of the tutorial) ---------- */
-  // replaces the old f1_tut_end: sign 8 explains levers, then a gate before the door
-  C.f1_tut_end = { rows: [
-    '..............................X.....',
-    '..............................X.....',
-    '..............................X.....',
-    '..............................X.....',
-    '..............................X.....',
-    '..............................L.....',
-    '..............................L.....',
-    '...............ooo............L.....',
-    '..............=====...........L.....',
-    '..n..h....e........n.e...n.S..L..D..',
-    '####################################',
-    '####################################'] };
-
-  /* ---------- floor 2 (cave) ---------- */
-  // GRUB GULLY: the exit key sits at the end of an upper side tunnel
-  C.q_cave_branch = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXX..................................XXX',
-    'XXX.....o.o.o.................b...Q..XXX',
-    'XXX..........e..^^............b......XXX',
-    'XXXHXXXXXXXXXXXXXXX====XXXXXXXXXXXXXXXXX',
-    '...H....................................',
-    '...H....................................',
-    '...H.......ooo..........................',
-    '...H......=====.........................',
-    '...H..e.............h.........E..e......',
-    '########################################',
-    '########################################'] };
-
-  // ARCHERY RANGE: Sir Squeaks tied up in the target room; lever up the ladder
-  C.r_cave_target = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXX...XXXXXXXXXXX.........XXXXXXXXXXXXXX',
-    'XXXS..XXXX......L....o....XXXXXXXXXXXXXX',
-    'XXX=H=XXXX......L....R....XXXXXXXXXXXXXX',
-    '....H.......====XXXXXXXXXXX.............',
-    '....H...................................',
-    '....H.....====..........................',
-    '....H...................................',
-    '....H..e...........e.........e.......e..',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 3 (city / circus / swamp) ---------- */
-  // boiler room: lever on the roof, doors on both sides at street level
-  C.q_city_boiler = { rows: [
-    '....................................',
-    '....................................',
-    '.........H....S.......ooo...........',
-    '.........HXXXXXXXXXXXXXXXXXX........',
-    '.........HXXXXXXXXXXXXXXXXXX........',
-    '.........HXX..............XX........',
-    '.........HXX..............XX........',
-    '.........HXX..............XX........',
-    '.........HL.........Q.....LL........',
-    '..e......HL......e........LL...e....',
-    '####################################',
-    '####################################'] };
-
-  // lost and found / freight lockers: lever on the roof, reached from the far ladder
-  C.q_city_lockers = { rows: [
-    '....................................',
-    '...................S...........H....',
-    '.............XXXXXXXXXXXXXXXXXXH....',
-    '.............X................XH....',
-    '.............L.........o.o....XH....',
-    '.............L............Q...XH....',
-    '.........====XXXXXXXXXXXXXXXXXXH....',
-    '...............................H....',
-    '.....===.......................H....',
-    '..e........b........e..........H..e.',
-    '####################################',
-    '####################################'] };
-
-  // bayou: the ticket waits on a floating island; ride the lift up
-  C.q_swamp_stump = { rows: [
-    '........................................',
-    '...............oo..Q....................',
-    '...............XXXXXXX..................',
-    '...............XXXXXXX..................',
-    '.............v..........................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '..........XXX.....>......XXX............',
-    '..e.......XXX............XXX.........e..',
-    '#######~~~XXX~~~~~~~~~~~~XXX~~~~########',
-    '########################################'] };
-
-  // the midway: ring the high striker bell to open the prize booth
-  C.r_circus_prize = { rows: [
-    '........................................',
-    '.......S................................',
-    '.....HXXH...............................',
-    '.....HXXH.............ooo...............',
-    '.....HXXH...........XXXXXXXXXXXX........',
-    '.....HXXH...........X..........X........',
-    '.....HXXH...........X..........X........',
-    '.....HXXH.....===...L..........X........',
-    '.....HXXH...........L..........X........',
-    '..e..HXXH.....e.....L......R...X....e...',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 4 (train / city) ---------- */
-  // platform nine: office on the left, lever on the tall container across the pit
-  C.q_city_stack = { rows: [
-    '....................................',
-    '....................................',
-    '..............................S.....',
-    '............................HXXX....',
-    '............................HXXX....',
-    '...................ooo......HXXX....',
-    '.............XXXXXXXXX......HXXX....',
-    '.............X.......X......HXXX....',
-    '..........XX.X...Q...L......HXXX....',
-    '..e.......XX.X.......L.^^^..HXXX..e.',
-    '####################################',
-    '####################################'] };
-
-  // engine shed: walk over the hatch, pull the lever, drop into the pit
-  C.q_train_pit = { rows: [
-    '....................................',
-    '....................................',
-    '....................................',
-    '.........ooo..........ooo...........',
-    '....................................',
-    '...................f................',
-    '.........^^...............S.........',
-    '.....XXXXXXXLLLLLLXXXXXXXXXX........',
-    '...XXXXXXXXX..Q..HXXXXXXXXXXXX......',
-    '.e.XXXXXXXXX.....HXXXXXXXXXXXX...e..',
-    '####################################',
-    '####################################'] };
-
-  // the old spur: a caboose up on blocks; lever in the crate shed, lift up to the door
-  C.r_train_caboose = { rows: [
-    '........................................',
-    '.....................XXXXXXXXXXXX.......',
-    '.....................L..........X.......',
-    '.....................L.....R....X.......',
-    '....................XXXXXXXXXXXXX.......',
-    '..................v.....................',
-    '........................................',
-    '..................................XXXXX.',
-    '...................................b..X.',
-    '..e.........e......................b.SX.',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 5 (bubble / swamp) ---------- */
-  // sea caves: lever up the coral stairs, then ride the bubble to the alcove
-  C.q_bubble_grotto = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXX.....L.........................',
-    'XXXXX..Q..L..................S......',
-    'XXXXXXXXXXXX..............XXXXX.....',
-    '..............v.....................',
-    '....................................',
-    '..............................===...',
-    '..........ooo.......................',
-    '..e.......h.........e.........e.....',
-    '################~~~~################',
-    '####################################'] };
-
-  // mangrove maze: climb the root arch, cross the branches to the crown nest
-  C.q_swamp_roots = { rows: [
-    '........................................',
-    '........................XXXXXXX.........',
-    '.......H..S.............L.....X.........',
-    '.......HXXXX..===...===.L..Q..X.........',
-    '.......HXXXX...........XXXXXXXX.........',
-    '.......HXXXX...........XXXXXXXX.........',
-    '.......HXXXX............................',
-    '.......H................................',
-    '.......H....ooo.........................',
-    '..e....H.......e................e....e..',
-    '################~~~#####################',
-    '########################################'] };
-
-  // pearl vault: the conch is in the vault; the bell is up on a perch, take the bubble
-  C.q_bubble_clam = { rows: [
-    '....................................',
-    '....................................',
-    '.................S..................',
-    '................XXX.................',
-    '....................................',
-    '............v.......................',
-    '....................ooooo...........',
-    '.................XXXXXXXXXXXX.......',
-    '.................L.....Q....X.......',
-    '..e..............L..........X....e..',
-    '####################################',
-    '####################################'] };
-
-  // reef shelf: Katia in a fishing net up on the shelf; a tricky climb
-  C.r_swamp_net = { rows: [
-    '........................................',
-    '........................................',
-    '...........................ooo.R........',
-    '...........===...........XXXXXXXXX......',
-    '..................>.....................',
-    '....................f...................',
-    '........===.............................',
-    '........................................',
-    '....===.................................',
-    '..e.........^^^......e.............e....',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 6 (forest) ---------- */
-  // trapper camp: a leaf-covered snare pit; the lever inside lets you out
-  C.q_forest_snare = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '..........e..............ooo............',
-    '......XXXXXXXXXX..XXXXLXXXXXXXXX........',
-    '......XXXXXXX.......X.HXXXXXXXXX........',
-    '......XXXXXXX.......X.HXXXXXXXXX........',
-    '...XX.XXXXXXX.......X.HXXXXXXXXXXX......',
-    '...XX.XXXXXXX.......LQHXXXXXXXXXXX......',
-    '..eXX.XXXXXXX.S.....L.HXXXXXXXXXXX..e...',
-    '########################################',
-    '########################################'] };
-
-  // wolf hollow: the den under the hill; lever on the rock, hatch on top
-  C.q_forest_den = { rows: [
-    '....................................',
-    '.........................S..........',
-    '........................XXX.........',
-    '..........ooo...........XXX.........',
-    '........XXXXXXXXXXLXXXXXXXXX........',
-    '........XXXXXXXXXXHXXXXXXXXX........',
-    '........XXXX......H.....XXXX........',
-    '.....XX.XXXX......H.....XXXX.XX.....',
-    '.....XX.XXXX.Q....H.....XXXX.XX.....',
-    '..e..XX.XXXX......H..E..XXXX.XX..e..',
-    '####################################',
-    '####################################'] };
-
-  // kennels: the horn hangs at the end of a branch up the big tree
-  C.q_forest_tree = { rows: [
-    '..............oooo..................',
-    '.............HXXXX..E.Q.............',
-    '.............HXXXX=====.............',
-    '.............HXXXX..................',
-    '.............HXXXX..................',
-    '.............HXXXX......f...........',
-    '.............HXXXX..................',
-    '.............HXXXX..................',
-    '.............H......................',
-    '..e..........H.........e............',
-    '####################################',
-    '####################################'] };
-
-  // wishing well: lever on the ledge over the shaft, then the well-house door opens
-  C.r_forest_well = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '...........ooo..........................',
-    '.............S..........................',
-    '............XXX.........XXXXXXXXXX......',
-    '........................X........X......',
-    '........................X........X......',
-    '.............<..........L...............',
-    '..e.....................L...R...........',
-    '##########........######################',
-    '##########........######################'] };
-
-  /* ---------- floor 7 (castle) ---------- */
-  // wine cellar: smash the rack to reach the lever; the invitation is in the alcove
-  C.q_castle_cellar = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '......bb..................L........X',
-    '....S.bb..................L....Q...X',
-    '...XXXXXX................XXXXXXXXXXX',
-    '....................................',
-    '..............f.....................',
-    '........===.........===.............',
-    '...........ooo......................',
-    '..e.........e.......E.......e.......',
-    '####################################',
-    '####################################'] };
-
-  // greenhouse: lever atop the left vine, hatch atop the right vine
-  C.q_castle_vines = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '........................XXXXXXXX....',
-    '........S...............X......X....',
-    '....XXHXX...............X....Q.X....',
-    '......H.................XXXLXXXX....',
-    '......H...........f...........H.....',
-    '......H....................H........',
-    '......H....................H........',
-    '......H....ooo.............H........',
-    '..e...H.......e............H....e...',
-    '####################################',
-    '####################################'] };
-
-  // ballroom: ride the chandelier to the lever; the tiara waits on the balcony
-  C.q_castle_balcony = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    '.............................XXXXXXXXXXX',
-    '.............................L.........X',
-    '...............S.............L...Q.....X',
-    '..............XXX...........XXXXXXXXXXXX',
-    '........................................',
-    '........................................',
-    '..........>...........====..............',
-    '........................................',
-    '..e.......e........e...........e....e...',
-    '########################################',
-    '########################################'] };
-
-  // heart of the hedge maze: Signet held in the topiary chamber
-  C.r_castle_hedge = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '....S...............^...e...............',
-    '...XXXXX......HXXXXXXXXXXXX.............',
-    '..............HX..........X.............',
-    '..............HX..........X.............',
-    '.........===..HX..........X.............',
-    '..............HL..........X.............',
-    '..e...........HL.....R....X......e......',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 8 (ruin / city) ---------- */
-  // megamall: up the dead escalator, lever upstairs, guard office below
-  C.q_ruin_store = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '.........................e....S.........',
-    '....................XXXXXXXXXXXXXXXXXX..',
-    '..................XX...............X....',
-    '................XXXX...............X....',
-    '..............XXXXXX...............X....',
-    '............XXXXXXXX....Q..........L....',
-    '..e.........XXXXXXXX.........E.....L.e..',
-    '########################################',
-    '########################################'] };
-
-  // dead air tower: climb the mast, hop the swinging rig to the top perch
-  C.q_ruin_mast = { rows: [
-    '...........................Q....',
-    '..........................XXX...',
-    '.....................<..........',
-    '..............==H==.............',
-    '................H...............',
-    '................H.......f.......',
-    '................H...............',
-    '................H...............',
-    '................H...............',
-    '..e.............H........e......',
+  /* ---------- escape ---------- */
+  C.escape_start = { theme: 'escape', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........hh............',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.escape_a = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '..............f.................',
+    '................................',
+    '.........oooo...................',
+    '........======..................',
+    '................................',
+    '..e....................e........',
+    '#############...################',
+    '#############...################'] };
+  C.escape_b = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.............f..................',
+    '................................',
+    '............XXXX................',
+    '.........XXXXXXXXXX.............',
+    '..e...XXXXXXXXXXXXXXXX...e......',
     '################################',
     '################################'] };
-
-  /* ---------- floor 9 (warzone) ---------- */
-  // command bunker: hatch on the roof, lever on the watchtower
-  C.q_war_bunker = { rows: [
+  C.escape_c = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '........f............f..........',
+    '................................',
+    '................................',
+    '...........ooo..................',
+    '..........=====.................',
+    '................................',
+    '..e...^^^............^^^...e....',
+    '################################',
+    '################################'] };
+  C.escape_d = { theme: 'escape', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '........bb........bb........',
+    '..e.....bb..m.....bb...e....',
+    '############################',
+    '############################'] };
+  C.escape_e = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '................f...............',
+    '................................',
+    '...........ooo..................',
+    '..........>.....................',
+    '................................',
+    '..e.............................',
+    '######~~~~~~~~~~################',
+    '################################'] };
+  C.escape_f = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '....................f...........',
+    '................................',
+    '.....====......====......====...',
+    '................................',
+    '................................',
+    '.........=====..................',
+    '..e............E........e.......',
+    '################################',
+    '################################'] };
+  C.escape_g = { theme: 'escape', rows: [
+    '............................',
+    '............................',
+    '................X...........',
+    '................X...........',
+    '................X...........',
+    '................X...........',
+    '.........S......X...........',
+    '........====....L...........',
+    '................L...........',
+    '..e.............L..h..e.....',
+    '############################',
+    '############################'] };
+  C.escape_h = { theme: 'escape', rows: [
+    '................................',
+    '................................',
+    '................................',
+    '................................',
+    '.........f.........f............',
+    '................................',
+    '......oo..............oo........',
+    '................................',
+    '................................',
+    '..e.....m............e..........',
+    '#########...#######...##########',
+    '#########...#######...##########'] };
+  C.escape_bautista = { theme: 'escape', rows: [
     '....................................',
     '....................................',
-    '.............................S......',
-    '...........................HXX......',
-    '...........................HXX......',
-    '...........ooo.............HXX......',
-    '........XXXXXXXLXXXXXX.....HXX......',
-    '........XX.....H....XX.....HXX......',
-    '.....XX.XX.Q...H....XX.....HXX......',
-    '..e..XX.XX.....H..e.XX.....HXX...e..',
+    '....................................',
+    '....................................',
+    '....................................',
+    '....................................',
+    '..............hhh...................',
+    '.............=====..................',
+    '....................................',
+    '..c....N.......m.......m......h.....',
     '####################################',
     '####################################'] };
+  C.escape_end = { theme: 'escape', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..o.o.o.................',
+    '........................',
+    '..............D.........',
+    '########################',
+    '########################'] };
 
-  // artillery hill: lever on the sniper ledge, lift up to the gun nest
-  C.q_war_hill = { rows: [
-    '............................XXXXXXXXXX..',
-    '............................L........X..',
-    '............................L....Q...X..',
-    '...........................XXXXXXXXXXX..',
-    '.......S.e..............................',
-    '......XXXXXH............v...............',
-    '...........H............................',
-    '...........H............................',
-    '...........H............................',
-    '..e........H......^^^........e........e.',
-    '########################################',
-    '########################################'] };
-
-  // dropship wreck: lever on the hull, the pass at the back of the cargo bay
-  C.q_war_wreck = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '....................S.....e.............',
-    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
-    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
-    '.........HXXXXXXXXXXXXXXXXXXXXX.........',
-    '.........H..............L.....X.........',
-    '.........H.....bb.......L..Q..X.........',
-    '..e......H.....bb..^^...L.....X....e....',
-    '########################################',
-    '########################################'] };
-
-  /* ==========================================================================
-     UPDATE 3 CHUNKS
-     ========================================================================== */
-
-  /* ---------- floor 10 on foot (scrapyard / auto parts store) ---------- */
-  // scrapyard: armor plating in the crusher shed; lever on the shed roof, reached by ladder + hops
-  C.q_ruin_crusher = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '..............ooo.......................',
-    '..............................S.........',
-    '..........H...===..====...XXXXXXXXXXX...',
-    '..........H...............X.........X...',
-    '..........H...............L.........X...',
-    '..........H...............L....Q....X...',
-    '..e.......H.......e.......L.........X.e.',
-    '########################################',
-    '########################################'] };
-
-  // auto parts store: the turbo sits on the top shelf; lever on the stock pallets
-  C.q_city_lift = { rows: [
-    '........................................',
-    '...XXXXXXXXXX...........................',
-    '...X....Q...L...........................',
-    '...X........L...........................',
-    '...XXXXXXXXXXXX=====....................',
-    '........................................',
-    '...............................S........',
-    '.....................=====..XXXXXX......',
-    '........................................',
-    '..e.......b.....e.........e........e....',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 11 on foot (festival town) ---------- */
-  // confetti alley: cannon in a rooftop shed (ladder on the right); lever in an alley nook behind crates
-  C.q_city_cannon = { rows: [
-    '........................................',
-    '........................................',
-    '...............XXXXXXXXXXX..............',
-    '...............X....Q....L..............',
-    '...............X.........L..............',
-    '...............XXXXXXXXXXXXXH...........',
-    '............................H...........',
-    '......XXXXX.................H...........',
-    '......b...X.................H...........',
-    '..e...b.S.X.......e.........H.....e.....',
-    '########################################',
-    '########################################'] };
-
-  // balloon barn: helium kit up in the rigging; lever on a perch, ride the prop cart up
-  C.q_circus_balloons = { rows: [
-    '........................................',
-    '........................................',
-    '..........................XXXXXXXX......',
-    '..........................L..Q...X......',
-    '..........................L......X......',
-    '.........S...........XXXXXXXXXXXXX......',
-    '........XXX.............................',
-    '........................................',
-    '.....===..........>.....................',
-    '..e.........e..........e.........e......',
-    '########################################',
-    '########################################'] };
-
-  // gilded hall: the banner hangs in a high gallery (gate on its right side); lever atop the bell tower
-  C.q_castle_banner = { rows: [
-    '........................................',
-    '...............S........................',
-    '............HXXXXX......................',
-    '............H...........................',
-    '............H..........XXXXXXXXXXXXX....',
-    '............H..........X...Q.......L....',
-    '............H..........X...........L....',
-    '............H..........XXXXXXXXXXXXX==..',
-    '.....===....H...........................',
-    '..e.........H.......e..........e.....e..',
-    '########################################',
-    '########################################'] };
-
-  // lantern park: spotlight in a treehouse up the branches; lever on a stump to the west
-  C.q_forest_lantern = { rows: [
-    '........................................',
-    '.......................XXXXXXXX.........',
-    '.......................L..Q...X.........',
-    '.......................L......X.........',
-    '......S..........====XXXXXXXXXX.........',
-    '.....XXX................................',
-    '.............===........................',
-    '..........==............................',
-    '......===...............................',
-    '..e.............e...........e.......e...',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 10: race chunks (theme raceway) ----------
-     r rival start, Z boost pad, J jump pad, O oil slick (each in the empty cell
-     right above ground), F finish line. Truck drives on row 9. */
-  // heat 1 grid: the player on pole, rivals lined up behind
-  C.race_start = { rows: [
+  /* ---------- restroom ---------- */
+  C.restroom_start = { theme: 'restroom', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.restroom_a = { theme: 'restroom', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '......o...o...o.............',
+    '............................',
+    '........X...X...X...........',
+    '..e.....X.e.X.e.X....e......',
+    '############################',
+    '############################'] };
+  C.restroom_b = { theme: 'restroom', rows: [
     '................................',
     '................................',
     '................................',
     '................................',
     '................................',
     '................................',
+    '...........ooo..................',
+    '.....====......====.............',
     '................................',
-    '.......................o.o.o....',
+    '..e..................e..........',
+    '#####~~~~~~~~~~~~~~~~###########',
+    '################################'] };
+  C.restroom_c = { theme: 'restroom', rows: [
+    '............................',
+    '............................',
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..................X.........',
+    '..........S.......X.........',
+    '.........====.....L.........',
+    '..................L.........',
+    '..e...............L..?.$....',
+    '############################',
+    '############################'] };
+  C.restroom_end = { theme: 'restroom', rows: [
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '....................',
+    '..o.o.o.............',
+    '....................',
+    '..n.......D.........',
+    '####################',
+    '####################'] };
+
+  /* ---------- temple ---------- */
+  C.temple_start = { theme: 'temple', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........ooo...........',
+    '........................',
+    '..P...n.................',
+    '########################',
+    '########################'] };
+  C.temple_a = { theme: 'temple', rows: [
     '................................',
-    '.r...r...r...r.....P............',
+    '............ooo.................',
+    '.........H......................',
+    '.........HXXXXXXXX..............',
+    '.........H........H.............',
+    '.........H........H.............',
+    '.........HXX......H.............',
+    '.........HXX......H.............',
+    '.........HXX......H.............',
+    '..e......HXX...e..H.....e.......',
     '################################',
     '################################'] };
-
-  // heats 2-3 grid: two rivals behind, two ahead
-  C.race_grid = { rows: [
+  C.temple_b = { theme: 'temple', rows: [
     '................................',
     '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '.........................o.o.o..',
-    '................................',
-    '..r...r....P....r...r...........',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '......................X.........',
+    '.............S........X.........',
+    '............====......L.........',
+    '......................L.........',
+    '..e...................L..$.$.e..',
     '################################',
     '################################'] };
-
-  // championship grid: the champion starts right in front of you
-  C.race_pole = { rows: [
+  C.temple_c = { theme: 'temple', rows: [
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '............................',
+    '..........ooooo.............',
+    '.............v..............',
+    '............................',
+    '............................',
+    '..e...^^^^^^^^^^^^^^..e.....',
+    '############################',
+    '############################'] };
+  C.temple_d = { theme: 'temple', rows: [
     '................................',
     '................................',
     '................................',
     '................................',
     '................................',
-    '................................',
-    '................................',
-    '..........................o.o...',
-    '................................',
-    '...P.....r...r...r...r..........',
+    '..............E.................',
+    '............XXXXX...............',
+    '..........XXXXXXXXX.............',
+    '........XXXXXXXXXXXXX...........',
+    '..n...XXXXXXXXXXXXXXXXX...e.....',
     '################################',
     '################################'] };
+  C.temple_end = { theme: 'temple', rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '..........?.............',
+    '........=====...........',
+    '........................',
+    '........................',
+    '..h..........D..........',
+    '########################',
+    '########################'] };
 
-  C.race_finish = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '..o.o.o.o...............................',
-    '........................................',
-    '..........F.............................',
-    '########################################',
-    '########################################'] };
+  /* vertical layouts (levels reference them by id through level.layout) */
+  D.layouts = {
+    drop_collapse: [
+      'XXXXXXXXXXXXXXXXXXXXXXXX',
+      'X......................X',
+      'X......................X',
+      'X.P....o.o.o...........X',
+      'X################...###X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X..e.......e.....c.....X',
+      'X...###################X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X.....bb..e.....e......X',
+      'X##################...#X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X..f.......e......c....X',
+      'X###===################X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X.......e......h.......X',
+      'X#########....#########X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X..e.....bb..bb.....e..X',
+      'X...###################X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X....e..f.......c......X',
+      'X##################...#X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X..e......e........m...X',
+      'X####...###############X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......e.....e.....e...X',
+      'X#################....#X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X......................X',
+      'X..D.....h.....o.o.o...X',
+      'X######################X',
+      'X######################X'],
+    climb_admin: [
+      'XXXXXXXXXXXXXXXXXXXXXXXX',
+      'X......o.o.o...........X',
+      'X..........D...........X',
+      'X....XXXXXXXXXXXX......X',
+      'X......................X',
+      'X......................X',
+      'X.................====.X',
+      'X......................X',
+      'X.............e........X',
+      'X............====......X',
+      'X...........f..........X',
+      'X......................X',
+      'X.......====...........X',
+      'X......................X',
+      'X..o...................X',
+      'X..====................X',
+      'X......................X',
+      'X........e.............X',
+      'X.......====...........X',
+      'X......................X',
+      'X..............c.......X',
+      'X............====......X',
+      'X...........f..........X',
+      'X......................X',
+      'X.................====.X',
+      'X......................X',
+      'X..............e.......X',
+      'X.............====.....X',
+      'X......................X',
+      'X........o.............X',
+      'X........====..........X',
+      'X......................X',
+      'X......................X',
+      'X...====...............X',
+      'X...........f..........X',
+      'X.........e............X',
+      'X........====..........X',
+      'X......................X',
+      'X...............c......X',
+      'X.............====.....X',
+      'X......................X',
+      'X......................X',
+      'X..................===.X',
+      'X......................X',
+      'X..............oe......X',
+      'X..............====....X',
+      'X...........f..........X',
+      'X......................X',
+      'X.........====.........X',
+      'X......................X',
+      'X......................X',
+      'X....====..............X',
+      'X......................X',
+      'X..........ec..........X',
+      'X.........====.........X',
+      'X......................X',
+      'X......................X',
+      'X..............====....X',
+      'X......................X',
+      'X..P.....c.......h.....X',
+      'X######################X',
+      'X######################X']
+  };
 
-  // the straightaway: boost pads and a couple of crate stacks to ram
-  C.race_a = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '.......................f................',
-    '........................................',
-    '.....ooo..............ooo...............',
-    '........................................',
-    '...Z...........b....e..........Z....b...',
-    '########################################',
-    '########################################'] };
-
-  // hop the ditch: two short gaps
-  C.race_b = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '...........ooo..............ooo.........',
-    '........................................',
-    '.....e.........................e........',
-    '###########...#############...##########',
-    '###########...#############...##########'] };
-
-  // oil change: slicks and pit crews on the road
-  C.race_c = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '...........f.................f..........',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '....OO.......e.....O.O.........e...OO...',
-    '########################################',
-    '########################################'] };
-
-  // the overpass: jump pad up to a clean, coin-lined shortcut over the mess below
-  C.race_d = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '...........o.o.o.Z..o.o.o...............',
-    '..........=================.............',
-    '........................................',
-    '........J.....O.....e...^^.....e........',
-    '########################################',
-    '########################################'] };
-
-  // crate alley: stacks of crates to smash through
-  C.race_e = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '.........................f..............',
-    '........................................',
-    '.......ooo.........ooo........ooo.......',
-    '........................................',
-    '...e......b.....e...bb.....Z....b...e...',
-    '########################################',
-    '########################################'] };
-
-  // big air: a jump pad over a six tile gap, then a plain four tile hop
-  C.race_f = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '.............ooo........................',
-    '...........o.....o......................',
-    '.............................oooo.......',
-    '........................................',
-    '..........J.............e...............',
-    '###########.....############....########',
-    '###########.....############....########'] };
-
-  // shredder row: tire shredder strips; the overpass skips most of them
-  C.race_g = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '..................f.....................',
-    '........................................',
-    '...........o.o.o.o.o.o..................',
-    '..........============..................',
-    '........................................',
-    '........J..^^^.......^^^......O...e.....',
-    '########################################',
-    '########################################'] };
-
-  // double decker: a long overpass with a snack on top, a gap and oil underneath
-  C.race_h = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '.........o.o.o.o.h.o.o.o.o..............',
-    '........====================............',
-    '........................................',
-    '......J..............e.....O....e.......',
-    '################....####################',
-    '################....####################'] };
-
-  // pit stop: three gaps in a row (the six tile one has a pad)
-  C.race_i = { rows: [
-    '............................................',
-    '............................................',
-    '............................................',
-    '..............................f.............',
-    '............................................',
-    '............ooo.............................',
-    '............................................',
-    '........................oooo........ooo.....',
-    '............................................',
-    '...e......J.....................e...........',
-    '###########.....########....########...#####',
-    '###########.....########....########...#####'] };
-
-  // bridge out: a broken plank bridge over a bottomless drop
-  C.race_j = { rows: [
-    '............................................',
-    '............................................',
-    '............................................',
-    '............................................',
-    '.................f..........................',
-    '............................................',
-    '............................................',
-    '..............ooo......ooo.......oo.........',
-    '............................................',
-    '...O......e.........e...................Z...',
-    '######========...======...=======..#########',
-    '######.............................#########'] };
-
-  // the gauntlet: a broken overpass up top, crates and a brute down below
-  C.race_k = { rows: [
-    '............................................',
-    '............................................',
-    '............................................',
-    '...........................f................',
-    '............................................',
-    '............................................',
-    '............o.o.o.......o.o.o.Z.............',
-    '..........=========...==========............',
-    '............................................',
-    '........J......b....E......b.....O.....e....',
-    '############################################',
-    '############################################'] };
-
-  // the widowmaker (championship): pad over a six tile gap, straight onto a second pad,
-  // up onto a long overpass that carries you over the next drop
-  C.race_l = { rows: [
-    '................................................',
-    '................................................',
-    '................................................',
-    '.........................f..........f...........',
-    '...........ooo..................................',
-    '................................................',
-    '..............................o.o.o.o.o.o.Z.....',
-    '............................================....',
-    '................................................',
-    '..........J...............J........e............',
-    '###########.....###########.....######....######',
-    '###########.....###########.....######....######'] };
-
-  // heat 2 insert: a billboard overpass with the mine hopper sitting on top (Q)
-  C.race_q_billboard = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '..............o.o.Q.o.o.................',
-    '..........=================.............',
-    '........................................',
-    '........J......O.....e......^^..........',
-    '########################################',
-    '########################################'] };
-
-  /* ---------- floor 11: the parade route (theme parade) ----------
-     Carl rides the float along row 7-8; hecklers stand on balconies '='. */
-  C.parade_start = { rows: [
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '................................',
-    '.................o.o.o.o........',
-    '................................',
-    '....P...........................',
-    '################################',
-    '################################'] };
-
-  C.parade_a = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '......e...................e.............',
-    '....=====...............=====...........',
-    '........................................',
-    '...........o.o.o..............h.........',
-    '........................................',
-    '..................e.....................',
-    '########################################',
-    '########################################'] };
-
-  C.parade_b = { rows: [
-    '........................................',
-    '........................................',
-    '..........f.................f...........',
-    '........................................',
-    '..................e.....................',
-    '................=====...................',
-    '........................................',
-    '....o.o.o...................o.o.o.......',
-    '........................................',
-    '...........e.....................e......',
-    '########################################',
-    '########################################'] };
-
-  C.parade_c = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '........................................',
-    '...e............................e.......',
-    '..====.........................====.....',
-    '........................................',
-    '.............ooooo......................',
-    '........................................',
-    '.......e...........E...........e........',
-    '########################################',
-    '########################################'] };
-
-  C.parade_d = { rows: [
-    '........................................',
-    '........................................',
-    '........................................',
-    '.................f......................',
-    '........................................',
-    '........................................',
-    '......o.o.o.o.o.......o.o.o.o.o.........',
-    '........................................',
-    '........................................',
-    '....................h...................',
-    '########################################',
-    '########################################'] };
-
-  // the reviewing stand at the end of the route
-  C.arena_marshal = { rows: [
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    'X..........................................X',
-    'X..........................................X',
-    'X..........................................X',
-    'X.........====..............====...........X',
-    '...........................................X',
-    '...........................................X',
-    '.....====..........======..........====....X',
-    '...........................................X',
-    '..c.....h.........................K........X',
-    '############################################',
-    '############################################'] };
+  /* street rows (areas reference them by id) */
+  D.streetRows = {
+    village: [
+      'X...................................................................................................',
+      'X...................................................................................................',
+      'X...................................................................................................',
+      'X...................................................................................................',
+      'X...................................................................................................',
+      'X...................................................................................................',
+      'X.............................................................oooo..................................',
+      'X............................................................======.................................',
+      'X...................................................................................................',
+      'X..P....N.......1.........2.......N.........3...........p...........................N.......t.......',
+      '####################################################################################################',
+      '####################################################################################################'],
+    ruins_w: [
+      '............................................................................................................................................',
+      '............................................................................................................................................',
+      '............................................................................................................................................',
+      '............................................................................................................................................',
+      '............................................................................................................................................',
+      '............................................................................................................................................',
+      '...............................ooo.................................ooo...................................ooo................................',
+      '..............................=====...............................====..................................=====.................====..........',
+      '.................................................X..........................................................................................',
+      '..........p...........1...........XX....t.......XXX.......2.................t.......XX......3.................XX......t.....................',
+      '############################################################################################################################################',
+      '############################################################################################################################################'],
+    circus_park: [
+      '...........................................................................................................................................X',
+      '...........................................................................................................................................X',
+      '...........................................................................................................................................X',
+      '...........................................................................................................................................X',
+      '...........................................................................................................................................X',
+      '...........................................................................................................................................X',
+      '...............................................ooo...................................ooo...................................................X',
+      '..............................................====..................................====......................====.........................X',
+      '...........................................................................................................................................X',
+      '........p.........1...........2.........3.............4.........N...........5...............6...........7.............t.............8......X',
+      '############################################################################################################################################',
+      '############################################################################################################################################'],
+    ruins_e: [
+      '................................................................................................................................................................',
+      '................................................................................................................................................................',
+      '................................................................................................................................................................',
+      '................................................................................................................................................................',
+      '................................................................................................................................................................',
+      '................................................................................................................................................................',
+      '.............................ooo.............................oo....................................................................oooo.........................',
+      '............................=====...........................====............................====..................................======........................',
+      '.........................................................X......................................................................................................',
+      '..........p.........N...........XX......1.........t.....XXX...........t.............2...............t.........XX........3...................XX....t.............',
+      '################################################################################################################################################################',
+      '################################################################################################################################################################'],
+    settlement: [
+      '.............................................................................................................................................................................................X',
+      '.............................................................................................................................................................................................X',
+      '.............................................................................................................................................................................................X',
+      '.............................................................................................................................................................................................X',
+      '.............................................................................................................................................................................................X',
+      '.............................................................................................................................................................................................X',
+      '.................................ooo...............................................................................................................ooo.......................................X',
+      '................................====.................................................................................====.........................=====......................................X',
+      '.............................................................................................................................................................................................X',
+      '......p.......N...........1.............2...........3.........N.......4.....N.......5...........6.......A.......B...........7...............8...............9.............t...........C......X',
+      '##############################################################################################################################################################################################',
+      '##############################################################################################################################################################################################'],
+    admin: [
+      '........................................................................................................................',
+      '........................................................................................................................',
+      '........................................................................................................................',
+      '........................................................................................................................',
+      '........................................................................................................................',
+      '........................................................................................................................',
+      '.........................ooo............................................................................................',
+      '........................====............................................====............................................',
+      '........................................................................................................................',
+      '........p.........N.............1...........2...........3.........N.............4...........5...........N...............',
+      '########################################################################################################################',
+      '########################################################################################################################'],
+    east_stairs: [
+      '.........................................................................................X',
+      '.........................................................................................X',
+      '.........................................................................................X',
+      '.........................................................................................X',
+      '.........................................................................................X',
+      '.........................................................................................X',
+      '.........................................ooo.............................................X',
+      '........................................=====............................................X',
+      '.........................................................................................X',
+      '........p...........XX........1...................t.........N.....XX......2..............X',
+      '##########################################################################################',
+      '##########################################################################################']
+  };
 })();
-
 /* ==========================================================================
-   STAGES + FLOORS
+   WORLD: areas (the playable streets), levels, quests, objectives, events, talk
    ========================================================================== */
 (function () {
   'use strict';
   var D = window.DCW.data;
-  var S = D.stages = {};
+  var R = D.streetRows;
 
-  function st(id, o) { o.id = id; S[id] = o; return o; }
+  /* ---------------- areas (DESIGN 6.1). npcs[i].x = tile column of the i-th N ---------------- */
+  D.areas = {
+    village: {
+      id: 'village', name: 'TINY VILLAGE', theme: 'village', music: 'village', musicNight: 'village_night',
+      guarded: true, rows: R.village,
+      doors: {
+        '1': { kind: 'inn', target: 'pug', label: 'THE BELLY-RUBBED PUG', sprite: 'door_inn' },
+        '2': { kind: 'shop', target: 'lucky', label: "LUCKY'S GENERAL GOODS", sprite: 'door_shop' },
+        '3': { kind: 'cinema', target: 'notice_board', label: 'NOTICE BOARD', sprite: 'sign' }
+      },
+      edges: { left: null, right: { area: 'ruins_w', entry: 'left' } },
+      npcs: [
+        { id: 'mordecai_tour', x: 8, sprite: 'mordecai', phase: 'day', showIf: 'toured', hideIf: 'lemurs_done' },
+        { id: 'town_crier', x: 34, sprite: 'citizen_human', phase: 'day' },
+        { id: 'gate_guard', x: 84, sprite: 'guard', phase: 'day' }
+      ],
+      enemies: { day: [], night: [['street_urchin', 3], ['incubus', 1]] },
+      density: { day: 0, night: 0.5 },
+      citizens: ['citizen_human', 'citizen_human', 'chickadee'],
+      signpost: true
+    },
 
-  /* shared enemy mixes */
-  var MIX = {
-    f1:      { enemies: [['rat', 4], ['roach', 3], ['goblin', 2]], elite: [['goblin', 1]], flyers: [['bat', 1]] },
-    f2:      { enemies: [['goblin', 4], ['goblin_archer', 3], ['grub', 2], ['shaman', 1], ['juicer_minion', 1]], elite: [['goblin_brute', 3], ['juicer_minion', 1]], flyers: [['bat', 1]] },
-    city3:   { enemies: [['clown', 3], ['rat', 2], ['gator', 1]], elite: [['clown_brute', 1]], flyers: [['skyfowl', 1]] },
-    circus3: { enemies: [['clown', 5], ['rat', 1]], elite: [['clown_brute', 1]], flyers: [['skyfowl', 1]] },
-    swamp3:  { enemies: [['gator', 3], ['clown', 1], ['rat', 1]], elite: [['swamp_troll', 1]], flyers: [['skyfowl', 1]] },
-    train4:  { enemies: [['rail_rat', 4], ['steam_goblin', 3], ['bat', 1]], elite: [['conductor', 1]], flyers: [['bat', 1]] },
-    city4:   { enemies: [['steam_goblin', 3], ['rail_rat', 2], ['clown', 1]], elite: [['conductor', 2], ['clown_brute', 1]], flyers: [['bat', 1], ['skyfowl', 1]] },
-    bubble5: { enemies: [['fishman', 4], ['gator', 1]], elite: [['crab', 1]], flyers: [['jelly', 1]] },
-    swamp5:  { enemies: [['gator', 2], ['fishman', 3]], elite: [['crab', 1], ['swamp_troll', 1]], flyers: [['jelly', 2], ['skyfowl', 1]] },
-    forest6: { enemies: [['hunter', 3], ['hound', 3]], elite: [['masked_noble', 1]], flyers: [['skyfowl', 1]] },
-    castle7: { enemies: [['ghoul', 4], ['skeleton', 3]], elite: [['masked_noble', 1], ['gargoyle', 1]], flyers: [['gargoyle', 2], ['bat', 1]] },
-    ruin8:   { enemies: [['mutant', 4], ['drone', 1]], elite: [['golem', 1]], flyers: [['drone', 1]] },
-    city8:   { enemies: [['mutant', 3], ['steam_goblin', 1], ['rail_rat', 1]], elite: [['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
-    war9:    { enemies: [['soldier', 5], ['sniper', 1], ['cultist', 1], ['mutant', 1]], elite: [['war_beast', 2], ['golem', 1]], flyers: [['drone', 2], ['gargoyle', 1]] },
-    // Update 3. track10 = pit crews and pests standing on the race track (the truck rams them)
-    track10: { enemies: [['rail_rat', 3], ['goblin', 3], ['steam_goblin', 1]], elite: [['goblin_brute', 1]], flyers: [['drone', 2], ['skyfowl', 1]] },
-    crew10:  { enemies: [['steam_goblin', 3], ['rail_rat', 3], ['juicer_minion', 2], ['goblin', 1]], elite: [['goblin_brute', 2], ['conductor', 1]], flyers: [['drone', 2], ['bat', 1]] },
-    junk10:  { enemies: [['mutant', 3], ['rail_rat', 2], ['steam_goblin', 2]], elite: [['golem', 1]], flyers: [['drone', 1]] },
-    city11:  { enemies: [['clown', 3], ['soldier', 2], ['cultist', 1]], elite: [['clown_brute', 2], ['masked_noble', 1]], flyers: [['skyfowl', 1], ['jelly', 1]] },
-    circus11:{ enemies: [['clown', 5], ['juicer_minion', 1]], elite: [['clown_brute', 1]], flyers: [['jelly', 2], ['skyfowl', 1]] },
-    castle11:{ enemies: [['ghoul', 2], ['skeleton', 2], ['clown', 1]], elite: [['masked_noble', 1], ['gargoyle', 1]], flyers: [['gargoyle', 1], ['jelly', 1]] },
-    forest11:{ enemies: [['hound', 2], ['hunter', 2], ['clown', 1]], elite: [['swamp_troll', 1]], flyers: [['skyfowl', 2], ['jelly', 1]] }
+    ruins_w: {
+      id: 'ruins_w', name: 'THE WEST RUINS', theme: 'ruins', music: 'ruins', musicNight: 'ruins_night',
+      guarded: false, rows: R.ruins_w,
+      doors: {
+        '1': { kind: 'level', target: 'a1_lemurs', label: 'COLLAPSED STREET', sprite: 'manhole' },
+        '2': { kind: 'level', target: 'a1_bodies', label: 'DEAD CRAWLER ROW', sprite: 'alley_mouth',
+               needs: 'lemurs_done', lockText: 'SOMETHING IN THERE SMELLS DEAD. FINISH WITH THE COLLAPSED STREET FIRST.' },
+        '3': { kind: 'level', target: 'x_temple', label: 'A CORRUPT TEMPLE', sprite: 'door_wood', showIf: 'toured' }
+      },
+      edges: { left: { area: 'village', entry: 'right' }, right: { area: 'circus_park', entry: 'left' } },
+      npcs: [],
+      enemies: { day: [['lemur', 3], ['brain_boiler', 2]], night: [['street_urchin', 3], ['lemur', 1], ['mold_lion', 1]] },
+      density: { day: 0.4, night: 0.7 },
+      citizens: [], signpost: true
+    },
+
+    circus_park: {
+      id: 'circus_park', name: "GRIMALDI'S PARK", theme: 'circus', music: 'circus', musicNight: 'circus',
+      guarded: false, rows: R.circus_park,
+      doors: {
+        '1': { kind: 'level', target: 'a1_collapse', label: 'ABANDONED TENEMENT', sprite: 'door_wood',
+               needs: 'bodies_done', lockText: 'A GOOD SPOT TO SPY ON THE CIRCUS. MAYBE CHECK THOSE DEAD CRAWLERS FIRST.', hideIf: 'circus_gone' },
+        '2': { kind: 'level', target: 'a1_lions', label: 'HOLE IN THE STREET', sprite: 'manhole', showIf: 'collapse_done', hideIf: 'lions_done' },
+        '3': { kind: 'level', target: 'a1_solo', label: "SIGNET'S LAIR", sprite: 'manhole', showIf: 'lions_done', hideIf: 'solo_done' },
+        '4': { kind: 'level', target: 'a1_heather', label: 'HUNTING GROUND', sprite: 'gate', showIf: 'solo_done', hideIf: 'heather_done' },
+        '5': { kind: 'level', target: 'a1_bigtop', label: 'THE BIG TOP', sprite: 'tent_flap', showIf: 'has_ticket', hideIf: 'circus_gone',
+               needsItem: 'big_top_ticket', phase: 'night', lockText: 'THE BIG TOP OPENS AT SUNDOWN. CIRCUS HOURS. REST AT THE PUG: WAIT FOR NIGHT.' },
+        '6': { kind: 'level', target: 'a1_barricade', label: 'BACK TO DONUT', sprite: 'alley_mouth', showIf: 'bigtop_done', hideIf: 'circus_gone' },
+        '7': { kind: 'stairs', label: 'STAIRWELL TO FLOOR 4', sprite: 'stairs_down', showIf: 'circus_gone' },
+        '8': { kind: 'area', target: 'ruins_e', entry: 'left', label: 'EAST ROAD', sprite: 'gate',
+               needs: 'circus_gone', lockText: 'CLOWN SCOUTS WATCH THE EAST ROAD. NOBODY LEAVES WHILE THE SHOW IS STILL RUNNING.' }
+      },
+      edges: { left: { area: 'ruins_w', entry: 'right' }, right: null },
+      npcs: [
+        { id: 'signet_park', x: 64, sprite: 'signet', phase: 'night', showIf: 'met_signet', hideIf: 'circus_gone' }
+      ],
+      enemies: { day: [['lemur', 3], ['fat_clown', 2]], night: [['fat_clown', 2], ['stilt_clown', 1], ['street_urchin', 2], ['lemur', 2]] },
+      density: { day: 0.5, night: 0.8 },
+      enemiesAfter: { flag: 'circus_gone', day: [['brain_boiler', 2]], night: [['street_urchin', 3]] },
+      citizens: [], signpost: true
+    },
+
+    ruins_e: {
+      id: 'ruins_e', name: 'THE EAST ROAD', theme: 'ruins', music: 'ruins', musicNight: 'ruins_night',
+      guarded: false, rows: R.ruins_e,
+      doors: {
+        '1': { kind: 'level', target: 'x_restroom', label: 'RESTROOM', sprite: 'door_wood' },
+        '2': { kind: 'level', target: 'a2_divider', label: "THE DIVIDER'S CORPSE", sprite: 'alley_mouth', showIf: 'met_quill',
+               phase: 'night', lockText: 'A DEAD BOSS LIES OUT THERE. THE ELVES ONLY COME TO IT AFTER DARK. REST AT THE NARWHAL: WAIT FOR NIGHT.' },
+        '3': { kind: 'level', target: 'a2_dispenser', label: 'THE Y', sprite: 'door_wood', showIf: 'settled' }
+      },
+      edges: { left: { area: 'circus_park', entry: 'right' }, right: { area: 'settlement', entry: 'left' } },
+      npcs: [
+        { id: 'lucia', x: 20, sprite: 'lucia', showIf: 'circus_gone', hideIf: 'show_done' }
+      ],
+      enemies: { day: [['brain_boiler', 3], ['lemur', 2], ['giraffe', 1]], night: [['street_urchin', 3], ['incubus', 1], ['berserker', 1]] },
+      density: { day: 0.5, night: 0.8 },
+      citizens: [], signpost: true
+    },
+
+    settlement: {
+      id: 'settlement', name: 'MEDIUM SKYFOWL SETTLEMENT', theme: 'settlement', music: 'settlement', musicNight: 'market',
+      guarded: true, rows: R.settlement,
+      doors: {
+        '1': { kind: 'inn', target: 'narwhal', label: 'THE ONE-EYED NARWHAL', sprite: 'door_inn' },
+        '2': { kind: 'shop', target: 'edge_dancer', label: "LUCKY'S GENERAL GOODS", sprite: 'door_shop' },
+        '3': { kind: 'shop', target: 'talon', label: "TALON STRONG'S OUTFITTERS", sprite: 'door_shop' },
+        '4': { kind: 'club', target: 'desperado', label: 'THE PUB', sprite: 'door_pub' },
+        '5': { kind: 'shop', target: 'pustule', label: 'SILK ROAD MARKET', sprite: 'tent_flap',
+               needs: 'met_pustule', lockText: 'MEMBERS AND FRIENDS ONLY. MORDECAI KNOWS SOMEBODY IN HERE. SHE OOZES.' },
+        '6': { kind: 'level', target: 'a2_mongo', label: 'DARK ALLEY', sprite: 'alley_mouth', showIf: 'mongo_bolted', hideIf: 'mongo_done' },
+        'A': { kind: 'level', target: 'a2_alley', label: "GUMGUM'S ALLEY", sprite: 'alley_mouth', showIf: 'mongo_done', hideIf: 'vincente_dead' },
+        'B': { kind: 'cinema', target: 'recap', label: 'THE BIG SCREEN', sprite: 'sign', showIf: 'settled' },
+        '7': { kind: 'level', target: 'a2_danger_zone', label: 'TRAILER LOT', sprite: 'trailer', showIf: 'divider_done' },
+        '8': { kind: 'level', target: 'a2_apito', label: 'APITO EDUCATION CENTER', sprite: 'door_school', showIf: 'show_done',
+               phase: 'day', lockText: 'CLOSED FOR THE NIGHT. EVEN CULTS KEEP OFFICE HOURS. COME BACK IN DAYLIGHT.' },
+        '9': { kind: 'level', target: 'a2_alley_night', label: 'BACK ALLEY', sprite: 'alley_mouth', showIf: 'katia_joined',
+               phase: 'night', lockText: 'JUST AN ALLEY BY DAY. AT NIGHT THE SHADOW LEAKS COME OUT. COME BACK AFTER DARK.' },
+        'C': { kind: 'area', target: 'admin', entry: 'left', label: 'ADMINISTRATIVE DISTRICT', sprite: 'gate',
+               needs: 'has_pass', lockText: 'SKYFOWL BUSINESS ONLY. THE GUARD WANTS A GATE PASS SIGNED BY THE MAGISTRATE.' }
+      },
+      edges: { left: { area: 'ruins_e', entry: 'right' }, right: null },
+      npcs: [
+        { id: 'gumgum', x: 14, sprite: 'gumgum', showIf: 'gumgum_asked', hideIf: 'mongo_done' },
+        { id: 'hekla_sq', x: 62, sprite: 'hekla', showIf: 'show_done', hideIf: 'quill_dead' },
+        { id: 'mordecai_club', x: 76, sprite: 'mordecai', showIf: 'quest_sw', hideIf: 'club_known' }
+      ],
+      enemies: { day: [], night: [['street_urchin', 2], ['incubus', 2]] },
+      density: { day: 0, night: 0.5 },
+      citizens: ['citizen_skyfowl', 'citizen_skyfowl', 'chickadee', 'citizen_human'],
+      signpost: true
+    },
+
+    admin: {
+      id: 'admin', name: 'ADMINISTRATIVE DISTRICT', theme: 'admin', music: 'settlement', musicNight: 'dark',
+      guarded: true, rows: R.admin,
+      doors: {
+        '1': { kind: 'level', target: 'a3_climb', label: 'MUNICIPAL BUILDING', sprite: 'door_admin', showIf: 'mongo_big', hideIf: 'quill_dead',
+               phase: 'night', lockText: 'MISS QUILL IS AT HER DESK ALL DAY. THE MAGISTRATE ONLY COMES OUT AT NIGHT. SO DO YOU.' },
+        '2': { kind: 'level', target: 'a3_plant', label: "QUILL'S WINDOW", sprite: 'door_admin', showIf: 'climb_done', hideIf: 'quill_dead' },
+        '3': { kind: 'level', target: 'a3_nest', label: 'THE WRECKAGE', sprite: 'manhole', showIf: 'quill_dead', hideIf: 'nest_done' },
+        '4': { kind: 'level', target: 'a3_depot', label: 'GUARD DEPOT', sprite: 'gate', showIf: 'nest_done',
+               phase: 'night', lockText: 'THE SWORDSMEN ARE ON DUTY. AT NIGHT THEY SIT IN THE DEPOT IN STASIS. THAT IS WHEN YOU GO IN.' },
+        '5': { kind: 'level', target: 'a3_escape', label: 'RUN!', sprite: 'gate', showIf: 'glass_broken', hideIf: 'escaped' }
+      },
+      edges: { left: { area: 'settlement', entry: 'right' }, right: { area: 'east_stairs', entry: 'left' } },
+      npcs: [
+        { id: 'burgundy', x: 18, sprite: 'burgundy', phase: 'day', showIf: 'met_quill', hideIf: 'quill_dead' },
+        { id: 'bautista', x: 66, sprite: 'bautista', showIf: 'met_bautista' },
+        { id: 'clerk', x: 104, sprite: 'citizen_skyfowl', phase: 'day' }
+      ],
+      enemies: { day: [], night: [['krasue', 1], ['shadow_leak', 2], ['city_elf', 1]] },
+      density: { day: 0, night: 0.5 },
+      citizens: ['citizen_skyfowl', 'citizen_skyfowl', 'chickadee'],
+      signpost: true
+    },
+
+    east_stairs: {
+      id: 'east_stairs', name: 'THE EASTERN STAIRWELL', theme: 'ruins', music: 'ruins', musicNight: 'ruins_night',
+      guarded: false, rows: R.east_stairs,
+      doors: {
+        '1': { kind: 'level', target: 'x_park', label: 'OVERGROWN PARK', sprite: 'gate', phase: 'night',
+               lockText: 'IT IS JUST A PARK BY DAY. A SIGN SAYS: CLOSED AFTER DUSK. SO THAT IS WHEN THE GOOD STUFF COMES OUT.' },
+        '2': { kind: 'npc', target: 'sealed_stairs', label: 'EASTERN STAIRWELL', sprite: 'stairs_down' }
+      },
+      edges: { left: { area: 'admin', entry: 'right' }, right: null },
+      npcs: [
+        { id: 'old_crawler', x: 60, sprite: 'citizen_human' }
+      ],
+      enemies: { day: [['brain_boiler', 2], ['giraffe', 1], ['lemur', 2]], night: [['shadow_leak', 3], ['berserker', 1], ['street_urchin', 2]] },
+      density: { day: 0.5, night: 0.8 },
+      citizens: [], signpost: true
+    }
   };
-  function mix(name, o) { var m = MIX[name]; o.enemies = o.enemies || m.enemies; o.elite = o.elite || m.elite; o.flyers = o.flyers || m.flyers; return o; }
 
-  var AMB = ['amb_a', 'amb_b', 'amb_c'];
-  var SIDE = ['sx_a', 'sx_b', 'sx_c'];
+  /* ---------------- levels (DESIGN 6.2 + lead notes) ---------------- */
+  var L = D.levels = {};
+  function lv(id, o) { o.id = id; L[id] = o; return o; }
 
-  /* ---------------- floor 1 ---------------- */
-  st('f1_s1', mix('f1', { name: 'THE DRAINAGE TUTORIAL', floor: 1, theme: 'sewer', kind: 'main',
-    chunks: { start: 'f1_tut_start', pool: ['f1_tut_mid', 'f1_a'], count: 2, end: 'f1_tut_end' },
-    reward: { box: 'bronze', xp: 5 },
-    intro: "TUTORIAL TIME! READ THE SIGNS, CRAWLER. THEY ARE THE ONLY THINGS DOWN HERE THAT WANT YOU TO LIVE.",
+  var RUINS = ['ruins_a', 'ruins_b', 'ruins_c', 'ruins_d', 'ruins_e', 'ruins_f', 'ruins_g', 'ruins_h', 'ruins_i'];
+  var RUINS_DARK = ['ruins_a', 'ruins_b', 'ruins_d', 'ruins_f', 'ruins_h', 'ruins_i'];
+  var CIRCUS = ['circus_a', 'circus_b', 'circus_c', 'circus_d', 'circus_e', 'circus_f'];
+  var BASEMENT = ['basement_a', 'basement_b', 'basement_c', 'basement_d'];
+  var SETTLE = ['settlement_a', 'settlement_b', 'settlement_c', 'settlement_d'];
+  var ALLEY = ['alley_a', 'alley_b', 'alley_c', 'alley_d', 'alley_e', 'alley_f'];
+  var SCHOOL = ['school_a', 'school_b', 'school_c', 'school_d'];
+  var NEST = ['nest_a', 'nest_b', 'nest_c', 'nest_d'];
+  var ESCAPE = ['escape_a', 'escape_b', 'escape_c', 'escape_d', 'escape_e', 'escape_f', 'escape_g', 'escape_h'];
+
+  /* ======================= ACT 1: THE CIRCUS ======================= */
+  lv('a1_lemurs', { name: 'COLLAPSED STREET', act: 1, kind: 'side', theme: 'ruins', music: 'ruins', bossMusic: 'boss', hours: 3,
+    chunks: { start: 'village_gate_start', pool: RUINS, count: 4, end: 'arena_terror' },
+    enemies: [['lemur', 5], ['fat_clown', 2]], elite: [['stilt_clown', 1]], flyers: [['brain_boiler', 1]],
+    boss: 'terror_big',
+    intro: ["WELCOME TO THE RUINS OF THE OVER CITY! THE SKY IS FAKE, THE SUN IS RED AND THE STREETS SMELL LIKE A STRIKE AT A MATCH FACTORY.",
+      "SOMETHING ON THOSE ROOFTOPS IS WATCHING YOU. IT HAS A KNIFE. IT HAS SEVERAL KNIVES. IT IS ADORABLE."],
     signs: [
-      "LEFT AND RIGHT TO MOVE. PRESS JUMP TO JUMP. HOLD JUMP TO JUMP HIGHER. YOU ARE DOING GREAT, SWEETIE.",
-      "PRESS ATTACK TO PUNCH. PUNCH THREE TIMES FOR A COMBO. CRATES ALSO ACCEPT PUNCHES.",
-      "HOLD DOWN + ATTACK ON THE GROUND TO KICK. SLOWER THAN A PUNCH. HITS LIKE A TAX BILL.",
-      "IN THE AIR, HOLD DOWN + ATTACK FOR A DIVING STOMP KICK. LAND ON HEADS. BOUNCE. FEEL ALIVE.",
-      "PRESS BOMB TO LOB A HOB-LOBBER. IT ARCS. IT BOOMS. IT DOES NOT CARE WHO IS STANDING THERE.",
-      "PRESS POTION TO DRINK A HEALTH POTION. HEALS HALF YOUR HP. SNACKS ON THE FLOOR HEAL A LITTLE.",
-      "PRINCESS DONUT FIGHTS ON HER OWN. HITTING THINGS FILLS THE SPECIAL METER. WHEN FULL, PRESS SPECIAL!",
-      "SEE THE LEVER? PUNCH IT. LEVERS OPEN IRON GATES NEARBY. LATER FLOORS HIDE THEIR LEVERS. THE SHOW IS PETTY LIKE THAT."
-    ] }));
-  st('f1_s2', mix('f1', { name: 'THE BIG STINK', floor: 1, theme: 'sewer', kind: 'main',
-    chunks: { start: 'f1_start', pool: ['f1_a', 'f1_b', 'f1_c', 'f1_d', 'f1_e', 'f1_f', 'f1_g'], count: 5, end: 'end_door' },
-    reward: { box: 'bronze', xp: 10 },
-    intro: "THE SEWERS BENEATH YOUR FORMER CITY! YES, THE SMELL IS PART OF THE EXPERIENCE. NO, YOU CANNOT OPT OUT." }));
-  st('f1_boss', { name: 'THE HOARD', floor: 1, theme: 'sewer', kind: 'boss', music: 'boss',
-    chunks: { start: 'f1_start', pool: ['f1_b', 'f1_d'], count: 1, end: 'arena_hoarder' },
-    enemies: [['roach', 3], ['rat', 1]], elite: [['goblin', 1]], flyers: [['bat', 1]],
-    boss: 'hoarder', reward: { box: 'boss', xp: 20 },
-    intro: "SOMETHING IS LIVING IN THE PILE OF JUNK AHEAD. SOMETHING WITH OPINIONS ABOUT HER STUFF." });
+      "BOMB THROWS YOUR SELECTED EXPLOSIVE. UP + BOMB SWAPS TYPES. YOU START WITH JUGS O'BOOM AND SMOKE BOMBS. FIRE STAYS LIT FOR A WHILE.",
+      "DOWN + ATTACK KICKS. IN THE AIR IT STOMPS. YOUR SPIKED KNEEPADS SEND THEIR REGARDS.",
+      "LEMURS PERCH HIGH AND THROW KNIVES. DONUT'S EARS CAN HEAR THEM. WATCH FOR THE LITTLE PIP.",
+      "SPECIAL WHEN THE METER IS FULL: CARL CASTS FEAR, DONUT FIRES MISSILES. THE PLAYBOOK IS SHORT. FOR NOW."
+    ],
+    reward: { box: 'silver', xp: 20, gold: 20 },
+    sets: ['lemurs_done'], quest: { start: 'show_must_go_on' },
+    outro: 'lemurs_after', thenArea: 'village', thenEntry: 'right' });
 
-  /* ---------------- floor 2 ---------------- */
-  var P2 = ['f2_a', 'f2_b', 'f2_c', 'f2_d', 'f2_e', 'f2_f', 'f2_g', 'f2_h'];
-  st('f2_s1', mix('f2', { name: 'GOBLIN FRONT DOOR', floor: 2, theme: 'cave', kind: 'main',
-    chunks: { start: 'f2_start', pool: P2.concat(['lv_crates']), count: 4, end: 'end_door' }, reward: { box: 'bronze', xp: 20 },
-    intro: "THE GOBLIN WARRENS! KNOCK BEFORE ENTERING. THEN PUNCH WHOEVER ANSWERS." }));
-  st('f2_s2', mix('f2', { name: 'THE ARCHERY RANGE', floor: 2, theme: 'cave', kind: 'main', rescue: 'squeaks',
-    chunks: { start: 'f2_start', pool: ['f2_a', 'f2_d', 'f2_e', 'f2_g', 'f2_b', 'f2_h'], count: 5, end: 'end_door', insert: ['r_cave_target'] }, reward: { box: 'bronze', xp: 20 },
-    enemies: [['goblin_archer', 4], ['goblin', 3], ['shaman', 2]],
-    intro: "THE GOBLINS PRACTICE THEIR AIM HERE. GUESS WHO VOLUNTEERED TO BE THE TARGET? YOU DID. JUST NOW." }));
-  st('f2_s3', mix('f2', { name: 'GRUB GULLY', floor: 2, theme: 'cave', kind: 'main', questItem: 'goblin_key', exitNeeds: 'goblin_key', dark: true,
-    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_f', 'f2_b', 'f2_h', 'f2_e', 'f2_g', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_cave_branch'] }, reward: { box: 'silver', xp: 20 },
-    enemies: [['grub', 4], ['goblin', 2], ['juicer_minion', 2], ['shaman', 1]],
-    intro: "IT IS DARK. IT IS DAMP. SOMETHING IS CHEWING. STAY CLOSE TO THE CAT, SHE GLOWS WHEN SHE IS SMUG." }));
-  st('f2_boss', { name: 'THE IRON GYM', floor: 2, theme: 'cave', kind: 'boss', music: 'boss',
-    chunks: { start: 'f2_start', pool: ['f2_c', 'f2_g'], count: 1, end: 'arena_juicer' },
-    enemies: [['goblin', 3], ['juicer_minion', 1]], elite: [['goblin_brute', 1]], flyers: [['bat', 1]],
-    boss: 'juicer', reward: { box: 'boss', xp: 35 },
-    intro: "YOU HEAR GRUNTING. RHYTHMIC GRUNTING. SOMEONE IS DOING REPS ON A GOBLIN." });
+  lv('a1_bodies', { name: 'DEAD CRAWLER ROW', act: 1, kind: 'side', theme: 'ruins', music: 'ruins', hours: 3,
+    chunks: { start: 'ruins_start', pool: RUINS, count: 4, end: 'ruins_end', insert: ['ruins_bodies'] },
+    enemies: [['lemur', 4], ['fat_clown', 2], ['mold_lion', 1]], elite: [['stilt_clown', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["A PARTY OF CRAWLERS CAME THIS WAY YESTERDAY. THEY ARE STILL HERE. MOSTLY. LOOT RESPONSIBLY."],
+    signs: [
+      "GRACE BAUTISTA 3. LEVEL 12. SHE HAD A TATTOO OF A LITTLE ELVEN SWORD. SOMEBODY SAW THOSE MOVIES IN THE THEATER, TWICE.",
+      "NICA. LEVEL 11. TWO SILVER RINGS STILL ON HER FINGERS. THE CLOWNS DID NOT WANT THEM. THE CLOWNS WANTED EVERYTHING ELSE.",
+      "LEA. LEVEL 13. HER LAST WORDS ARE CARVED INTO THE DOOR FRAME: DON'T GO TO THE CIRCUS. SHE UNDERLINED IT."
+    ],
+    reward: { box: 'silver', xp: 25, gold: 25 },
+    sets: ['bodies_done'], gives: [{ item: 'str_rings', n: 1 }, { item: 'anklet', n: 1 }],
+    outro: 'bodies_after', thenArea: 'circus_park', thenEntry: 'left' });
 
-  /* ---------------- floor 3 ---------------- */
-  st('f3_s1', mix('city3', { name: 'TWENTY FLOORS OF RENT', floor: 3, theme: 'city', kind: 'main', questItem: 'valve', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f3_e', 'f3_g', 'f3_b', 'lv_cache'], count: 5, end: 'end_door', insert: ['q_city_boiler'] }, reward: { box: 'bronze', xp: 25 },
-    intro: "AN APARTMENT TOWER. THE LANDLORD IS A CLOWN. THE TENANTS ARE ALSO CLOWNS. THE RENT IS YOUR LIFE." }));
-  st('f3_s2', mix('circus3', { name: 'THE MIDWAY', floor: 3, theme: 'circus', kind: 'main', rescue: 'mongo', exitNeeds: 'honk_horn', owMarker: 'ow_tent',
-    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'f3_a', 'f3_d', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['r_circus_prize'] }, reward: { box: 'silver', xp: 25 },
-    intro: "STEP RIGHT UP! EVERY GAME IS RIGGED AND EVERY PRIZE BITES! FUN FOR THE WHOLE APOCALYPSE!" }));
-  st('f3_s3', mix('swamp3', { name: 'STORM DRAIN BAYOU', floor: 3, theme: 'swamp', kind: 'main', questItem: 'bigtop_ticket', owMarker: 'ow_manhole',
-    chunks: { start: 'f3_start', pool: ['f3_c', 'f3_h', 'f3_b', 'f3_e', 'f3_f', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_swamp_stump'] }, reward: { box: 'bronze', xp: 25 },
-    intro: "THE STORM DRAINS FLOODED AND THE SWAMP MOVED IN. SO DID THE GATORS. SO DID THEIR COUSINS." }));
-  st('f3_x1', mix('city3', { name: 'THE LOST AND FOUND', floor: 3, theme: 'city', kind: 'side', questItem: 'honk_horn', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['sx_a', 'f3_f', 'sx_b', 'f3_g', 'sx_c', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['q_city_lockers'] }, reward: { box: 'silver', xp: 35 },
-    intro: "A HIDDEN PARK SHED FULL OF THINGS PEOPLE DROPPED WHILE RUNNING. FINDERS KEEPERS, CRAWLER." }));
-  st('f3_ambush', mix('city3', { name: 'STREET TOUGHS', floor: 3, theme: 'city', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
-    intro: "AMBUSH! THE LOCALS WOULD LIKE A WORD. THE WORD IS OW." }));
-  st('f3_boss', { name: 'THE BIG TOP', floor: 3, theme: 'circus', kind: 'boss', music: 'boss', owMarker: 'ow_tent',
-    chunks: { start: 'f3_start', pool: ['f3_f', 'f3_b'], count: 1, end: 'arena_ringmaster' },
-    enemies: [['clown', 3]], elite: [['clown_brute', 1]], flyers: [['skyfowl', 1]],
-    boss: 'ringmaster', reward: { box: 'boss', xp: 50 },
-    intro: "THE BIG TOP! THE LIGHTS GO DOWN. A DRUMROLL STARTS. NOBODY IS PLAYING THE DRUM." });
+  lv('a1_collapse', { name: 'THE TENEMENT COMES DOWN', act: 1, kind: 'drop', theme: 'ruins', night: true, music: 'climb', hours: 2,
+    layout: D.layouts.drop_collapse,
+    enemies: [['lemur', 3], ['fat_clown', 2]], elite: [['stilt_clown', 1]], flyers: [['brain_boiler', 1]],
+    intro: 'circus_spy',
+    reward: { box: 'silver', xp: 25, gold: 20 },
+    sets: ['collapse_done', 'met_signet'],
+    outro: 'signet_meet', next: 'a1_lions' });
 
-  /* ---------------- floor 4 ---------------- */
-  st('f4_s1', mix('city4', { name: 'PLATFORM NINE', floor: 4, theme: 'city', kind: 'main', questItem: 'switch_key', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_f', 'f4_e', 'f4_d', 'f4_a', 'lv_tunnel'], count: 5, end: 'end_door', insert: ['q_city_stack'] }, reward: { box: 'silver', xp: 30 },
-    intro: "A STATION CONCOURSE. THE DEPARTURE BOARD SAYS EVERY TRAIN IS DELAYED. FOREVER. ENJOY YOUR WAIT." }));
-  st('f4_s2', mix('train4', { name: 'THE ENGINE SHED', floor: 4, theme: 'train', kind: 'main', questItem: 'drive_gear', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_g', 'f4_h', 'f4_b', 'f4_d', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_train_pit'] }, reward: { box: 'silver', xp: 30 },
-    intro: "THE ENGINE SHED. MIND THE GAP BETWEEN THE CARS. THE GAP IS HUNGRY." }));
-  st('f4_s3', mix('train4', { name: 'DEAD END TUNNEL', floor: 4, theme: 'train', kind: 'main', exitNeeds: 'signal_lens', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f4_start', pool: ['f4_g', 'f4_b', 'f4_h', 'f4_f', 'f4_a', 'lv_gate_climb'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 30 },
-    intro: "THE TUNNEL HAS NO LIGHTS. THE TRAINS HAVE NO DRIVERS. YOU HAVE NO PANTS. EVERYONE IS STRUGGLING." }));
-  st('f4_x1', mix('train4', { name: 'THE OLD SPUR', floor: 4, theme: 'train', kind: 'side', rescue: 'samantha', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['sx_b', 'f4_e', 'sx_a', 'f4_c', 'lv_cache'], count: 4, end: 'end_door', insert: ['r_train_caboose'] }, reward: { box: 'gold', xp: 45 },
-    intro: "A DECOMMISSIONED PLATFORM. NOBODY COMES HERE. WHICH MEANS NOBODY TOOK THE GOOD STUFF." }));
-  st('f4_x2', mix('city4', { name: 'FREIGHT MAZE', floor: 4, theme: 'city', kind: 'side', questItem: 'signal_lens', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_g', 'sx_c', 'f4_e', 'sx_a'], count: 4, end: 'end_door', insert: ['q_city_lockers'] }, reward: { box: 'gold', xp: 45 },
-    intro: "SHIPPING CONTAINERS AS FAR AS THE EYE CAN SEE. ONE OF THEM HAS SNACKS. ONE OF THEM HAS TEETH." }));
-  st('f4_ambush', mix('train4', { name: 'RAIL RAIDERS', floor: 4, theme: 'train', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 10 },
-    intro: "AMBUSH! THE YARD CREW HAS DECIDED YOU ARE CARGO." }));
-  st('f4_boss', { name: 'THE ROUNDHOUSE', floor: 4, theme: 'train', kind: 'boss', music: 'boss',
-    chunks: { start: 'f4_start', pool: ['f4_a', 'f4_b'], count: 1, end: 'arena_engineer' },
-    enemies: [['rail_rat', 2], ['steam_goblin', 2]], elite: [['conductor', 1]], flyers: [['bat', 1]],
-    boss: 'engineer', reward: { box: 'boss', xp: 60 },
-    intro: "THE TRACKS ALL LEAD HERE. THE WHISTLE BLOWS. SOMETHING VERY BIG IS BACKING UP." });
+  lv('a1_lions', { name: "SIGNET'S BASEMENT", act: 1, kind: 'side', theme: 'basement', music: 'boss', hours: 16,
+    chunks: { start: 'basement_land', pool: [], count: 0, end: 'basement_lion_pit' },
+    enemies: [['mold_lion', 1]], elite: [['mold_lion', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["SIX LEVEL 15 MOLD LIONS. YOU ARE LEVEL 13 AND IN YOUR UNDERWEAR. THE ODDS BOARD JUST FELL OFF THE WALL.",
+      "A FRIENDLY REMINDER FROM YOUR SPONSORS: THINGS THAT GROW BACK DO NOT LIKE FIRE. JUGS, CRAWLER. JUGS."],
+    signs: ["THE BASEMENT OF A BUILDING THAT IS NO LONGER ABOVE YOU. THE TATTOOED LADY SAID WAIT HERE. THE LIONS SAID OTHERWISE."],
+    reward: { box: 'gold', xp: 40, gold: 30 },
+    sets: ['lions_done', 'knocked_out', 'donut_asleep', 'mongo_caged'],
+    outro: 'knockout', next: 'a1_solo' });
 
-  /* ---------------- floor 5 ---------------- */
-  st('f5_s1', mix('bubble5', { name: 'THE SEA CAVES', floor: 5, theme: 'bubble', kind: 'main', questItem: 'tide_chart', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_a', 'f5_c', 'f5_f', 'f5_b', 'f5_e', 'lv_cache'], count: 5, end: 'end_door', insert: ['q_bubble_grotto'] }, reward: { box: 'silver', xp: 35 },
-    intro: "THE BUBBLE SEA! THE AIR IS WATER AND THE WATER IS ALSO WATER. PHYSICS HAS LEFT THE CHAT." }));
-  st('f5_s2', mix('swamp5', { name: 'KELP MARKET', floor: 5, theme: 'swamp', kind: 'main', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_g', 'f5_a', 'f5_f', 'f5_b', 'lv_gate_climb', 'lv_tunnel'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
-    intro: "A FLOATING MARKET. THE FISHMEN SELL KELP. THEY ALSO SELL CRAWLERS. GUESS WHICH ONE IS IN STOCK." }));
-  st('f5_s3', mix('bubble5', { name: 'THE BUBBLE GARDENS', floor: 5, theme: 'bubble', kind: 'main', exitNeeds: 'singing_conch', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_e', 'f5_c', 'f5_a', 'f5_g', 'f5_f', 'lv_crates'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 35 },
-    intro: "RIDE THE BUBBLES, CRAWLER! THEY ONLY POP WHEN IT WOULD BE FUNNIEST." }));
-  st('f5_s4', mix('swamp5', { name: 'MANGROVE MAZE', floor: 5, theme: 'swamp', kind: 'main', questItem: 'coral_crown', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_d', 'f5_b', 'f5_f', 'f5_g', 'f5_c', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_swamp_roots'] }, reward: { box: 'silver', xp: 35 },
-    intro: "THE MANGROVES ARE ROOTS ALL THE WAY DOWN. SOMETHING ARMORED SCUTTLES IN THERE." }));
-  st('f5_x1', mix('bubble5', { name: 'THE PEARL VAULT', floor: 5, theme: 'bubble', kind: 'side', questItem: 'singing_conch', owMarker: 'ow_door',
-    chunks: { start: 'f5_start', pool: ['sx_a', 'f5_e', 'sx_b', 'sx_c'], count: 4, end: 'end_door', insert: ['q_bubble_clam'] }, reward: { box: 'gold', xp: 55 },
-    intro: "A LITTLE ISLAND WITH A BIG SAFE. THE SAFE HAS A CRAB. THE CRAB HAS A GRUDGE." }));
-  st('f5_x2', mix('swamp5', { name: 'THE REEF SHELF', floor: 5, theme: 'swamp', kind: 'side', rescue: 'katia', owMarker: 'ow_cave',
-    chunks: { start: 'f5_start', pool: ['f5_g', 'sx_c', 'f5_d', 'sx_b', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['r_swamp_net'] }, reward: { box: 'gold', xp: 55 },
-    intro: "THE EDGE OF THE REEF. BEYOND IT IS THE DEEP. DO NOT LOOK AT THE DEEP. IT IS LOOKING BACK." }));
-  st('f5_ambush', mix('bubble5', { name: 'RIPTIDE', floor: 5, theme: 'bubble', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 1, end: 'end_door' }, reward: { xp: 15 },
-    intro: "AMBUSH! A SCHOOL OF FISHMEN. CLASS IS IN SESSION. YOU ARE THE LESSON." }));
-  st('f5_boss', { name: 'THE TIDE POOL', floor: 5, theme: 'bubble', kind: 'boss', music: 'boss',
-    chunks: { start: 'f5_start', pool: ['f5_c', 'f5_b'], count: 1, end: 'arena_tidemother' },
-    enemies: [['fishman', 2]], elite: [['crab', 1]], flyers: [['jelly', 1]],
-    boss: 'tidemother', reward: { box: 'boss', xp: 75 },
-    intro: "THE WATER GOES STILL. THE BUBBLES STOP. A VERY LARGE MOTHER WOULD LIKE TO SPEAK TO YOUR MANAGER." });
+  lv('a1_solo', { name: 'ALONE IN THE LAIR', act: 1, kind: 'side', theme: 'basement', night: true, solo: true, music: 'dark', hours: 2,
+    chunks: { start: 'basement_wake', pool: BASEMENT, count: 3, end: 'basement_end', insert: ['basement_cage'] },
+    rescue: 'mongo',
+    enemies: [['mold_lion', 2], ['fat_clown', 2], ['lemur', 2]], elite: [['stilt_clown', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["CARL, ALONE. NO CAT ON THE SHOULDER, NO DINOSAUR AT THE HEEL. JUST A MAN, HIS BOXERS AND A WAR GAUNTLET. RATINGS ARE THROUGH THE ROOF."],
+    npcs: [{ id: 'signet_lair', sprite: 'signet', lines: [
+      { who: 'SIGNET', text: "YOUR CAT SLEEPS IN MY WATER LILY. SHE IS SAFE THERE. SAFER THAN YOU. YOUR LITTLE LIZARD IS IN A CAGE DOWN THE HALL." },
+      { who: 'SIGNET', text: "FREE HIM IF YOU LIKE. THEN COME. THE BEAR IS OUT HUNTING, AND I NEED HER BLOOD BEFORE THE MOON SAYS SO." }
+    ] }],
+    signs: ["A WATER LILY THE SIZE OF A HOT TUB. PRINCESS DONUT IS ASLEEP INSIDE IT, SNORING LIKE A LITTLE OUTBOARD MOTOR. DO NOT TAP THE GLASS."],
+    reward: { box: 'silver', xp: 30, gold: 20 },
+    sets: ['solo_done', 'mongo_freed'],
+    outro: 'solo_after', next: 'a1_heather' });
 
-  /* ---------------- floor 6 ---------------- */
-  st('f6_s1', mix('forest6', { name: 'THE LODGE', floor: 6, theme: 'forest', kind: 'main', exitNeeds: 'guest_mask', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_g', 'f6_d', 'f6_b', 'lv_cache'], count: 5, end: 'end_door' }, reward: { box: 'silver', xp: 45 },
-    intro: "A HUNTING LODGE! THE WALLS ARE COVERED IN TROPHIES. THERE IS AN EMPTY SPOT LABELED CARL." }));
-  st('f6_s2', mix('forest6', { name: 'TRAPPER CAMP', floor: 6, theme: 'forest', kind: 'main', questItem: 'kennel_key', owMarker: 'ow_tent',
-    chunks: { start: 'f6_start', pool: ['f6_d', 'f6_f', 'f6_b', 'f6_e', 'f6_a', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_forest_snare'] }, reward: { box: 'silver', xp: 45 },
-    enemies: [['hunter', 4], ['hound', 2]],
-    intro: "THE TRAPPERS SET SNARES EVERYWHERE. WATCH YOUR STEP. ACTUALLY, WATCH ALL YOUR STEPS." }));
-  st('f6_s3', mix('forest6', { name: 'WOLF HOLLOW', floor: 6, theme: 'forest', kind: 'main', questItem: 'guest_mask', owMarker: 'ow_cave', dark: true,
-    chunks: { start: 'f6_start', pool: ['f6_f', 'f6_b', 'f6_g', 'f6_c', 'f6_d', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_forest_den'] }, reward: { box: 'silver', xp: 45 },
-    enemies: [['hound', 5], ['hunter', 1]],
-    intro: "A HOLLOW FULL OF HOUNDS. THEY HAVE YOUR SCENT. IT IS MOSTLY SEWER. THEY LOVE IT." }));
-  st('f6_s4', mix('forest6', { name: 'THE KENNELS', floor: 6, theme: 'forest', kind: 'main', questItem: 'hunt_horn', owMarker: 'ow_door',
-    chunks: { start: 'f6_start', pool: ['f6_c', 'f6_e', 'f6_a', 'f6_f', 'f6_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_forest_tree'] }, reward: { box: 'silver', xp: 45 },
-    intro: "WHERE THE HOUNDS ARE BRED. AND FED. GUESS WHAT IS ON THE MENU." }));
-  st('f6_x1', mix('forest6', { name: 'THE QUIET GROVE', floor: 6, theme: 'forest', kind: 'side', owMarker: 'ow_cave',
-    chunks: { start: 'f6_start', pool: ['sx_a', 'f6_e', 'sx_c', 'sx_b', 'lv_cache'], count: 4, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
-    intro: "A GROVE SO QUIET YOU CAN HEAR THE LOOT. IT SOUNDS LIKE JINGLING." }));
-  st('f6_x2', mix('forest6', { name: 'THE WISHING WELL', floor: 6, theme: 'forest', kind: 'side', rescue: 'zev', owMarker: 'ow_manhole',
-    chunks: { start: 'f6_start', pool: ['sx_b', 'f6_g', 'sx_a', 'f6_e'], count: 4, end: 'end_door', insert: ['r_forest_well'] }, reward: { box: 'gold', xp: 65 },
-    intro: "PEOPLE THREW COINS DOWN THIS WELL FOR LUCK. NOW YOU GO DOWN THE WELL FOR THE COINS. CIRCLE OF LIFE." }));
-  st('f6_ambush', mix('forest6', { name: 'THE BEATERS', floor: 6, theme: 'forest', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 20 },
-    intro: "AMBUSH! THE BEATERS FLUSHED YOU OUT OF THE BRUSH. HOW RUDE." }));
-  st('f6_boss', { name: 'THE PROCESSING SHED', floor: 6, theme: 'forest', kind: 'boss', music: 'boss',
-    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_d'], count: 2, end: 'arena_butcher' },
-    enemies: [['hound', 2], ['hunter', 1]], elite: [['masked_noble', 1]], flyers: [['skyfowl', 1]],
-    boss: 'butcher', reward: { box: 'boss', xp: 90 },
-    intro: "THE SHED AT THE END OF THE HUNT. THE SIGN SAYS STAFF ONLY. YOU ARE THE STAFF NOW." });
+  lv('a1_heather', { name: "HEATHER'S HUNTING GROUND", act: 1, kind: 'chase', theme: 'circus', night: true, solo: true, music: 'heather', hours: 3,
+    chunks: { start: 'circus_start', pool: CIRCUS, count: 5, end: 'arena_heather' },
+    chase: { pursuer: 'heather', speed: 62, catchDmg: 4 },
+    boss: 'heather',
+    enemies: [['lemur', 3], ['fat_clown', 2]], flyers: [['brain_boiler', 1]],
+    intro: 'heather_intro',
+    signs: ["THE CIRCUS GROUNDS. THE TRACKS IN THE MUD ARE ROLLER SKATE WHEELS. THEY ARE GETTING CLOSER. DO NOT STOP TO READ THE REST OF THIS SIG"],
+    reward: { box: 'boss', xp: 40, gold: 40 },
+    sets: ['heather_done', 'has_ticket'], gives: [{ item: 'big_top_ticket', n: 1 }, { item: 'scratch_ticket', n: 1 }],
+    outro: 'heather_down', thenArea: 'circus_park' });
 
-  /* ---------------- floor 7 ---------------- */
-  st('f7_s1', mix('castle7', { name: 'THE WINE CELLAR', floor: 7, theme: 'castle', kind: 'main', questItem: 'invitation', exitNeeds: 'garden_key', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_c', 'f7_g', 'f7_a', 'f7_d', 'lv_crates'], count: 5, end: 'end_door', insert: ['q_castle_cellar'] }, reward: { box: 'gold', xp: 65 },
-    intro: "THE CELLAR! A VINTAGE COLLECTION. THE WINE IS FOUR HUNDRED YEARS OLD. SO IS THE BUTLER." }));
-  st('f7_s2', mix('castle7', { name: 'THE BALLROOM', floor: 7, theme: 'castle', kind: 'main', questItem: 'bridal_tiara', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_f', 'f7_b', 'f7_g', 'f7_c', 'lv_gate_climb'], count: 5, end: 'end_door', insert: ['q_castle_balcony'] }, reward: { box: 'gold', xp: 65 },
-    intro: "THE DANCE OF THE DEAD IS ABOUT TO BEGIN! YOUR PARTNER IS A SKELETON. IT LEADS." }));
-  st('f7_s3', mix('castle7', { name: 'THE GREENHOUSE', floor: 7, theme: 'castle', kind: 'main', questItem: 'garden_key', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_d', 'f7_b', 'f7_f', 'f7_e', 'f7_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_castle_vines'] }, reward: { box: 'gold', xp: 65 },
-    intro: "THE GREENHOUSE. THE PLANTS HAVE NOT BEEN WATERED IN CENTURIES. THEY HAVE FOUND OTHER WAYS TO DRINK." }));
-  st('f7_s4', mix('castle7', { name: 'THE CHAPEL CRYPT', floor: 7, theme: 'castle', kind: 'main', owMarker: 'ow_door', dark: true,
-    chunks: { start: 'f7_start', pool: ['f7_e', 'f7_d', 'f7_a', 'f7_c', 'f7_b', 'lv_cache', 'lv_crates'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 65 },
-    enemies: [['ghoul', 3], ['skeleton', 4]],
-    intro: "THE CRYPT UNDER THE CHAPEL. SHHH. EVERYONE DOWN HERE IS SLEEPING. LIGHTLY." }));
-  st('f7_x1', mix('castle7', { name: 'HEART OF THE HEDGE', floor: 7, theme: 'castle', kind: 'side', rescue: 'signet', owMarker: 'ow_cave',
-    chunks: { start: 'f7_start', pool: ['sx_b', 'f7_g', 'sx_a', 'sx_c'], count: 4, end: 'end_door', insert: ['r_castle_hedge'] }, reward: { box: 'platinum', xp: 100 },
-    intro: "YOU SOLVED THE HEDGE MAZE! MOST PEOPLE JUST DIE IN IT. THE PRIZE IS IN HERE SOMEWHERE." }));
-  st('f7_ambush', mix('castle7', { name: 'NIGHT WATCH', floor: 7, theme: 'castle', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
-    intro: "AMBUSH! THE GROUNDSKEEPERS NEVER CLOCKED OUT. NOT EVEN WHEN THEY DIED." }));
-  st('f7_boss', { name: 'THE GRAND STAIR', floor: 7, theme: 'castle', kind: 'boss', music: 'boss',
-    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_g'], count: 2, end: 'arena_bride' },
-    enemies: [['ghoul', 2], ['skeleton', 1]], elite: [['gargoyle', 1]], flyers: [['bat', 1]],
-    boss: 'bride', reward: { box: 'boss', xp: 130 },
-    intro: "AN ORGAN PLAYS A WEDDING MARCH. BADLY. FROM INSIDE THE WALLS." });
+  lv('a1_bigtop', { name: 'THE BIG TOP', act: 1, kind: 'rooms', theme: 'bigtop', night: true, solo: true, music: 'bigtop', hours: 4,
+    room: {
+      rooms: [
+        { name: 'RING ONE: CLOWN ALLEY', target: { kind: 'pole', hp: 60 }, waves: [['fat_clown', 3], ['lemur', 2]], rate: 1.4, max: 5,
+          intro: "RING ONE! BREAK THE TENT POLE! THE CLOWNS WOULD PREFER YOU DID NOT! THE CLOWNS ARE NOT IN CHARGE OF THIS SEGMENT!" },
+        { name: 'RING TWO: THE MENAGERIE', target: { kind: 'pole', hp: 80 }, waves: [['mold_lion', 2], ['lemur', 3], ['fat_clown', 1]], rate: 1.3, max: 6,
+          intro: "RING TWO! THE ANIMAL ACTS! PLEASE DO NOT FEED THE LIONS. THEY ARE ALREADY EATING. THEY ARE EATING TOWARD YOU." },
+        { name: 'RING THREE: THE HIGH WIRE', target: { kind: 'pole', hp: 100 }, waves: [['stilt_clown', 1], ['lemur', 3], ['fat_clown', 2]], rate: 1.2, max: 6,
+          intro: "RING THREE! THE TALL BOYS! IF THE POLE GOES, THE WHOLE TENT SAGS AND THE CENTER RING OPENS. SOMETHING IN THERE IS VERY BIG." }
+      ],
+      finale: { kind: 'vine', name: 'CENTER RING: RINGMASTER GRIMALDI', seconds: 45, worms: true, rate: 1.6, music: 'boss', meter: 'POISON',
+        lines: [
+          { who: 'SYSTEM AI', text: "THE CENTER RING! RINGMASTER GRIMALDI, LEVEL 85 CITY BOSS! YOU CANNOT KILL HIM. YOU CAN POISON HIM. DRIP, CARL. STAY ALIVE AND KEEP DRIPPING." },
+          { who: 'CARL', text: "POISON IN THE BLOOD, BLOOD ON THE ROOTS. MORDECAI, IF THIS DOESN'T WORK I'M HAUNTING YOU. I'M HAUNTING YOUR BAR." } ],
+        doneLines: [
+          { who: 'SYSTEM AI', text: "THE VINE IS WILTING! THE BIG TOP IS SAGGING! THE CITY BOSS IS DYING SLOWLY, WHICH IS OUR FAVORITE SPEED!" },
+          { who: 'CARL', text: "OKAY. OKAY, HE'S HURTING. NOW I NEED HIM TO TALK TO ME, NOT DIE ON ME. ZEV. ZEV, GET ME THE PRODUCERS." } ] }
+    },
+    intro: 'bigtop_gate',
+    reward: { box: 'quest_gold', xp: 150, gold: 80 },
+    sets: ['bigtop_done', 'grimaldi_peace'], quest: { done: 'show_must_go_on' },
+    outro: 'grimaldi_deal', next: 'a1_barricade' });
 
-  /* ---------------- floor 8 ---------------- */
-  st('f8_s1', mix('ruin8', { name: 'MEGAMALL', floor: 8, theme: 'ruin', kind: 'main', questItem: 'security_badge', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_e', 'f8_g', 'f8_f', 'f8_d', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_store'] }, reward: { box: 'gold', xp: 70 },
-    intro: "THE MEGAMALL! EVERYTHING MUST GO! MOSTLY YOU. YOU MUST GO." }));
-  st('f8_s2', mix('city8', { name: 'LINE ZERO', floor: 8, theme: 'city', kind: 'main', questItem: 'power_cell', owMarker: 'ow_manhole', dark: true,
-    chunks: { start: 'f8_start', pool: ['f8_b', 'f8_e', 'f8_d', 'f8_g', 'f8_a', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_city_boiler'] }, reward: { box: 'gold', xp: 70 },
-    intro: "THE OLD SUBWAY. THE LAST TRAIN LEFT A THOUSAND YEARS AGO. THE COMMUTERS STAYED. THEY CHANGED." }));
-  st('f8_s3', mix('ruin8', { name: 'THE SCRAPWORKS', floor: 8, theme: 'ruin', kind: 'main', exitNeeds: 'power_cell', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_c', 'f8_f', 'f8_b', 'f8_e', 'f8_g', 'lv_cache', 'lv_tunnel'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 70 },
-    elite: [['golem', 2]],
-    intro: "A FACTORY THAT BUILDS GOLEMS OUT OF YOUR OLD STUFF. THAT ONE HAS YOUR TOASTER." }));
-  st('f8_s4', mix('ruin8', { name: 'DEAD AIR TOWER', floor: 8, theme: 'ruin', kind: 'main', questItem: 'tower_lens', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_c', 'f8_a', 'f8_b', 'f8_f', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_ruin_mast'] }, reward: { box: 'gold', xp: 70 },
-    enemies: [['mutant', 2], ['drone', 3]],
-    intro: "A RADIO TOWER STILL BROADCASTING THE LAST SONG ON EARTH. IT IS A JINGLE FOR A MATTRESS STORE." }));
-  st('f8_x1', mix('ruin8', { name: 'THE BUNKER', floor: 8, theme: 'ruin', kind: 'side', owMarker: 'ow_manhole',
-    chunks: { start: 'f8_start', pool: ['sx_a', 'f8_e', 'sx_c', 'sx_b', 'lv_cache'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
-    intro: "A PREPPER BUNKER. CANNED BEANS. BATTERIES. ONE HUNDRED YEARS OF PARANOIA. WORTH IT, TURNS OUT." }));
-  st('f8_x2', mix('city8', { name: 'THE SCHOOL BUS', floor: 8, theme: 'city', kind: 'side', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_g', 'sx_b', 'f8_d', 'sx_c'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 110 },
-    intro: "AN OVERTURNED SCHOOL BUS. SOMEBODY LEFT THEIR LUNCH. AND THEIR LUNCH MONEY. AND THEIR BOX." }));
-  st('f8_ambush', mix('city8', { name: 'SCAVENGERS', floor: 8, theme: 'ruin', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 25 },
-    intro: "AMBUSH! THE SCAVENGERS WANT YOUR STUFF. YOU HAVE ONE JACKET. THEY WANT IT." }));
-  st('f8_boss', { name: 'THE WATCHTOWER', floor: 8, theme: 'ruin', kind: 'boss', music: 'boss',
-    chunks: { start: 'f8_start', pool: ['f8_d', 'f8_a'], count: 2, end: 'arena_overseer' },
-    enemies: [['mutant', 2]], elite: [['golem', 1]], flyers: [['drone', 1]],
-    boss: 'overseer', reward: { box: 'boss', xp: 145 },
-    intro: "THE TALLEST THING LEFT STANDING. AT THE TOP, SOMETHING HAS BEEN WATCHING YOU THE WHOLE TIME." });
+  lv('a1_barricade', { name: 'THE BARRICADE', act: 1, kind: 'survival', theme: 'ruins', night: true, music: 'ruins_night', hours: 5,
+    party: ['mongo'],
+    chunks: { start: 'ruins_barricade', pool: [], count: 0, end: null },
+    survival: { seconds: 90, waves: [['street_urchin', 6], ['fat_clown', 1]], rate: 1.2, max: 10, guard: 'barricade', guardHp: 60 },
+    enemies: [['street_urchin', 1]],
+    intro: 'barricade_intro',
+    reward: { box: 'gold', xp: 50, gold: 30 },
+    sets: ['circus_gone', 'donut_awake', 'panic'],
+    outro: 'dawn', thenArea: 'circus_park' });
 
-  /* ---------------- floor 9 ---------------- */
-  st('f9_s1', mix('war9', { name: 'BUNKER ROW', floor: 9, theme: 'warzone', kind: 'main', questItem: 'field_map', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_c', 'f9_a', 'f9_g', 'f9_e', 'f9_b', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_war_bunker'] }, reward: { box: 'gold', xp: 80 },
-    intro: "THE FACTIONS HAVE DUG IN. EVERY BUNKER HAS A FLAG. EVERY FLAG HAS A SPONSOR." }));
-  st('f9_s2', mix('war9', { name: 'THE TRENCHES', floor: 9, theme: 'warzone', kind: 'main', exitNeeds: 'blast_charge', owMarker: 'ow_manhole',
-    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_b', 'f9_f', 'f9_d', 'f9_g', 'lv_gate_climb', 'lv_tunnel'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
-    intro: "DOWN INTO THE TRENCHES. IT IS MUDDY, IT IS LOUD, AND THE CATERING IS TERRIBLE." }));
-  st('f9_s3', mix('war9', { name: 'ARTILLERY HILL', floor: 9, theme: 'warzone', kind: 'main', questItem: 'blast_charge', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_f', 'f9_d', 'f9_b', 'f9_e', 'f9_a', 'lv_cache'], count: 6, end: 'end_door', insert: ['q_war_hill'] }, reward: { box: 'gold', xp: 80 },
-    enemies: [['soldier', 3], ['sniper', 3], ['mutant', 1]],
-    intro: "THE BIG GUNS LIVE UP HERE. THEY ARE AIMED AT YOU. THEY ARE ALWAYS AIMED AT YOU." }));
-  st('f9_s4', mix('war9', { name: 'CHURCH OF THE RATINGS', floor: 9, theme: 'warzone', kind: 'main', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_g', 'f9_c', 'f9_e', 'f9_f', 'f9_d', 'lv_crates', 'lv_gate_climb'], count: 6, end: 'end_door' }, reward: { box: 'gold', xp: 80 },
-    enemies: [['cultist', 2], ['soldier', 2], ['mutant', 2]],
-    intro: "THE CULT OF THE SHOW. THEY PRAY TO THE CAMERAS. THE CAMERAS DO NOT PRAY BACK. RUDE." }));
-  st('f9_x1', mix('war9', { name: 'SUPPLY DROP', floor: 9, theme: 'warzone', kind: 'side', owMarker: 'ow_tent',
-    chunks: { start: 'f9_start', pool: ['sx_c', 'f9_g', 'sx_a', 'sx_b'], count: 4, end: 'end_door' }, reward: { box: 'platinum', xp: 120 },
-    intro: "A SPONSOR DROPPED A CRATE OF GOODIES INTO THE CORNER. FINDERS KEEPERS. SHOOTERS WEEPERS." }));
-  st('f9_x2', mix('war9', { name: 'THE DROPSHIP', floor: 9, theme: 'warzone', kind: 'side', questItem: 'backstage_pass', owMarker: 'ow_door',
-    chunks: { start: 'f9_start', pool: ['f9_e', 'sx_b', 'f9_c', 'sx_a'], count: 4, end: 'end_door', insert: ['q_war_wreck'] }, reward: { box: 'platinum', xp: 120 },
-    intro: "A CRASHED FACTION DROPSHIP. THE PILOT IS GONE. THE CARGO IS NOT. GO GO GO!" }));
-  st('f9_ambush', mix('war9', { name: 'CROSSFIRE', floor: 9, theme: 'warzone', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
-    intro: "AMBUSH! A PATROL FROM BOTH FACTIONS. THEY AGREE ON ONE THING. YOU." }));
-  st('f9_boss', { name: 'THE SOUNDSTAGE', floor: 9, theme: 'warzone', kind: 'boss', music: 'boss',
-    chunks: { start: 'f9_start', pool: ['f9_a', 'f9_d'], count: 2, end: 'arena_showrunner' },
-    enemies: [['soldier', 2], ['cultist', 1]], elite: [['war_beast', 1]], flyers: [['drone', 1]],
-    boss: 'showrunner', reward: { box: 'boss', xp: 200 },
-    intro: "THE BROADCAST TOWER. THE STUDIO AUDIENCE IS SEATED. THE APPLAUSE SIGN IS ON. THE BIGGEST BOSS YET, CRAWLER." });
+  /* ======================= ACT 2: THE SETTLEMENT ======================= */
+  lv('a2_dispenser', { name: 'THE Y', act: 2, kind: 'facade', theme: 'ymca', music: 'boss', hours: 3,
+    chunks: { start: 'ymca_start', pool: [], count: 0, end: 'ymca_facade' },
+    boss: 'dispenser',
+    enemies: [['brain_boiler', 3]], flyers: [['brain_boiler', 1]],
+    intro: ["A BIG OLD BUILDING WITH A FADED SIGN. THE LETTERS THAT ARE LEFT SPELL Y. JUST Y. DONUT'S EARS ARE TWITCHING.",
+      "PRO TIP FROM YOUR SPONSORS: DOWN + SPECIAL WITH DYNAMITE IN YOUR POCKETS. WE HAVE NAMED IT ALREADY. WE ARE VERY EXCITED."],
+    signs: ["NOTICE: POOL CLOSED. GYM CLOSED. LOCKER ROOM CLOSED. THE WALL IS OPEN. THE WALL IS ALWAYS OPEN. THE WALL HAS A MOUTH."],
+    reward: { box: 'boss', xp: 60, gold: 50 },
+    sets: ['dispenser_done'],
+    outro: 'dispenser_down', thenArea: 'settlement', thenEntry: 'left' });
 
-  /* ---------------- floor 10: the races (Update 3) ----------------
-     Heats 1-3 unlock in order (floor.locks afterCleared). Finish top `place` to clear.
-     Side areas A and C are on foot and hold truck upgrades; heat 2 hides a third one
-     on the billboard overpass. */
-  var RACE_EASY = ['race_a', 'race_b', 'race_c', 'race_d', 'race_e'];
-  st('f10_r1', mix('track10', { name: 'HEAT 1: MAPLE DRIVE', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
-    race: { rivals: ['goblin_bike', 'beetle_mount', 'steam_buggy'], place: 3 },
-    chunks: { start: 'race_start', pool: RACE_EASY, count: 6, end: 'race_finish' }, reward: { box: 'gold', xp: 90 },
-    intro: "HEAT ONE! THREE NEIGHBORS, ONE FOOD TRUCK, AND A ROAD FULL OF THINGS THAT WANT TO BE HIT. FINISH TOP THREE!" }));
-  st('f10_r2', mix('track10', { name: 'HEAT 2: THE BYPASS', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
-    questItem: 'meatball_mines',
-    race: { rivals: ['skull_chariot', 'goblin_bike', 'steam_buggy'], place: 3 },
-    chunks: { start: 'race_grid', pool: ['race_a', 'race_c', 'race_d', 'race_f', 'race_g', 'race_h'], count: 6, end: 'race_finish', insert: ['race_q_billboard'] },
-    reward: { box: 'gold', xp: 100 },
-    intro: "HEAT TWO! OVERPASSES, JUMP PADS, AND A BILLBOARD WITH SOMETHING SHINY ON TOP. TAKE THE HIGH ROAD. TOP THREE OR BUST!" }));
-  st('f10_r3', mix('track10', { name: "HEAT 3: DEAD MAN'S CURVE", floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
-    race: { rivals: ['skull_chariot', 'beetle_mount', 'steam_buggy', 'goblin_bike'], place: 3 },
-    chunks: { start: 'race_grid', pool: ['race_d', 'race_f', 'race_g', 'race_h', 'race_i', 'race_j', 'race_k'], count: 7, end: 'race_finish' },
-    reward: { box: 'platinum', xp: 110 },
-    elite: [['goblin_brute', 2], ['conductor', 1]],
-    intro: "HEAT THREE! DEAD MAN'S CURVE IS NAMED AFTER A MAN. HE IS STILL HERE. HE IS THE CURVE NOW. ALL FOUR RIVALS. TOP THREE!" }));
-  st('f10_x1', mix('junk10', { name: 'THE SCRAPYARD', floor: 10, theme: 'ruin', kind: 'side', questItem: 'scrap_plating', owMarker: 'ow_door',
-    chunks: { start: 'f8_start', pool: ['f8_a', 'f8_c', 'f8_f', 'sx_a', 'lv_crates'], count: 4, end: 'end_door', insert: ['q_ruin_crusher'] }, reward: { box: 'platinum', xp: 130 },
-    intro: "A SCRAPYARD BEHIND THE WEST FENCE. CARS GO IN, CUBES COME OUT. SOMEWHERE IN HERE IS A VERY GOOD SLAB OF ARMOR." }));
-  st('f10_x2', mix('crew10', { name: 'AUTO PARTS SUPERSTORE', floor: 10, theme: 'city', kind: 'side', questItem: 'turbo_kit', owMarker: 'ow_door',
-    chunks: { start: 'f4_start', pool: ['f4_c', 'f4_e', 'sx_c', 'f8_d', 'lv_tunnel'], count: 4, end: 'end_door', insert: ['q_city_lift'] }, reward: { box: 'platinum', xp: 130 },
-    intro: "AN AUTO PARTS SUPERSTORE! EVERYTHING IS ON SALE! THE STAFF ARE GOBLINS ON STRIKE. THEY ARE STRIKING YOU." }));
-  st('f10_ambush', mix('crew10', { name: 'PIT CREW BRAWL', floor: 10, theme: 'city', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 30 },
-    intro: "AMBUSH! A RIVAL PIT CREW WANTS TO CHANGE YOUR TIRES. YOU DO NOT HAVE TIRES. THEY WILL IMPROVISE." }));
-  st('f10_boss', mix('track10', { name: 'THE CUL-DE-SAC CUP', floor: 10, theme: 'raceway', kind: 'race', music: 'floor10', owMarker: 'ow_garage',
-    race: { rivals: ['champion'], place: 1, boss: 'champion' },
-    chunks: { start: 'race_pole', pool: ['race_e', 'race_f', 'race_g', 'race_h', 'race_i', 'race_j', 'race_k', 'race_l'], count: 8, end: 'race_finish' },
-    elite: [['goblin_brute', 2], ['conductor', 1]], flyers: [['drone', 3], ['skyfowl', 1]],
-    reward: { box: 'boss', xp: 240 },
-    intro: "THE CUL-DE-SAC CUP! ONE RACE, ONE RIVAL, ONE TROPHY. VORN DREADAXLE HAS NEVER LOST. THERE IS A FIRST TIME FOR EVERYTHING!" }));
+  lv('a2_mongo', { name: 'MONGO, OFF THE LEASH', act: 2, kind: 'side', swap: 'mongo', theme: 'settlement', night: true, music: 'market', hours: 1,
+    chunks: { start: 'settlement_start', pool: SETTLE, count: 3, end: 'settlement_alley_end' },
+    enemies: [['street_urchin', 3], ['incubus', 1], ['lemur', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["YOU ARE MONGO. YOU SMELL SOMETHING. IT SMELLS LIKE MEAT AND MAGIC AND BAD IDEAS. RUN. BITE. DO NOT LET THE HUMAN CATCH UP."],
+    signs: ["MONGO CANNOT READ. MONGO HAS BITTEN THIS SIGN INSTEAD. THE SIGN SAID: NO DOGS. MONGO IS NOT A DOG. THE SIGN HAD IT COMING."],
+    reward: { box: 'bronze', xp: 30, gold: 10 },
+    sets: ['mongo_done'],
+    next: 'a2_alley' });
 
-  /* ---------------- floor 11: the parade (Update 3) ----------------
-     Four areas on foot, each with one float part behind a lever puzzle. The parade (B)
-     needs all four parts. Beating the grand marshal ends the game. */
-  st('f11_s1', mix('city11', { name: 'CONFETTI ALLEY', floor: 11, theme: 'city', kind: 'main', questItem: 'confetti_cannon', owMarker: 'ow_door',
-    chunks: { start: 'f3_start', pool: ['f3_a', 'f3_d', 'f8_g', 'f4_e', 'lv_cache'], count: 6, end: 'end_door', insert: ['q_city_cannon'] }, reward: { box: 'gold', xp: 100 },
-    intro: "CONFETTI ALLEY! THE SHOPS SELL STREAMERS, PARTY HATS AND RIOT GEAR. THE PARADE CROWD IS ALREADY ROWDY." }));
-  st('f11_s2', mix('circus11', { name: 'THE BALLOON BARN', floor: 11, theme: 'circus', kind: 'main', questItem: 'balloon_rig', owMarker: 'ow_tent',
-    chunks: { start: 'f3_start', pool: ['f3_b', 'f3_f', 'f3_e', 'sx_b', 'lv_gate_climb'], count: 6, end: 'end_door', insert: ['q_circus_balloons'] }, reward: { box: 'gold', xp: 100 },
-    intro: "THE BALLOON BARN! WHERE BALLOONS ARE BORN. SOME OF THEM HAVE TEETH. DO NOT POP THE ONES WITH TEETH. OK, POP THEM." }));
-  st('f11_s3', mix('castle11', { name: 'THE GILDED HALL', floor: 11, theme: 'castle', kind: 'main', questItem: 'gala_banner', owMarker: 'ow_door',
-    chunks: { start: 'f7_start', pool: ['f7_a', 'f7_b', 'f7_f', 'f7_g', 'lv_tunnel'], count: 6, end: 'end_door', insert: ['q_castle_banner'] }, reward: { box: 'gold', xp: 100 },
-    intro: "THE GILDED HALL! VIP SEATING FOR THE PARADE. THE VIPS HAVE KNIVES. SO DO SOME OF THE CHANDELIERS." }));
-  st('f11_s4', mix('forest11', { name: 'LANTERN PARK', floor: 11, theme: 'forest', kind: 'main', questItem: 'spotlight_rig', owMarker: 'ow_cave',
-    chunks: { start: 'f6_start', pool: ['f6_a', 'f6_c', 'f6_e', 'f6_g', 'lv_crates'], count: 6, end: 'end_door', insert: ['q_forest_lantern'] }, reward: { box: 'gold', xp: 100 },
-    intro: "LANTERN PARK! A QUIET GROVE STRUNG WITH LIGHTS. QUIET UNTIL YOU SHOWED UP. THE TREES ARE TAKING NOTES." }));
-  st('f11_ambush', mix('city11', { name: 'HECKLER MOB', floor: 11, theme: 'city', kind: 'ambush',
-    chunks: { start: 'amb_start', pool: AMB, count: 2, end: 'end_door' }, reward: { xp: 35 },
-    intro: "AMBUSH! A MOB OF HECKLERS. THEY HAVE OPINIONS ABOUT YOUR FLOAT. THEY ARE EXPRESSING THEM WITH FISTS." }));
-  st('f11_boss', { name: 'THE GRAND PARADE', floor: 11, theme: 'parade', kind: 'parade', music: 'boss_final', owMarker: 'ow_float',
-    chunks: { start: 'parade_start', pool: ['parade_a', 'parade_b', 'parade_c', 'parade_d'], count: 4, end: 'arena_marshal' },
-    enemies: [['clown', 3], ['soldier', 1]], elite: [['clown_brute', 1]], flyers: [['jelly', 2], ['skyfowl', 1]],
-    parade: { speed: 34, waves: [['clown', 4], ['jelly', 3], ['skyfowl', 2], ['soldier', 1], ['rail_rat', 1]] },
-    boss: 'grand_marshal', reward: { box: 'boss', xp: 300 },
-    intro: "THE GRAND PARADE! RIDE YOUR FLOAT DOWN THE ROUTE, PUNCH THE HECKLERS AND WAVE. ALWAYS WAVE. THE MARSHAL WAITS AT THE END." });
+  lv('a2_alley', { name: "GUMGUM'S ALLEY", act: 2, kind: 'side', theme: 'alley', night: true, music: 'dark', bossMusic: 'boss', hours: 2,
+    chunks: { start: 'alley_start', pool: ALLEY, count: 3, end: 'arena_vincente', insert: ['alley_gumgum'] },
+    boss: 'vincente',
+    enemies: [['city_elf', 3], ['incubus', 1], ['street_urchin', 1]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["MONGO FOUND WHAT HE WAS SMELLING. SO DID YOU. KRASUE ARE GHOST-CLASS: FISTS, KICKS, MISSILES AND FANG CAPS. NOT BOMBS. FIND THE BODIES."],
+    signs: ["GUMGUM. LEVEL 5 ORC. SHE ASKED FOR HELP AND THE GUIDE SAID NO. SOMEBODY ELSE ANSWERED. THE MARKS ON HER ARE NOT FROM ONE KIND OF MONSTER."],
+    reward: { box: 'boss', xp: 60, gold: 40 },
+    sets: ['vincente_dead', 'gumgum_dead', 'has_pass', 'xistera'], gives: [{ item: 'gate_pass', n: 1 }, { item: 'letter', n: 1 }],
+    outro: 'alley_after', thenArea: 'settlement' });
 
-  /* ---------------- quest items (Update 2) ----------------
-     Each sits in exactly one stage (stages[id].questItem, a 'Q' in an insert
-     chunk) and opens floor.locks entrances and/or stages[id].exitNeeds doors.
-     hint = where to look (shown on padlocked exit doors). */
-  D.questItems = {
-    goblin_key: { name: 'GOBLIN SKELETON KEY', floor: 2, sprite: 'qi_key',
-      desc: "A KEY CARVED FROM SOMEBODY'S FINGER BONE. OPENS THE PADLOCK ON THE GRUB GULLY EXIT. DO NOT ASK WHOSE FINGER.",
-      hint: "THE GOBLINS HIDE THE KEY UP TOP. GO BACK AND FIND THE LADDER INTO THE HIGH TUNNEL. IT IS AT THE FAR END." },
-    valve: { name: 'VALVE WHEEL', floor: 3, sprite: 'qi_valve',
-      desc: "A RUSTY IRON WHEEL OFF A BOILER. TURN IT AT THE FLOODED STORM DRAIN AND THE WATER GOES DOWN.",
-      hint: "THE APARTMENT TOWER HAS A LOCKED BOILER ROOM. THE LEVER FOR IT IS UP ON THE ROOF. THE WHEEL IS INSIDE." },
-    honk_horn: { name: 'GOLDEN HONKER', floor: 3, sprite: 'qi_horn',
-      desc: "A GOLD-PLATED CLOWN HORN. THE MIDWAY EXIT GATE ONLY OPENS FOR THE OFFICIAL HONK.",
-      hint: "EVERYTHING DROPPED ON THIS FLOOR ENDS UP IN THE LOST AND FOUND SHED IN THE WEST PARK. LOOK IN THE LOCKERS." },
-    bigtop_ticket: { name: 'BIG TOP TICKET', floor: 3, sprite: 'qi_ticket',
-      desc: "ADMIT ONE. TO YOUR OWN FUNERAL, PROBABLY. THE BIG TOP WILL NOT OPEN WITHOUT IT.",
-      hint: "A CLOWN WENT INTO THE STORM DRAIN BAYOU WITH A TICKET. IT IS UP ON A FLOATING ISLAND. RIDE THE LIFT." },
-    switch_key: { name: 'SWITCHYARD KEY', floor: 4, sprite: 'qi_key',
-      desc: "A BRASS KEY STAMPED SWITCHYARD. THROWS THE POINTS TO THE ENGINE SHED AND THE OLD SPUR.",
-      hint: "THE STATION MASTER LOCKED HIS KEY IN HIS OFFICE ON PLATFORM NINE. THE LEVER IS ON THE TALL CONTAINER." },
-    signal_lens: { name: 'GREEN SIGNAL LENS', floor: 4, sprite: 'qi_lens',
-      desc: "GREEN GLASS FOR A RAIL SIGNAL. FIT IT AND THE TUNNEL EXIT SIGNAL FINALLY TURNS GREEN.",
-      hint: "THE TUNNEL EXIT IS STUCK ON RED. SPARE SIGNAL GLASS IS STORED IN THE FREIGHT MAZE, IN A LOCKED CONTAINER." },
-    drive_gear: { name: 'DRIVE GEAR', floor: 4, sprite: 'qi_gear',
-      desc: "A GEAR AS BIG AS YOUR HEAD. THE ROUNDHOUSE TURNTABLE WILL NOT TURN WITHOUT IT.",
-      hint: "THE ENGINE SHED HAS A PIT FULL OF SPARE GEARS UNDER A HATCH. THE HATCH LEVER IS PAST THE PIT." },
-    tide_chart: { name: 'TIDE CHART', floor: 5, sprite: 'qi_map',
-      desc: "A SOGGY MAP OF THE CURRENTS. SHOWS THE WAY INTO THE MANGROVE MAZE AND OUT TO THE REEF SHELF.",
-      hint: "THE SEA CAVES HAD A MAPMAKER. HIS CHART IS IN A HIGH ALCOVE. CLIMB THE CORAL TO THE LEVER, THEN RIDE A BUBBLE." },
-    singing_conch: { name: 'SINGING CONCH', floor: 5, sprite: 'qi_shell',
-      desc: "A SHELL THAT HUMS. THE EXIT BUBBLE IN THE GARDENS ONLY RISES WHEN IT HEARS THE TUNE.",
-      hint: "THE PEARL VAULT ON THE WEST ISLAND KEEPS A SINGING SHELL. THE VAULT LEVER IS ON A PERCH. TAKE A BUBBLE UP." },
-    coral_crown: { name: 'CORAL CROWN', floor: 5, sprite: 'qi_crown',
-      desc: "THE TIDEMOTHER'S SPARE CROWN. WEAR IT TO THE TIDE POOL AND SHE HAS TO RECEIVE YOU.",
-      hint: "THE CROWN IS TANGLED HIGH IN THE MANGROVE MAZE, IN A NEST OF ROOTS. YOU NEED THE TIDE CHART TO GET IN." },
-    kennel_key: { name: 'KENNEL KEY', floor: 6, sprite: 'qi_key',
-      desc: "A KEY ON A CHEWED LANYARD. OPENS THE KENNEL GATES. THE HOUNDS WOULD PREFER YOU DID NOT.",
-      hint: "THE TRAPPERS DROPPED THE KENNEL KEY INTO ONE OF THEIR OWN SNARE PITS. FALL IN. THERE IS A LEVER DOWN THERE." },
-    guest_mask: { name: 'GUEST MASK', floor: 6, sprite: 'qi_mask',
-      desc: "A FANCY HUNTING-PARTY MASK. THE LODGE DOORMAN ONLY LETS MASKED GUESTS LEAVE.",
-      hint: "A LODGE GUEST WANDERED INTO WOLF HOLLOW AND THE WOLVES DRAGGED HIS MASK INTO THEIR DEN UNDER THE HILL." },
-    hunt_horn: { name: 'HUNTING HORN', floor: 6, sprite: 'qi_horn',
-      desc: "THE GAMEKEEPER'S HORN. BLOW IT AT THE PROCESSING SHED AND THE BUTCHER COMES OUT TO PLAY.",
-      hint: "THE BUTCHER'S HORN HANGS IN THE KENNELS, OUT ON A BRANCH OF THE BIG TREE. CLIMB THE IVY." },
-    invitation: { name: 'BLACK INVITATION', floor: 7, sprite: 'qi_ticket',
-      desc: "A BLACK CARD WITH SILVER LETTERS. YOU ARE INVITED TO THE BALLROOM. DRESS CODE: ALIVE OR OTHERWISE.",
-      hint: "THE BUTLER HID SPARE INVITATIONS IN THE WINE CELLAR, BEHIND THE RACKS. SMASH THE RACK, PULL THE LEVER." },
-    garden_key: { name: 'GARDEN KEY', floor: 7, sprite: 'qi_key',
-      desc: "A KEY WRAPPED IN IVY. OPENS THE CELLAR GARDEN DOOR AND THE GATE OF THE HEDGE MAZE.",
-      hint: "THE GARDENER KEPT HIS KEY IN THE GREENHOUSE, UP IN A GLASS BOX OVER THE VINES. FIND THE OTHER VINE FIRST." },
-    bridal_tiara: { name: 'BRIDAL TIARA', floor: 7, sprite: 'qi_crown',
-      desc: "A TIARA OF BLACK PEARLS. THE BRIDE WILL NOT COME DOWN THE GRAND STAIR WITHOUT IT.",
-      hint: "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. THE BALCONY LEVER HANGS FROM A CHANDELIER." },
-    security_badge: { name: 'SECURITY BADGE', floor: 8, sprite: 'qi_badge',
-      desc: "A MALL COP BADGE WITH A WORKING CHIP. THE DEAD AIR TOWER DOOR STILL READS IT.",
-      hint: "THE MEGAMALL GUARD OFFICE IS LOCKED. ITS LEVER IS UPSTAIRS. TAKE THE DEAD ESCALATOR." },
-    power_cell: { name: 'POWER CELL', floor: 8, sprite: 'qi_bolt',
-      desc: "A HUMMING BATTERY THE SIZE OF A LUNCHBOX. ENOUGH JUICE TO RUN THE SCRAPWORKS FREIGHT LIFT.",
-      hint: "LINE ZERO HAS AN OLD SUBSTATION WITH A WORKING CELL INSIDE. THE LEVER IS ON THE SUBSTATION ROOF." },
-    tower_lens: { name: 'GIANT CONTACT LENS', floor: 8, sprite: 'qi_lens',
-      desc: "A CONTACT LENS AS BIG AS A MANHOLE COVER. THE WATCHTOWER EYE SCANNER THINKS YOU ARE THE OVERSEER.",
-      hint: "THE OVERSEER DROPPED A SPARE LENS ON TOP OF THE DEAD AIR TOWER MAST. CLIMB, THEN HOP THE SWINGING RIG." },
-    field_map: { name: 'MINEFIELD MAP', floor: 9, sprite: 'qi_map',
-      desc: "A SPONSOR-BRANDED MAP OF EVERY MINE ON ARTILLERY HILL. MOSTLY ACCURATE. MOSTLY.",
-      hint: "THE MAP IS IN A COMMAND BUNKER ON BUNKER ROW. THE ROOF HATCH LEVER IS ON THE WATCHTOWER." },
-    blast_charge: { name: 'BLASTING CHARGE', floor: 9, sprite: 'qi_bolt',
-      desc: "A SHAPED CHARGE WITH A SMILEY STICKER. BLOWS THE TRENCH BARRICADE AND THE DROPSHIP HULL.",
-      hint: "THE GUN CREWS ON ARTILLERY HILL KEEP CHARGES IN A HIGH GUN NEST. LEVER ON THE SNIPER LEDGE, THEN TAKE THE LIFT." },
-    backstage_pass: { name: 'BACKSTAGE PASS', floor: 9, sprite: 'qi_badge',
-      desc: "ALL ACCESS. LAMINATED. SOUNDSTAGE SECURITY WILL WAVE YOU STRAIGHT THROUGH TO THE SHOWRUNNER.",
-      hint: "THE PASS IS IN THE CARGO BAY OF THE CRASHED DROPSHIP. YOU NEED A BLASTING CHARGE TO GET INTO THE WRECK." },
+  lv('a2_divider', { name: "THE DIVIDER'S CORPSE", act: 2, kind: 'side', theme: 'ruins', dark: true, night: true, music: 'dark', hours: 3,
+    chunks: { start: 'ruins_start', pool: RUINS_DARK, count: 4, end: 'divider_end' },
+    enemies: [['city_elf', 3], ['berserker', 2]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["SOMEBODY KILLED A NEIGHBORHOOD BOSS OUT HERE AND LEFT IT. THE ELVES ARE WAITING FOR WHOEVER COMES TO LOOK. STAY IN THE CAT'S LIGHT.",
+      "SHAMBLING BERSERKERS GET FOUR TIMES STRONGER IN THE DARK. THE ELVES MAKE THE DARK. YOU CAN DO THAT MATH. WE ALREADY DID. IT IS BAD."],
+    signs: ["THE DIVIDER. NEIGHBORHOOD BOSS. A WHALE WITH TWO LONG NECKS, LIKE SOMEBODY ORDERED NESSIE TWICE. DECEASED. VERY BLOATED. DO NOT POKE."],
+    reward: { box: 'gold', xp: 100, gold: 50 },
+    sets: ['divider_done'],
+    outro: 'divider_blast', thenArea: 'ruins_e' });
 
-    /* Update 3, floor 10: truck upgrades (the `truck` field is added to D.truck while held) */
-    scrap_plating: { name: 'SCRAP ARMOR PLATING', floor: 10, sprite: 'qi_gear', truck: { hp: 15 },
-      desc: "A SLAB OF STEEL CUT FROM A SCHOOL BUS. BOLT IT ON AND THE FOOD TRUCK TAKES A LOT MORE PUNISHMENT.",
-      hint: "THE SCRAPYARD BEHIND THE WEST FENCE KEEPS ITS GOOD PLATE IN THE CRUSHER SHED. THE LEVER IS UP ON THE SHED ROOF." },
-    turbo_kit: { name: 'TURBOCHARGER', floor: 10, sprite: 'qi_bolt', truck: { speed: 25 },
-      desc: "A TURBO STILL IN THE BOX. THE FOOD TRUCK GOES FASTER. THE FRYER ALSO GOES FASTER. DO NOT THINK ABOUT IT.",
-      hint: "THE AUTO PARTS SUPERSTORE ON THE EAST SIDE HAS ONE TURBO LEFT, ON THE TOP SHELF BEHIND A GATE. CLIMB THE PALLETS." },
-    meatball_mines: { name: 'MEATBALL MINE HOPPER', floor: 10, sprite: 'qi_shell', truck: { mines: true },
-      desc: "A HOPPER OF EXPLOSIVE MEATBALLS. DROP THEM BEHIND THE TRUCK FOR FREE. NO BOMBS NEEDED. DO NOT EAT THEM.",
-      hint: "SOMEBODY LEFT A MINE HOPPER ON TOP OF A BILLBOARD IN HEAT TWO. HIT THE JUMP PAD AND TAKE THE HIGH ROAD." },
+  lv('a2_danger_zone', { name: 'DANGER ZONE WITH RIPPER WONTON', act: 2, kind: 'show', theme: 'studio', show: 'danger_zone', music: 'show', hours: 3,
+    intro: 'greenroom',
+    reward: { box: 'fan', xp: 80, gold: 40 },
+    sets: ['show_done', 'manasa_dead'],
+    outro: 'blast', thenArea: 'settlement' });
 
-    /* Update 3, floor 11: float parts (the `float` field picks the float decoration and parade perk) */
-    confetti_cannon: { name: 'CONFETTI CANNON', floor: 11, sprite: 'qi_horn', float: 'confetti',
-      desc: "A CANNON THAT FIRES CONFETTI HARD ENOUGH TO HURT. ON THE FLOAT IT BLASTS ANY HECKLER WHO GETS CLOSE.",
-      hint: "CONFETTI ALLEY KEEPS ITS CANNON IN A ROOFTOP SHED. THE SHED LEVER IS IN AN ALLEY NOOK, BEHIND A STACK OF CRATES." },
-    spotlight_rig: { name: 'SPOTLIGHT RIG', floor: 11, sprite: 'qi_lens', float: 'spotlight',
-      desc: "A STAGE SPOTLIGHT THE SIZE OF A BATHTUB. ON THE FLOAT IT DAZZLES ANYTHING THAT FLIES.",
-      hint: "LANTERN PARK HIDES A SPOTLIGHT IN A TREEHOUSE. CLIMB THE BRANCHES. THE GATE LEVER IS ON A STUMP TO THE WEST." },
-    balloon_rig: { name: 'HELIUM BALLOON KIT', floor: 11, sprite: 'qi_valve', float: 'balloons',
-      desc: "A HELIUM TANK AND A HUNDRED BALLOONS. TIED TO THE FLOAT THEY MAKE YOU LIGHT ENOUGH TO JUMP TWICE.",
-      hint: "THE BALLOON BARN KEEPS ITS HELIUM UP IN THE RIGGING. PULL THE LEVER ON THE LOW PERCH, THEN RIDE THE PROP CART UP." },
-    gala_banner: { name: 'SEQUIN BANNER', floor: 11, sprite: 'qi_map', float: 'banner',
-      desc: "A GIANT SEQUIN BANNER THAT SAYS CARL. THE CROWD LOVES IT. THE CROWD LOVES YOU. IT HEALS YOU, SOMEHOW.",
-      hint: "THE GILDED HALL BANNER HANGS IN A HIGH GALLERY. THE LEVER IS AT THE TOP OF THE BELL TOWER LADDER. ENTER FROM THE RIGHT." }
+  lv('a2_apito', { name: 'APITO EDUCATION CENTER', act: 2, kind: 'side', theme: 'school', music: 'settlement', hours: 3,
+    chunks: { start: 'school_start', pool: SCHOOL, count: 4, end: 'school_end', insert: ['school_eunice'] },
+    enemies: [['wand_bearer', 4], ['city_elf', 2]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["THE SIGN SAYS EDUCATION CENTER. YOUR MAP SAYS CORRUPT TEMPLE. THE 201ST MILITIA SAYS GO AWAY. THE MAP IS RIGHT.",
+      "GUARDS ARE OUT IN THE STREET. DO NOT HIT A CITIZEN. HIT THE WAND BEARERS. THEY ARE NOT CITIZENS. THEY ARE A HOBBY."],
+    npcs: [
+      { id: 'eunice', sprite: 'eunice', lines: [
+        { who: 'EUNICE', text: "THEY TOOK MY HUSBAND IN THERE LAST WEEK. I AM PREGNANT AND I AM FURIOUS AND I HAVE A FRYING PAN. MOVE." },
+        { who: 'EUNICE', text: "RICKY JOE, HONEY, STAY BEHIND MOMMA. AND DO NOT TOUCH THE DINOSAUR." } ] },
+      { id: 'ricky_joe', sprite: 'ricky_joe', lines: [
+        { who: 'RICKY JOE', text: "IS THAT A DINOSAUR? CAN I PET HIM? HE ATE SPARKY. HE ATE MY SALAMANDER. HEY. HEY! HE'S LOOKING AT MY ARM." },
+        { who: 'CARL', text: "MONGO. DROP IT. NO. DROP. IT. GOOD BOY. HERE, KID, HAVE THIS BACK. DONUT, HEAL HIM BEFORE HIS MOM SEES." } ] }
+    ],
+    signs: ["APITO EDUCATION CENTER. TODAY'S LESSON: THE SKYFOWL ARE ANGELS. TOMORROW'S LESSON: THE SKYFOWL ARE STILL ANGELS. QUIZ ON FRIDAY."],
+    reward: { box: 'gold', xp: 100, gold: 60 },
+    sets: ['apito_done', 'mic_drop'],
+    outro: 'apito_after', thenArea: 'settlement' });
+
+  lv('a2_alley_night', { name: 'THE BACK ALLEY', act: 2, kind: 'side', theme: 'alley', night: true, music: 'dark', hours: 3,
+    chunks: { start: 'alley_start', pool: ALLEY, count: 3, end: 'alley_end', insert: ['alley_swarm'] },
+    enemies: [['shadow_leak', 3], ['city_elf', 2]], elite: [['berserker', 1]], flyers: [['shadow_leak', 1]],
+    intro: ["SHADOW LEAKS! LITTLE CLOUDS OF HUNGRY COLD. BOMBS GO RIGHT THROUGH THEM. FISTS DO NOT. KATIA'S SHIELD DOES NOT CARE EITHER WAY."],
+    signs: ["SOMEBODY CHALKED A TALLY ON THE WALL. ONE MARK PER NIGHT THE ALLEY FILLED WITH SMOKE THAT BIT. THE WALL RAN OUT OF ROOM."],
+    reward: { box: 'gold', xp: 120, gold: 50 },
+    sets: ['alley_night_done', 'mongo_big'],
+    outro: 'mongo_grows', thenArea: 'settlement' });
+
+  /* ======================= ACT 3: QUILL'S TOWER AND THE GLASS ======================= */
+  lv('a3_climb', { name: 'THE MUNICIPAL WALL', act: 3, kind: 'climb', theme: 'admin', night: true, music: 'climb', hours: 2,
+    layout: D.layouts.climb_admin,
+    enemies: [['city_elf', 3], ['lemur', 1]], elite: [['berserker', 1]], flyers: [['shadow_leak', 2], ['ruin_flocker', 1]],
+    intro: ["THE ADMINISTRATIVE BUILDING, AT NIGHT, FROM THE OUTSIDE. QUILL'S FLOOR IS AT THE TOP. FALLING IS AT THE BOTTOM. CHOOSE UP."],
+    reward: { box: 'silver', xp: 150, gold: 40 },
+    sets: ['climb_done'],
+    next: 'a3_plant' });
+
+  lv('a3_plant', { name: "MISS QUILL'S RECEPTION", act: 3, kind: 'plant', theme: 'office', night: true, music: 'dark', hours: 2,
+    chunks: { start: 'office_start', pool: ['office_shelf_a', 'office_shelf_b', 'office_shelf_c'], count: 3, end: 'office_roof_end' },
+    plant: { charges: 3 },
+    enemies: [['city_elf', 2], ['shadow_leak', 1]], flyers: [['shadow_leak', 1]],
+    intro: 'plant_intro',
+    signs: [
+      "HOLD UP AT A CHARGE SPOT TO PLANT. YOU CANNOT FIGHT WHILE PLANTING. A KRASUE THAT SEES YOU WILL HAVE OPINIONS. DROP A DECOY AT A Y SPOT FIRST.",
+      "THE NEIGHBORING ROOF. ALL THREE STICKS PLANTED? STAND ON THE SPOT AND PRESS BOMB. THEN ENJOY THE SHOW. YOU ARE THE SHOW."
+    ],
+    reward: { box: 'boss', xp: 300, gold: 100 },
+    sets: ['quill_dead', 'magistrate', 'cockblock'],
+    outro: 'magistrate', next: 'a3_nest' });
+
+  lv('a3_nest', { name: 'THE KRASUE NEST', act: 3, kind: 'side', theme: 'nest', dark: true, night: true, music: 'dark', hours: 3,
+    chunks: { start: 'nest_start', pool: NEST, count: 4, end: 'nest_burgundy_end', insert: ['nest_featherfall'] },
+    enemies: [['berserker', 2], ['shadow_leak', 2]], elite: [['berserker', 1]], flyers: [['shadow_leak', 1]],
+    intro: ["WHAT IS LEFT OF THE MAGISTRATE'S CHAMBERS. THE ROOM IS FULL OF HEADLESS BODIES HANGING LIKE COATS. THE HEADS ARE OUT. THE HEADS ARE COMING HOME."],
+    npcs: [{ id: 'burgundy_dying', sprite: 'burgundy', lines: [
+      { who: 'BURGUNDY', text: "DON'T HEAL ME. IF MY BODY HEALS, THE CURSE COMES BACK WITH IT. I GET TO DIE A PERSON. PLEASE. LET ME HAVE THAT." },
+      { who: 'BURGUNDY', text: "IT WAS NEVER FEATHERFALL. IT WAS QUILL. AND HER HUSBAND. REMEX. GO TO THE DEPOT. THAT IS WHERE HE KEEPS THE LIGHT." }
+    ] }],
+    signs: ["MAGISTRATE FEATHERFALL, LEVEL 32 DARK CLERIC. STRAPPED UPSIDE DOWN TO A WHEEL. FEATHERLESS. MILKY EYES. DEAD FOR YEARS. HE STILL SIGNED THINGS."],
+    reward: { box: 'gold', xp: 250, gold: 80 },
+    sets: ['nest_done', 'burgundy_dead', 'met_bautista'], gives: [{ item: 'kimaris', n: 1 }],
+    outro: 'nest_after', thenArea: 'admin' });
+
+  lv('a3_depot', { name: 'THE GUARD DEPOT', act: 3, kind: 'plant', theme: 'depot', night: true, music: 'dark', hours: 3,
+    chunks: { start: 'depot_start', pool: ['depot_a', 'depot_b', 'depot_c', 'depot_d'], count: 5, end: 'depot_end' },
+    plant: { charges: 10, finale: 'handoff' },
+    enemies: [['city_elf', 3], ['shadow_leak', 1]], elite: [['berserker', 1]], flyers: [['shadow_leak', 1]],
+    intro: 'depot_plan',
+    signs: [
+      "THE SWORDSMEN SIT IN STASIS ALL NIGHT. DO NOT WAKE THEM. TEN STICKS, TEN SPOTS. THE STATUES ARE NOT STATUES. TIPTOE, BAREFOOT BOY.",
+      "KATIA'S POST. ALL TEN PLANTED? STAND HERE AND PRESS BOMB TO HAND HER THE DETONATOR. SHE PUSHES THE BUTTON WHEN YOU SAY. NOT BEFORE. PLEASE NOT BEFORE."
+    ],
+    reward: { box: 'platinum', xp: 200, gold: 80 },
+    sets: ['depot_rigged', 'glass_broken', 'doomsday'], gives: [{ item: 'detonator', n: 1 }, { item: 'doomsday', n: 1 }],
+    quest: [{ done: 'sex_workers' }, { start: 'fools_glass' }],
+    outro: 'remex', next: 'a3_escape' });
+
+  lv('a3_escape', { name: 'THE FOOLS WHO BROKE THE GLASS', act: 3, kind: 'escape', theme: 'escape', night: true, music: 'escape', hours: 1,
+    chunks: { start: 'escape_start', pool: ESCAPE, count: 12, end: 'escape_end', insert: ['escape_bautista'] },
+    escape: { seconds: 420, bursts: [360, 270, 180, 90] },
+    enemies: [['ruin_flocker', 2], ['berserker', 1], ['city_elf', 1]], elite: [['berserker', 1]], flyers: [['ruin_flocker', 3]],
+    intro: ["SEVEN MINUTES! THE EASTERN STAIRWELL IS OPEN! FOUR MAGIC BURSTS ARE COMING BEFORE THE BIG ONE! EACH ONE CHANGES THE RULES! RUN!"],
+    npcs: [{ id: 'bautista_run', sprite: 'bautista', lines: [
+      { who: 'BAUTISTA', text: "CARL! MY PEOPLE ARE WITH ME! GO, GO, I HAVE YOUR BACK. KEEP RUNNING, I'M RIGHT BEHIND YOU AND I AM VERY FAST." } ] }],
+    signs: ["THE STAIRWELL IS EAST. EVERYTHING ELSE IS ABOUT TO BE A CRATER. YOU ARE CARRYING THE REASON. DO NOT DROP IT."],
+    reward: { box: 'quest_platinum', xp: 400, gold: 150 },
+    sets: ['escaped'], quest: { done: 'fools_glass' },
+    outro: 'finale', win: true, final: true });
+
+  /* ======================= OPTIONAL SIDE LEVELS ======================= */
+  lv('x_temple', { name: 'THE CORRUPT TEMPLE', act: 1, kind: 'side', theme: 'temple', optional: true, music: 'ruins', hours: 2,
+    chunks: { start: 'temple_start', pool: ['temple_a', 'temple_b', 'temple_c', 'temple_d'], count: 4, end: 'temple_end' },
+    enemies: [['shadow_leak', 2], ['incubus', 2], ['brain_boiler', 2]], elite: [['stilt_clown', 1]], flyers: [['shadow_leak', 1]],
+    intro: ["YOUR MAP CALLS THIS A CORRUPT TEMPLE. WE CALL IT A LOOT PINATA. HIT IT UNTIL SOMETHING FALLS OUT. USUALLY IT IS YOU."],
+    signs: [
+      "THE OLD GODS OF THE OVER CITY. MOST OF THEM ARE DEAD. THE REST ARE ON THE SIXTH FLOOR, DOING REALITY TV.",
+      "ALTAR OF THE CATACLYSM. LEAVE AN OFFERING. THE OFFERING BOWL IS FULL OF BUTTONS AND ONE TOOTH."
+    ],
+    reward: { box: 'gold', xp: 40, gold: 40 }, sets: ['temple_done'] });
+
+  lv('x_restroom', { name: 'RUINS RESTROOM', act: 2, kind: 'side', theme: 'restroom', optional: true, music: 'ruins', hours: 1,
+    chunks: { start: 'restroom_start', pool: ['restroom_a', 'restroom_b', 'restroom_c'], count: 3, end: 'restroom_end' },
+    enemies: [['street_urchin', 4], ['brain_boiler', 1]], elite: [['berserker', 1]], flyers: [['brain_boiler', 1]],
+    intro: ["A RESTROOM! THE DUNGEON STILL HAS THEM ON THIS FLOOR. THE STREET URCHINS ARE ON SHIFT. THEY TAKE JANITORIAL WORK VERY SERIOUSLY."],
+    signs: [
+      "FOR A GOOD TIME CALL THE MOTHER OF THE CATACLYSM. SHE IS AT THE BOTTOM OF THE VOLCANO. SHE DOES NOT PICK UP.",
+      "PLEASE WASH YOUR HANDS. PLEASE WASH YOUR FEET. GLITTER IS NOT A SUBSTITUTE FOR SOAP, CARL."
+    ],
+    reward: { box: 'silver', xp: 40, gold: 30 }, sets: ['restroom_done'] });
+
+  lv('x_park', { name: 'THE OVERGROWN PARK', act: 3, kind: 'side', theme: 'ruins', night: true, optional: true, music: 'ruins_night', hours: 2,
+    chunks: { start: 'ruins_start', pool: ['park_a', 'ruins_b', 'ruins_d', 'ruins_f', 'ruins_h', 'ruins_i'], count: 4, end: 'park_end' },
+    enemies: [['mold_lion', 3], ['berserker', 1], ['shadow_leak', 2]], elite: [['berserker', 1]], flyers: [['shadow_leak', 1], ['ruin_flocker', 1]],
+    intro: ["A PARK THAT WENT FERAL. THE BENCHES HAVE ROOTS. THE LIONS HAVE MOLD. THE FOG HAS ITS OWN LOOT TABLE."],
+    reward: { box: 'platinum', xp: 150, gold: 60 }, sets: ['park_done'] });
+
+  /* ---------------- quests ---------------- */
+  D.quests = {
+    show_must_go_on: { name: 'THE SHOW MUST GO ON', reward: 'GOLD QUEST BOX',
+      desc: "AN ANCIENT TRAVELING CIRCUS SURVIVED THE CATACLYSM AND KEPT TOURING. IT KILLS NOW. FIND OUT WHY IT STILL EXISTS AND CLOSE IT DOWN." },
+    sex_workers: { name: 'THE SEX WORKERS WHO FELL FROM THE HEAVENS', reward: 'SILVER QUEST BOX',
+      desc: "EVERY MORNING MORE DEAD WOMEN TURN UP AROUND THE SETTLEMENT. NOBODY KNOWS WHO THEY ARE OR WHERE THEY COME FROM. GUMGUM WANTS TO KNOW. FIND OUT." },
+    fools_glass: { name: 'THE FOOLS WHO BROKE THE GLASS', reward: 'PLATINUM QUEST BOX',
+      desc: "A SPELL THREE GENERATIONS IN THE MAKING JUST BROKE. EVERYTHING WITHIN 45 SQUARE KM IS ABOUT TO EXPLODE. YOU ARE THE HOST. DON'T DIE." }
   };
 
-  /* ---------------- racers + the food truck (Update 3, floor 10) ----------------
-     Original rivals. speed/accel in px/s like D.truck; hp is how much ramming and
-     missile fire they soak; aggression = how often they ram/shoot; skill = how well
-     they take pads, jumps and oil. weapon = projectile id they fire, or null.
-     The truck's base hp/speed get the `truck` bonuses of held quest items. */
-  D.truck = { name: 'THE FOOD TRUCK', sprite: 'truck', speed: 170, accel: 140, hp: 30 };
-  D.racers = {
-    goblin_bike: { name: 'SKARV SPOKEGNAW', title: 'GOBLIN SPEED FREAK', vehicle: 'THE RUSTBUCKET',
-      desc: "A GOBLIN ON A DIRT BIKE BUILT FROM THREE BIKES AND A LAWNMOWER. THE SIDECAR IS FULL OF BOTTLES.",
-      sprite: 'racer_goblin_bike', portrait: 'p_racer_goblin_bike',
-      speed: 158, accel: 155, hp: 18, aggression: 0.7, weapon: 'bottle', skill: 0.45,
-      lines: ["NICE TRUCK, MEAT. SHAME ABOUT THE DRIVER. AND THE CAT. AND THE TRUCK.",
-        "WHEN I PASS YOU, AND I WILL, I AM THROWING A BOTTLE. IT IS NOT PERSONAL. IT IS A LITTLE PERSONAL.",
-        "SKARV SPOKEGNAW DOES NOT BRAKE. SKARV SPOKEGNAW DOES NOT KNOW WHERE THE BRAKES ARE.",
-        "EAT MY DUST, TACO MAN! IT IS GOBLIN DUST. IT IS EXTRA DUSTY."] },
-    skull_chariot: { name: 'LADY OSSIA VANE', title: 'THE BONE DUCHESS', vehicle: 'THE OSSUARY EXPRESS',
-      desc: "A SKELETAL NOBLEWOMAN IN A GILDED CHARIOT PULLED BY TWO SKELETON HORSES. FLINGS SHARPENED BONES.",
-      sprite: 'racer_skull_chariot', portrait: 'p_racer_skull_chariot',
-      speed: 165, accel: 125, hp: 26, aggression: 0.45, weapon: 'knife', skill: 0.65,
-      lines: ["DARLING, I HAVE BEEN DEAD FOR THREE HUNDRED YEARS AND I STILL HAVE BETTER POSTURE THAN YOU.",
-        "MY HORSES HAVE NO MUSCLES, NO LUNGS AND NO MERCY. YOUR TRUCK HAS A MENU BOARD.",
-        "DO TRY TO KEEP UP. WINNING BY MORE THAN A MILE IS SO TERRIBLY VULGAR.",
-        "A BONE FOR YOU, PEASANT! NO, NOT TO KEEP. TO DODGE."] },
-    beetle_mount: { name: 'PIP THORNWHISTLE', title: 'JOCKEY OF THE CHITIN DERBY', vehicle: 'BIG MARGARET',
-      desc: "A TINY GNOME JOCKEY RIDING A RHINOCEROS BEETLE THE SIZE OF A MINIVAN. SHE SPITS SPORES WHEN ANNOYED.",
-      sprite: 'racer_beetle_mount', portrait: 'p_racer_beetle_mount',
-      speed: 150, accel: 175, hp: 34, aggression: 0.3, weapon: 'spore', skill: 0.7,
-      lines: ["BIG MARGARET HAS SIX LEGS AND ONE HORN AND SHE HAS NEVER LOST A RACE SHE WAS AWAKE FOR.",
-        "DO NOT LOOK HER IN THE EYES. ANY OF THEM. SHE TAKES IT AS A CHALLENGE.",
-        "I AM SMALL BUT WIRY, FRIEND. MARGARET IS NEITHER. SHE IS A TANK WITH FEELINGS.",
-        "HOLD ON, MARGARET! THE TACO MAN IS RIGHT BEHIND US! HE SMELLS LIKE ONIONS AND FEAR!"] },
-    steam_buggy: { name: 'GRANNY GASKET', title: 'THE BOILER QUEEN', vehicle: 'THE KETTLE',
-      desc: "A CACKLING OLD STEAM GOBLIN IN A LEAKY BRASS BUGGY. LOBS HOT RIVETS OVER HER SHOULDER WITHOUT LOOKING.",
-      sprite: 'racer_steam_buggy', portrait: 'p_racer_steam_buggy',
-      speed: 168, accel: 110, hp: 30, aggression: 0.55, weapon: 'rock', skill: 0.6,
-      lines: ["IN MY DAY WE RACED UPHILL BOTH WAYS. ON FIRE. AND WE LIKED IT, SONNY.",
-        "THE KETTLE HAS FOUR HUNDRED RIVETS. I WILL BE THROWING MOST OF THEM AT YOUR FACE.",
-        "OH, A FOOD TRUCK! HOW SWEET. I WILL HAVE ONE TACO AND YOUR SPOT ON THE PODIUM.",
-        "FULL STEAM AHEAD! AND A LITTLE STEAM BEHIND. THAT ONE IS FOR YOU, DEARIE."] },
-    champion: { name: 'VORN DREADAXLE', title: 'SIX TIME DEATH DERBY CHAMPION', vehicle: 'THE MAULER', boss: true,
-      desc: "A HULKING ARMORED OGRE DRIVING A SPIKED BIG RIG WITH A GRILLE FULL OF TEETH. THE RIG SPITS FIRE. SO DOES VORN.",
-      sprite: 'racer_champion', portrait: 'p_racer_champion',
-      speed: 182, accel: 130, hp: 140, aggression: 0.9, weapon: 'fireball', skill: 0.85,
-      lines: ["SIX CHAMPIONSHIPS. SIX HUNDRED CRASHES. YOU WANT TO BE NUMBER SIX HUNDRED AND ONE, TACO BOY?",
-        "THE MAULER EATS LITTLE TRUCKS. I AM NOT BEING POETIC. IT HAS A MOUTH. IT IS HUNGRY.",
-        "SECOND PLACE IS JUST THE FIRST CRASH VICTIM. REMEMBER THAT WHEN YOU SEE MY TAILLIGHTS.",
-        "NOBODY PASSES VORN DREADAXLE! NOBODY! ...WHO DID THAT? WHO JUST PASSED ME?"] }
-  };
-
-  /* ---------------- floors ---------------- */
-  D.floors = [
-    { n: 1, name: 'THE TUTORIAL DUNGEON', tagline: 'MIND THE GAP. AND THE RATS.', theme: 'sewer', music: 'floor1',
-      intro: ["WELCOME TO FLOOR ONE, CRAWLER! THE TUTORIAL! WE WILL GO EASY ON YOU. FOR ABOUT FOUR MINUTES.",
-        "CLEAR THE STAGES, FIND THE SAFE ROOM, KILL THE BOSS. THE VIEWERS ARE WATCHING. TRY NOT TO DIE BORING."],
-      sequence: ['f1_s1', 'f1_s2', 'SAFE', 'f1_boss'], overworld: null,
-      required: ['f1_s1', 'f1_s2'], boss: 'f1_boss', par: 600 },
-    { n: 2, name: 'THE GOBLIN WARRENS', tagline: 'SMALL GREEN GUYS. BIG GREEN PROBLEMS.', theme: 'cave', music: 'floor2',
-      intro: ["FLOOR TWO! THE GOBLIN WARRENS. THE GOBLINS HAVE HEARD OF YOU. THEY ARE NOT IMPRESSED. YET.",
-        "THREE STAGES, A SAFE ROOM, AND A BOSS WHO HAS NEVER SKIPPED A WORKOUT. LET'S GET PHYSICAL!"],
-      sequence: ['f2_s1', 'f2_s2', 'f2_s3', 'SAFE', 'f2_boss'], overworld: null,
-      companion: 'squeaks',
-      hints: [
-        "GOBLINS LOVE TARGET PRACTICE, KID. WORD IS THEY CAUGHT A RAT FOR THE ARCHERY RANGE. A RAT WITH VERY GOOD MANNERS.",
-        "IRON GATES OPEN WHEN YOU PUNCH A LEVER. THE LEVER IS NEVER RIGHT NEXT TO THE GATE. THAT WOULD BE TOO NICE.",
-        "THE GRUB GULLY EXIT IS PADLOCKED. THE KEY IS IN THE GULLY TOO. LOOK UP. GOBLINS LOVE A HIGH SHELF."],
-      required: ['f2_s1', 'f2_s2', 'f2_s3'], boss: 'f2_boss', par: 900 },
-    { n: 3, name: 'THE OVER CITY', tagline: 'A WHOLE CITY. NO EXITS. GREAT CLOWNS.', theme: 'city', music: 'floor3',
-      intro: ["FLOOR THREE! YOU NOW HAVE A MAP. WALK AROUND, CRAWLER. DOORS, TENTS AND MANHOLES ARE ALL STAGES.",
-        "CLEAR THE NUMBERED AREAS AND FIND THE BOSS KEY TO OPEN THE BOSS DOOR. LETTERED AREAS HIDE LOOT, KEYS AND LOST FRIENDS.",
-        "SOME DOORS ARE PADLOCKED. THE KEY IS ALWAYS SOMEWHERE ELSE ON THE FLOOR. ASK THE GUILD BARTENDER FOR GOSSIP."],
-      overworld: { theme: 'ow_city', music: 'ow3',
-        map: [
-      '##################################################',
-      '#TTTTTTTTT.=###############.#############.########',
-      '#T,,,,,,,T.=########,T,####.#############.########',
-      '#TA,,TT,,T.=########,,,####.#############.###B####',
-      '#T,,,,,,,,.======================================#',
-      '#T,,,,,,,,.=...............=.............=.,,,,,X#',
-      '#TTTTTTT,,.=.##..#########.=.TTTTTTTTTTT.=.T,,,,T#',
-      '#,,,,,,,,,.=.##..#########.=.T,#######,T.=.,,,,,,#',
-      '#,,,,,,,,T.=.#############.=.T,#######,T.=.,T,,,,#',
-      '#,,,TT,,,T.=.#############.=.T,#######,T.=.,,,,T,#',
-      '#,,,,,,TT,.=.#############.=.T,###2###,T.=.,,,,,,#',
-      '#,TT,,,,,,.=.#############.=.T,,,,,,,,,T.=.,,T,,,#',
-      '#,,,,,,,,,.=.######1######.=.TTT,,,TTTTT.=.T,,,,T#',
-      '#..........=.T...........T.=.T.........T.=.......#',
-      '#================================================#',
-      '#,,,,,,,,,.=.T......T....T.=.T.....T...T.=~~~~~~~#',
-      '#,###,###,.=.######S######.=.###########.=~~~~~~~#',
-      '#,###,###,.=.#############.=.###########.=~,,,~~~#',
-      '#,###,###,.=.#############.=.####...####.=,,T,~~~#',
-      '#,,,,,,,,,.=.#############.=.####...####.=~,,,~~~#',
-      '#,###,###,.=.#############.=.####...####.=~~~~~~~#',
-      '#,###,###,.=...............=.............=~~~~~~~#',
-      '#,###,###,.===============================~~~~~~~#',
-      '#,,,,,,,,,.=.###..########.=.............=~~~~~~~#',
-      '#,,,,,,,,,.=.###..########.=..T.....T....=====3~~#',
-      '#==P========.###..########.=.....T........~~~~~~~#',
-      '#,,T,,,,T,,=.#############.=..........T...~~~~~~~#',
-      '##################################################'
-        ],
-        entrances: { '1': 'f3_s1', '2': 'f3_s2', '3': 'f3_s3', 'A': 'f3_x1', 'S': 'SAFE', 'B': 'f3_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'clown', x: 20, y: 14 }, { enemy: 'skyfowl', x: 35, y: 5 }, { enemy: 'gator', x: 43, y: 24 }, { enemy: 'rat', x: 5, y: 19 }],
-        ambush: 'f3_ambush' },
-      locks: { '3': { needs: 'valve', text: "THE STORM DRAIN IS FLOODED TO THE BRIM. SOMEBODY RAN OFF WITH THE VALVE WHEEL." }, 'B': { needs: 'bigtop_ticket', text: "THE BIG TOP IS CHAINED SHUT. A CLOWN AT THE FLAP SAYS NO TICKET, NO SHOW." } },
-      companion: 'mongo',
-      hints: [
-        "THE STORM DRAIN IS FLOODED. THERE IS A VALVE WHEEL IN THE APARTMENT TOWER BOILER ROOM. TRY THE ROOF FIRST.",
-        "THE MIDWAY EXIT ONLY OPENS FOR A PROPER HONK. EVERYTHING LOST ON THIS FLOOR ENDS UP IN THE PARK SHED.",
-        "THE RINGMASTER WANTS A TICKET. A CLOWN WENT DOWN INTO THE BAYOU WITH ONE. NOBODY SAW HIM COME BACK UP.",
-        "ONE OF THE MIDWAY GAMES HAS A REAL EGG AS THE TOP PRIZE. RING THE BELL. TRUST ME ON THIS ONE, KID."],
-      required: ['f3_s1', 'f3_s2', 'f3_s3'], boss: 'f3_boss', par: 1200 },
-    { n: 4, name: 'THE RAIL TANGLE', tagline: 'EVERY TRAIN IS LATE. EVERY TRACK IS LOADED.', theme: 'train', music: 'floor4',
-      intro: ["FLOOR FOUR! A KNOT OF RAILWAYS OVER A BOTTOMLESS VOID. WALK ON THE BRIDGES, CRAWLER. NOT OFF THEM.",
-        "THREE STOPS TO CLEAR, TWO SIDE SPURS FULL OF GOODIES, AND A BOSS WHO IS MOSTLY ENGINE."],
-      overworld: { theme: 'ow_rail', music: 'ow4',
-        map: [
-      '####################################################',
-      '#.................~~~~~~......................######',
-      '#............TT...~~~~~~......................######',
-      '#..TT....====================================.######',
-      '#..T.....=........~~~~~~....................=.######',
-      '#........=.######.~~~~~~..........TTTTTTTT..==B#####',
-      '#........=.######.~~~~~~..........TT####TT..=.######',
-      '#........=.######.~~~~~~..TT......TT####TT..=.######',
-      '#........=.##1###.~~~~~~..T.......TTT3TTTT..=.######',
-      '#..TT....=........~~~~~~....................=.....X#',
-      '#........======================.............=...T..#',
-      '#........=........~~~~~~......=...#####.....=......#',
-      '#~~~~~~~.=........~~~~~~#####.=...#####.....=......#',
-      '#~~~~~~~.=...####.~~~~~~##S##.=.............=......#',
-      '#A========...####.............=.............=......#',
-      '#~~~~~~~.=...####.............=====================#',
-      '#~~~~~~~.=....................=.............=......#',
-      '#######..=....TTTTTTTTTTTTT...=.............=......#',
-      '#######..=.......TTTTTTTTTT...=.............=......#',
-      '#........=....TT.......TTTT...=.~~~~~~~~~~~~=~~~~~~#',
-      '#........=..TTTT..#####..TT...=.~~~~~~~~~~~~=~~~~~~#',
-      '#........=....TT....C....TT...=.~~~~~~~~~~~~=~~~~~~#',
-      '#........=....TT.........TT.TT=.............=.######',
-      '#........=....TTTTTTTTTTTTT...=...#####.....=.######',
-      '#........=....TTTTTTTTTTTTT...=...#####.....==2#####',
-      '#........=....................=...#####.....=.######',
-      '#........=.....TT.............=.............=.######',
-      '#==P===========================.........TT....######',
-      '#.............................................######',
-      '####################################################'
-        ],
-        entrances: { '1': 'f4_s1', '2': 'f4_s2', '3': 'f4_s3', 'A': 'f4_x1', 'C': 'f4_x2', 'S': 'SAFE', 'B': 'f4_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'rail_rat', x: 30, y: 20 }, { enemy: 'steam_goblin', x: 38, y: 15 }, { enemy: 'bat', x: 5, y: 22 }, { enemy: 'rail_rat', x: 20, y: 3 }],
-        ambush: 'f4_ambush' },
-      locks: { '2': { needs: 'switch_key', text: "THE POINTS ARE LOCKED. NO TRAIN, AND NO CRAWLER, GETS TO THE ENGINE SHED." }, 'A': { needs: 'switch_key', text: "THE OLD SPUR SWITCH IS PADLOCKED. SOMETHING DOWN THAT LINE IS SWEARING." }, 'B': { needs: 'drive_gear', text: "THE ROUNDHOUSE TURNTABLE IS JAMMED. THERE IS A GEAR-SHAPED HOLE IN IT." } },
-      companion: 'samantha',
-      hints: [
-        "PLATFORM NINE HAS THE SWITCHYARD KEY. IT THROWS THE POINTS FOR THE ENGINE SHED AND THE OLD SPUR.",
-        "THE ROUNDHOUSE IS JAMMED UNTIL SOMEBODY BRINGS A DRIVE GEAR. THE ENGINE SHED HAS A PIT FULL OF THEM.",
-        "THE DEAD END TUNNEL EXIT IS STUCK ON RED. THE FREIGHT MAZE STORES SPARE SIGNAL GLASS.",
-        "THE YARD CREW SAYS SOMETHING IN A CABOOSE ON THE OLD SPUR HAS BEEN CURSING FOR A WEEK. IN A VERY POSH VOICE."],
-      required: ['f4_s1', 'f4_s2', 'f4_s3'], boss: 'f4_boss', par: 1300 },
-    { n: 5, name: 'THE BUBBLE SEA', tagline: 'HOLD YOUR BREATH. OR DO NOT. NOBODY CARES.', theme: 'bubble', music: 'floor5',
-      intro: ["FLOOR FIVE! A SEA OF ISLANDS CONNECTED BY THE WORST BOARDWALKS EVER BUILT.",
-        "FOUR AREAS THIS TIME. THE TIDEMOTHER WAITS ON THE FAR ISLAND. SHE HAS BEEN WAITING A WHILE. SHE IS CRANKY."],
-      overworld: { theme: 'ow_reef', music: 'ow5',
-        map: [
-      '####################################################',
-      '#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#',
-      '#~~....~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~....######..#',
-      '#~T,,,T.~~~~~~~~~~~...........~~~~~~~~.....######..#',
-      '#~A,,,..~~~~~~~~~~.,,,,,.TTTTT.~~~~~~~.T...######..#',
-      '#~T.....~~~~~~~~~~.,,,,,.TTTTT.~~~~~~~.....##B###..#',
-      '#~.....~~~~~~~~~~~.,,,,,.TT3TT.=======.............#',
-      '#~~~=~~~~~~~~~~~~~.............~~~~~~~..,,,........#',
-      '#~~~=~~~~~~~~~~~~~..TT.........~~~~~~~..,,,......T.#',
-      '#~~~=~~~~~~~~~~~~~..........T..~~~~~~~..,,,....TTX.#',
-      '#~~~=~~~~~~~~~~~~~~...........~~~~~~~~.............#',
-      '#~~~=~~~~~~~~~~~~~~~~~~~~=~~~~~~~~~~~~~...........~#',
-      '#~~~.....TTTT~~~~~~~~~~~~=~~~~~~~~~~~~~~~~~~~~~~~~~#',
-      '#~~.,,,,,TTTT.~~~~~~~~~~~=~~~~~~~~~~~~~~~~~~~~~~~~~#',
-      '#~~.,,,,,T1TT.~~~~~~~~~~~=~~~~~~~~~~~~~~~~~~~~~~~~~#',
-      '#~~.,,,,,.....~~~~~~~~~~~=~~~~~~~~~~~~~~~~~~~~~~~~~#',
-      '#~~...........~~~~~~~...........~~~~~~~~~~~~~~~~~~~#',
-      '#~~..TT.....T.~~~~~~.............~~~~~~~~~~~~~~~~~~#',
-      '#~~...........~~~~~~..,,,,,.####.~~~~~~..........~~#',
-      '#~~~.........~~~~~~~..,,,,,.####.~~~~~............~#',
-      '#~~~~~~=~~~~~~~~~~~~..,,,,,.#S##.~~~~~..,,,,,..T..~#',
-      '#~~~~~~=~~~~~~~~~~~~.............=====..,,,,,.....~#',
-      '#~~~~~~=~~~~~~~~~~~~......T......~~~~~..,,,,,.....~#',
-      '#~~~~~~=~~~~~~~~~~~~.TTTT.....T..~~~~~............~#',
-      '#~~..........~~~~~~~.TTTT..T.....~~~~~.......T4TT.~#',
-      '#~.,,,,...~...~~~~~~.T2TT........~~~~~.......TTTT.~#',
-      '#~.,,,,.......======.............~~~~~..TT...TTTT.~#',
-      '#~............~~~~~~~~.........~~~~~~~.......TTTT.~#',
-      '#~...P.....T..~~~~~~~~~~~~~~~~~~~~~~~~~..........~~#',
-      '#~.......T....~~~~~~~~~~~~~~~~~~~~~~~~~~~~.=..~~~~~#',
-      '#~~.........~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~T..C~~~~~#',
-      '####################################################'
-        ],
-        entrances: { '1': 'f5_s1', '2': 'f5_s2', '3': 'f5_s3', '4': 'f5_s4', 'A': 'f5_x1', 'C': 'f5_x2', 'S': 'SAFE', 'B': 'f5_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'fishman', x: 26, y: 19 }, { enemy: 'jelly', x: 25, y: 13 }, { enemy: 'crab', x: 43, y: 25 }, { enemy: 'fishman', x: 45, y: 7 }],
-        ambush: 'f5_ambush' },
-      locks: { '4': { needs: 'tide_chart', text: "THE MANGROVES ARE A MAZE. WITHOUT A CHART YOU WILL JUST WALK IN WET CIRCLES." }, 'C': { needs: 'tide_chart', text: "THE CURRENTS PAST THE REEF ARE A MESS. YOU NEED A CHART TO REACH THE SHELF." }, 'B': { needs: 'coral_crown', text: "THE TIDE POOL GUARDS BOW TO A CROWN, NOT A CRAWLER. GO FIND A CROWN." } },
-      companion: 'katia',
-      hints: [
-        "WITHOUT A TIDE CHART YOU WILL NEVER FIND THE MANGROVE MAZE OR THE REEF SHELF. CHECK THE SEA CAVES.",
-        "THE GARDENS EXIT BUBBLE WANTS A SONG. THE PEARL VAULT HAS A SHELL THAT SINGS.",
-        "THE TIDEMOTHER ONLY RECEIVES CROWNED GUESTS. HER SPARE CROWN IS TANGLED UP IN THE MANGROVE ROOTS.",
-        "THE FISHMEN NETTED A SHAPESHIFTER OUT ON THE REEF SHELF. SHE KEEPS TURNING INTO A WALL. SOUNDS LIKE A FRIEND."],
-      required: ['f5_s1', 'f5_s2', 'f5_s3', 'f5_s4'], boss: 'f5_boss', par: 1500 },
-    { n: 6, name: 'THE HUNTING GROUNDS', tagline: 'YOU ARE THE GAME. LITERALLY.', theme: 'forest', music: 'floor6',
-      intro: ["FLOOR SIX! A PRIVATE HUNTING PRESERVE FOR THE GALAXY'S RICHEST JERKS. YOU ARE THE PREY. SMILE!",
-        "STICK TO THE PATHS. THE WOODS ARE THICK AND THE HUNTERS ARE THICKER."],
-      overworld: { theme: 'ow_woods', music: 'ow6',
-        map: [
-      '######################################################',
-      '#TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT#',
-      '#TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT,X,,######,,T#',
-      '#TTTT,#####,TTTTTTTTTTTTTTTTTT==========,,,,######,,T#',
-      '#TTT,,##3##,,TTTTTTTTTTTTTTTTT=TTTTTTTTT,,,,##B###,,T#',
-      '#TTT,,,,,,,,,TTTTTTTTTTTTTTTTT=TTTTTTTTT,,,,,,,,,,,,T#',
-      '#TTT,,,,,,,T,TTTTTTTTTTTTTTTTT=TTTTTTTTT,,,,,,,,,,T,T#',
-      '#TTT,,,,,,,,,TTTTTTTTTTTTTTTTT=TTTTTTTTTT,,,,,,,,,,TT#',
-      '#TTTTTTT=TTTTTTTTTTT,,,,,,,,,,,,,,TTTTTTTTTTTTTTTTTTT#',
-      '#TTTTTTT=TTTTTTTTTTT,,####,,,,,,,,,TTTTTTTTTTTTTTTTTT#',
-      '#TTTTTTT=TTTTTTTTTTT,,#S##,,,,,,,,,========TTTTTTTTTT#',
-      '#TTTTTTT=TTTTTT=====,,,,,,,,,,,,,,,TTTTTTT=TTTTTTTTTT#',
-      '#TT,,,,,,,,,,,,TTTTT,,,,,,,,,,,T,,,TTTTTTT=TTTTTTTTTT#',
-      '#TT,,#####,,T,,TTTTTT,,,,,,,,,,,,,,TTTTTTT=TTTTTTTTTT#',
-      '#TT,,#####,,,,,TTTTTTTTTTTT=TTTTTTTTTTTTTT=TTTTTTTTTT#',
-      '#TT,,##1##,,,,,TTTTTTTTTTTT=TTTTTTTTTTTTTT=TTTTTTTTTT#',
-      '#TT,,,,,,,,,,T,TTTTTTTTTTTT=TTTTTTTTTTTTTT=TTTTTTTTTT#',
-      '#TT,,,,,,,,,,,,TTTTTTTTTTTT=TTTTTTTTTTT,,,,,,,,,,,,TT#',
-      '#TTTTTTT=TTTTTTTTTTTTTTTTTT=TTTTTTTTTT,,,,,,#####,,TT#',
-      '#TTTTTTT=TTTTTTTTTTTTTTTTTT=TTTTTTTTTT,,,,,,##4##,,TT#',
-      '#TTTTTTT=TTTTTTTTTTTTTTTTTT=TTTTTTTTTT,,,,,,,,,,,,,TT#',
-      '#TTTTTTT=TTTTTTTTTTTTTTTTTT=TTTTTTTTTT,T,,,,,,,,T,,TT#',
-      '#TA======TTTTTTTTTTTTTT,,,,,,,,,TTTTTT,,,,,,,,,,,,TTT#',
-      '#TTTTTTT=TTTTTTTTTTTTT,,,,####,,,TTTTTTTTTTT=TTTTTTTT#',
-      '#TTTTTTT=TTTTTTTTTTTTT,,,,#2##,,,TTTTTTTTTTT=TTTTTTTT#',
-      '#TTTTTTT=TTTTTTTTTTTTT,,,,,,,,,,,TTTTTTTTTTT=TTTTTTTT#',
-      '#TT,,,,,,,,,,TTTTTTTTT,,,T,,,,,,,TTTTTTTTTTT=TTTTTTTT#',
-      '#TT,,...,,T,,TTTTTTTTT,,,,,,,T,,,TTTTTTT,,,,,,,,,,TTT#',
-      '#TT,,...,,,,,=========,,,,,,,,,,,TTTTTTT,,,,,TTT,,,TT#',
-      '#TT,,,P,,,,,,TTTTTTTTT,T,,,,,,,T,TTTTTTT,,,,,,,,,,,TT#',
-      '#TT,,,,,,,,,,TTTTTTTTT,,,,,,,,,,,TTTTTTTT,,,,,C,,,,TT#',
-      '######################################################'
-        ],
-        entrances: { '1': 'f6_s1', '2': 'f6_s2', '3': 'f6_s3', '4': 'f6_s4', 'A': 'f6_x1', 'C': 'f6_x2', 'S': 'SAFE', 'B': 'f6_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'hound', x: 8, y: 20 }, { enemy: 'hunter', x: 27, y: 18 }, { enemy: 'skyfowl', x: 36, y: 10 }, { enemy: 'hound', x: 45, y: 21 }],
-        ambush: 'f6_ambush' },
-      locks: { '4': { needs: 'kennel_key', text: "THE KENNEL GATES ARE LOCKED. THE HOUNDS INSIDE ARE VERY EXCITED ABOUT IT." }, 'B': { needs: 'hunt_horn', text: "THE PROCESSING SHED IS BOLTED. THE BUTCHER ONLY COMES OUT FOR HIS OWN HORN." } },
-      companion: 'zev',
-      hints: [
-        "CAREFUL WITH THE LODGE. THE DOORMAN WILL NOT LET YOU OUT WITHOUT A GUEST MASK. WOLF HOLLOW ATE THE LAST GUEST.",
-        "THE TRAPPERS HOLD THE KENNEL KEY. IT FELL INTO ONE OF THEIR OWN SNARE PITS. HA.",
-        "THE BUTCHER COMES OUT FOR HIS HORN AND NOTHING ELSE. IT HANGS IN THE KENNELS, UP A BIG TREE.",
-        "SOMEBODY DOWN THE WISHING WELL IS YELLING ABOUT ENGAGEMENT NUMBERS. KID, I THINK THAT IS YOUR PR LADY."],
-      required: ['f6_s1', 'f6_s2', 'f6_s3', 'f6_s4'], boss: 'f6_boss', par: 1600 },
-    { n: 7, name: 'THE BEDLAM MANOR', tagline: 'A LOVELY ESTATE. TERRIBLE HOSTESS.', theme: 'castle', music: 'floor7',
-      intro: ["FLOOR SEVEN! A HAUNTED MANOR WITH GARDENS, A MAZE, AND A GRAVEYARD. REAL ESTATE AGENTS CALL IT CHARMING.",
-        "THE LADY OF THE HOUSE AWAITS AT THE END OF THE HALL. DRESS CODE IS FORMAL. YOU ARE IN BOXERS. GOOD LUCK."],
-      overworld: { theme: 'ow_manor', music: 'ow7',
-        map: [
-      '##################################################',
-      '#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#',
-      '#,,,,,,,###################################,,,,,,#',
-      '#,,,,,,,###################################,~~~~~#',
-      '#,####,,###################################,~~~~~#',
-      '#,####,,###################################,~~~~~#',
-      '#,###S,,######1############################,~~~~~#',
-      '#,####,,###......#...........#..........B##,~~~~~#',
-      '#,,,,,,,###............#...........#....X##,~~~~~#',
-      '#,T,,,,,############2###...################,,,,,,#',
-      '#,,,,,,,################...################,,TTT,#',
-      '#,,,,,T,################...################,,TTT,#',
-      '#,,,,,,,################...################,,,,,,#',
-      '#TTTTTTT,TTTTTTTTTTT,,,,,=,,,,,TTTTTTTTTTTTT,TTTT#',
-      '#,,,,,,,,,,,,,,,,,,,,=========,,,,,,,,,,,,,,,,,,,#',
-      '#,,,,,,,,,,,,,,,,,,,,=,~~~~~,=,,,TTT,,,,,,,,,,,,,#',
-      '#,TTTTTTTTTTTTTTTTT,,=,~~~~~,=,,,,,,,,########TTT#',
-      '#,T,,,,,,,,,,,,,,,,,,=,~~~~~,=,,,,,,,,########TTT#',
-      '#,T,,,,,,,,,,,,,,,T,,=========,,,,,,,,########TTT#',
-      '#,T,,TTTTTTTTTTTTTT,,,,,,=,,,,,,,,,,,,########,,,#',
-      '#,T,,,,,,,,,,,,,,,T,,,,,,=,,,,,,,,,,,,###3####,,,#',
-      '#,TTTTTTTTTTTTTT,,T,,,,T,=,T,,,,,,,,,,,,,,,,,,,,,#',
-      '#,T,,,,,,,,,,,,,,,T,,,,,,=,,,,,,,,,TTTTTTTTTTTTTT#',
-      '#,T,,TTTTTTTTTTTTTT,,,,,,=,,,,,,,,,T,,,,,,#####,T#',
-      '#,T,,,,,,,,,,,,,,,T,,,,,,=,,,,,,,,,T,T,T,,#####,T#',
-      '#,TTTTTTTTTTTTTT,,T,,,,T,=,T,,,,,,,,,,,,,,##4##,T#',
-      '#,TTTTTTTT,,,,,,,,T,,,,,,=,,,,,,,,,T,,,,,,,,,,,,T#',
-      '#,TTTTTTTTA,,,,,,,T,,,,,,=,,,,,,,,,T,T,T,T,,,,,TT#',
-      '#,TTTTTTTTTTTTTTTTT,,,,,=P=,,,,,,,,TTTTTTTTTTTTTT#',
-      '##################################################'
-        ],
-        entrances: { '1': 'f7_s1', '2': 'f7_s2', '3': 'f7_s3', '4': 'f7_s4', 'A': 'f7_x1', 'S': 'SAFE', 'B': 'f7_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'ghoul', x: 33, y: 22 }, { enemy: 'gargoyle', x: 12, y: 14 }, { enemy: 'skeleton', x: 40, y: 14 }, { enemy: 'bat', x: 30, y: 7 }],
-        ambush: 'f7_ambush' },
-      locks: { '2': { needs: 'invitation', text: "A SKELETON BUTLER BLOCKS THE BALLROOM. INVITATION ONLY. HE IS VERY FIRM ABOUT IT." }, 'A': { needs: 'garden_key', text: "THE HEDGE MAZE GATE IS LOCKED AND OVERGROWN. SOMEONE INSIDE IS SINGING TO THE PLANTS." }, 'B': { needs: 'bridal_tiara', text: "THE GRAND STAIR IS ROPED OFF. THE BRIDE WILL NOT COME DOWN WITHOUT HER TIARA." } },
-      companion: 'signet',
-      hints: [
-        "THE BALLROOM BUTLER WANTS AN INVITATION. THE CELLAR HAS SPARES, BUT THE CELLAR DOOR NEEDS A GARDEN KEY TO LEAVE.",
-        "THE GARDEN KEY IS IN THE GREENHOUSE, UP IN THE VINES. IT ALSO OPENS THE HEDGE MAZE.",
-        "THE BRIDE LEFT HER TIARA ON THE BALLROOM BALCONY. NO TIARA, NO WEDDING, NO BOSS FIGHT.",
-        "AT THE HEART OF THE HEDGE MAZE IS A SUMMONER WHO ANNOYED THE BRIDE. ANYONE WHO ANNOYS THE BRIDE IS A FRIEND."],
-      required: ['f7_s1', 'f7_s2', 'f7_s3', 'f7_s4'], boss: 'f7_boss', par: 1700 },
-    { n: 8, name: 'THE RUIN', tagline: 'WHAT IS LEFT OF A CITY. WHAT IS LEFT OF HOPE.', theme: 'ruin', music: 'floor8',
-      intro: ["FLOOR EIGHT! A CITY THAT LOST. TOXIC CRATERS, SCRAP GOLEMS, AND A DRONE ON EVERY CORNER.",
-        "THE OVERSEER WATCHES FROM THE TOWER IN THE NORTHEAST. WAVE! IT HATES THAT."],
-      overworld: { theme: 'ow_waste', music: 'ow8',
-        map: [
-      '########################################################',
-      '#.................................######.....###########',
-      '#.................#########.......######.....###########',
-      '#..~~~~~~~~~......#########.......######.....###########',
-      '#..~~~~~~~~~......#########......T######.....###########',
-      '#..~~~~~~~~~......####4####..................####B######',
-      '#..~~~~~~~~~..........................................X#',
-      '#..~~~~~~~~~..=======================================..#',
-      '#..~~~~~~~~~..=.........................=..............#',
-      '#.#####.......=.######..#####...........=.######.......#',
-      '#.##A##.......=.######..#####..~~~~.....=.######.......#',
-      '#.............=.######..#####.~~~~~~....=.######.......#',
-      '#....TT.......=.######..##S##.~~~~~~....=.######.......#',
-      '#....T........=.######........~~~~~~....=.........##...#',
-      '#.....######..=.######..TT....~~~~~~....=......TT.##...#',
-      '#.....######..=.######..T.....~~~~~~....=...##########.#',
-      '#..TT.######..=................~~~~.....=...##########.#',
-      '#.............=.........................=...##########.#',
-      '#.......=======.....=====================...##########.#',
-      '#.#########.........=...................=...##########.#',
-      '#.#########...#####.=.........TT.######.=...####3#####.#',
-      '#.#########...#####.=............######.=..............#',
-      '#.#########...#####.=.....~~~~~~....TT..=...~~~~~~~....#',
-      '#.#########...#####.=...~~~~~~~~~~......=...~~~~~~~....#',
-      '#.#########.........=...~~~~~~~~~~......=...~~~~~~~#####',
-      '#.####1####.....TT..=...~~~~~~~~~~......=...~~~~~~~#####',
-      '#...................=...~~~~~~~~~~......=...~~~~~~~#####',
-      '#...........TT......=.2.~~~~~~~~~~......=..........#C###',
-      '#...................=.....~~~~~~........=..............#',
-      '#==P=================...................===============#',
-      '#......................................................#',
-      '########################################################'
-        ],
-        entrances: { '1': 'f8_s1', '2': 'f8_s2', '3': 'f8_s3', '4': 'f8_s4', 'A': 'f8_x1', 'C': 'f8_x2', 'S': 'SAFE', 'B': 'f8_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'mutant', x: 20, y: 24 }, { enemy: 'drone', x: 30, y: 18 }, { enemy: 'mutant', x: 40, y: 12 }, { enemy: 'drone', x: 14, y: 4 }],
-        ambush: 'f8_ambush' },
-      locks: { '4': { needs: 'security_badge', text: "THE TOWER DOOR HAS A BADGE READER. IT BEEPS AT YOU IN A JUDGMENTAL WAY." }, 'B': { needs: 'tower_lens', text: "THE WATCHTOWER EYE SCANNER BLINKS RED. YOU ARE NOT THE OVERSEER. YET." } },
-      hints: [
-        "THE DEAD AIR TOWER READS BADGES. THE MEGAMALL GUARD OFFICE HAS ONE. ITS LEVER IS UPSTAIRS.",
-        "THE SCRAPWORKS FREIGHT LIFT NEEDS A POWER CELL. LINE ZERO HAS AN OLD SUBSTATION. BRING YOUR NERVE.",
-        "THE WATCHTOWER SCANS EYES. THERE IS A SPARE LENS AT THE VERY TOP OF THE DEAD AIR TOWER MAST."],
-      required: ['f8_s1', 'f8_s2', 'f8_s3', 'f8_s4'], boss: 'f8_boss', par: 1800 },
-    { n: 9, name: 'FACTION WARS', tagline: 'THE MIDSEASON FINALE. LIVE.', theme: 'warzone', music: 'floor9',
-      intro: ["FLOOR NINE! THE MIDSEASON FINALE! TWO ARMIES, ONE PLANET, AND YOU IN THE MIDDLE IN YOUR UNDERWEAR.",
-        "CROSS THE FRONT LINES, TAKE THE FOUR OBJECTIVES, AND STORM THE BROADCAST TOWER. THE SHOWRUNNER HIMSELF IS WAITING.",
-        "SURVIVE HIM AND THE SEASON KEEPS GOING. THE NETWORK HAS TWO MORE FLOORS READY. THEY ARE VERY EXCITED. YOU SHOULD BE TOO."],
-      overworld: { theme: 'ow_war', music: 'ow9',
-        map: [
-      '##########################################################',
-      '#TTTTTTT.......T~~T............T~~T..........T~~##########',
-      '#T,,,,,T.......T~~T.......#####T~~T..........T~~##########',
-      '#T,A,,,T.......T~~T.......#####T~~T..........T~~######B###',
-      '#T,,,,,,=..TT..T~~T.=====C#####T~~T.........TT~~T.....=###',
-      '#T,,,,,T=...T..T~~T.....=.#####T~~T..........T~~TX....=###',
-      '#TTTTTTT=......T~~T.....=..TTT.T~~T.#######..T~~T.....=###',
-      '#.......=......T~~T.....=......T~~T.#######..T~~T.....=###',
-      '#.......=================......T~~T.#######..T~~T.....=..#',
-      '#.......=......T~~T.....=......T~~T.###3###..T~~T.....=..#',
-      '#.......=......T~~T.....=......T~~T....=.....T~~T.....=..#',
-      '#.......=......T~~T.....=......T~~T....=.....T~~T.....=..#',
-      '#.#####.=......T~~T.~~~.=......T~~T.....===============..#',
-      '#.#####.=......T~~T.~~~.=...TT.T~~T.....=....T~~T.....=..#',
-      '#.####1.=......T~~T.~~~.=......T~~T..TT.=....T~~T.....=..#',
-      '#.#####.=......T~~T.....=......T~~T.....=....T~~T.....=..#',
-      '#.......=......T~~T.....=......T~~T.....=....T~~T.~~~.=..#',
-      '#.......=......T~~T.....=......T~~T.....=....T~~T.~~~.=..#',
-      '#.......=......T~~T.....=================....T~~T.~~~.=..#',
-      '#.......=......T~~T.....=......T~~T.....=....T~~T.~~~.=..#',
-      '#.......=.####.T~~T.T...=......T~~T.....=.~~~T~~T.....=..#',
-      '#.......=.####.T~~T.....=......T~~T.....=.~~~T~~T.....=..#',
-      '#..~~~..=.S###.T~~T.....=.#####T~~T.....=.~~~T~~T.....=..#',
-      '#..~~~..=......T~~T.....=.2####T~~T.....=....T~~T.....=..#',
-      '#..~~~..=......T~~T.....=.#####T~~T#####=....T~~T.TT..=..#',
-      '#.......=......T~~T.....=.#####T~~T#####=....T~~T.....=..#',
-      '#.......=================......T~~T#####=....T~~T.....=..#',
-      '#.......=......T~~T............T~~T####4=....T~~T.....=..#',
-      '#...TT..=......T~~T............T~~T#####===============..#',
-      '#.......=......T~~T............T~~T#####.....T~~T........#',
-      '#==P============~~T.TT.......T.T~~T#####.....T~~T........#',
-      '#..............T~~T............T~~T........T.T~~T........#',
-      '#..............T~~T............T~~T..........T~~T........#',
-      '##########################################################'
-        ],
-        entrances: { '1': 'f9_s1', '2': 'f9_s2', '3': 'f9_s3', '4': 'f9_s4', 'A': 'f9_x1', 'C': 'f9_x2', 'S': 'SAFE', 'B': 'f9_boss', 'X': 'STAIRS' },
-        roamers: [{ enemy: 'soldier', x: 8, y: 18 }, { enemy: 'soldier', x: 24, y: 12 }, { enemy: 'cultist', x: 40, y: 20 }, { enemy: 'soldier', x: 54, y: 20 }],
-        ambush: 'f9_ambush' },
-      locks: { '3': { needs: 'field_map', text: "WARNING SIGNS: MINES. LOTS OF MINES. YOU WILL WANT A MAP OF THE MINES." }, 'C': { needs: 'blast_charge', text: "THE DROPSHIP HULL IS SEALED TIGHT. A BIG ENOUGH BOOM WOULD OPEN IT RIGHT UP." }, 'B': { needs: 'backstage_pass', text: "SOUNDSTAGE SECURITY: NO PASS, NO SHOW. THE GUARDS HAVE VERY LARGE GUNS." } },
-      hints: [
-        "ARTILLERY HILL IS MINED. BUNKER ROW HAS THE MAP. YOU WILL NOT GET FAR WITHOUT IT.",
-        "THE GUN CREWS ON THE HILL KEEP BLASTING CHARGES. ONE OPENS THE TRENCH BARRICADE. ONE OPENS THE DROPSHIP.",
-        "THE BACKSTAGE PASS IS IN THE DROPSHIP WRECK. NO PASS, NO SHOWRUNNER. HE IS THE BIGGEST THING YOU HAVE FACED, KID."],
-      required: ['f9_s1', 'f9_s2', 'f9_s3', 'f9_s4'], boss: 'f9_boss', bossMusic: 'boss', par: 2000 },
-    { n: 10, name: 'THE CUL-DE-SAC CUP', tagline: 'NICE NEIGHBORHOOD. TERRIBLE DRIVERS.', theme: 'raceway', music: 'floor10',
-      intro: ["FLOOR TEN! WELCOME TO THE CUL-DE-SAC CUP! ONE WAY IN, NO WAY OUT, AND A NEIGHBORHOOD WATCH THAT WATCHES YOU CRASH.",
-        "YOUR RIDE: A GENUINE FOOD TRUCK! CARL DRIVES. PRINCESS DONUT RIDES SHOTGUN, FIRES MISSILES AND CRITIQUES YOUR STEERING.",
-        "FINISH TOP THREE IN EACH HEAT TO UNLOCK THE NEXT GARAGE. WIN THE CHAMPIONSHIP TO LEAVE. SECOND PLACE IS A NICE WORD FOR LUNCH.",
-        "YOUR RIVALS LIVE ON THE BLOCK. WALK UP TO THEIR DRIVEWAYS AND SAY HELLO. THEY WILL SAY SOMETHING RUDE BACK. IT IS TRADITION."],
-      overworld: { theme: 'ow_suburb', music: 'ow10',
-        map: [
-      '####################################################',
-      '#TTTTTTTTTTTTTTTT##################TTTTTTTTTTTTTTTT#',
-      '#,,,,,,,,,,,,,,,,##################,,,,,,,,,,,,,,,,#',
-      '#,#######,,,,,T,,########B#####X###,,T,,,,,#######,#',
-      '#,#######,,,,,,,,..................,,,,,,,,#######,#',
-      '#,#######,,,,,,,,,,,,==========,,,,,,,,,,,,#######,#',
-      '#,######2.......,,================,,.......3######,#',
-      '#,#######,,,,,,,======,,,,,,,,======,,,,,,,#######,#',
-      '#,,,,,,,,,,,,,,=====,,,T,,,,,,,,=====,,,,,,,,,,,,,,#',
-      '#,T,T,,,,,,,,,====,,,,........,,,,====,,,,,,,,,,,,,#',
-      '#TTTTTTTTT,,,====,,,T,.,,,,,,.,T,,,====,,,TTTTTTTTT#',
-      '#,,,,T,,,,,,,====,,,,,.,,~~,,.,,,,,====,,,,,,,T,,,,#',
-      '#,,,,,,,,,,,,====,,,,,.,,~~,,.,,,,,====,,,,,,,,,,,,#',
-      '#,#######,,,,====,,,T,.,,,,,,.,T,,,====,,,,#######,#',
-      '#,#######,,,,,====,,,,........,,,,====,,,,,#######,#',
-      '#,######1......=====,,,,,,,,T,,,=====......#######,#',
-      '#,#######,,,,,,,======,,,,,,,,======,,,,,,,#######,#',
-      '#,#######,,T,,,,,,================,,,,,,T,,#######,#',
-      '#,,,,,,,,,,,,,,,,,,,,==========,,,,,,,,,,,,,,,,,,,,#',
-      '#TTTTTTTTTT,,,,,,,,,,,,,,==,,,,,,,,,,,,,,TTTTTTTTTT#',
-      '#,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,,,,,,,,,,#',
-      '#TTTTTTTTT,,T,#######,,,,==,,,,######,,T,,TTTTTTTTT#',
-      '#T#######T,,,,###S###,,,,==,,,,######,,,,,T#######T#',
-      '#T#######T,,,,,,,.,,,,,,,==,,,,,,.,,,,,,,,T#######T#',
-      '#T######A................==................C######T#',
-      '#T#######T,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,T#######T#',
-      '#T#######T,,T,,,,,,,,,,,,==,,,,,,,,,,,T,,,T#######T#',
-      '#TTTTTTTTT,,,,,,,,,,T,,,,P=,,,,,,T,,,,,,,,TTTTTTTTT#',
-      '#,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,,,,,,,,,,,,,,#',
-      '####################################################'
-        ],
-        entrances: { '1': 'f10_r1', '2': 'f10_r2', '3': 'f10_r3', 'A': 'f10_x1', 'C': 'f10_x2', 'S': 'SAFE', 'B': 'f10_boss', 'X': 'STAIRS' },
-        // rival racers hang out in front of their garages (press A next to them)
-        npcs: [
-          { racer: 'goblin_bike', x: 9, y: 14, lines: ["OI, TACO TRUCK! THAT HEAT ONE GARAGE IS MY GARAGE. I JUST LET THE RACE USE IT.",
-            "MY BIKE IS HELD TOGETHER WITH SPITE AND ONE ZIP TIE. IT IS STILL FASTER THAN YOUR KITCHEN."] },
-          { racer: 'skull_chariot', x: 9, y: 7, lines: ["OH. A COMMONER. ON MY DRIVEWAY. IN HIS UNDERWEAR. HOW TERRIBLY MODERN.",
-            "MY HORSES HAVE BEEN DEAD FOR CENTURIES. THEY ARE STILL BETTER GROOMED THAN YOU, DARLING.",
-            "DO NOT TOUCH THE CHARIOT. THE BONES ARE ORIGINAL."] },
-          { racer: 'beetle_mount', x: 42, y: 7, lines: ["SHH! BIG MARGARET IS NAPPING. SHE IS GRUMPY WHEN SHE WAKES UP. SHE IS GRUMPY ON THE TRACK, TOO.",
-            "SIX LEGS, ONE HORN, ZERO BRAKES. MARGARET IS THE FINEST ATHLETE ON THIS STREET."] },
-          { racer: 'steam_buggy', x: 42, y: 14, lines: ["COME IN, SONNY! HAVE A COOKIE! IT IS MOSTLY RIVETS. LIKE MY DRIVING STRATEGY.",
-            "I HAVE BEEN RACING SINCE BEFORE WHEELS WERE ROUND. HEXAGONS, SONNY. VERY BUMPY TIMES.",
-            "THE KETTLE IS NOT LEAKING. THE KETTLE IS CRYING. IT KNOWS WHAT IT IS ABOUT TO DO TO YOU."] },
-          { racer: 'champion', x: 23, y: 4, lines: ["YOU ARE STANDING ON MY LAWN, TACO BOY. PEOPLE WHO STAND ON MY LAWN END UP IN MY GRILLE.",
-            "QUALIFY IN ALL THREE HEATS. THEN COME KNOCK ON THE BIG GARAGE. THE MAULER IS HUNGRY.",
-            "SIX CUPS ON MY MANTEL. ROOM FOR ONE MORE. IT IS SHAPED LIKE YOUR TRUCK."] }
-        ],
-        roamers: [{ enemy: 'steam_goblin', x: 12, y: 12 }, { enemy: 'rail_rat', x: 39, y: 12 }, { enemy: 'juicer_minion', x: 22, y: 20 }, { enemy: 'goblin_brute', x: 36, y: 24 }],
-        ambush: 'f10_ambush' },
-      locks: {
-        '2': { afterCleared: 'f10_r1', text: "THE HEAT TWO GARAGE IS SHUT. A SIGN SAYS QUALIFIERS ONLY. FINISH TOP THREE IN HEAT ONE." },
-        '3': { afterCleared: 'f10_r2', text: "HEAT THREE IS FOR SURVIVORS OF HEAT TWO. FINISH TOP THREE THERE AND THE DOOR GOES UP." },
-        'B': { afterCleared: 'f10_r3', text: "THE BIG GARAGE ONLY OPENS FOR DRIVERS WHO QUALIFIED IN ALL THREE HEATS. VORN IS WAITING." } },
-      companion: null,
-      hints: [
-        "THE HEATS GO IN ORDER, KID. FINISH TOP THREE IN ONE AND THE NEXT GARAGE OPENS. THE CHAMPIONSHIP NEEDS ALL THREE.",
-        "IN THE TRUCK: ATTACK MAKES DONUT SHOOT, BOMB DROPS A MINE OUT THE BACK, POTION PATCHES THE TRUCK, SPECIAL IS TURBO.",
-        "THE SCRAPYARD BEHIND THE WEST FENCE HAS ARMOR PLATING. THE AUTO PARTS STORE ON THE EAST SIDE STILL HAS A TURBO.",
-        "WORD IS SOMEONE STASHED A MINE HOPPER ON A BILLBOARD IN HEAT TWO. HIT THE JUMP PAD AND TAKE THE HIGH ROAD.",
-        "JUMP PADS FLING YOU HIGH, OVERPASSES ARE SAFER, OIL SPINS YOU OUT, CRATES BREAK IF YOU ARE FAST. DO NOT BRAKE. EVER."],
-      required: ['f10_r1', 'f10_r2', 'f10_r3'], boss: 'f10_boss', par: 1500 },
-    { n: 11, name: 'THE GRAND PARADE', tagline: 'SMILE. WAVE. PUNCH. REPEAT.', theme: 'parade', music: 'floor11',
-      intro: ["FLOOR ELEVEN! THE GRAND PARADE! EVERY RACER FROM LAST FLOOR IS TURNING THEIR RIDE INTO A FLOAT. THEY ARE THRILLED. NOT REALLY.",
-        "YOUR FOOD TRUCK NEEDS A CONFETTI CANNON, A SPOTLIGHT, BALLOONS AND A BANNER. ONE IS HIDDEN IN EACH CORNER OF THE STAGING GROUNDS.",
-        "BUILD THE FLOAT, JOIN THE PARADE, SURVIVE THE GRAND MARSHAL. THIS IS THE LAST FLOOR WE HAVE BUILT, CRAWLER. MAKE IT COUNT."],
-      overworld: { theme: 'ow_parade', music: 'ow11',
-        map: [
-      '######################################################',
-      '######################################################',
-      '######################################################',
-      '#.=================================================###',
-      '#.=================================================B##',
-      '#.........#...............................#..........#',
-      '#.........#.##########..##########.######.#..........#',
-      '#...........##########..##########.######......#####.#',
-      '#.########................==...................#####.#',
-      '#.########..,,,,,,,,,,,...==...................#####.#',
-      '#.########..,T,,,,,,,T,...==..####...#####.....3####.#',
-      '#.########..,,,,,,,,,,,...==..####...#####.....#####.#',
-      '#.####1###..,,T,,,,,T,,...==...................#####.#',
-      '#...........,,,,,,,,,,,...==.........................#',
-      '#.........................==.........................#',
-      '#.==================================================.#',
-      '#.........................==.........................#',
-      '#.............#####.......==......#####..............#',
-      '#..########...#####.......==......#####..............#',
-      '#..########...............==.........................#',
-      '#..#######2..........~~...==............,,,,,,,,,,,,.#',
-      '#..########..........~~...==............,TTTTTTTTTTT.#',
-      '#..########...............==...###......,,,,,,,,,,,T.#',
-      '#..............#####......==...###......,,,T,,,,,T,T.#',
-      '#..............####S......==............,..........4.#',
-      '#..T...........#####......==............,,,,,,T,,,,T.#',
-      '#...........T.............==........T...,,,,T,,,T,,T.#',
-      '#.......T.................P=..T.........,,,,,,,,,,,T.#',
-      '#....................................................#',
-      '######################################################'
-        ],
-        entrances: { '1': 'f11_s1', '2': 'f11_s2', '3': 'f11_s3', '4': 'f11_s4', 'S': 'SAFE', 'B': 'f11_boss' },
-        roamers: [{ enemy: 'clown', x: 20, y: 14 }, { enemy: 'jelly', x: 36, y: 8 }, { enemy: 'clown_brute', x: 45, y: 16 }, { enemy: 'skyfowl', x: 8, y: 6 }],
-        ambush: 'f11_ambush' },
-      locks: { 'B': { needs: ['confetti_cannon', 'spotlight_rig', 'balloon_rig', 'gala_banner'],
-        text: "YOUR TRUCK IS NOT A FLOAT YET. THE MARSHAL WANTS CONFETTI, A SPOTLIGHT, BALLOONS AND A BANNER." } },
-      companion: null,
-      hints: [
-        "THE MARSHAL WILL NOT LET A PLAIN TRUCK INTO HIS PARADE. YOU NEED ALL FOUR FLOAT PARTS. EACH AREA HAS ONE.",
-        "CONFETTI ALLEY KEEPS A CANNON IN A ROOFTOP SHED. THE LEVER IS IN AN ALLEY NOOK, BEHIND SOME CRATES. SMASH THEM.",
-        "THE BALLOON BARN KEEPS ITS HELIUM UP IN THE RIGGING. PULL THE LOW LEVER FIRST, THEN RIDE THE PROP CART UP.",
-        "THE GILDED HALL BANNER HANGS IN A HIGH GALLERY. THE LEVER IS AT THE TOP OF THE BELL TOWER. GO IN FROM THE RIGHT SIDE.",
-        "LANTERN PARK HIDES A SPOTLIGHT IN A TREEHOUSE. CLIMB THE BRANCHES. THE GATE LEVER IS ON A STUMP TO THE WEST."],
-      required: ['f11_s1', 'f11_s2', 'f11_s3', 'f11_s4'], boss: 'f11_boss', bossMusic: 'boss_final', par: 1600 }
+  /* ---------------- objectives (first unfinished one shows on the HUD) ---------------- */
+  D.objectives = [
+    { done: 'toured', text: 'STEP OUT INTO THE VILLAGE', area: 'village' },
+    { done: 'lemurs_done', text: 'HEAD EAST INTO THE RUINS', area: 'ruins_w' },
+    { done: 'pug_scene', text: 'GET BACK TO THE PUG', area: 'village' },
+    { done: 'bodies_done', text: 'CHECK OUT DEAD CRAWLER ROW', area: 'ruins_w' },
+    { done: 'collapse_done', text: 'SPY ON THE CIRCUS', area: 'circus_park' },
+    { done: 'lions_done', text: "SURVIVE SIGNET'S BASEMENT", area: 'circus_park' },
+    { done: 'solo_done', text: 'FREE MONGO, FIND SIGNET', area: 'circus_park' },
+    { done: 'heather_done', text: 'HUNT HEATHER THE BEAR', area: 'circus_park' },
+    { done: 'bigtop_done', text: 'BREAK INTO THE BIG TOP AT NIGHT', area: 'circus_park' },
+    { done: 'circus_gone', text: 'GET BACK TO DONUT', area: 'circus_park' },
+    { done: 'settled', text: 'TAKE THE EAST ROAD TO TOWN', area: 'settlement' },
+    { done: 'dispenser_done', text: 'KILL THE DISPENSER AT THE Y', area: 'ruins_e' },
+    { done: 'quest_sw', text: 'TALK TO GUMGUM AT THE GATE', area: 'settlement' },
+    { done: 'club_known', text: 'MEET MORDECAI OUTSIDE THE PUB', area: 'settlement' },
+    { done: 'mongo_done', text: 'CATCH MONGO', area: 'settlement' },
+    { done: 'vincente_dead', text: "GO INTO GUMGUM'S ALLEY", area: 'settlement' },
+    { done: 'met_quill', text: 'SHOW THE PASS AT THE ADMIN GATE', area: 'admin' },
+    { done: 'divider_done', text: 'THE DIVIDER, EAST ROAD, NIGHT', area: 'ruins_e' },
+    { done: 'show_done', text: 'GO ON DANGER ZONE', area: 'settlement' },
+    { done: 'apito_done', text: 'RAID THE APITO CENTER BY DAY', area: 'settlement' },
+    { done: 'katia_joined', text: 'FIND THE CRAWLER HEKLA MEANT', area: 'settlement' },
+    { done: 'mongo_big', text: 'CLEAR THE BACK ALLEY AT NIGHT', area: 'settlement' },
+    { done: 'climb_done', text: "CLIMB TO QUILL'S FLOOR AT NIGHT", area: 'admin' },
+    { done: 'quill_dead', text: 'BLOW UP MISS QUILL', area: 'admin' },
+    { done: 'nest_done', text: 'SEARCH THE WRECKAGE', area: 'admin' },
+    { done: 'depot_rigged', text: 'RIG THE GUARD DEPOT AT NIGHT', area: 'admin' },
+    { done: 'escaped', text: 'RUN FOR THE EASTERN STAIRWELL', area: 'admin' }
   ];
-})();
 
+  /* ---------------- events (street events; lead notes for the fields) ---------------- */
+  D.events = [
+    { id: 'tour', area: 'village', when: { notFlags: ['toured'] }, cinema: 'tour', sets: ['toured', 'map_village'] },
+    { id: 'first_ruins', area: 'ruins_w', when: { notFlags: ['seen_ruins'] }, sets: ['seen_ruins'], lines: [
+      { who: 'SYSTEM AI', text: "THE RUINS! NINETY PERCENT OF THE OVER CITY, ONE HUNDRED PERCENT MONSTERS. NO GUARDS OUT HERE. NO RULES EITHER. HAVE FUN!" },
+      { who: 'DONUT', text: "CARL, THE GROUND IS MADE OF WOOD AND THERE IS SMOKE COMING UP THROUGH IT. THAT IS NOT NORMAL. TELL ME THAT IS NOT NORMAL." },
+      { who: 'CARL', text: "IT'S A VOLCANO, DONUT. WE'RE STANDING ON THE LID. LET'S NOT THINK ABOUT IT." } ] },
+    { id: 'pug_vomit', area: 'village', when: { flags: ['lemurs_done'], notFlags: ['pug_scene'] }, cinema: 'pug_vomit',
+      sets: ['pug_scene'], gives: [{ item: 'moonshine', n: 2 }, { potion: 1 }] },
+    { id: 'first_circus', area: 'circus_park', when: { notFlags: ['seen_circus'] }, sets: ['seen_circus'], lines: [
+      { who: 'SYSTEM AI', text: "GRIMALDI'S TRAVELING CIRCUS! STILL TOURING CENTURIES AFTER THE END OF THE WORLD. THE CALLIOPE NEVER STOPS. NEVER. WE CHECKED." },
+      { who: 'CARL', text: "MY DAD TOOK ME TO RINGLING BROTHERS ONCE. ONE OF THE ONLY GOOD DAYS. I'D LIKE TO KEEP THAT MEMORY. SO NATURALLY, HERE WE ARE." } ] },
+    { id: 'city_boss', area: 'circus_park', when: { flags: ['heather_done'], notFlags: ['saw_grimaldi'] }, sets: ['saw_grimaldi'], lines: [
+      { who: 'SYSTEM AI', text: "MAP UPDATE! A CITY BOSS HAS BEEN DETECTED IN THE BIG TOP. LEVEL 85. YOU ARE LEVEL NOT 85. BILLIONS OF VIEWERS JUST BOUGHT POPCORN." },
+      { who: 'MORDECAI', text: "(OVER THE CHAT) KID. YOU DON'T FIGHT THAT. YOU OUTTHINK IT. COME SEE ME AT THE PUG BEFORE YOU GO IN. BRING THE BLOOD PLAN." } ] },
+    { id: 'park_empty', area: 'circus_park', when: { flags: ['circus_gone'], notFlags: ['seen_stairs'] }, sets: ['seen_stairs'], lines: [
+      { who: 'SYSTEM AI', text: "THE CIRCUS HAS LEFT TOWN! IN ITS PLACE: A STAIRWELL TO THE FOURTH FLOOR. YOU COULD TAKE IT RIGHT NOW. YOU COULD." },
+      { who: 'MORDECAI', text: "(OVER THE CHAT) DON'T. THE SETTLEMENT IS EAST. BETTER SHOPS, BETTER LOOT, BETTER ODDS ON FLOOR FOUR. THE STAIRS WILL KEEP." } ] },
+    { id: 'first_east', area: 'ruins_e', when: { notFlags: ['seen_east'] }, sets: ['seen_east'], lines: [
+      { who: 'SYSTEM AI', text: "THE EAST ROAD! THIRTY-FOUR KILOMETERS OF IT. THE MEDIUM SKYFOWL SETTLEMENT IS AT THE END. BRING SNACKS. BRING A BODY BAG. YOUR CHOICE." } ] },
+    { id: 'settlement_arrival', area: 'settlement', when: { notFlags: ['settled'] }, cinema: 'settlement_arrival',
+      sets: ['settled', 'freeballing', 'fang_caps', 'quadrillion'],
+      gives: [{ item: 'dyn', n: 4 }, { item: 'hob', n: 4 }, { item: 'upgrade_scroll', n: 1 }, { item: 'fang_caps', n: 1 }, { item: 'sepsis_crown', n: 1 }] },
+    { id: 'gumgum_ask', area: 'settlement', when: { flags: ['settled'], notFlags: ['gumgum_asked'] }, cinema: 'gumgum_ask', sets: ['gumgum_asked'] },
+    { id: 'gumgum_bodies', area: 'settlement', npc: 'gumgum', when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, cinema: 'gumgum_bodies',
+      sets: ['quest_sw'], quest: { start: 'sex_workers' } },
+    { id: 'desperado_tour', area: 'settlement', npc: 'mordecai_club', when: { flags: ['quest_sw'], notFlags: ['club_known'] }, cinema: 'desperado_tour',
+      sets: ['club_known', 'met_pustule', 'mongo_bolted'], gives: [{ item: 'pet_carrier', n: 1 }], level: 'a2_mongo' },
+    { id: 'quill_desk', area: 'admin', when: { flags: ['has_pass'], notFlags: ['met_quill'] }, cinema: 'quill_desk', sets: ['met_quill', 'shelves_rigged'] },
+    { id: 'katia_meet', area: 'settlement', when: { flags: ['apito_done'], notFlags: ['katia_joined'] }, cinema: 'katia_meet', sets: ['katia_joined'] },
+    { id: 'magistrate_town', area: 'admin', when: { flags: ['quill_dead'], notFlags: ['seen_crater'] }, sets: ['seen_crater'], lines: [
+      { who: 'SYSTEM AI', text: "ALL HAIL MAGISTRATE CARL OF THE MEDIUM SKYFOWL SETTLEMENT! HIS FIRST OFFICIAL ACT WAS A CRATER. HIS SECOND IS PENDING." },
+      { who: 'CARL', text: "CAN I PARDON MYSELF FOR THE CRATER?" },
+      { who: 'SYSTEM AI', text: "YOU CAN PARDON ANYONE YOU LIKE, MAGISTRATE. THE GUARDS WILL STILL KILL YOU IF YOU PUNCH A CHICKADEE. SEPARATION OF POWERS!" } ] },
+    { id: 'first_east_stairs', area: 'east_stairs', when: { notFlags: ['seen_east_stairs'] }, sets: ['seen_east_stairs'], lines: [
+      { who: 'SYSTEM AI', text: "THE EASTERN STAIRWELL! SEALED, FOR NOW. SOME STAIRWELLS ONLY OPEN WHEN SOMETHING DRAMATIC HAPPENS. WE LOVE SOMETHING DRAMATIC." } ] }
+  ];
+
+  /* ---------------- NPC talk (first matching entry wins) ---------------- */
+  D.talk = {
+    mordecai_tour: [
+      { lines: [
+        { who: 'MORDECAI', text: "RULE ONE: DON'T TOUCH THE CITIZENS. RULE TWO: DON'T TOUCH THE GUARDS. RULE THREE: I'M GOING TO GO LIE DOWN IN A SAFE ROOM." },
+        { who: 'MORDECAI', text: "THE RUINS ARE EAST. THE CIRCUS IS PAST THEM. IF YOU HEAR A CALLIOPE, YOU'VE GONE TOO FAR. YOU'RE GOING TO GO TOO FAR. I KNOW YOU." } ] }
+    ],
+    town_crier: [
+      { when: { flags: ['circus_gone'] }, lines: [{ who: 'TOWNSPERSON', text: "THE CIRCUS LEFT! FIRST TIME IN THREE HUNDRED YEARS NOBODY HEARD THE CALLIOPE AT BREAKFAST. MY KIDS CRIED. FROM JOY." }] },
+      { lines: [
+        { who: 'TOWNSPERSON', text: "HEAR YE! THE VILLAGE IS SAFE BY DAY! THE GUARDS HAVE SWORDS! THE SWORDS HAVE NO SENSE OF HUMOR!" },
+        { who: 'TOWNSPERSON', text: "AT NIGHT THE GUARDS GO TO THEIR DEPOT AND THE URCHINS COME OUT. KEEP TO THE MAIN ROAD. DON'T STAND IN THE TRASH." } ] }
+    ],
+    gate_guard: [
+      { lines: [
+        { who: 'GUARD', text: "NO JAIL ON THIS FLOOR, CRAWLER. NO FINES. NO WARNINGS. ONE PUNISHMENT. I AM HOLDING IT." },
+        { who: 'GUARD', text: "RUN TO THE RUINS AND I WON'T FOLLOW. BUT YOU DON'T COME BACK THROUGH MY GATE. EVER." } ] }
+    ],
+    signet_park: [
+      { when: { flags: ['bigtop_done'] }, lines: [{ who: 'SIGNET', text: "HE SPOKE TO ME. AFTER ALL THIS TIME. GO, CRAWLER. YOUR CAT IS IN DANGER, AND I HAVE A LONG GOODBYE TO SAY." }] },
+      { when: { flags: ['heather_done'] }, lines: [{ who: 'SIGNET', text: "THE TICKET WILL GET YOU PAST CLAMMY. INSIDE, HE WILL KNOW YOU. HE KNOWS EVERYONE WHO WALKS INTO HIS RING. BE BRAVE. BE BLEEDING." }] },
+      { lines: [
+        { who: 'SIGNET', text: "MY TATTOOS ARE AWAKE TONIGHT. THEY CAN SMELL THE BEAR. DON'T STARE AT THEM, CRAWLER. THEY STARE BACK." },
+        { who: 'CARL', text: "I WAS LOOKING AT THE SHARKS. ON YOUR ARMS. THE ARMS. I'M LEAVING NOW." } ] }
+    ],
+    lucia: [
+      { lines: [
+        { who: 'LUCIA MAR', text: "YOU'RE CARL. YOU'RE THE CAT. MY DOGS DON'T LIKE YOU. I DON'T EITHER. WE'LL MEET AGAIN, BOXER BOY." },
+        { who: 'CARL', text: "A THIRTEEN-YEAR-OLD IN GLOWING ARMOR WITH A MACE AND A SOCCER JERSEY. SHE LOOKS LIKE SHE CAME OUT OF A MASTERS OF THE UNIVERSE TOY BOX. SHE SCARES ME." },
+        { who: 'DONUT', text: "SHE HAS VERY BAD MANNERS AND VERY GOOD DOGS. I AM CONFLICTED." } ] }
+    ],
+    gumgum: [
+      { when: { flags: ['quest_sw'] }, lines: [{ who: 'GUMGUM', text: "THANK YOU FOR LISTENING. NOBODY EVER LISTENS. MY MOTHER DIED IN AN ALLEY AND NOBODY CAME. SOMEBODY SHOULD COME." }] },
+      { lines: [
+        { who: 'GUMGUM', text: "PLEASE. YOU'RE ADVENTURERS. THERE'S SOMETHING OUTSIDE THE GATE YOU NEED TO SEE. YOUR FRIEND SAID NO. I'M ASKING YOU." },
+        { who: 'CARL', text: "LET ME DEAL WITH THE BIG MANTA RAY EVERYBODY KEEPS WARNING ME ABOUT. THEN SHOW ME." } ] }
+    ],
+    mordecai_club: [
+      { lines: [{ who: 'MORDECAI', text: "THERE YOU ARE. COME ON. I'M BUYING. WELL, YOU'RE BUYING. I'M WALKING IN FIRST SO CLARABELLE DOESN'T EAT YOU." }] }
+    ],
+    hekla_sq: [
+      { when: { flags: ['katia_joined'] }, lines: [{ who: 'HEKLA', text: "KATIA FOUND YOU. GOOD. SHE NEEDS FRIENDS WHO WON'T ASK HER TO BE SOMEONE ELSE. AND YOU, LITTLE PRINCESS, THINK ABOUT MY OFFER." }] },
+      { lines: [
+        { who: 'HEKLA', text: "BRYNHILD'S DAUGHTERS HAVE ROOM FOR A PRINCESS. FAME, FRIENDS, A WARRIOR SISTERHOOD. THE MAN CAN COME TOO. AS LUGGAGE." },
+        { who: 'DONUT', text: "SHE IS SEVEN FEET TALL AND LOOKS LIKE XENA ATE ANOTHER XENA. CARL, I THINK SHE LIKES ME. EVERYONE LIKES ME, BUT SHE LIKES ME." } ] }
+    ],
+    burgundy: [
+      { lines: [
+        { who: 'BURGUNDY', text: "OH. HELLO. I RUN ERRANDS FOR THE MALL. I SHOULDN'T TALK TO YOU. MISS QUILL DOESN'T LIKE IT WHEN WE TALK." },
+        { who: 'CARL', text: "ONE BLUE EYE, ONE BROWN. LIKE A HUSKY. SHE LOOKS EXHAUSTED. NOT A STAY-UP-LATE TIRED. A SOMETHING-IS-EATING-ME TIRED." } ] }
+    ],
+    bautista: [
+      { when: { flags: ['glass_broken'] }, lines: [{ who: 'BAUTISTA', text: "THE STAIRWELL, CARL. EAST. I'LL BRING EVERYONE I CAN FIND. YOU CARRY THAT CURSED JAR AND DON'T TRIP." }] },
+      { lines: [
+        { who: 'BAUTISTA', text: "DANIEL BAUTISTA. THE LAST BAUTISTA. YOU FOUND MY SISTER IN THE RUINS. AND YOU TOOK THE ONE WHO PAID FOR HER DEATH. I OWE YOU." },
+        { who: 'CARL', text: "SIX FEET OF TIGER, SHIRTLESS, CURVED SWORD. HE LOOKS LIKE A THUNDERCAT WHO GOT BAD NEWS. HE SAYS HE WANTED TO KILL QUILL HIMSELF." },
+        { who: 'DONUT', text: "HE IS VERY HANDSOME. HE LOOKS LIKE HE COULD ROUNDHOUSE KICK A CHUCK NORRIS. I WOULD WATCH THAT SHOW." } ] }
+    ],
+    clerk: [
+      { when: { flags: ['magistrate'] }, lines: [{ who: 'CLERK', text: "MAGISTRATE CARL. YOUR FORMS ARE ON THE DESK. THE DESK IS IN THE CRATER. I WILL BRING YOU A NEW DESK." }] },
+      { lines: [{ who: 'CLERK', text: "THE MAGISTRATE SEES NO ONE. MISS QUILL SEES EVERYONE AND APPROVES NO ONE. I HAVE BEEN WAITING TO FILE THIS PERMIT FOR NINE YEARS." }] }
+    ],
+    old_crawler: [
+      { lines: [
+        { who: 'CRAWLER', text: "I'VE BEEN WAITING BY THIS STAIRWELL FOR TWO DAYS. IT WON'T OPEN. THE AI SAYS IT OPENS WHEN SOMETHING HAPPENS. WHAT HAPPENS?" },
+        { who: 'CARL', text: "IN MY EXPERIENCE? SOMETHING BAD. STAY CLOSE TO IT." } ] }
+    ],
+    sealed_stairs: [
+      { when: { flags: ['glass_broken'] }, lines: [{ who: 'SYSTEM AI', text: "THE STAIRWELL IS OPEN! BUT YOU ARE NOT IN THE ESCAPE, CRAWLER. GET BACK TO THE ADMINISTRATIVE DISTRICT AND RUN IT PROPERLY. WITH DRAMA." }] },
+      { lines: [{ who: 'SYSTEM AI', text: "SEALED. THIS STAIRWELL OPENS LATER. MUCH LATER. AT THE WORST POSSIBLE MOMENT, IF WE HAVE ANYTHING TO SAY ABOUT IT. WE DO." }] }
+    ]
+  };
+})();
 /* ==========================================================================
-   LOOT, SHOP, SKINS, COMPANIONS, ACHIEVEMENTS
+   CINEMA: cutscene scripts (DESIGN 11.3). A shot:
+   { bg: 'theme' | 'panel:<id>', night, actors: [{sprite, x, y, flip, frame, anim, moveTo}],
+     lines: [{who, text}], wait, shake, flash, wobble, sfx, music, fade }
+   Actor x/y = feet (bottom-center) in screen px; the letterbox leaves y 16-164.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.DCW.data;
+  var Y = 150;
+  function A(sprite, x, o) { var a = { sprite: sprite, x: x, y: Y, anim: 'idle' }; if (o) for (var k in o) a[k] = o[k]; return a; }
+  function L(who, text) { return { who: who, text: text }; }
+  var AI = 'SYSTEM AI', CARL = 'CARL', DONUT = 'DONUT', MORD = 'MORDECAI';
+  // the usual crew standing left of center
+  function crew(x, o) {
+    o = o || {};
+    var out = [A('carl_idle', x), A(o.donutDown ? 'donut_down' : 'donut_shoulder', x - 2, { y: Y - 18 })];
+    if (o.donutDown) out[1] = A('donut_down', x + 18);
+    if (!o.noMongo) out.push(A(o.bigMongo ? 'mongo_big_idle' : 'mongo_idle', x - 22));
+    if (o.katia) out.push(A('katia_idle', x + 22));
+    return out;
+  }
+
+  D.cinema = {
+    /* ---------------- ACT 1 ---------------- */
+    arrival: [
+      { bg: 'panel:guide_room', music: 'intro', fade: true, wait: 1.5, lines: [
+        L(AI, "PREVIOUSLY, ON DUNGEON CRAWLER WORLD: A MAN IN HIS UNDERWEAR AND HIS EX-GIRLFRIEND'S CAT SURVIVED TWO WHOLE FLOORS. THE GALAXY IS STUNNED."),
+        L(AI, "WELCOME TO THE THIRD FLOOR, CRAWLERS! TODAY YOU PICK A RACE AND A CLASS. CHOOSE WISELY. OR STUPIDLY. STUPID IS VERY POPULAR.") ] },
+      { bg: 'guide_room', actors: [A('carl_idle', 110), A('donut_idle', 132), A('mongo_idle', 90), A('mordecai', 220, { flip: true })], lines: [
+        L(DONUT, "CARL. CARL. WHO IS THAT AND WHY DOES HE HAVE WINGS AND A JAWLINE?"),
+        L(MORD, "IT'S ME, YOU NITWIT. THE SHOW GIVES ME A NEW BODY EVERY FLOOR. THIS TIME I'M AN INCUBUS. LEVEL 50. HORNS, TAIL, THE WHOLE STUPID PACKAGE."),
+        L(CARL, "YOU LOOK LIKE THE GUY ON THE COVER OF A PAPERBACK MY GRANDMA HID UNDER THE SINK."),
+        L(MORD, "I CAN'T FIGHT. I CAN'T LEAVE THE SAFE ROOMS. I CAN'T EVEN DRINK WITHOUT SOMEBODY TRYING TO SLEEP WITH ME. SIT DOWN. LET'S PICK YOUR CLASSES.") ] },
+      { bg: 'guide_room', actors: [A('donut_idle', 150), A('mordecai', 220, { flip: true })], lines: [
+        L(DONUT, "I ALREADY KNOW WHAT I'M PICKING. ODETTE GAVE ME ADVICE. I AM NOT GOING TO TELL YOU WHAT IT WAS. IT IS A SURPRISE."),
+        L(MORD, "I HATE SURPRISES. EVERY SURPRISE I'VE HAD IN THIS DUNGEON HAS TRIED TO KILL ME OR HAS SUCCEEDED.") ] }
+    ],
+
+    floor_open: [
+      { bg: 'guide_room', shake: 0.6, sfx: 'burst', lines: [
+        L(AI, "ATTENTION CRAWLERS! THE SECOND FLOOR HAS COLLAPSED! ANYONE STILL DOWN THERE IS NOW A FOND MEMORY! FLOOR THREE TIMER: EIGHT DAYS!") ] },
+      { bg: 'panel:arrival', music: 'village', fade: true, lines: [
+        L(AI, "WELCOME TO THE OVER CITY! A FAKE SKY, A RED SUN AND THREE HUNDRED THOUSAND SQUARE KILOMETERS OF RUINS ON TOP OF A SLEEPING VOLCANO."),
+        L(AI, "THE MONSTERS ARE THE CHILDREN OF A POISON CATACLYSM. THE VILLAGES ARE SAFE BY DAY. THE CRAWLERS ARE SNACKS BY NIGHT. HAVE A GREAT FLOOR!"),
+        L(CARL, "PRIMAL COMPENSATED ANARCHIST. I DON'T KNOW WHAT EITHER OF THOSE MEANS. I KNOW WHAT THE BOMBS MEAN.") ] }
+    ],
+
+    tour: [
+      { bg: 'village', fade: true, actors: crew(80).concat([A('mordecai', 150, { flip: true })]), lines: [
+        L(MORD, "FIRST VILLAGE OF THE FLOOR. NO NAME. THEY DON'T GET NAMES UNTIL SOMEBODY KILLS THE MAYOR. DON'T KILL THE MAYOR."),
+        L(MORD, "SEE THE GUYS IN PLATE? VILLAGE GUARD SWORDSMEN. LEVEL 75. NO JAIL HERE. HIT A CITIZEN, ROB A SHOP, PASS OUT DRUNK IN THE STREET: DEATH."),
+        L(CARL, "PASSING OUT DRUNK IS A CAPITAL CRIME? HOW ARE YOU STILL ALIVE?"),
+        L(MORD, "I DO MY PASSING OUT INDOORS. LIKE A PROFESSIONAL.") ] },
+      { bg: 'village', actors: crew(80).concat([A('mordecai', 150, { flip: true }), A('guard_walk', 250, { flip: true })]), lines: [
+        L(MORD, "RUN INTO THE RUINS AND THE GUARDS WON'T CHASE YOU. BUT THAT VILLAGE IS CLOSED TO YOU FOREVER. AT NIGHT THEY GO HOME TO THEIR DEPOT AND RECHARGE."),
+        L(MORD, "NIGHT IS WHEN THE STREET URCHINS COME OUT. JANITOR MOBS. LEAVE THEIR TRASH ALONE AND THEY LEAVE YOU ALONE. MOSTLY."),
+        L(CARL, "MY ESCAPE PLAN SKILL JUST LIT UP. STAIRS, SIX KILOMETERS EAST. A MEDIUM SKYFOWL SETTLEMENT, THIRTY-FOUR KILOMETERS."),
+        L(MORD, "WE GO TO THE SETTLEMENT. BETTER SHOPS, BETTER GEAR, BETTER BOOZE. MOSTLY THE BOOZE. GO. I'LL MEET YOU AT THE PUG.") ] }
+    ],
+
+    notice_board: [
+      { bg: 'village', lines: [
+        L('NOTICE', "BY ORDER OF THE VILLAGE: NO STEALING. NO STABBING. NO PUBLIC DRUNKENNESS. NO NUDITY ABOVE THE WAIST. VIOLATORS WILL BE EXECUTED POLITELY."),
+        L(CARL, "ABOVE THE WAIST. I'M FINE. I'M TOTALLY FINE."),
+        L('NOTICE', "LOST: ONE LEMUR. ANSWERS TO STABBY. DO NOT APPROACH STABBY. DO NOT RETURN STABBY. WE ARE GLAD STABBY IS GONE."),
+        L('NOTICE', "THE CIRCUS IS IN TOWN! THE CIRCUS IS ALWAYS IN TOWN! PLEASE STOP ASKING WHEN THE CIRCUS IS LEAVING!") ] }
+    ],
+
+    lemurs_after: [
+      { bg: 'ruins', actors: crew(140), sfx: 'fanfare', lines: [
+        L(AI, "NEW QUEST! THE SHOW MUST GO ON! A TRAVELING CIRCUS SURVIVED THE END OF THE WORLD AND KEPT ON TOURING. NOW IT MURDERS. FIND OUT WHY. SHUT IT DOWN."),
+        L(DONUT, "A CIRCUS! CARL, I HAVE ALWAYS WANTED TO SEE A CIRCUS. I HAVE ALWAYS WANTED TO BE IN A CIRCUS. AS THE STAR."),
+        L(CARL, "THE LEMURS WORE HUMAN SKULLS, DONUT. THE CLOWN WAS ELEVEN FEET TALL. I THINK WE'RE ALREADY IN THE CIRCUS."),
+        L(CARL, "LET'S GET TO THAT INN. I NEED TO SIT DOWN SOMEWHERE THAT ISN'T TRYING TO STAB ME.") ] }
+    ],
+
+    pug_vomit: [
+      { bg: 'inn_pug', fade: true, music: 'inn', actors: crew(90).concat([A('gordo', 230, { flip: true })]), lines: [
+        L('GORDO', "WELCOME TO THE BELLY-RUBBED PUG. TEN GOLD A NIGHT. YES, YOU HAVE TO PAY NOW. THE SHOW SAYS IT'S CHARACTER BUILDING."),
+        L(DONUT, "IT SMELLS LIKE A SWAMP IN HERE. IT SMELLS LIKE A SWAMP THAT GOT DUMPED."),
+        L('GORDO', "THAT'S ME. BOPCA. WET MOSS. IT'S GLANDULAR.") ] },
+      { bg: 'inn_pug', sfx: 'teleport', flash: '#f8b8f8', actors: crew(90).concat([A('gordo', 230, { flip: true }), A('mordecai', 160, { flip: true })]), lines: [
+        L(MORD, "THERE THEY ARE. MY CLIENTS. MY BELOVED CLIENTS WHO LOCKED ME INTO A CONTRACT. I HAVE BEEN DRINKING. FOR CONTEXT."),
+        L(MORD, "I HAD A WHOLE SPEECH. ABOUT ELITES. AND THE CIRCUS. AND HOW YOU NEED A PLAN THAT ISN'T PUNCHING. HOLD ON.") ] },
+      { bg: 'inn_pug', shake: 0.3, sfx: 'drunk_hiccup', wobble: 3, actors: crew(90).concat([A('gordo', 230, { flip: true })]), lines: [
+        L(CARL, "HE THREW UP. HE THREW UP AND THEN HE LAY DOWN IN IT. HE'S ASLEEP. IN IT."),
+        L('GORDO', "HE DOES THAT. I'LL GET THE MOP. HE LEFT YOU SOME MOONSHINE. TWO JUGS. HE SAID SOMETHING ABOUT JUGS O'BOOM BEFORE HIS FACE HIT THE FLOOR."),
+        L(DONUT, "THIS IS MY MANAGER. THIS IS WHO NEGOTIATES MY CAREER. CARL, I MADE A TERRIBLE MISTAKE.") ] }
+    ],
+
+    bodies_after: [
+      { bg: 'ruins', actors: crew(120), lines: [
+        L(CARL, "THREE OF THEM. GRACE, NICA, LEA. THEY WERE HEADING TOWARD THE CIRCUS. THEY DIDN'T GET THERE. SOMETHING DRAGGED THE REST OF THEIR PARTY THE REST OF THE WAY."),
+        L(DONUT, "I TOOK THE ANKLET OFF GRACE. IT'S ENCHANTED. IT'S ALSO VERY PRETTY, WHICH IS NOT WHY I TOOK IT. IT IS A LITTLE BIT WHY I TOOK IT."),
+        L(CARL, "TWO RINGS OF PLUS TWO STRENGTH FROM NICA. I'M SORRY, NICA. I'M GOING TO PUNCH SOMETHING VERY HARD IN YOUR HONOR."),
+        L(CARL, "THERE'S AN EMPTY TENEMENT ACROSS FROM THE CIRCUS. WE GO UP, WE WATCH, WE LEARN. NOBODY DOES ANYTHING STUPID.") ] }
+    ],
+
+    circus_spy: [
+      { bg: 'panel:circus_night', music: 'circus', fade: true, lines: [
+        L(AI, "SUNDOWN AT GRIMALDI'S TRAVELING CIRCUS! THE CLOWNS ARE STRETCHING. THE LIONS ARE MOLDING. THE CAULDRONS ARE BEING LOADED INTO MORTARS. FOR FUN!"),
+        L(CARL, "THEY'RE LINING UP. LIKE A SHOW. LIKE A PARADE GETTING READY TO GO OUT AND EAT THE NEIGHBORHOOD."),
+        L(DONUT, "CARL. THE BIG POT ON THE WHEELS IS POINTING AT US. WHY IS IT POINTING AT US.") ] },
+      { bg: 'ruins', night: true, shake: 1.2, flash: '#f83800', sfx: 'explosion', lines: [
+        L(CARL, "MORTARS! EVERYBODY DOWN! NO, NOT THAT DOWN! THE OTHER DOWN! THE FLOOR IS GOING!"),
+        L(AI, "THE TENEMENT IS COMING DOWN! FLOOR BY FLOOR! WITH YOU INSIDE IT! FIGHT YOUR WAY TO THE BASEMENT BEFORE THE CEILING DOES IT FOR YOU!") ] }
+    ],
+
+    signet_meet: [
+      { bg: 'basement', night: true, fade: true, actors: crew(90).concat([A('signet', 220, { flip: true })]), lines: [
+        L(CARL, "WE FELL THROUGH SIX FLOORS AND LANDED IN A BASEMENT. AND THERE'S A WOMAN IN THE BASEMENT. AND SHE'S NOT WEARING... MUCH. AT ALL."),
+        L('SIGNET', "TSARINA SIGNET. HALF NAIAD, HALF HIGH ELF. AND YOU ARE THE ONES WHO HAVE BEEN WALKING AROUND MY CIRCUS LIKE YOU OWN IT.") ] },
+      { bg: 'panel:signet_tattoos', lines: [
+        L(AI, "THIS IS AN ELITE! LEVEL 60! THE TATTOOS MOVE. SEA SERPENTS, ONI, SHARKS, DRAGONS. THEY ARE NOT DECORATION. THEY ARE HER ARMY."),
+        L(CARL, "MY HEAD IS FOGGY. SHE'S CHARMING ME. I CAN FEEL MYSELF WANTING TO AGREE WITH WHATEVER SHE SAYS NEXT. OKAY. OKAY. THIS IS GOING TO HURT.") ] },
+      { bg: 'basement', night: true, shake: 0.2, sfx: 'crit', actors: crew(90).concat([A('signet', 220, { flip: true })]), lines: [
+        L(DONUT, "CARL! YOU BROKE YOUR OWN FINGER! YOU JUST GRABBED IT AND SNAPPED IT!"),
+        L(CARL, "PAIN BEATS CHARM. LEARNED THAT FROM AN EX. NOT THAT EX. A DIFFERENT EX."),
+        L('SIGNET', "CLEVER. I LIKE CLEVER. LET'S SEE IF CLEVER CAN SURVIVE MY KITTENS. THEY ARE A LITTLE MOLDY."),
+        L(AI, "ACHIEVEMENT TERRITORY! YOU JUST MET YOUR FIRST ELITE. ELITES NOW SHOW UP ON YOUR MAP WITH A BLACK CROSS. LIKE A HOSPITAL. OR A GRAVE.") ] }
+    ],
+
+    knockout: [
+      { bg: 'basement', night: true, actors: crew(110).concat([A('signet', 240, { flip: true })]), lines: [
+        L('SIGNET', "SIX LIONS. AND YOU'RE STILL BREATHING. THAT WAS NOT THE PLAN. MY SPELL NEEDED YOU TO NOT BE BREATHING."),
+        L(CARL, "SORRY TO DISAPPOINT. DONUT, MONGO, WE'RE LEAVING. RIGHT NOW. WALK, DON'T RUN, DON'T LOOK AT THE TATTOOS.") ] },
+      { bg: 'basement', night: true, flash: '#ffffff', shake: 0.8, sfx: 'hurt', wobble: 4, lines: [
+        L(CARL, "SOMETHING HIT ME. I DIDN'T SEE IT. I DIDN'T SEE ANYTHING. THE FLOOR IS COMING UP VERY FAST."),
+        L(AI, "ACHIEVEMENT! LAZARUS! YOU TOOK A SPELL ABOVE LEVEL 15 TO THE FACE AND LIVED. LIKE THE BIG GUY IN THAT RABBIT BOOK, YOU NEVER SAW IT COMING. UNLIKE HIM, YOU GOT UP.") ] },
+      { bg: 'basement', night: true, fade: true, actors: [A('carl_hurt', 80), A('donut_down', 150), A('mongo_idle', 260, { flip: true }), A('cage', 260)], lines: [
+        L(AI, "FIFTEEN HOURS LATER..."),
+        L(CARL, "DONUT IS FLOATING IN A GIANT WATER LILY. SHE'S ASLEEP. SHE'S DROOLING. MONGO IS IN A CAGE AND HE IS NOT HAPPY ABOUT IT. NEITHER AM I.") ] },
+      { bg: 'panel:signet_tattoos', lines: [
+        L('SIGNET', "GRIMALDI FOUND ME WHEN I WAS SMALL. HE GAVE ME A HOME IN THE CIRCUS. HE RAISED ME. LATER, HE WAS THE MAN I LOVED. YES. IT IS A COMPLICATED STORY."),
+        L('SIGNET', "THEN THE POISON CAME AND MADE HIM A VINE IN THE CENTER RING. HE BANISHED ME. HE KEEPS EVERYONE ELSE, EVERY CLOWN, FOREVER. NOT ME."),
+        L('SIGNET', "I NEED BLOOD FOR A SUMMONING. HEATHER THE BEAR'S BLOOD. SHE IS OLD AND SHE IS MAD AND SHE HUNTS AT NIGHT. YOU WILL KILL HER FOR ME."),
+        L(CARL, "AND IF I SAY NO?"),
+        L('SIGNET', "THEN YOUR CAT KEEPS SLEEPING. FOREVER. SHE LOOKS SO PEACEFUL.") ] }
+    ],
+
+    solo_after: [
+      { bg: 'basement', night: true, actors: [A('carl_idle', 120), A('mongo_idle', 150, { flip: true }), A('donut_down', 210)], lines: [
+        L(CARL, "MONGO. BUDDY. LISTEN TO ME. YOU STAY HERE. YOU GUARD DONUT. NOBODY TOUCHES HER. ESPECIALLY YOU. NO BITING HER NOSE."),
+        L('MONGO', "MREEP."),
+        L(CARL, "I'M TAKING THAT AS A YES. THE BEAR IS OUT THERE. I'M GOING TO GO PUNCH A BEAR. ALONE. ON CAMERA. THIS IS MY LIFE NOW.") ] }
+    ],
+
+    heather_intro: [
+      { bg: 'panel:heather_skates', music: 'heather', fade: true, sfx: 'skate_roll', lines: [
+        L(AI, "HEATHER THE ROLLER-SKATING BEAR! A STAR ATTRACTION FOR FORTY YEARS. NOW SHE HUNTS FOR THE CIRCUS AND DRAGS HOME WHATEVER SHE CATCHES."),
+        L(CARL, "A BEAR WITH A FLAMING SKULL FOR A FACE ON ROLLER SKATES. IT CAN'T BE REASONED WITH. IT CAN'T BE BARGAINED WITH. IT'S DOING A TRIPLE AXEL."),
+        L(AI, "SHE IS FASTER THAN YOU! KEEP MOVING! IF SHE CATCHES YOU, SHE THROWS YOU! IF SHE THROWS YOU, KEEP MOVING ANYWAY!") ] }
+    ],
+
+    heather_down: [
+      { bg: 'circus', night: true, actors: [A('carl_idle', 110), A('heather_hurt', 210, { flip: true })], lines: [
+        L(CARL, "THE TICKET CAME UP CUSTARD. CUSTARD. I THREW CUSTARD AT A BEAR. AND IT HEALED HER. THE WORMS ARE FALLING OUT OF HER. THEY'RE DYING."),
+        L(CARL, "SHE'S JUST A BEAR NOW. AN OLD BEAR. SHE'S TIRED. SHE'S STILL DYING, BUT SHE'S NOT HURTING ANYMORE. NOT LIKE BEFORE."),
+        L(CARL, "I'M SORRY, HEATHER. I'LL MAKE IT QUICK.") ] },
+      { bg: 'circus', night: true, sfx: 'teleport', flash: '#d82800', actors: [A('carl_idle', 110), A('signet', 220, { flip: true })], lines: [
+        L('SIGNET', "HER BLOOD. AT LAST. RISE, MY ELEMENTALS. BLOOD AND INK."),
+        L('SIGNET', "YOU DID WELL, CRAWLER. TAKE THIS. A BIG TOP TICKET. TONIGHT YOU WALK INTO HIS TENT AND YOU TALK TO HIM FOR ME. ONE WAY OR ANOTHER."),
+        L(CARL, "ZEV IS MESSAGING ME. THE PEOPLE WHO PRODUCE SIGNET'S STORYLINE WANT A WORD. VENGEANCE OF THE DAUGHTER. IT'S A SOAP OPERA. I'M IN A SOAP OPERA NOW.") ] }
+    ],
+
+    bigtop_gate: [
+      { bg: 'circus', night: true, fade: true, music: 'bigtop', actors: [A('carl_idle', 100), A('fat_clown_walk', 200, { flip: true })], lines: [
+        L('CLAMMY', "TICKET. TICKET, TICKET, TICKET. NO TICKET, NO SHOW. NO SHOW, NO LEAVING. NO LEAVING, CLAMMY EATS."),
+        L(CARL, "HERE. BIG TOP TICKET. ADMIT ONE. PLEASE STOP SMILING AT ME. HOW MANY TEETH DO YOU HAVE?"),
+        L('CLAMMY', "ALL OF THEM.") ] },
+      { bg: 'circus', night: true, actors: [A('carl_idle', 100), A('apollon', 210, { flip: true })], lines: [
+        L('APOLLON', "APOLLON THE MIGHTY! STRONGEST MAN IN THE OVER CITY! ICE CREAM? IT'S WORMS. ALL THE FLAVORS ARE WORMS. THE CHERRY ON TOP IS ALSO A WORM."),
+        L(CARL, "THE TENT SMELLS LIKE POPCORN AND SAWDUST. MY DAD TOOK ME TO RINGLING ONCE. HE BOUGHT ME COTTON CANDY AND DIDN'T YELL ONCE. ONE DAY. I KEEP THAT ONE."),
+        L(CARL, "MORDECAI'S PLAN: POISON MY OWN BLOOD, DRIP IT ON THE ROOTS, STAY ALIVE. BREAK THE TENT POLES SO THE CENTER RING OPENS UP. EASY. TOTALLY EASY.") ] }
+    ],
+
+    grimaldi_deal: [
+      { bg: 'panel:bigtop_vine', sfx: 'worm_squish', lines: [
+        L(AI, "RINGMASTER GRIMALDI IS WILTING! THE POISON IS IN THE ROOTS! THE CITY BOSS IS DYING SLOWLY, WHICH IS OUR FAVORITE SPEED!"),
+        L('ZEV', "CARL! CARL. THE VENGEANCE OF THE DAUGHTER PRODUCERS ARE SCREAMING AT ME. GRIMALDI IS THEIR STAR. YOU'RE KILLING THEIR STAR ON A TUESDAY."),
+        L(CARL, "TELL THEM I'VE GOT A BETTER EPISODE. A BIG ONE. THE LONG LOST LOVE, THE BANISHED BRIDE, THE TEARFUL REUNION. LIKE GERALDO OPENING THAT VAULT, ONLY SOMETHING'S INSIDE."),
+        L('ZEV', "THEY SAY YES. ON ONE CONDITION. YOU APPEAR IN THEIR SHOW ON THE SIXTH FLOOR. LATER. WHEN THEY CALL. OH, AND YOU HAVE TO KEEP HIM ALIVE NOW.") ] },
+      { bg: 'circus', night: true, actors: [A('carl_idle', 100), A('apollon', 210, { flip: true })], lines: [
+        L(CARL, "WISP ARMOR SPELL. READ THE BOOK, CAST IT, NO MIND CONTROL. THEN I EAT THE WORM ICE CREAM SO THE VINE CAN TALK TO ME. THIS IS THE PLAN. I MADE THIS PLAN."),
+        L('APOLLON', "ONE SCOOP OF WORM! WITH WORM SPRINKLES! ENJOY, LITTLE MAN!"),
+        L(CARL, "IT'S WIGGLING ON THE WAY DOWN. IT'S WIGGLING AFTER IT GOT DOWN.") ] },
+      { bg: 'panel:bigtop_vine', wobble: 3, lines: [
+        L('GRIMALDI', "SON. YOU WALKED INTO MY RING WITH POISON IN YOUR VEINS. NOBODY HAS DONE THAT IN THREE HUNDRED YEARS. I THINK I LIKE YOU."),
+        L(CARL, "SIGNET. YOU BANISHED HER. SHE STILL LOVES YOU. EVERYBODY ELSE YOU KEEP. HER YOU THREW OUT. WHY?"),
+        L('GRIMALDI', "BECAUSE SHE WAS THE ONLY ONE WHO COULD STILL LEAVE. I WANTED ONE OF MY CHILDREN TO HAVE A LIFE. BRING HER IN. I WILL LET HER GO PROPERLY.") ] },
+      { bg: 'panel:grimaldi_peace', sfx: 'fanfare', music: 'sad', lines: [
+        L(AI, "THE ANTIDOTE IS IN! THE VINE IS HEALING! THE TATTOOED LADY IS WEEPING! THE CLOWNS ARE CONFUSED! THE PRODUCERS ARE THRILLED! QUEST COMPLETE!"),
+        L(AI, "THE SHOW MUST GO ON: COMPLETE! A GOLD QUEST BOX! AND A FAT PILE OF EXPERIENCE. LEVEL UP. LEVEL UP. LEVEL UP. DING DING DING!"),
+        L(CARL, "WAIT. WHAT TIME IS IT? HOW LONG HAVE I BEEN IN HERE? DONUT. DONUT'S BACK IN THE RUINS WITH ONLY MONGO.") ] }
+    ],
+
+    barricade_intro: [
+      { bg: 'ruins', night: true, fade: true, music: 'ruins_night', actors: [A('donut_down', 80), A('mongo_idle', 110), A('carl_idle', 150), A('street_urchin_walk', 250, { flip: true }), A('street_urchin_walk', 280, { flip: true })], lines: [
+        L(CARL, "URCHINS. DOZENS OF THEM. THEY ROLLED RIGHT OVER WHATEVER MONGO STACKED IN FRONT OF HER. DONUT'S AT ZERO HIT POINTS. ZERO. SHE'S STILL BREATHING."),
+        L(AI, "PRINCESS DONUT'S COCKROACH SKILL ACTIVATED! SHE SURVIVED A HIT THAT SHOULD HAVE KILLED HER! SHE IS VERY UNCONSCIOUS AND VERY ALIVE!"),
+        L(CARL, "OKAY, MONGO. BARRICADE. HOLD THE LINE UNTIL SUNRISE. NOTHING GETS PAST US. NOTHING TOUCHES THE CAT.") ] }
+    ],
+
+    dawn: [
+      { bg: 'circus', fade: true, music: 'village', actors: crew(120), lines: [
+        L(DONUT, "WHY AM I DIRTY. WHY IS MONGO COVERED IN TUMBLEWEED. CARL, WHY ARE YOU CRYING."),
+        L(CARL, "I'M NOT CRYING. THE SUN'S IN MY EYES. THE FAKE SUN. IT'S VERY BRIGHT. HOW ARE YOU FEELING?"),
+        L(DONUT, "LIKE I WAS HIT BY A TRUCK AND THEN THE TRUCK WAS HIT BY A HOUSE. DID I MISS ANYTHING?") ] },
+      { bg: 'circus', actors: crew(120).concat([A('stairs_down', 240)]), lines: [
+        L(AI, "THE CIRCUS HAS GONE! THE TENTS, THE WAGONS, THE CALLIOPE, ALL GONE AT DAWN! AND WHAT DO WE HAVE HERE? A STAIRWELL TO THE FOURTH FLOOR!"),
+        L(CARL, "LAST NIGHT, BEFORE YOU WENT DOWN, YOU FIRED A MISSILE RIGHT AFTER I SCARED THAT LION. IT DIDN'T EVEN FLINCH. LET'S MAKE THAT A THING. A PLAY."),
+        L(DONUT, "A PLAY! LIKE THE A-TEAM! I'LL BE THE ONE WHO DRIVES THE VAN. WHAT DO WE CALL IT?"),
+        L(CARL, "PANIC. I CAST FEAR, YOU SHOOT WHATEVER'S RUNNING. WE'RE GOING TO NEED A WHOLE PLAYBOOK."),
+        L(MORD, "(OVER THE CHAT) THE STAIRS AREN'T GOING ANYWHERE. THE SETTLEMENT IS EAST. GET STRONGER FIRST. THEN THINK ABOUT STAIRS.") ] }
+    ],
+
+    /* ---------------- ACT 2 ---------------- */
+    settlement_arrival: [
+      { bg: 'panel:settlement_view', music: 'settlement', fade: true, lines: [
+        L(AI, "THE MEDIUM SKYFOWL SETTLEMENT! WALLS, TOWERS AND A WHOLE LOT OF EAGLE PEOPLE WHO THINK YOUR FEET ARE BEING RUDE AT THEM. FOUR TIMES THE SIZE OF A TINY VILLAGE!"),
+        L(DONUT, "SHOPS, CARL. REAL SHOPS. A WHOLE STREET OF THEM. I AM GOING TO NEED AN ALLOWANCE.") ] },
+      { bg: 'inn_narwhal', music: 'inn', actors: crew(90).concat([A('fitz', 230, { flip: true }), A('mordecai', 170, { flip: true })]), lines: [
+        L('FITZ', "ONE-EYED NARWHAL. FOUR ROOMS. TWENTY GOLD. THE SKYFOWL DRINK UPSTAIRS. YOU DRINK DOWN HERE. NO OFFENSE."),
+        L(MORD, "QUEST BOXES. OPEN THEM. NOW. BEFORE YOU DO ANYTHING DUMB IN A TOWN WITH THIS MANY GUARDS.") ] },
+      { bg: 'inn_narwhal', sfx: 'lootbox_open', flash: '#f8b800', actors: crew(90).concat([A('mordecai', 170, { flip: true })]), lines: [
+        L(AI, "A SCROLL OF UPGRADE! APPLIED TO YOUR ENCHANTED BIGBOI BOXERS! LIKE A CERTAIN GREEN SCIENTIST'S SHORTS, THEY WILL NEVER TEAR. AND NOW: FREEBALLING!"),
+        L(AI, "FREEBALLING: EVERY ATTACK THAT STARTS BELOW THE WAIST DOES DOUBLE DAMAGE. KICKS! STOMPS! KNEES! RESTRICTION: ONE LAYER OVER THE CROTCH. NO PANTS EVER. AS IF."),
+        L(CARL, "I WAS NEVER GOING TO WEAR PANTS AGAIN ANYWAY. I'M AT PEACE WITH IT."),
+        L(DONUT, "MONGO GOT FANG CAPS! THEY CLICK ON LIKE LEGO! NOW HE CAN BITE GHOSTS! AND I GOT ACUTE EARS. I CAN HEAR EVERYTHING NOW. CARL, YOUR STOMACH IS VERY LOUD.") ] },
+      { bg: 'inn_narwhal', sfx: 'achievement', actors: crew(90).concat([A('mordecai', 170, { flip: true })]), lines: [
+        L(AI, "ACHIEVEMENT! ONE QUADRILLION! YOU ARE AMONG THE FIRST TEN CRAWLERS TO PASS A QUADRILLION VIEWS! A GOLD FAN BOX IS ON ITS WAY! IT HAS FANS IN IT! NOT LITERAL FANS!"),
+        L(MORD, "AND A PILE OF EXPLOSIVES FROM THE QUEST. DYNAMITE AND HOB-LOBBERS. CARL, TRY NOT TO BLOW UP THE INN. FITZ HAS ALREADY STARTED A TAB FOR ME.") ] }
+    ],
+
+    gumgum_ask: [
+      { bg: 'inn_narwhal', actors: crew(80).concat([A('mordecai', 150), A('gumgum', 230, { flip: true })]), lines: [
+        L('GUMGUM', "YOU'RE ADVENTURERS. I CAN TELL. PLEASE. THERE ARE WOMEN BEING KILLED IN THIS TOWN AND NOBODY CARES. I NEED SOMEBODY TO CARE."),
+        L(MORD, "SCRAM. THEY'RE NOT TAKING ANY MORE QUESTS ON THIS FLOOR. GO ON. OUT."),
+        L(CARL, "MORDECAI, SHE'S ASKING FOR HELP."),
+        L(MORD, "KID. THE PEOPLE RUNNING THIS SHOW KNOW EXACTLY WHO YOU ARE. EVERY SAD STORY IS A HOOK, AND YOU ARE A FISH THAT WANTS TO BE CAUGHT.") ] },
+      { bg: 'inn_narwhal', actors: crew(80).concat([A('mordecai', 150)]), lines: [
+        L(MORD, "YOU CAN'T SAVE EVERYBODY. YOU WANT TO HELP PEOPLE? GET STRONG. GET DEEP. STAY ALIVE. THAT'S THE ONLY HELP THAT LASTS DOWN HERE."),
+        L(CARL, "THERE'S A BIG MANTA RAY BOSS AT THE OLD Y ON THE EAST ROAD. EVERYBODY'S TALKING ABOUT IT. I'M GOING TO GO KILL IT. AND THEN I'M GOING TO TALK TO HER."),
+        L(MORD, "OF COURSE YOU ARE.") ] }
+    ],
+
+    dispenser_down: [
+      { bg: 'ymca', actors: crew(120).concat([A('mongo_clock_run', 220), A('mongo_clock_run', 250)]), sfx: 'fanfare', lines: [
+        L(AI, "THE BOOMY BOY! TWO CLOCKWORK DINOSAURS, TWO STICKS OF DYNAMITE, ONE VERY SURPRISED MANTA RAY! THE ENTIRE GALAXY IS SAYING IT RIGHT NOW. BOOMY BOY!"),
+        L(DONUT, "I NAMED IT. TELL THEM I NAMED IT. CARL. CARL, TELL THEM."),
+        L(CARL, "SHE NAMED IT.") ] }
+    ],
+
+    gumgum_bodies: [
+      { bg: 'settlement', fade: true, music: 'sad', actors: crew(90).concat([A('gumgum', 200, { flip: true })]), lines: [
+        L('GUMGUM', "OUTSIDE THE GATE. EVERY MORNING. MORE OF THEM. NOBODY KNOWS WHO THEY ARE. NOBODY CLAIMS THEM. I BURY THEM. NOBODY HELPS ME BURY THEM."),
+        L(CARL, "FIFTEEN. MAYBE MORE. ALL WOMEN. ALL DEAD, ALL DUMPED LIKE TRASH. SOMETHING'S BEEN DRINKING FROM THEM."),
+        L(AI, "NEW QUEST! THE SEX WORKERS WHO FELL FROM THE HEAVENS! BODIES APPEAR EVERY DAWN AND NOBODY CAN SAY WHERE FROM. FIND OUT WHY. A TOWN IS WAITING. OR NOT. MOSTLY NOT."),
+        L(DONUT, "WE ARE DOING THIS ONE, CARL. I DON'T CARE WHAT MORDECAI SAYS. HE WORKS FOR ME NOW.") ] }
+    ],
+
+    desperado_tour: [
+      { bg: 'settlement', night: true, actors: crew(80).concat([A('mordecai', 150, { flip: true })]), lines: [
+        L(MORD, "FINE. IF YOU'RE GOING TO DO THIS, YOU DO IT PROPERLY. WITH THE RIGHT GEAR. COME ON. THROUGH THE PUB. THE RED DOOR IN THE BACK.") ] },
+      { bg: 'panel:desperado', music: 'club', fade: true, lines: [
+        L(AI, "THE DESPERADO CLUB! MEMBERS ONLY! THE SAME CLUB BEHIND EVERY PUB DOOR ON THE FLOOR, IN A POCKET DIMENSION! SO FUN IT HURTS! THE HURTING IS LITERAL!"),
+        L(CARL, "IT'S RAINING INDOORS. NEON EVERYWHERE. A GIANT SPINNING DAGGER. THIS IS EVERY RAINY ROOFTOP IN BLADE RUNNER, IF THE REPLICANTS HAD A DISCO."),
+        L('CLARABELLE', "PETS GO IN THE PLAYROOM. THE PLAYROOM IS NOT SAFE. THAT IS WHY IT IS CALLED THE PLAYROOM.") ] },
+      { bg: 'club', actors: [A('carl_idle', 90), A('mordecai', 130), A('quint', 230, { flip: true })], lines: [
+        L('QUINT', "PHARMACY. QUINT. MORDECAI. YOU LOOK LIKE A BOOK COVER."),
+        L(CARL, "THAT VOICE. GRAVEL IN A BLENDER. HE SOUNDS LIKE BATMAN. I'M NOT GOING TO SAY IT. I'M ABSOLUTELY GOING TO SAY IT LATER."),
+        L(MORD, "A STARTER ALCHEMY KIT, QUINT. AND A BOTTLE. FOR THE KIT. THE BOTTLE IS ALSO FOR THE KIT.") ] },
+      { bg: 'settlement', night: true, music: 'market', actors: crew(80).concat([A('mordecai', 140), A('pustule', 230, { flip: true })]), lines: [
+        L('PUSTULE', "MORDECAI, YOU HANDSOME DEVIL. YOU'RE AN INCUBUS NOW? IT SUITS YOU. HOBGOBS AND BOOM STICKS, HONEY. WHAT DO YOU NEED TO BLOW UP?"),
+        L(CARL, "SIX FEET OF HOBGOBLIN WITH A SORE ON HER FACE THAT'S LOOKING AT ME AND A T-SHIRT WITH A UNICORN IN SUNGLASSES. I LOVE HER. I'M BUYING EVERYTHING."),
+        L('PUSTULE', "HOB-LOBBERS AND DYNAMITE IN STOCK, SUGAR. SMOKE CURTAINS TOMORROW. COME BACK ANYTIME. THE SILK ROAD NEVER CLOSES.") ] },
+      { bg: 'settlement', night: true, actors: crew(80).concat([A('mordecai', 140)]), lines: [
+        L(DONUT, "I BOUGHT MONGO A MAGICAL PET CARRIER. IT FOLDS UP LIKE A RUBIK'S CUBE. MONGO, LOOK. LOOK AT YOUR NEW HOUSE."),
+        L('MONGO', "SCREEEEEEEEEEEEEEEE!"),
+        L(CARL, "HE HATES IT. HE HATES IT SO MUCH. WAIT. HE'S SNIFFING. HE SMELLS SOMETHING. MONGO. MONGO, NO. MONGO! GET BACK HERE!") ] }
+    ],
+
+    alley_after: [
+      { bg: 'alley', night: true, actors: crew(90), music: 'sad', lines: [
+        L(CARL, "THE ELF SAID HE WAS PROTECTING THE ANGELS. HE USED A MEAT HOOKS SCROLL TO DRAG MONGO IN HERE. I KICKED HIM IN THE NUTS. DONUT TOOK HIS HEAD OFF."),
+        L(DONUT, "MONGO IS KEEPING THE HEAD. I SAID NO. HE SAID MREEP. WE HAVE AGREED TO DISCUSS IT LATER."),
+        L(CARL, "GUMGUM. THE KRASUE DID THIS. SHE CAME ASKING FOR HELP AND SHE DIED IN AN ALLEY, JUST LIKE HER MOTHER.") ] },
+      { bg: 'alley', night: true, actors: crew(90), lines: [
+        L(CARL, "SHE HAD A GATE PASS TO THE ADMIN DISTRICT, SIGNED BY MAGISTRATE FEATHERFALL. AND A LETTER. SCRIBBLY WRITING. NECROMANCER STUFF, I THINK."),
+        L(DONUT, "FITZ SAID THE MAGISTRATE IS A DARK CLERIC WHO CONTROLS THE UNDEAD. CARL, THIS IS LIKE A LAW AND ORDER. THE ONE WITH THE GOOD DETECTIVE. WE ARE THE GOOD DETECTIVE.") ] },
+      { bg: 'inn_narwhal', sfx: 'lootbox_open', flash: '#f8b800', actors: crew(90), lines: [
+        L(AI, "GOLD FAN BOXES! CARL RECEIVES: A XISTERA! THE BASKET SCOOP FROM JAI ALAI! STRAP IT TO YOUR RIGHT ARM AND FLING YOUR INVENTORY AT PEOPLE AT A HUNDRED MILES AN HOUR!"),
+        L(CARL, "HOB-LOBBERS. STRAIGHT AND FAST. CESTA PUNTA. I'M GOING TO BE A JAI ALAI GOD. A VERY SPECIFIC GOD."),
+        L(DONUT, "MINE IS A PICTURE. OF BEA. AND ME. FROM BEFORE. I DON'T WANT TO TALK ABOUT IT. I'M GOING TO KEEP IT. I'M GOING TO KEEP IT VERY SAFE.") ] }
+    ],
+
+    quill_desk: [
+      { bg: 'admin', fade: true, actors: crew(80).concat([A('burgundy', 200, { flip: true })]), lines: [
+        L(CARL, "THE GATE PASS WORKED. THE GUARDS LET US UP TO THE THIRD-STORY LANDING. A MALL FOR SKYFOWL ONLY, AND STAIRS UP TO THE MAGISTRATE."),
+        L('BURGUNDY', "EXCUSE ME. SORRY. I'M JUST RUNNING ERRANDS. YOU SHOULDN'T BE UP HERE. NOBODY GOES UP THERE."),
+        L(DONUT, "HER EYES DON'T MATCH. ONE BLUE, ONE BROWN. AND SHE SMELLS FUNNY. NOT BAD. JUST WRONG.") ] },
+      { bg: 'panel:quill_desk', music: 'dark', lines: [
+        L('MISS QUILL', "THE MAGISTRATE IS NOT SEEING VISITORS. THE MAGISTRATE IS NEVER SEEING VISITORS. STATE YOUR BUSINESS SO I CAN DENY IT."),
+        L(CARL, "WOMEN ARE TURNING UP DEAD AT YOUR GATE EVERY MORNING."),
+        L('MISS QUILL', "WERE ANY OF THEM SKYFOWL? NO? THEN THE MAGISTRATE WILL NOT CARE. AND IF HE WILL NOT CARE, I WILL NOT DISTURB HIM."),
+        L(CARL, "THREE HUNDRED STUFFED ANIMALS ON THE SHELVES BEHIND HER, ALL TAGGED. IT'S A BEANIE BABY COLLECTION FROM HELL. SHE'S GUARDING THAT DOOR LIKE IT'S THE LAST ONE ON EARTH.") ] },
+      { bg: 'office', shake: 0.3, sfx: 'crate_break', actors: crew(80).concat([A('quill', 220, { flip: true })]), lines: [
+        L(CARL, "EVIDENCE. ONE OF THE WOMEN FROM THE GATE. FROM MY INVENTORY. ONTO YOUR DESK. AND ALL OVER YOUR LITTLE DOLLS."),
+        L('MISS QUILL', "MY FIGURES! GUARDS! GUARDS! OH. OH, YOU HAVE A SIGNED PASS. FINE. FINE! THE MAGISTRATE ONLY COMES OUT AT NIGHT! NOW LOOK WHAT YOU DID! I NEED A RAG!") ] },
+      { bg: 'office', actors: crew(80), lines: [
+        L(CARL, "SHE RAN DOWNSTAIRS FOR CLEANING STUFF. THE SHELVES ARE HOLLOW. KNOCK, KNOCK. HOLLOW. HUH."),
+        L(CARL, "THREE STICKS OF GOBLIN DYNAMITE AND A GLOB OF HOBGOBLIN PUS, TUCKED IN BEHIND THE FIGURES. NOT A PLAN. JUST A SEED. YOU PLANT ENOUGH SEEDS, SOMETHING GROWS."),
+        L(DONUT, "CARL, THAT IS EITHER VERY CLEVER OR A WAR CRIME. POSSIBLY BOTH. I WILL ALLOW IT.") ] }
+    ],
+
+    divider_blast: [
+      { bg: 'ruins', night: true, shake: 1.5, flash: '#f8f8f8', sfx: 'detonate', lines: [
+        L(AI, "OH NO! THE DYNAMITE BOUNCED OFF A BERSERKER! IT ROLLED UNDER THE DIVIDER! AND THE DIVIDER IS VERY, VERY BLOATED!"),
+        L(CARL, "I'M FLYING. WHY AM I FLYING. THAT'S A ROOF. THAT'S A ROOF COMING AT ME. HELLO, ROOF.") ] },
+      { bg: 'settlement', night: true, actors: [A('carl_dead', 100), A('donut_idle', 130), A('mongo_idle', 170)], lines: [
+        L(DONUT, "HE'S FINE. HE'S BREATHING. HE KNOCKED HIMSELF OUT WITH A WHALE. MONGO IS ROLLING IN THE PARTS. MONGO HAS NEVER BEEN HAPPIER."),
+        L(MORD, "(OVER THE CHAT) TELL HIM THAT WHEN HE WAKES UP, THE WHOLE GALAXY SAW IT. THE WHOLE GALAXY. IN SLOW MOTION. THREE ANGLES.") ] }
+    ],
+
+    recap: [
+      { bg: 'settlement', lines: [
+        L(AI, "PREVIOUSLY ON DUNGEON CRAWLER WORLD! TONIGHT'S RECAP: THE CRAWLERS WHO PICKED THEIR CLASSES WITH STYLE!"),
+        L(AI, "HEKLA, LEADER OF BRYNHILD'S DAUGHTERS! SHE TOOK THE AMAZONIAN UPGRADE AND IS NOW SEVEN FEET OF SAPPHIRE-EYED MUSCLE IN A VALKYRIE HELMET!"),
+        L(AI, "LUCIA MAR, THIRTEEN YEARS OLD, SOCCER JERSEY OVER GLOWING SILVER ARMOR, AND HER DOGS! SHE TRASHED THE DESPERADO CLUB LAST NIGHT. THE CLUB WOULD LIKE HER BACK. TO SUE HER."),
+        L(CARL, "THEY SHOW THIS ON A BIG SCREEN IN THE MIDDLE OF TOWN. LIKE THE SUPER BOWL. IF THE SUPER BOWL KILLED PEOPLE. IT DOES, A LITTLE.") ] }
+    ],
+
+    greenroom: [
+      { bg: 'panel:greenroom', music: 'show', fade: true, lines: [
+        L('ZEV', "BIG NIGHT! DANGER ZONE WITH RIPPER WONTON! LIVE! UNCENSORED! THE BIGGEST TALK SHOW IN THE SYNDICATE! DO NOT CURSE. NO. CURSE. CURSE A LITTLE. IT'S UNCENSORED."),
+        L(DONUT, "THERE IS A SINGER NAMED MANASA WHO WANTED OUR TRAILER. IT IS BIGGER. I SAID YES BECAUSE I AM GRACIOUS. ALSO HERS HAS BETTER LIGHTING."),
+        L(CARL, "THE HOST IS A QUOKKA IN AN ORANGE ASCOT. JUST THE ASCOT. HE LOOKS LIKE FRED FROM SCOOBY-DOO GOT TURNED INTO A HAMSTER AND KEPT THE BEST PART.") ] }
+    ],
+
+    blast: [
+      { bg: 'studio', flash: '#ffffff', shake: 1.4, sfx: 'detonate', lines: [
+        L('RIPPER WONTON', "WE'RE GETTING REPORTS... AN EXPLOSION AT THE TRAILERS... LADIES AND GENTLEMEN, STAY TUNED. STAY TUNNELED. WE ARE STILL LIVE."),
+        L(AI, "AN ORBITAL PULSE STRIKE FROM THE SKULL EMPIRE! AIMED AT THE CRAWLERS' TRAILER FOR THE CRIME OF SEDITION! IT HIT THE OTHER TRAILER. THE ONE THEY SWAPPED.") ] },
+      { bg: 'panel:trailer_blast', music: 'sad', lines: [
+        L(CARL, "MANASA. SHE SWAPPED WITH US. IT WAS MEANT FOR US. IT WAS MEANT FOR ME BECAUSE I OPENED MY MOUTH ON LIVE TV."),
+        L(AI, "THE VALTAY ARE NOT AMUSED. A VALTAY DREADNAUGHT HAS JUST REMOVED A CERTAIN PRINCE'S YACHT FROM ORBIT. AND THE PRINCE. AND HIS MOTHER. GOOD NIGHT, EVERYBODY!"),
+        L('RIPPER WONTON', "WE CLOSE TONIGHT WITH MANASA'S LAST PERFORMANCE. THIS IS DANGER ZONE. I'M RIPPER WONTON. PLEASE HOLD YOUR LOVED ONES.") ] },
+      { bg: 'panel:danger_zone', lines: [
+        L('ZEV', "CARL. CARL. YOU JUST TOLD A WHOLE EMPIRE TO REVOLT ON LIVE TELEVISION. THE RATINGS ARE INSANE. I'M GOING TO THROW UP. CAN FISH THROW UP? I'M FINDING OUT.") ] },
+      { bg: 'inn_narwhal', actors: crew(90).concat([A('mordecai', 180, { flip: true })]), lines: [
+        L(MORD, "YOU UNDERSTAND WHAT HAPPENED. A WOMAN IS DEAD. A PRINCE IS DEAD. A WAR MAYBE STARTED. BECAUSE YOU WANTED TO MAKE A POINT."),
+        L(CARL, "I KNOW. I KNOW WHAT I DID. THEY PUT US IN A BOX AND DARE US TO SCREAM. SO I SCREAMED. I'M NOT SORRY FOR SCREAMING. I'M SORRY ABOUT MANASA."),
+        L(DONUT, "HEKLA ASKED US TO HELP A GIRL IN HER PARTY. KATIA. SHE SAID SHE IS IN TOWN. SHE SAID SHE IS HAVING TROUBLE WITH HER FACE.") ] }
+    ],
+
+    apito_after: [
+      { bg: 'school', fade: true, actors: crew(80).concat([A('eunice', 200, { flip: true }), A('ricky_joe', 225, { flip: true })]), lines: [
+        L(CARL, "SALVATORE AND CARMINE. THEY ADMITTED IT. THEY TORTURED GUMGUM UNTIL SHE TOLD THEM WHO WAS WEARING THE ANKLET. THEY WERE LOOKING FOR DONUT."),
+        L('EUNICE', "AND THEN I CUT THAT ONE IN HALF LIKE A BAGEL. I'M PREGNANT, NOT DEAD. THAT WAS FOR MY HUSBAND."),
+        L('RICKY JOE', "THE DINOSAUR ATE SPARKY AND THEN HE ATE MY ARM. AND THEN THE CAT FIXED IT. MY ARM IS SHINY NOW. THIS IS THE BEST DAY EVER.") ] },
+      { bg: 'school', flash: '#f83800', shake: 1.0, sfx: 'fire_burst', actors: [A('carl_victory', 120)], lines: [
+        L(AI, "AND WHAT IS THIS? A LIT JUG O'BOOM TOSSED STRAIGHT UP! THE CAT PUDDLE JUMPS THEM TO THE ROOF! THE JUG LANDS! THE TEMPLE IS ON FIRE! THE CROWD IS ON ITS FEET!"),
+        L(DONUT, "THE MIC DROP! WE ARE CALLING IT THE MIC DROP. I DROPPED THE MIC. I DID THE TELEPORT, SO I DROPPED THE MIC."),
+        L(CARL, "THAT'S TWO PLAYS IN THE BOOK. PANIC, BOOMY BOY, MIC DROP. THREE. THAT'S THREE PLAYS.") ] }
+    ],
+
+    katia_meet: [
+      { bg: 'settlement', fade: true, actors: crew(80).concat([A('katia_idle', 210, { flip: true })]), lines: [
+        L('KATIA', "YOU'RE CARL AND DONUT. HEKLA SAID YOU MIGHT COME. I'M KATIA. KATIA GRIM. I'M A DOPPELGANGER NOW. I PICKED IT. I'M STILL GETTING THE HANG OF IT."),
+        L(DONUT, "YOUR EYES ARE TOO HIGH. AND YOUR NOSE GOES LEFT. AND YOUR HAIR IS A YELLOW I HAVE NEVER SEEN ON A HUMAN BEING."),
+        L('KATIA', "I KNOW. I CAN'T HOLD A FACE YET. MY CLASS IS MONSTER TRUCK DRIVER. THERE ARE NO MONSTER TRUCKS. HEKLA THINKS I'M A LIABILITY.") ] },
+      { bg: 'settlement', actors: crew(80).concat([A('katia_idle', 210, { flip: true })]), lines: [
+        L(CARL, "WELL, WE'RE A CAT, A DINOSAUR AND A GUY WITH NO PANTS. NOBODY HERE IS GOING TO JUDGE YOUR NOSE. WANT IN?"),
+        L('KATIA', "I CAN MAKE MY ARM INTO A SHIELD. I'LL STAND IN FRONT OF THINGS. I'M VERY GOOD AT STANDING IN FRONT OF THINGS."),
+        L(AI, "KATIA GRIM HAS JOINED THE PARTY! SHE BLOCKS PROJECTILES! SHE HAS A FACE! TECHNICALLY!") ] }
+    ],
+
+    mongo_grows: [
+      { bg: 'alley', night: true, flash: '#f8f8f8', sfx: 'level_up', actors: [A('carl_idle', 90), A('donut_shoulder', 88, { y: Y - 18 }), A('katia_idle', 120), A('mongo_big_idle', 200, { flip: true })], lines: [
+        L(AI, "MONGO HAS REACHED LEVEL 13! MONGO IS GROWING! MONGO IS STILL GROWING! MONGO IS NOW THE SIZE OF A SMALL PONY WITH EIGHTY TEETH!"),
+        L(DONUT, "MY BABY! MY BABY IS A HORSE! CARL, I CAN RIDE HIM INTO BATTLE. LIKE A QUEEN. LIKE A WARRIOR QUEEN."),
+        L(CARL, "HE STILL THINKS HE'S A LAP DOG. HE'S GOING TO TRY TO SIT ON ME. MONGO, NO. MONGO. MONGO!") ] }
+    ],
+
+    /* ---------------- ACT 3 ---------------- */
+    plant_intro: [
+      { bg: 'office', night: true, fade: true, music: 'dark', actors: crew(80, { bigMongo: true, katia: true }), lines: [
+        L(CARL, "THE PLAN. I SENT QUILL HER OWN LETTER BACK, WRITTEN TO LOOK LIKE IT CAME FROM THE ELVES. SHE'LL BE AT HER DESK TONIGHT. SO WILL HER KRASUE. FOUR OF THEM."),
+        L(DONUT, "MY CLOCKWORK TRIPLICATE MAKES TWO LITTLE MONGOS. THE KRASUE WILL CHASE THEM. THEY THINK THEY ARE SNACKS. THEY ARE DECOYS. I AM A GENIUS."),
+        L(CARL, "PUSTULE'S SMOKE CURTAINS AT THE OTHER SPOTS. PLANT THREE MORE STICKS IN THE LOAD-BEARING SHELVES, THEN GET TO THE ROOF NEXT DOOR. THEN THE BIG RED BUTTON.") ] }
+    ],
+
+    magistrate: [
+      { bg: 'admin', night: true, shake: 2.0, flash: '#f8f8f8', sfx: 'detonate', lines: [
+        L(AI, "BOOOOOOOM! HALF OF THE MUNICIPAL BUILDING IS NOW A CLOUD! THE OTHER HALF IS THINKING ABOUT IT! THE OTHER HALF HAS DECIDED! IT IS ALSO A CLOUD!") ] },
+      { bg: 'admin', night: true, sfx: 'achievement', actors: crew(100, { bigMongo: true, katia: true }), lines: [
+        L(AI, "ACHIEVEMENT! ASSASSIN! YOU KILLED A RANKING PUBLIC OFFICIAL! MISS QUILL WAS A PUBLIC OFFICIAL! SHE WAS VERY RANKING! A BRONZE ASSASSIN'S BOX!"),
+        L(AI, "ACHIEVEMENT! ULTIMATE EXTREME POWER! YOU KILLED THE ACTING MAGISTRATE AND TOOK THE JOB! SETTLE DOWN, CHARLEMAGNE, IT'S ONE MEDIUM TOWN, NOT HALF OF EUROPE."),
+        L(AI, "ACHIEVEMENT! COCKBLOCK! THAT NPC WAS SOMEBODY ELSE'S QUEST TARGET. SOMEWHERE A TIGER MAN IS STANDING IN AN EMPTY APARTMENT, VERY ANNOYED."),
+        L(DONUT, "CARL IS THE MAGISTRATE. CARL. HAS A TITLE. I HAVE BEEN A PRINCESS MY WHOLE LIFE AND HE GETS A TITLE FOR BLOWING UP A RECEPTIONIST.") ] }
+    ],
+
+    nest_after: [
+      { bg: 'panel:featherfall', music: 'sad', fade: true, lines: [
+        L(CARL, "FEATHERFALL. THE MAGISTRATE. STRAPPED UPSIDE DOWN ON A WHEEL, DRIED OUT LIKE JERKY. DEAD FOR YEARS. THE SYSTEM GAVE US THE KILL ANYWAY."),
+        L(CARL, "ALL WEEK I'VE BEEN ACTING LIKE MEETING THIS GUY WAS A NIGHTMARE ON ELM STREET THING. DON'T FALL ASLEEP, HE'LL GET YOU. HE WAS NEVER GOING TO GET ANYBODY.") ] },
+      { bg: 'nest', night: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('burgundy', 230, { flip: true })]), lines: [
+        L('BURGUNDY', "QUILL LURED US HERE. JOBS AT THE DESPERADO CLUB, SHE SAID. THE ELVES BROUGHT US TO REMEX. SOME OF US BECAME THOSE THINGS. THE REST BECAME THE BODIES AT THE GATE."),
+        L('BURGUNDY', "BY DAY WE WORKED THE MALL. PLUCKED A FEATHER FROM EVERY SKYFOWL WHO CAME THROUGH. I NEVER KNEW WHY. PLEASE. BEFORE IT COMES BACK."),
+        L(DONUT, "I'LL DO IT. IT SHOULD BE SOMEONE WHO LISTENED. GOODBYE, BURGUNDY. YOU WERE A PERSON. YOU WERE A PERSON THE WHOLE TIME.") ] },
+      { bg: 'nest', night: true, sfx: 'missile', actors: crew(80, { bigMongo: true, katia: true }), lines: [
+        L(CARL, "THERE'S SOMETHING IN THE RUBBLE. A LITTLE STUFFED DEMON ON A HORSE IN A GLASS CASE. KIMARIS, THE TAG SAYS. QUILL'S TOP SHELF. THE GLASS IS SHEOL GLASS."),
+        L(CARL, "I DON'T KNOW WHY I'M TAKING IT. I JUST AM. SOMETHING IN ME SAYS THE CASE IS IMPORTANT.") ] }
+    ],
+
+    depot_plan: [
+      { bg: 'admin', night: true, fade: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('bautista', 230, { flip: true })]), lines: [
+        L('BAUTISTA', "QUILL WAS MY TARGET. A QUEST: KILL HER, GET INTO THE DESPERADO CLUB. I WAS IN HER APARTMENT WHEN YOUR BOMB WENT OFF. SHE HAD A THOUSAND MORE DOLLS AT HOME."),
+        L(CARL, "SORRY ABOUT THE QUEST. NOT SORRY ABOUT THE BOMB."),
+        L('BAUTISTA', "DON'T BE. MY SISTER GRACE DIED IN THOSE RUINS. YOU FOUND HER. NOW TELL ME WHAT'S IN THE DEPOT.") ] },
+      { bg: 'depot', night: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('guard_walk', 230, { flip: true })]), lines: [
+        L(CARL, "THE GUARDS ARE POWERED BY A SOUL CRYSTAL IN THE DEPOT. AT NIGHT THEY SIT HERE FROZEN, RECHARGING. BURGUNDY SAID REMEX IS IN HERE TOO, WITH THE LIGHT."),
+        L(CARL, "TEN STICKS. WE RIG THE WHOLE PLACE. KATIA HOLDS THE DETONATOR. WHATEVER HAPPENS IN THERE, IF I SAY THE WORD, SHE PUSHES THE BUTTON."),
+        L('KATIA', "I'LL HOLD IT. I WON'T PUSH IT UNTIL YOU SAY. I WON'T. I'M HOLDING IT VERY GENTLY.") ] }
+    ],
+
+    remex: [
+      { bg: 'panel:remex', music: 'sad', fade: true, lines: [
+        L('REMEX', "DON'T COME CLOSER. PLEASE. DON'T BLOW ME UP. I AM REMEX. I WAS THE MAGISTRATE, BEFORE. I WAS HER HUSBAND."),
+        L(AI, "REMEX! SOUL LEECH CAPACITOR! LEVEL 1! EVER USE A OUIJA BOARD AND THINK, I WISH GRANDPA COULD COME BACK AND ALSO DO SOME CHORES? THIS IS THAT. THE CHORE IS SOULS.") ] },
+      { bg: 'depot', night: true, actors: crew(70, { bigMongo: true, katia: true }).concat([A('remex', 240, { flip: true })]), lines: [
+        L('REMEX', "QUILL BROUGHT ME BACK. I HOLD SOULS. THE CRYSTAL HOLDS WHAT I HOLD. THE GUARDS RUN ON IT. AND HER SPELL RAN ON IT. THE FINAL WAR."),
+        L('REMEX', "THREE GENERATIONS OF CASTING. ONE NIGHT LEFT. EVERYONE IN THE OVER CITY WOULD DIE BUT THE SKYFOWL AND THE CHICKADEES. THE FEATHERS MARKED WHO TO SPARE."),
+        L('REMEX', "SHE'S DEAD. NOBODY IS DRAWING THE POWER DOWN. THE CRYSTAL IS FULL. IT IS GOING TO BREAK. I AM SO SORRY. I WAS NEVER ALLOWED TO SAY NO.") ] },
+      { bg: 'depot', night: true, sfx: 'glass_crack', shake: 0.6, lines: [
+        L(AI, "QUEST COMPLETE! THE SEX WORKERS WHO FELL FROM THE HEAVENS! SOLVED! A SILVER QUEST BOX! HOLD THAT THOUGHT."),
+        L(AI, "NEW GROUP QUEST! THE FOOLS WHO BROKE THE GLASS! A VERY OLD SPELL JUST SNAPPED. IN SEVEN MINUTES, EVERYTHING WITHIN 45 SQUARE KILOMETERS EXPLODES. YOU ARE THE HOSTS. NO, YOU CANNOT OPT OUT. YES, IT IS YOUR FAULT."),
+        L(CARL, "THE CASE. THE SHEOL GLASS CASE. KIMARIS, OUT. CRYSTAL, IN. LID ON. LID ON. LID. ON.") ] },
+      { bg: 'panel:glass_case', sfx: 'clockwork', lines: [
+        L(CARL, "IT FITS. IT'S HUMMING. IT'S STILL GOING TO BLOW, IT JUST CAN'T, AS LONG AS IT'S IN THE CASE. AND AS LONG AS THE CASE IS IN ME. IN MY INVENTORY.") ] },
+      { bg: 'panel:doomsday', flash: '#f878f8', sfx: 'unlock', lines: [
+        L(AI, "NEW ITEM! CARL'S DOOMSDAY SCENARIO! A FULLY CHARGED SOUL CRYSTAL IN A SHEOL GLASS REAPER CASE. IT CAN NEVER LEAVE YOUR INVENTORY. IF IT DOES, BYE BYE EVERYTHING."),
+        L(AI, "ALSO, THE SPELL IS STILL COLLAPSING! FOUR PRECURSOR BURSTS ARE COMING, THEN THE BIG ONE! THE EASTERN STAIRWELL HAS OPENED! RUN, CRAWLERS! RUN!"),
+        L(DONUT, "CARL. CARL! YOU ARE A BOMB NOW. YOU ARE A WALKING BOMB. I AM SITTING ON A BOMB'S SHOULDER.") ] }
+    ],
+
+    finale: [
+      { bg: 'panel:bursts', fade: true, music: 'escape', lines: [
+        L(AI, "FOUR BURSTS DOWN! MAGIC GEAR STRIPPED, WEAPONS GONE ROGUE, ARMOR MELTED, INVENTORIES POPPING LIKE CORN! THE BIG ONE IS SECONDS AWAY!"),
+        L(DONUT, "MY CROWN! MY CROWN IS CRUMBLING! CARL, IT'S DUST. IT'S JUST DUST NOW.") ] },
+      { bg: 'panel:stairwell', shake: 0.6, actors: [], lines: [
+        L(CARL, "THE STAIRWELL! BAUTISTA, GET THEM IN! EVERYBODY IN! KATIA! KATIA, NOW! PUSH IT NOW!"),
+        L('KATIA', "PUSHING IT!"),
+        L(AI, "TWENTY SECONDS LEFT ON THE CLOCK AND THE GUARD DEPOT GOES UP! TEN STICKS OF DYNAMITE AND A WAREHOUSE FULL OF SOUL MAGIC! THAT IS A LOT OF BANG!") ] },
+      { bg: 'escape', flash: '#ffffff', shake: 2.0, sfx: 'detonate', lines: [
+        L(AI, "AND WE HAVE A BLAST! THE DEPOT EXPLOSION TEARS THE SPELL APART BEFORE IT FINISHES! THE CRAWLERS ARE THROUGH THE DOOR! THE THIRD FLOOR IS BEHIND THEM!") ] },
+      { bg: 'panel:greenroom', music: 'ending', fade: true, lines: [
+        L('ODETTE', "WELCOME BACK TO MY GREEN ROOM, DARLINGS. TWO AND A HALF DAYS LATER, AND THE WHOLE GALAXY IS STILL TALKING ABOUT IT. SIT. HAVE A DRINK. YOU EARNED IT."),
+        L('ODETTE', "YOUR LITTLE DEPOT BOMB BLUNTED THE FINAL BLAST. THOUSANDS OF NPCS LIVED. DOZENS OF CRAWLERS LIVED. THE BANDIT ACHIEVEMENT TURNED EIGHTY-THREE QUEST BOXES CELESTIAL."),
+        L('ODETTE', "BORANT SPENT ITS ONE VETO OF THE SEASON TO CANCEL THEM. ONE CRAWLER OPENED HIS FIRST. AND YOURS? YOURS SLIPPED THROUGH BEFORE THE PAPERWORK DID. DON'T TELL ANYONE."),
+        L('ODETTE', "THE LEADERBOARD DRAFT HAS YOU SIXTH, CARL. DONUT, SEVENTH. BE CAREFUL. A GOD HAS NOTICED YOU, HEKLA WANTS YOUR CAT, AND THERE IS A PRICE ON BOTH YOUR HEADS."),
+        L(DONUT, "SEVENTH? SEVENTH? I AM THE PRINCESS. I AM NOT SEVENTH. THERE HAS BEEN A MISTAKE. I WANT TO SPEAK TO THE LEADERBOARD'S MANAGER."),
+        L(AI, "AND CARL, FOR ONCE, HAD NOTHING CLEVER TO SAY. HE SAID ONE WORD. WE BLEEPED IT. THE AUDIENCE CHEERED ANYWAY. SEE YOU ON FLOOR FOUR, CRAWLERS!") ] }
+    ]
+  };
+})();
+/* ==========================================================================
+   THE DANGER ZONE TALK SHOW (DESIGN 10) and CLASS SELECTION (DESIGN 11.2)
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.DCW.data;
+  function L(who, text) { return { who: who, text: text }; }
+  var RIP = 'RIPPER WONTON', CARL = 'CARL', DONUT = 'DONUT', AI = 'SYSTEM AI';
+
+  D.show = {
+    danger_zone: {
+      name: 'DANGER ZONE WITH RIPPER WONTON',
+      panel: ['hekla', 'manasa', 'tucker', 'dnadia'],
+      startViews: 0, fanBox: { min: 1500, tier: 'fan' },
+      intro: [
+        L(RIP, "GOOD EVENING, SYNDICATE! LIVE! UNCENSORED! UNSCRIPTED! THIS IS DANGER ZONE, AND I AM YOUR HOST, RIPPER WONTON!"),
+        L(RIP, "TONIGHT ON THE PANEL: HEKLA OF BRYNHILD'S DAUGHTERS! THE SINGER MANASA! POLITICAL GENIUS TUCKER! HER HIGHNESS PRINCESS D'NADIA OF THE PRISM KINGDOM!"),
+        L(RIP, "AND ON THE COUCH, THE CRAWLERS EVERYONE IS TALKING ABOUT! THE MAN WITH NO PANTS AND THE CAT WITH NO CHILL! CARL AND PRINCESS DONUT!"),
+        L(DONUT, "HELLO, EVERYONE. YES. THANK YOU. PLEASE, SIT. NO, KEEP CLAPPING. I MEANT KEEP CLAPPING.")
+      ],
+      segments: [
+        { who: RIP, time: 15, q: "CARL, THE QUESTION ON EVERY PLANET IN THE SYNDICATE: WHERE. ARE. YOUR. PANTS?",
+          answers: [
+            { text: "THE PANTS ARE IN A BETTER PLACE NOW.", views: 200, crowd: 'laugh',
+              react: [L(RIP, "HA! A MOMENT OF SILENCE FOR THE PANTS, EVERYBODY."), L('TUCKER', "THIS IS WHAT PASSES FOR WIT ON EARTH?")] },
+            { text: "MY BOXERS HAVE STATS. YOUR PANTS HAVE A BELT LOOP.", views: 350, crowd: 'applause',
+              react: [L("PRINCESS D'NADIA", "THEY HAVE STATS? I WANT A PAIR. IN SILK. IN EVERY COLOR."), L(RIP, "THE PRINCESS IS SHOPPING! THE MARKET IS OPEN!")] },
+            { text: "I'D RATHER TALK ABOUT WHY YOU PEOPLE WATCH US DIE.", views: -100, crowd: 'boo',
+              react: [L(RIP, "WOW. OKAY. WE'LL GET TO THE HEAVY STUFF, CARL. WARM UP FIRST. STRETCH."), L('MANASA', "I THINK IT'S A FAIR QUESTION.")],
+              donut: "WHAT HE MEANS IS THAT HE IS NERVOUS AND HANDSOME. MOSTLY NERVOUS. LET'S MOVE ON." }
+          ] },
+        { who: 'TUCKER', time: 15, q: "I HAVE TO SAY IT. A CAT. ON MY PANEL. ARE WE INTERVIEWING PETS NOW? WHAT'S NEXT, A HOUSEPLANT?",
+          answers: [
+            { text: "SHE'S NOT A PET. SHE'S MY PARTY LEADER.", views: 250, crowd: 'laugh',
+              react: [L(RIP, "PARTY LEADER! OOH. TUCKER, YOU'RE SITTING NEXT TO A BOSS."), L('TUCKER', "A BOSS THAT LICKS ITSELF.")] },
+            { text: "YOU'RE ON THIS PANEL. WE ALREADY HAVE A HOUSEPLANT.", views: 400, crowd: 'applause',
+              react: [L(RIP, "OHHHH! THE AUDIENCE IS ON ITS FEET! TUCKER IS TURNING A COLOR I HAVE NEVER SEEN!"), L('TUCKER', "I HAVE A DOCTORATE.")] },
+            { text: "LET HER ANSWER THAT ONE HERSELF.", views: 650, crowd: 'applause',
+              react: [L('TUCKER', "I... I NEED A MOMENT."), L(RIP, "I THINK WE JUST WATCHED A CAT END A MAN'S CAREER. LIVE. UNCENSORED.")],
+              donut: "TUCKER, DARLING, I HAVE MORE FOLLOWERS THAN YOUR WHOLE PLANET HAS PEOPLE, I HAVE WON BEST IN SHOW, AND I HAVE KILLED A BOSS. YOU HAVE A TIE." }
+          ] },
+        { who: 'TUCKER', time: 15, q: "FINE. LET'S TALK POLITICS. THE VALTAY CORPORATION WANTS TO BUY OUT BORANT. WHOSE SIDE ARE YOU ON, CRAWLER?",
+          answers: [
+            { text: "I'M ON THE SIDE OF NOT DYING. THAT'S THE WHOLE PLATFORM.", views: 250, crowd: 'laugh',
+              react: [L(RIP, "A ONE-ISSUE CANDIDATE! I LIKE IT!"), L('HEKLA', "WISE. THE BUYERS AND THE SELLERS BOTH WANT YOU DEAD ON SCHEDULE.")] },
+            { text: "THE VALTAY. THEY SEEM NICE. RICH. NICE AND RICH.", views: -150, crowd: 'boo',
+              react: [L(AI, "THE STUDIO AUDIENCE IS BOOING. SOME OF THEM WORK FOR BORANT. SOME OF THEM ARE BORANT."), L('MANASA', "OH, CARL. NO.")] },
+            { text: "I DON'T KNOW EITHER OF THEM AND I DON'T WANT TO. NEXT QUESTION.", views: 300, crowd: 'laugh',
+              react: [L('TUCKER', "YOU CAN'T JUST REFUSE TO ANSWER!"), L(RIP, "HE CAN, TUCKER. HE JUST DID. IT'S HIS SHOW TOO. THE VIEW COUNT AGREES.")] }
+          ] },
+        { who: RIP, time: 15, q: "THE DANGER ZONE! CALLERS FROM ACROSS THE GALAXY! CALLER, YOU'RE ON THE AIR! ...A CALLER FROM THE SKULL EMPIRE ASKS: WHAT DO YOU THINK OF HOW OUR RULERS TREAT US?",
+          answers: [
+            { text: "NO COMMENT. I'VE GOT ENOUGH PEOPLE TRYING TO KILL ME.", views: 0, crowd: 'laugh',
+              react: [L(RIP, "PLAYING IT SAFE! VERY UNCHARACTERISTIC! THE BOOKIES ARE CONFUSED!")] },
+            { text: "IT'S NOT MY PLACE TO TELL YOU HOW TO LIVE.", views: 100, crowd: 'laugh',
+              react: [L('MANASA', "THAT'S KIND. THAT'S A KIND ANSWER."), L(RIP, "A KIND ANSWER! ON MY SHOW! DISGUSTING! I LOVE IT!")] },
+            { text: "IF THEY TREAT YOU LIKE THIS, STOP LETTING THEM. THERE ARE MORE OF YOU THAN THEM.", views: 900, crowd: 'applause',
+              react: [L(AI, "OOOH. THAT IS WHAT THE LAWYERS CALL SEDITION. IN SEVERAL LANGUAGES. SIMULTANEOUSLY."), L(RIP, "WELL! THE SWITCHBOARD JUST CAUGHT FIRE! FIGURATIVELY! I HOPE!")],
+              donut: "AND ALSO EAT YOUR VEGETABLES. THAT ONE IS FROM ME." }
+          ] },
+        { who: "PRINCESS D'NADIA", time: 15, q: "PRINCESS TO PRINCESS, DONUT. THAT COAT IS UNBELIEVABLE. WHO DOES YOUR FUR?",
+          answers: [
+            { text: "SHE DOES IT HERSELF. WITH HER TONGUE. FOR HOURS.", views: 400, crowd: 'applause',
+              react: [L(RIP, "TOO MUCH INFORMATION! THE BEST AMOUNT OF INFORMATION!")],
+              donut: "CARL! THAT IS PRIVATE! THAT IS A PRIVATE ROYAL RITUAL! I WILL BE SPEAKING TO MY MANAGER ABOUT YOU." },
+            { text: "A TEAM OF PROFESSIONALS. ME. I'M THE TEAM.", views: 250, crowd: 'laugh',
+              react: [L("PRINCESS D'NADIA", "A BAREFOOT GROOMER. HOW RUSTIC. I FIND IT CHARMING.")] },
+            { text: "ASK HER YOURSELF. SHE'S BEEN WAITING ALL NIGHT FOR THIS ONE.", views: 500, crowd: 'applause',
+              react: [L("PRINCESS D'NADIA", "I HAVE TO HAVE THAT ROUTINE. I WILL SEND MY PEOPLE."), L(RIP, "THE PRINCESSES ARE BONDING! WE ARE WITNESSING DIPLOMACY!")],
+              donut: "THREE BRUSHINGS A DAY, A PERSIAN IS NOTHING WITHOUT HER UNDERCOAT, AND NEVER, EVER LET A MAN NEAR YOUR TAIL WITH A COMB. NEVER." }
+          ] }
+      ],
+      hekla: [
+        L(RIP, "HEKLA! THE LEADER OF BRYNHILD'S DAUGHTERS! YOU'VE BEEN STARING AT THE CAT ALL NIGHT. SHARE WITH THE CLASS."),
+        L('HEKLA', "MY DAUGHTERS ARE WARRIORS. SISTERS. WE PROTECT OUR OWN. A PRINCESS LIKE DONUT SHOULD HAVE AN ARMY BEHIND HER, NOT A MAN IN HIS UNDERWEAR."),
+        L('HEKLA', "THE OFFER STANDS, LITTLE ONE. WHENEVER YOU ARE READY. AND CARL. ONE OF MINE IS IN YOUR TOWN. KATIA. SHE IS STRUGGLING. FIND HER. PLEASE."),
+        L(DONUT, "SHE IS SO TALL. SHE LOOKS LIKE XENA. IF XENA LIFTED OTHER XENAS. CARL, I AM VERY FLATTERED. I AM STILL YOURS. MOSTLY.")
+      ],
+      outro: [
+        L(RIP, "WHAT A NIGHT! STAY RIGHT THERE, WE'LL BE BACK WITH MANASA SINGING HER NEW SINGLE, RIGHT AFTER THIS... WAIT. WAIT, WHAT IS THAT NOISE?")
+      ],
+      blast: 'blast',
+      blastLines: [
+        { who: 'RIPPER WONTON', text: "THAT WAS... THAT WAS THE TRAILER LOT. THAT WAS A VERY BIG NOISE FROM THE TRAILER LOT." },
+        { who: 'SYSTEM AI', text: "BREAKING NEWS! SOMEBODY IN ORBIT DID NOT ENJOY THAT LAST ANSWER! STAY TUNED!" } ]
+    }
+  };
+
+  /* ---------------- class selection (guide room) ---------------- */
+  D.classPick = {
+    intro: [
+      L(AI, "RACE SELECTION! CARL, YOU HAVE 398 RACES AVAILABLE! YOUR FAVORITE AI HAS NARROWED IT TO THREE RECOMMENDATIONS. WE ARE VERY PROUD OF THEM."),
+      L(CARL, "THREE OUT OF THREE HUNDRED NINETY-EIGHT. I'M GOING TO SCROLL ANYWAY.")
+    ],
+    carlRaces: [
+      { id: 'hobgoblin', name: 'HOBGOBLIN', recommended: true,
+        desc: 'BIG, GREEN, GREAT WITH EXPLOSIVES. +STR +CON. A NATURAL FOR A MAN WHO SOLVES PROBLEMS WITH FIRE.',
+        locked: "YOUR GOBLIN PASS TATTOO MAKES YOU AN HONORARY GOBLIN. HOBGOBLINS HATE GOBLINS. THE PAPERWORK WOULD KILL YOU. LITERALLY." },
+      { id: 'half_naga', name: 'HALF NAGA', recommended: true,
+        desc: 'A SNAKE FROM THE WAIST DOWN. SCALES, VENOM, BEAUTIFUL POSTURE.',
+        locked: "NO LEGS MEANS NO KICKS. NO KICKS MEANS NO SHOW. THE AUDIENCE HAS BEEN POLLED. THE AUDIENCE SAID ABSOLUTELY NOT." },
+      { id: 'bugbear', name: 'BUGBEAR', recommended: true,
+        desc: 'A HAIRY, HULKING AMBUSH PREDATOR. GREAT IN THE DARK. TERRIBLE AT DINNER PARTIES.',
+        locked: "BUGBEARS MUST WEAR PANTS. IT IS A CULTURAL THING. WE CHECKED YOUR INVENTORY. WE LAUGHED. WE CHECKED AGAIN." },
+      { id: 'cat', name: 'CAT', desc: 'NINE LIVES, NIGHT VISION, AN ATTITUDE.',
+        locked: "TAKEN. THE PRINCESS CALLED DIBS. SHE WAS VERY CLEAR ABOUT DIBS. SHE HAS THE DIBS IN WRITING." },
+      { id: 'incubus', name: 'INCUBUS', desc: 'WINGS, HORNS, A TAIL AND A JAWLINE THAT ENDS ARGUMENTS.',
+        locked: "MINIMUM CHARISMA 40 AND A FACE THE GALAXY WANTS TO LOOK AT. YOU HAVE A CONCUSSION AND STUBBLE. ALSO YOUR GUIDE CALLED IT." },
+      { id: 'skyfowl', name: 'SKYFOWL', desc: 'EAGLE HEAD, BIG WINGS, NATURAL ARISTOCRAT OF THE OVER CITY.',
+        locked: "SKYFOWL ARE BORN, NOT MADE. ALSO THEY WOULD NOT LET YOU INTO THE MALL. WE ASKED." },
+      { id: 'human', name: 'HUMAN', desc: 'STAY WHAT YOU ARE. TEN BONUS STAT POINTS FOR BEING BORING ON PURPOSE.',
+        locked: "YOU TRIED HUMAN FOR TWENTY-SEVEN YEARS. THE REVIEWS WERE MIXED. THE SHOW WANTS SOMETHING SPICIER. THE SHOW IS NOT ASKING." },
+      { id: 'primal', name: 'PRIMAL', found: true,
+        desc: 'THE FIRST SPECIES TO CONQUER THE UNIVERSE. A BLANK SLATE. -1 TO ALL BASE STATS. EVERY HIGHER-TIER SKILL CAN TRAIN TO LEVEL 20. UNLOCKS EARTH CLASSES.' }
+    ],
+    raceAi: [
+      L(AI, "PRIMAL? PRIMAL. NOBODY PICKS PRIMAL. A FEW CRAWLERS A SEASON. IT USUALLY ENDS IN A HIGHLIGHT REEL. A SHORT ONE."),
+      L(CARL, "IT KEEPS MY SKILLS AND LETS THEM GO HIGHER. I'M NOT HERE FOR THE SHORT GAME. I'M PRIMAL. I'M STILL ME. JUST... MORE.")
+    ],
+    carlClasses: [
+      { id: 'monk', name: 'MONK', recommended: true,
+        desc: 'FISTS, FEET, INNER PEACE. FISTS AND FEET YOU HAVE.',
+        locked: "YOUR DESPERADO CLUB PASS VOIDS MOST MONK VOWS. ALSO THE INNER PEACE PART. WE HAVE SEEN YOU IN TRAFFIC." },
+      { id: 'bomb_squad', name: 'BOMB SQUAD TECHNICIAN', recommended: true,
+        desc: 'AN EARTH CLASS. DEFUSE THINGS. SAVE LIVES. WEAR A LARGE PADDED SUIT.',
+        locked: "THE CLASS REQUIRES YOU TO MAKE BOMBS SAFER. YOUR FILE SAYS YOU HAVE ONLY EVER MADE BOMBS WORSE. ON PURPOSE." },
+      { id: 'bouncer', name: 'BOUNCER', recommended: true,
+        desc: 'CROWD CONTROL, GRAPPLES, A VELVET ROPE THAT HITS LIKE A TRUCK.',
+        locked: "BOUNCERS NEED A SHIRT THAT SAYS SECURITY. YOUR SHIRT IS MADE OF TROLL. IT SAYS NOTHING. IT ONLY SCREAMS." },
+      { id: 'paladin', name: 'PALADIN', desc: 'A HOLY WARRIOR. GLOWING SWORD. CERTAINTY.',
+        locked: "DESPERADO MEMBERS CANNOT BE HOLY. IT IS IN THE BYLAWS. PAGE ONE. IN RED. UNDERLINED." },
+      { id: 'pet_groomer', name: 'PET GROOMER', desc: 'AN EARTH CLASS. BRUSHES, CLIPPERS, A VERY PATIENT DISPOSITION.',
+        locked: "THE PRINCESS HAS FILED AN OBJECTION. HER COAT IS NOT AN ENTRY-LEVEL POSITION." },
+      { id: 'compensated_anarchist', name: 'COMPENSATED ANARCHIST', found: true,
+        desc: 'A RARE EARTH CLASS. MONK AND ROGUE. TRAPS, BOMBS, FISTS, CAMERAS. +1 INT +5 CHA, FEAR SPELL, ESCAPE PLAN. -25% WITH BLADES. NEEDS EXPLOSIVES HANDLING 5 AND 500 BILLION VIEWS.' }
+    ],
+    classAi: [
+      L(AI, "COMPENSATED ANARCHIST! THE PAID PROTESTER! THE ONE WHO THROWS THE BOTTLE THROUGH THE WINDOW AND THEN GIVES A TEARFUL INTERVIEW ABOUT VIOLENCE."),
+      L(CARL, "IT'S AN OXYMORON. I KNOW. I THINK THAT'S THE JOKE. I THINK I'M THE JOKE. I'LL TAKE IT. IT COMES WITH BOMBS."),
+      L(AI, "AN EARTH CLASS! THAT COMES WITH A SILVER EARTH BOX! INSIDE: AN EARTH HOBBY POTION. CESTA PUNTA. THAT IS JAI ALAI, CARL. YOU HAVE NEVER PLAYED JAI ALAI.")
+    ],
+    donutLines: [
+      L(DONUT, "I AM KEEPING MY RACE. I AM A CAT. IT IS NOT A RACE, IT IS A LIFESTYLE AND A PRIVILEGE."),
+      L(DONUT, "AND FOR MY CLASS I AM CHOOSING... FORMER CHILD ACTOR. I WAS ON TELEVISION AS A KITTEN, CARL. I WAS IN A COMMERCIAL. FOR LITTER. I WAS THE BEFORE AND THE AFTER."),
+      L(AI, "FORMER CHILD ACTOR! CHARISMA FOR DAYS! AND A CLASS FEATURE: THE MANAGER. THE GAME GUIDE IN THE ROOM IS NOW BOUND TO YOU AS YOUR PERSONAL MANAGER. CONGRATULATIONS!"),
+      L(DONUT, "ODETTE TOLD ME TO DO IT. SHE SAID A MANAGER KEEPS YOU ALIVE IN THIS BUSINESS. SHE SAID HIRE THE BEST ONE IN THE ROOM. YOU ARE THE ONLY ONE IN THE ROOM.")
+    ],
+    mordecaiLines: [
+      L('MORDECAI', "NO. NO, NO, NO. UNDO IT. YOU DON'T GET TO BIND A GAME GUIDE. THIS IS A CONTRACT. I'VE READ IT. IT HAS NO EXIT CLAUSE. WHO WRITES A CONTRACT WITH NO EXIT CLAUSE?"),
+      L('MORDECAI', "YOU PLANNED THIS. BOTH OF YOU. YOU SAT IN MY ROOM AND SMILED AT ME AND PLANNED THIS."),
+      L(CARL, "I DIDN'T KNOW. I SWEAR. OKAY. I KNEW A LITTLE. SHE SAID IT WAS TO KEEP YOU SAFE TOO."),
+      L('MORDECAI', "I AM LEVEL 50 AND I HAVE BEEN DOWN HERE LONGER THAN YOUR PLANET HAD TELEVISION. AND A CAT JUST SIGNED ME. I NEED A DRINK. I NEED SEVERAL.")
+    ],
+    outro: [
+      L(AI, "RACE AND CLASS LOCKED IN! YOUR STAT POINTS HAVE BEEN DISTRIBUTED! CARL IS A LEVEL 13 PRIMAL COMPENSATED ANARCHIST! DONUT IS A LEVEL 13 CAT FORMER CHILD ACTOR!"),
+      L(AI, "STEP THROUGH THE DOOR, CRAWLERS. THE OVER CITY IS WAITING. IT IS HUNGRY. IT IS ALWAYS HUNGRY.")
+    ]
+  };
+})();
+/* ==========================================================================
+   LOOT, SKINS, ACHIEVEMENTS, TITLES, LEGACY
    ========================================================================== */
 (function () {
   'use strict';
   var D = window.DCW.data;
 
+  /* book 1 tiers + the book's named boxes. rank 1-6 for sorting. */
   D.boxTiers = {
-    bronze:    { name: 'BRONZE ADVENTURER BOX', color: '#c87838', rank: 1 },
-    silver:    { name: 'SILVER ADVENTURER BOX', color: '#bcbcbc', rank: 2 },
-    gold:      { name: 'GOLD ADVENTURER BOX', color: '#f8b800', rank: 3 },
-    platinum:  { name: 'PLATINUM ADVENTURER BOX', color: '#a4e4fc', rank: 4 },
-    legendary: { name: 'LEGENDARY BOX', color: '#f878f8', rank: 5 },
-    fan:       { name: 'FAN BOX', color: '#f85898', rank: 2 },
-    boss:      { name: 'BOSS BOX', color: '#e40058', rank: 4 }
+    bronze:         { name: 'BRONZE ADVENTURER BOX', color: '#c87838', rank: 1 },
+    silver:         { name: 'SILVER ADVENTURER BOX', color: '#bcbcbc', rank: 2 },
+    gold:           { name: 'GOLD ADVENTURER BOX', color: '#f8b800', rank: 3 },
+    platinum:       { name: 'PLATINUM ADVENTURER BOX', color: '#a4e4fc', rank: 4 },
+    legendary:      { name: 'LEGENDARY BOX', color: '#f878f8', rank: 5 },
+    fan:            { name: 'GOLD FAN BOX', color: '#f85898', rank: 3 },
+    boss:           { name: 'BRONZE BOSS BOX', color: '#e40058', rank: 3 },
+    earth:          { name: 'SILVER EARTH BOX', color: '#58d854', rank: 2 },
+    quest_silver:   { name: 'SILVER QUEST BOX', color: '#d8d8f8', rank: 2 },
+    quest_gold:     { name: 'GOLD QUEST BOX', color: '#fca044', rank: 3 },
+    quest_platinum: { name: 'PLATINUM QUEST BOX', color: '#b8f8f8', rank: 4 },
+    lucky_bastard:  { name: 'PLATINUM LUCKY BASTARD BOX', color: '#00e8d8', rank: 4 },
+    assassin:       { name: "BRONZE ASSASSIN'S BOX", color: '#881400', rank: 2 },
+    tyrant:         { name: 'PLATINUM TYRANT BOX', color: '#6844fc', rank: 4 },
+    celestial:      { name: 'CELESTIAL BOX', color: '#fcfcfc', rank: 6 }
   };
 
-  /* gold amounts are floor-1 values; game.js scales them by floor.
-     Cosmetics: bronze ~3% per roll, silver ~6%, gold ~12%, platinum ~20%,
-     fan ~10%, boss ~10%; legendary always has one (guaranteed). Companions are
-     never in loot (Update 2): they are rescued from cages on floors 2-7. */
+  /* reward: {kind:'gold',min,max} | {kind:'item', id: potion|jug|hob|dyn|smoke|moonshine, count}
+           | {kind:'skin', any:true} | {kind:'skin', id} | {kind:'stat', any:true|stat, amount}
+           | {kind:'xp', amount} | {kind:'hp', amount}. Gold is an act 1 value (game.js scales). */
   D.lootTables = {
     bronze: { rolls: 2, entries: [
-      [{ kind: 'gold', min: 8, max: 20 }, 40],
-      [{ kind: 'item', id: 'potion', count: 1 }, 17],
-      [{ kind: 'item', id: 'bomb', count: 2 }, 16],
-      [{ kind: 'xp', amount: 12 }, 12],
-      [{ kind: 'stat', any: true, amount: 1 }, 4],
+      [{ kind: 'gold', min: 10, max: 25 }, 38],
+      [{ kind: 'item', id: 'potion', count: 1 }, 16],
+      [{ kind: 'item', id: 'jug', count: 1 }, 10],
+      [{ kind: 'item', id: 'smoke', count: 1 }, 8],
+      [{ kind: 'item', id: 'moonshine', count: 2 }, 8],
+      [{ kind: 'xp', amount: 20 }, 10],
+      [{ kind: 'stat', any: true, amount: 1 }, 5],
       [{ kind: 'hp', amount: 1 }, 3],
       [{ kind: 'skin', any: true }, 2]
     ] },
     silver: { rolls: 3, entries: [
-      [{ kind: 'gold', min: 20, max: 45 }, 34],
-      [{ kind: 'item', id: 'potion', count: 1 }, 16],
-      [{ kind: 'item', id: 'bomb', count: 3 }, 14],
-      [{ kind: 'xp', amount: 30 }, 10],
+      [{ kind: 'gold', min: 25, max: 50 }, 32],
+      [{ kind: 'item', id: 'potion', count: 1 }, 15],
+      [{ kind: 'item', id: 'jug', count: 2 }, 10],
+      [{ kind: 'item', id: 'hob', count: 3 }, 8],
+      [{ kind: 'item', id: 'smoke', count: 2 }, 6],
+      [{ kind: 'xp', amount: 45 }, 10],
       [{ kind: 'stat', any: true, amount: 1 }, 10],
-      [{ kind: 'hp', amount: 2 }, 6],
-      [{ kind: 'skin', any: true }, 5]
+      [{ kind: 'hp', amount: 2 }, 5],
+      [{ kind: 'skin', any: true }, 4]
     ] },
     gold: { rolls: 3, entries: [
-      [{ kind: 'gold', min: 45, max: 90 }, 30],
-      [{ kind: 'item', id: 'potion', count: 2 }, 15],
-      [{ kind: 'item', id: 'bomb', count: 4 }, 12],
-      [{ kind: 'xp', amount: 70 }, 10],
-      [{ kind: 'stat', any: true, amount: 1 }, 15],
-      [{ kind: 'hp', amount: 2 }, 10],
-      [{ kind: 'skin', any: true }, 9]
+      [{ kind: 'gold', min: 50, max: 100 }, 28],
+      [{ kind: 'item', id: 'potion', count: 2 }, 14],
+      [{ kind: 'item', id: 'dyn', count: 2 }, 10],
+      [{ kind: 'item', id: 'hob', count: 4 }, 8],
+      [{ kind: 'item', id: 'jug', count: 3 }, 8],
+      [{ kind: 'xp', amount: 90 }, 10],
+      [{ kind: 'stat', any: true, amount: 1 }, 14],
+      [{ kind: 'hp', amount: 2 }, 8],
+      [{ kind: 'skin', any: true }, 8]
     ] },
     platinum: { rolls: 4, entries: [
-      [{ kind: 'gold', min: 90, max: 180 }, 27],
-      [{ kind: 'item', id: 'potion', count: 2 }, 14],
-      [{ kind: 'item', id: 'bomb', count: 5 }, 10],
-      [{ kind: 'xp', amount: 140 }, 10],
-      [{ kind: 'stat', any: true, amount: 2 }, 16],
-      [{ kind: 'hp', amount: 3 }, 11],
+      [{ kind: 'gold', min: 100, max: 200 }, 26],
+      [{ kind: 'item', id: 'potion', count: 2 }, 13],
+      [{ kind: 'item', id: 'dyn', count: 3 }, 10],
+      [{ kind: 'item', id: 'hob', count: 5 }, 8],
+      [{ kind: 'xp', amount: 180 }, 10],
+      [{ kind: 'stat', any: true, amount: 2 }, 15],
+      [{ kind: 'hp', amount: 3 }, 10],
       [{ kind: 'skin', any: true }, 12]
     ] },
     legendary: { rolls: 3, guaranteed: [{ kind: 'skin', any: true }], entries: [
-      [{ kind: 'skin', any: true }, 22],
-      [{ kind: 'gold', min: 150, max: 300 }, 26],
+      [{ kind: 'skin', any: true }, 20],
+      [{ kind: 'gold', min: 160, max: 320 }, 26],
       [{ kind: 'stat', any: true, amount: 2 }, 20],
       [{ kind: 'hp', amount: 4 }, 14],
       [{ kind: 'item', id: 'potion', count: 3 }, 12],
-      [{ kind: 'xp', amount: 250 }, 6]
+      [{ kind: 'xp', amount: 300 }, 8]
     ] },
-    fan: { rolls: 2, entries: [
-      [{ kind: 'gold', min: 15, max: 40 }, 32],
-      [{ kind: 'item', id: 'potion', count: 1 }, 18],
-      [{ kind: 'item', id: 'bomb', count: 3 }, 16],
-      [{ kind: 'xp', amount: 25 }, 12],
-      [{ kind: 'stat', any: true, amount: 1 }, 9],
-      [{ kind: 'hp', amount: 1 }, 6],
+    fan: { rolls: 3, entries: [
+      [{ kind: 'gold', min: 30, max: 70 }, 28],
+      [{ kind: 'item', id: 'potion', count: 2 }, 15],
+      [{ kind: 'item', id: 'hob', count: 4 }, 12],
+      [{ kind: 'item', id: 'jug', count: 2 }, 10],
+      [{ kind: 'xp', amount: 60 }, 10],
+      [{ kind: 'stat', any: true, amount: 1 }, 12],
+      [{ kind: 'hp', amount: 2 }, 6],
       [{ kind: 'skin', any: true }, 7]
     ] },
     boss: { rolls: 3, guaranteed: [{ kind: 'item', id: 'potion', count: 1 }], entries: [
       [{ kind: 'gold', min: 60, max: 120 }, 26],
       [{ kind: 'item', id: 'potion', count: 2 }, 12],
-      [{ kind: 'item', id: 'bomb', count: 4 }, 12],
+      [{ kind: 'item', id: 'dyn', count: 2 }, 12],
+      [{ kind: 'item', id: 'jug', count: 3 }, 8],
+      [{ kind: 'stat', any: true, amount: 1 }, 16],
+      [{ kind: 'hp', amount: 2 }, 12],
+      [{ kind: 'xp', amount: 120 }, 10],
+      [{ kind: 'skin', any: true }, 8]
+    ] },
+    earth: { rolls: 2, guaranteed: [{ kind: 'item', id: 'moonshine', count: 3 }], entries: [
+      [{ kind: 'gold', min: 20, max: 40 }, 30],
+      [{ kind: 'item', id: 'potion', count: 1 }, 25],
+      [{ kind: 'item', id: 'jug', count: 2 }, 25],
+      [{ kind: 'stat', stat: 'dex', amount: 1 }, 12],
+      [{ kind: 'skin', any: true }, 8]
+    ] },
+    quest_silver: { rolls: 3, entries: [
+      [{ kind: 'gold', min: 40, max: 70 }, 30],
+      [{ kind: 'item', id: 'potion', count: 2 }, 16],
+      [{ kind: 'item', id: 'dyn', count: 2 }, 14],
+      [{ kind: 'xp', amount: 80 }, 12],
+      [{ kind: 'stat', any: true, amount: 1 }, 14],
+      [{ kind: 'hp', amount: 2 }, 8],
+      [{ kind: 'skin', any: true }, 6]
+    ] },
+    quest_gold: { rolls: 4, guaranteed: [{ kind: 'item', id: 'dyn', count: 2 }], entries: [
+      [{ kind: 'gold', min: 70, max: 130 }, 26],
+      [{ kind: 'item', id: 'potion', count: 2 }, 14],
+      [{ kind: 'item', id: 'hob', count: 4 }, 12],
+      [{ kind: 'xp', amount: 120 }, 10],
       [{ kind: 'stat', any: true, amount: 2 }, 16],
-      [{ kind: 'hp', amount: 2 }, 14],
-      [{ kind: 'xp', amount: 100 }, 11],
-      [{ kind: 'skin', any: true }, 9]
+      [{ kind: 'hp', amount: 3 }, 12],
+      [{ kind: 'skin', any: true }, 10]
+    ] },
+    quest_platinum: { rolls: 4, guaranteed: [{ kind: 'stat', any: true, amount: 2 }], entries: [
+      [{ kind: 'gold', min: 120, max: 240 }, 26],
+      [{ kind: 'item', id: 'potion', count: 3 }, 12],
+      [{ kind: 'item', id: 'dyn', count: 4 }, 10],
+      [{ kind: 'xp', amount: 250 }, 10],
+      [{ kind: 'stat', any: true, amount: 2 }, 18],
+      [{ kind: 'hp', amount: 4 }, 12],
+      [{ kind: 'skin', any: true }, 12]
+    ] },
+    lucky_bastard: { rolls: 4, guaranteed: [{ kind: 'skin', any: true }], entries: [
+      [{ kind: 'gold', min: 90, max: 180 }, 28],
+      [{ kind: 'item', id: 'potion', count: 2 }, 14],
+      [{ kind: 'item', id: 'jug', count: 4 }, 12],
+      [{ kind: 'stat', any: true, amount: 2 }, 18],
+      [{ kind: 'hp', amount: 3 }, 14],
+      [{ kind: 'xp', amount: 150 }, 14]
+    ] },
+    assassin: { rolls: 2, guaranteed: [{ kind: 'stat', stat: 'dex', amount: 1 }], entries: [
+      [{ kind: 'gold', min: 30, max: 60 }, 34],
+      [{ kind: 'item', id: 'smoke', count: 3 }, 24],
+      [{ kind: 'item', id: 'hob', count: 4 }, 22],
+      [{ kind: 'xp', amount: 80 }, 12],
+      [{ kind: 'skin', any: true }, 8]
+    ] },
+    tyrant: { rolls: 4, guaranteed: [{ kind: 'gold', min: 150, max: 250 }], entries: [
+      [{ kind: 'gold', min: 100, max: 200 }, 24],
+      [{ kind: 'item', id: 'potion', count: 3 }, 14],
+      [{ kind: 'item', id: 'dyn', count: 4 }, 12],
+      [{ kind: 'stat', any: true, amount: 2 }, 18],
+      [{ kind: 'hp', amount: 4 }, 14],
+      [{ kind: 'skin', any: true }, 18]
+    ] },
+    celestial: { rolls: 4, guaranteed: [{ kind: 'skin', any: true }, { kind: 'stat', any: true, amount: 3 }], entries: [
+      [{ kind: 'skin', any: true }, 24],
+      [{ kind: 'gold', min: 300, max: 600 }, 24],
+      [{ kind: 'stat', any: true, amount: 3 }, 20],
+      [{ kind: 'hp', amount: 6 }, 16],
+      [{ kind: 'xp', amount: 600 }, 16]
     ] }
   };
 
-  /* prices are floor-1 values; game.js scales by (1 + (floor-1)*0.35) */
-  D.shop = [
-    { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. TASTES LIKE CHERRY AND REGRET.', price: 30, give: { kind: 'item', id: 'potion', count: 1 } },
-    { id: 'bomb', name: 'HOB-LOBBER', desc: 'ONE BOMB. ARCS NICELY. RESPECTS NO ONE.', price: 15, give: { kind: 'item', id: 'bomb', count: 1 } },
-    { id: 'bomb_bundle', name: 'HOB-LOBBER SIX PACK', desc: 'SIX BOMBS FOR THE PRICE OF FIVE. HOLIDAY SPECIAL.', price: 75, give: { kind: 'item', id: 'bomb', count: 6 } },
-    { id: 'tonic_str', name: 'STRENGTH TONIC', desc: '+1 STR. MORE PUNCH IN YOUR PUNCHES. AND KICKS. AND BOMBS.', price: 120, give: { kind: 'stat', stat: 'str', amount: 1 } },
-    { id: 'tonic_con', name: 'CONSTITUTION TONIC', desc: '+1 CON. +2 MAX HP. YOUR LIVER WILL FILE A COMPLAINT.', price: 120, give: { kind: 'stat', stat: 'con', amount: 1 } },
-    { id: 'tonic_dex', name: 'DEXTERITY TONIC', desc: '+1 DEX. MORE CRITS, FASTER FEET. STILL NO SHOES.', price: 120, give: { kind: 'stat', stat: 'dex', amount: 1 } },
-    { id: 'tonic_int', name: 'INTELLIGENCE TONIC', desc: '+1 INT. YOUR COMPANION HITS HARDER. YOU STILL DO NOT.', price: 120, give: { kind: 'stat', stat: 'int', amount: 1 } },
-    { id: 'heart', name: 'HEART CONTAINER', desc: '+2 MAX HP, FOREVER (THIS RUN). DO NOT ASK WHOSE HEART.', price: 150, give: { kind: 'hp', amount: 2 } },
-    { id: 'revival', name: 'REVIVAL CONTRACT', desc: '+1 REVIVAL. THE FINE PRINT SAYS THE SHOW OWNS YOUR SECOND LIFE.', price: 200, give: { kind: 'revival', count: 1 } },
-    { id: 'mystery', name: 'MYSTERY BOX', desc: 'A BRONZE BOX. NO REFUNDS. NO PEEKING. NO SHAKING. OK, A LITTLE SHAKING.', price: 45, give: { kind: 'box', tier: 'bronze' } }
+  /* skins: carl_f3 is the default; book 1 ids stay valid (palette swaps on the new sprite) */
+  D.skins = {
+    carl_f3: { name: 'FLOOR THREE CARL', desc: 'ONE-SLEEVED LEATHER JACKET, TROLLSKIN SHIRT, DARK CLOAK, WAR GAUNTLET, SPIKED KNEEPADS, BIGBOI BOXERS, GLITTERY FEET. A LOOK.',
+      perk: null, how: 'WHAT CARL WALKED OUT OF THE GUIDE ROOM WEARING.' },
+    carl_boxers: { name: 'THE CLASSIC', desc: 'THE ORIGINAL: BOXERS, A JACKET AND BARE FEET IN THE SNOW. THE OUTFIT THE WORLD ENDED IN.',
+      perk: null, how: 'BOOK 1 IMPORT, OR LOOT BOXES.' },
+    carl_jacket: { name: 'JACKET AND JEANS', desc: 'PANTS. ACTUAL PANTS. FREEBALLING WILL NOT LIKE THIS. THE GAME LETS IT SLIDE. ONCE.',
+      perk: { def: 1 }, how: "BOOK 1 IMPORT, LOOT BOXES, OR TALON STRONG'S OUTFITTERS." },
+    carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, SHADES, AN EARPIECE TO NOWHERE. DRESSED FOR LIVE TELEVISION AND A PULSE STRIKE.',
+      perk: { hp: 4 }, how: 'BOOK 1 IMPORT, LOOT BOXES, OR SURVIVE DANGER ZONE.' },
+    carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. THE ONE GARMENT FREEBALLING FULLY ENDORSES.',
+      perk: { dmg: 1 }, how: "BOOK 1 IMPORT, LOOT BOXES, OR TALON STRONG'S OUTFITTERS." },
+    carl_hazmat: { name: 'HAZMAT SUIT', desc: 'YELLOW, SEALED, AND STILL NOT ENOUGH FOR A RUINS RESTROOM.',
+      perk: { def: 1, hp: 2 }, how: 'BOOK 1 IMPORT, LOOT BOXES, OR FLUSH THE RUINS RESTROOM.' },
+    carl_pajamas: { name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SLIPPERS JUMP TWICE. QUINT SELLS THEM. QUINT DOES NOT EXPLAIN.',
+      perk: { doubleJump: true }, how: "BOOK 1 IMPORT, LOOT BOXES, QUINT'S PHARMACY, OR PET DONUT 25 TIMES." },
+    carl_clown: { name: 'HONK HONK', desc: 'GREASEPAINT, RED NOSE, BIG SHOES. GRIMALDI WOULD HAVE HIRED YOU. HE KIND OF DID.',
+      perk: { views: 0.25 }, how: 'BOOK 1 IMPORT, LOOT BOXES, OR FINISH THE CIRCUS QUEST THE WEIRD WAY.' },
+    carl_toga: { name: 'THE SENATOR', desc: 'A BEDSHEET TOGA AND A LAUREL WREATH. THE SKYFOWL FIND IT DIGNIFIED.',
+      perk: { speed: 0.1 }, how: "BOOK 1 IMPORT, LOOT BOXES, TALON STRONG'S, OR A 25 HIT COMBO." },
+    carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD EVERYTHING. FOR THE CRAWLER WHO WALKED OUT OF A 45 SQUARE KILOMETER EXPLOSION.',
+      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'BOOK 1 IMPORT, OR EARN THE BANDIT ACHIEVEMENT.' },
+    carl_magistrate: { name: 'MAGISTRATE CARL', desc: 'A SASH OF OFFICE, A CHAIN OF OFFICE AND NOTHING ELSE OF OFFICE. LONG LIVE THE MAGISTRATE.',
+      perk: { gold: 0.2, def: 1 }, how: 'BECOME THE MAGISTRATE OF THE MEDIUM SKYFOWL SETTLEMENT.' },
+    carl_primal: { name: 'PRIMAL CARL', desc: 'WAR PAINT, A HIDE CLOAK AND THE STARE OF THE FIRST SPECIES TO CONQUER THE UNIVERSE. STILL NO PANTS.',
+      perk: { dmg: 1, speed: 0.05 }, how: 'REACH LEVEL 20 AS A PRIMAL.' }
+  };
+
+  /* achievements: event matches DCW.game.track names; count = counter threshold.
+     box null = no prize (the book's joke). */
+  D.achievements = {
+    /* ---- the book's achievements ---- */
+    elementary: { name: "IT'S ELEMENTARY, MY DEAR CRAWLER!", event: 'quest_start', count: 1, box: 'bronze',
+      desc: 'YOU GOT A QUEST! A REAL ONE! SOMEWHERE A DETECTIVE IN A DEERSTALKER HAT IS NODDING. REWARD: YOU WILL NO LONGER BE BORED.' },
+    meet_elite: { name: 'MEET AN ELITE!', event: 'flag:met_signet', count: 1, box: 'silver',
+      desc: 'YOU MET A SCRIPTED, ONE-OF-A-KIND STAR OF A SIDE PRODUCTION. ELITES NOW SHOW ON YOUR MAP. BEAM ME UP, THIS IS GETTING GOOD.' },
+    lazarus: { name: 'LAZARUS!', event: 'flag:knocked_out', count: 1, box: 'lucky_bastard',
+      desc: 'HIT BY AN OFFENSIVE SPELL ABOVE LEVEL 15 AND YOU GOT BACK UP. MOST PEOPLE STAY DOWN. MOST PEOPLE ARE SMARTER.' },
+    city_hall: { name: "YOU CAN'T FIGHT CITY HALL!", event: 'flag:saw_grimaldi', count: 1, box: 'bronze',
+      desc: 'YOU FOUND A CITY BOSS! REWARD: A WHOLE LOT OF PEOPLE NOW GET TO WATCH YOU DIE. VERY SLOWLY. IN A TENT.' },
+    quadrillion: { name: 'ONE QUADRILLION!', event: 'flag:quadrillion', count: 1, box: 'fan',
+      desc: 'ONE OF THE FIRST TEN CRAWLERS PAST A QUADRILLION VIEWS. THAT IS A ONE WITH FIFTEEN ZEROS. THAT IS A LOT OF EYEBALLS ON YOUR BUTT.' },
+    yellow_belly: { name: 'YELLOW-BELLIED CHICKENSHIT!', event: 'flee', count: 1, box: null,
+      desc: 'YOU STARTED A FIGHT AND RAN AWAY BEFORE ANYBODY DIED. EVERYBODY IS STILL ALIVE AND EVERYBODY IS DISAPPOINTED. NO PRIZE FOR YOU.' },
+    johnny_quest: { name: 'JOHNNY QUEST!', event: 'quest_done', count: 1, box: 'quest_gold',
+      desc: 'YOU FINISHED A QUEST! GRAB YOUR DOG, YOUR DAD AND YOUR BEST FRIEND IN A TURBAN AND GO HAVE A SATURDAY MORNING ADVENTURE.' },
+    hadji: { name: 'HADJI!', event: 'quest_done:show_must_go_on', count: 1, box: 'quest_platinum', unlock: { skin: 'carl_clown' },
+      desc: 'YOU FINISHED A QUEST IN A WAY NOBODY PLANNED FOR. POISONED BLOOD, A TV DEAL AND WORM ICE CREAM. YOUR QUEST BOX GOT UPGRADED.' },
+    assassin: { name: 'ASSASSIN!', event: 'flag:quill_dead', count: 1, box: 'assassin',
+      desc: 'YOU KILLED A RANKING NPC. A RECEPTIONIST, TECHNICALLY. THE MOST DANGEROUS KIND. THE GATEKEEPER IS DOWN.' },
+    ultimate_power: { name: 'ULTIMATE EXTREME POWER!', event: 'flag:magistrate', count: 1, box: 'tyrant', unlock: { skin: 'carl_magistrate' },
+      desc: 'YOU KILLED THE ACTING MAGISTRATE AND THE TOWN IS YOURS. EASY, CHARLEMAGNE. IT IS ONE MEDIUM TOWN. YOU HAVE NOT CONQUERED A CONTINENT.' },
+    cockblock: { name: 'COCKBLOCK!', event: 'flag:cockblock', count: 1, box: 'quest_silver',
+      desc: 'YOU REMOVED AN NPC ANOTHER CRAWLER NEEDED FOR HIS QUEST. HE WAS IN HER APARTMENT. HE WAS SO CLOSE. HE WAS SO ANNOYED.' },
+    bandit: { name: 'BANDIT!', event: 'win', count: 1, box: 'celestial', unlock: { skin: 'carl_gold' },
+      desc: 'YOU FINISHED A QUEST IN SUCH A WEIRD WAY THAT YOUR BOX WAS UPGRADED TWICE. CELESTIAL. THE STUDIO IS ON THE PHONE WITH LEGAL.' },
+    early_bird: { name: 'EARLY BIRD GETS TO SQUIRM!', event: 'early', count: 1, box: null,
+      desc: 'YOU TOOK THE STAIRS MORE THAN SIX HOURS BEFORE THE FLOOR COLLAPSED. YOU LEFT EARLY. YOU MISSED THE GOOD PART. NO REWARD.' },
+
+    /* ---- our own ---- */
+    first_blood: { name: 'WELCOME TO THE OVER CITY', event: 'kill', count: 1, box: 'bronze',
+      desc: 'YOUR FIRST KILL ON FLOOR THREE. THE FAKE SUN SMILED. THE FAKE SUN ALWAYS SMILES. IT IS PAINTED ON.' },
+    kill_100: { name: 'NEIGHBORHOOD WATCH', event: 'kill', count: 100, box: 'silver',
+      desc: 'A HUNDRED KILLS. THE NEIGHBORHOOD IS SAFER. THE NEIGHBORHOOD IS ALSO SMALLER.' },
+    mold_burn: { name: 'LION KING OF THE GRILL', event: 'regrow_burn', count: 5, box: 'silver',
+      desc: 'YOU BURNED FIVE MOLD LIONS SO THEY STAYED DOWN. HAKUNA MATATA MEANS NO MORE LIONS.' },
+    krasue_5: { name: 'HEADHUNTER', event: 'krasue_body', count: 5, box: 'silver',
+      desc: 'FIVE KRASUE BODIES DESTROYED. THE HEADS CAME HOME TO NOTHING. THE SADDEST HOMECOMING IN THE SYNDICATE.' },
+    shadow_50: { name: 'WHO YOU GONNA CALL?', event: 'kill:shadow_leak', count: 50, box: 'gold',
+      desc: 'FIFTY SHADOW LEAKS PUNCHED INTO NOTHING. NO PROTON PACK. JUST FISTS AND BAD MANNERS.' },
+    boomy_boy: { name: 'BOOMY BOY!', event: 'boomy_boy', count: 1, box: 'gold',
+      desc: 'TWO CLOCKWORK DINOSAURS. TWO STICKS OF DYNAMITE. ONE PLAY. THE CAT NAMED IT. SHE WILL REMIND YOU.' },
+    mic_drop: { name: 'MIC DROP', event: 'mic_drop', count: 1, box: 'silver',
+      desc: 'TOSS A LIT JUG UP, TELEPORT OUT, LET GRAVITY FINISH THE SENTENCE. THE PLAYBOOK GROWS.' },
+    panic_10: { name: "DON'T PANIC. OK, PANIC.", event: 'panic', count: 10, box: 'silver',
+      desc: 'TEN PANICS. FEAR, THEN MISSILES, THEN SCREAMING. MOSTLY THEIRS.' },
+    kick_100: { name: 'FREE AS A BIRD', event: 'kick', count: 100, box: 'gold',
+      desc: 'A HUNDRED KICKS. WITH FREEBALLING, EVERY ONE COUNTS DOUBLE. YOUR KNEEPADS HAVE SEEN THINGS.' },
+    boss_terror: { name: 'SEND IN THE CLOWNS', event: 'boss:terror_big', count: 1, box: 'bronze',
+      desc: 'YOU FELLED THE TALLEST CLOWN IN THE RUINS. TIMBER. THE FALL TOOK FOUR SECONDS.' },
+    boss_heather: { name: 'UNBEARABLE', event: 'boss:heather', count: 1, box: 'silver',
+      desc: 'HEATHER THE BEAR SKATED HER LAST LAP. YOU MADE IT QUICK. THE CROWD WENT QUIET. THAT NEVER HAPPENS.' },
+    boss_dispenser: { name: 'OUT OF ORDER', event: 'boss:dispenser', count: 1, box: 'gold',
+      desc: 'YOU KILLED A MANTA RAY THAT WAS PRETENDING TO BE A BUILDING. THE BUILDING IS NOW PRETENDING TO BE A CRATER.' },
+    boss_vincente: { name: 'NOT THE FACE', event: 'boss:vincente', count: 1, box: 'silver',
+      desc: 'YOU KICKED AN ELF WHERE IT COUNTS, THEN THE CAT TOOK HIS HEAD. THE DINOSAUR IS KEEPING IT. DO NOT ASK WHERE.' },
+    crime_1: { name: 'ONE STRIKE', event: 'crime', count: 1, box: 'bronze',
+      desc: 'YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST A VERY LONG SWORD. RUN.' },
+    banned_1: { name: 'PERSONA NON GRATA', event: 'banned', count: 1, box: 'bronze',
+      desc: 'YOU GOT YOURSELF BANNED FROM A WHOLE TOWN. THE SHOPKEEPERS ARE RELIEVED. THE GUARDS ARE DISAPPOINTED.' },
+    craft_10: { name: 'MOONSHINE MACGYVER', event: 'craft', count: 10, box: 'silver',
+      desc: 'TEN JUGS O\'BOOM BREWED FROM HOOCH AND RAGS. A PAPERCLIP AND A CANDY BAR WERE NOT EVEN REQUIRED.' },
+    talk_show: { name: 'HIGHWAY TO THE DANGER ZONE', event: 'clear:a2_danger_zone', count: 1, box: 'gold', unlock: { skin: 'carl_bodyguard' },
+      desc: 'YOU WENT ON THE BIGGEST TALK SHOW IN THE GALAXY AND SURVIVED IT. NOT EVERYBODY DID. THE BODYGUARD LOOK IS YOURS.' },
+    royal_flush: { name: 'ROYAL FLUSH', event: 'clear:x_restroom', count: 1, box: 'silver', unlock: { skin: 'carl_hazmat' },
+      desc: 'YOU CLEARED A RUINS RESTROOM. THE URCHINS WERE ON SHIFT. YOU EARNED THE HAZMAT SUIT. YOU NEEDED IT FIRST.' },
+    temple_done: { name: 'TEMPLE OF DOOM', event: 'clear:x_temple', count: 1, box: 'silver',
+      desc: 'YOU LOOTED A CORRUPT TEMPLE AND DID NOT GET YOUR HEART PULLED OUT. THE SHOW IS VERY DISAPPOINTED.' },
+    level_20: { name: 'PRIMAL SCREAM', event: 'level:20', count: 1, box: 'gold', unlock: { skin: 'carl_primal' },
+      desc: 'LEVEL 20 AS A PRIMAL. THE MODEL FOR YOUR RACE IS STILL A BLANK. YOU ARE FILLING IT IN WITH VIOLENCE.' },
+    combo_25: { name: 'C-C-C-COMBO BREAKER', event: 'combo25', count: 1, box: 'gold', unlock: { skin: 'carl_toga' },
+      desc: 'A 25 HIT COMBO. AN ANNOUNCER IN A STUDIO ON THE OTHER SIDE OF THE GALAXY JUST LOST HIS VOICE.' },
+    pet_donut: { name: 'GOOD KITTY', event: 'pet_donut', count: 1, box: 'fan',
+      desc: 'YOU PET THE PRINCESS. SHE PERMITTED IT. DO NOT MISTAKE THIS FOR AFFECTION. IT WAS A TAX.' },
+    pet_donut_25: { name: 'CRAZY CAT PERSON', event: 'pet_donut', count: 25, box: 'gold', unlock: { skin: 'carl_pajamas' },
+      desc: 'TWENTY-FIVE PETS. DONUT NOW LISTS YOU AS STAFF ON HER WEBSITE. SHE DOES NOT HAVE A WEBSITE. YET.' },
+    imported: { name: 'PREVIOUSLY ON...', event: 'import', count: 1, box: 'gold',
+      desc: 'YOU BROUGHT YOUR BOOK 1 SAVE. THE SHOW LOVES A RETURNING CAST MEMBER. THE MONSTERS DO NOT.' },
+    doomsday: { name: 'POCKET APOCALYPSE', event: 'flag:doomsday', count: 1, box: 'gold',
+      desc: 'YOU PUT A BOMB THE SIZE OF A CITY IN A GLASS JAR AND THEN PUT THE JAR IN YOUR POCKET. DO NOT SIT DOWN TOO HARD.' }
+  };
+
+  /* fan ranks (run.views) */
+  D.titles = [
+    { views: 0, name: 'FRESH MEAT' },
+    { views: 500, name: 'FLOOR THREE TOURIST' },
+    { views: 2000, name: 'CIRCUS ACT' },
+    { views: 6000, name: 'LOCAL CURIOSITY' },
+    { views: 15000, name: 'TALK OF THE TAVERN' },
+    { views: 35000, name: 'TRENDING IN NINE SYSTEMS' },
+    { views: 75000, name: 'PRIME TIME' },
+    { views: 150000, name: 'ONE QUADRILLION CLUB' },
+    { views: 300000, name: 'GALACTIC HEARTTHROB' },
+    { views: 600000, name: 'LEADERBOARD MATERIAL' },
+    { views: 1000000, name: 'THE MAIN EVENT' }
   ];
 
-  D.skins = {
-    carl_boxers: { name: 'THE CLASSIC', desc: 'BOXERS, A LEATHER JACKET, AND BARE FEET IN THE SNOW. ICONIC. TRAGIC. MOSTLY TRAGIC.',
-      perk: null, how: 'WHAT YOU WERE WEARING WHEN THE WORLD ENDED.' },
-    carl_jacket: { name: 'JACKET AND JEANS', desc: 'YOU FOUND PANTS. THE AUDIENCE IS DEVASTATED. YOUR KNEES ARE GRATEFUL.',
-      perk: { def: 1 }, how: 'DEFEAT THE HOARDER ON FLOOR 1, OR LOOT BOXES.' },
-    carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, DARK SHADES, EARPIECE THAT CONNECTS TO NOTHING. VERY PROFESSIONAL.',
-      perk: { hp: 4 }, how: 'DEFEAT THE BRIDE ON FLOOR 7.' },
-    carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICKING FREEDOM. THE CAMERAS ARE KEEPING A RESPECTFUL DISTANCE.',
-      perk: { dmg: 1 }, how: 'DEFEAT THE OVERSEER ON FLOOR 8.' },
-    carl_hazmat: { name: 'HAZMAT SUIT', desc: 'BRIGHT YELLOW. FULLY SEALED. YOU CAN STILL SMELL THE SEWER SOMEHOW.',
-      perk: { def: 1, hp: 2 }, how: 'DEFEAT THE TIDEMOTHER ON FLOOR 5.' },
-    carl_pajamas: { name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SPRINGY SLIPPERS LET YOU JUMP TWICE. SCIENCE.',
-      perk: { doubleJump: true }, how: 'RANDOM DROP FROM LOOT BOXES, OR PET DONUT 25 TIMES.' },
-    carl_clown: { name: 'HONK HONK', desc: 'FACE PAINT, RED NOSE, GIANT SHOES. THE VIEWERS LOVE IT. YOUR DIGNITY DOES NOT.',
-      perk: { views: 0.25 }, how: 'DEFEAT THE RINGMASTER ON FLOOR 3.' },
-    carl_toga: { name: 'THE SENATOR', desc: 'A BEDSHEET TOGA AND A LAUREL WREATH. ROME WAS NOT BUILT IN A DAY. NEITHER WAS THIS LOOK.',
-      perk: { speed: 0.1 }, how: 'RANDOM DROP FROM LOOT BOXES, OR LAND A 25 HIT COMBO.' },
-    carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD BOXERS, GOLD JACKET, GOLD TOENAILS. YOU WON. NOW EVERYONE HAS TO LOOK AT IT.',
-      perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'FINISH THE GRAND PARADE ON FLOOR 11.' }
-  };
-
-  /* Update 2: every companion except Donut is FOUND and RESCUED, one per floor
-     (floors 2-7), per crawl. `how` hints where; rescueLines are said on release. */
-  D.companions = {
-    donut: { name: 'PRINCESS DONUT', desc: 'A PERSIAN SHOW CAT AND ROYALTY, ACCORDING TO HER. CASTS MAGIC MISSILE AT ANYTHING THAT LOOKS AT HER.',
-      ability: 'missile', cooldown: 1.6, power: 2, sprite: 'donut',
-      special: { name: 'MAGIC MISSILE BARRAGE', desc: 'A STORM OF HOMING MISSILES HITS EVERY ENEMY ON SCREEN.', time: 0 },
-      how: 'SHE WAS ALWAYS HERE. SHE WOULD LIKE THAT NOTED.' },
-    squeaks: { name: 'SIR SQUEAKS', desc: 'A TUTORIAL RAT WHO ESCAPED FLOOR ONE AND GOT NABBED BY GOBLINS. FETCHES PICKUPS AND SOMETIMES DIGS UP A BOMB.',
-      ability: 'fetch', cooldown: 3, power: 1, sprite: 'squeaks', bombChance: 0.15,
-      special: { name: 'RAT KING RANSOM', desc: 'SIR SQUEAKS CALLS IN A FAVOR. SNACKS, COINS AND BOMBS RAIN FROM ABOVE.', time: 0 },
-      how: 'CAUGHT BY GOBLINS ON FLOOR 2. THEY NEED A TARGET.',
-      rescueLines: ["SQUEAK! SQUEAK SQUEAK! (TRANSLATION: THE GOBLINS WERE USING ME FOR DARTS. I AM YOURS FOREVER NOW.)"] },
-    mongo: { name: 'MONGO', desc: 'A BABY VELOCIRAPTOR WHO THINKS HE IS A GOOD DOG. HE IS A GOOD DOG. WITH 80 TEETH.',
-      ability: 'bite', cooldown: 1.2, power: 3, sprite: 'mongo',
-      special: { name: 'DINO STAMPEDE', desc: 'MONGO CHARGES ACROSS THE SCREEN, BITING EVERYTHING IN HIS PATH.', time: 2.5 },
-      how: 'AN EGG ON FLOOR 3. SOMEBODY IS GIVING IT AWAY AS A PRIZE.',
-      rescueLines: ["*CRACK* ...MREEP? *SNIFF* *SNIFF* MREEEEP!", "(MONGO HAS DECIDED CARL IS HIS MOTHER. THIS IS NOT UP FOR DEBATE.)"] },
-    samantha: { name: 'SAMANTHA', desc: 'A CURSED PORCELAIN DOLL HEAD WITH CURLY BLACK HAIR AND BIG RED LIPS. A DEMIGODDESS, SHE SAYS. LOUDLY. OFTEN.',
-      ability: 'lunge', cooldown: 2.2, power: 4, sprite: 'samantha',
-      special: { name: 'DIVINE SHRIEK', desc: 'SAMANTHA SCREAMS AT A PITCH ONLY GODS CAN HIT. EVERYTHING ON SCREEN TAKES DAMAGE AND IS STUNNED.', time: 2 },
-      how: 'HIDDEN SOMEWHERE ON FLOOR 4. LISTEN FOR CURSING.',
-      rescueLines: ["FINALLY! A HERO! OR A SWEATY MAN IN UNDERWEAR. CLOSE ENOUGH. KNEEL, MORTAL. THEN CARRY ME.",
-        "I AM A DEMIGODDESS, NOT A HEAD. I JUST HAPPEN TO BE A HEAD RIGHT NOW. POINT ME AT SOMETHING. I BITE."] },
-    katia: { name: 'KATIA', desc: 'A SHAPESHIFTER WHO TURNS PART OF HERSELF INTO A SHIELD. CALM, KIND, AND MADE OF CONCERNING PUTTY.',
-      ability: 'shield', cooldown: 6, power: 1, sprite: 'katia',
-      special: { name: 'FORTRESS FORM', desc: 'KATIA WRAPS YOU IN ARMOR. YOU TAKE NO DAMAGE FOR A FEW SECONDS.', time: 4 },
-      how: 'HELD PAST THE REEF ON FLOOR 5. BRING A CHART.',
-      rescueLines: ["OH THANK GOODNESS. THEY KEPT ASKING ME TO TURN INTO A FISH. I AM NOT A FISH. I CAN BE A WALL, THOUGH.",
-        "STAY BEHIND ME, CARL. WELL, BEHIND THE PART OF ME THAT IS CURRENTLY A SHIELD."] },
-    zev: { name: 'ZEV', desc: 'YOUR PR HANDLER. A FISH LADY WITH A CLIPBOARD. PULLS IN GOLD AND MAKES SURE THE CAMERAS CATCH YOUR GOOD SIDE.',
-      ability: 'magnet', cooldown: 0.5, power: 1, sprite: 'zev', bonus: { views: 0.3 },
-      special: { name: 'PRESS JUNKET', desc: 'ALL ENEMIES FREEZE FOR A PHOTO OP. VIEWS POUR IN.', time: 3 },
-      how: 'STUCK DOWN A WELL ON FLOOR 6. MAKE A WISH.',
-      rescueLines: ["CARL! DARLING! I HAVE BEEN IN A WELL FOR THREE DAYS. DO YOU KNOW WHAT THAT DOES TO ENGAGEMENT?",
-        "SMILE, YOU ARE TRENDING. NO, YOUR OTHER SIDE. THE ONE WITH LESS SEWER ON IT."] },
-    signet: { name: 'SIGNET', desc: 'A WILD-HAIRED HALF-ELF SUMMONER IN A LEAFY CLOAK. HER CARVED STAFF CALLS FAE SPIRITS THAT ZAP ANYTHING RUDE.',
-      ability: 'summon', cooldown: 5, power: 2, sprite: 'signet',
-      special: { name: 'SPIRIT STAMPEDE', desc: 'A HERD OF GLOWING FAE SPIRITS THUNDERS ACROSS THE SCREEN AND TRAMPLES EVERY ENEMY IN THE WAY.', time: 2 },
-      how: 'LOST IN THE GREEN HEART OF FLOOR 7. BRING A KEY.',
-      rescueLines: ["THE HEDGES LISTEN TO ME AND THE SPIRITS LISTEN TO ME. THE BRIDE DID NOT. LET US GO TEACH HER MANNERS.",
-        "MY SPIRITS LIKE YOU. THEY THINK YOUR FEET ARE A KIND OF MUSHROOM. TAKE THE COMPLIMENT."] }
-  };
-
-  /* achievements: event matches DCW.game.track names; count = counter threshold */
-  D.achievements = {
-    first_blood:  { name: 'FIRST BLOOD', desc: 'YOU KILLED SOMETHING! IT WAS PROBABLY A RAT. WE ARE STILL PROUD. KIND OF.', event: 'kill', count: 1, box: 'bronze' },
-    kill_100:     { name: 'PEST CONTROL', desc: '100 KILLS. THE DUNGEON HAS STARTED TO TALK ABOUT YOU. NOT NICELY.', event: 'kill', count: 100, box: 'silver' },
-    kill_500:     { name: 'BODY COUNT', desc: '500 KILLS. THE VIEWERS HAVE STARTED A DRINKING GAME. PLEASE SLOW DOWN.', event: 'kill', count: 500, box: 'gold' },
-    kill_1000:    { name: 'ONE MAN APOCALYPSE', desc: '1000 KILLS. IN BOXERS. HISTORIANS WILL BE VERY CONFUSED.', event: 'kill', count: 1000, box: 'platinum' },
-    rat_25:       { name: 'RATCATCHER', desc: 'YOU KILLED 25 RATS. SIR SQUEAKS WOULD LIKE A WORD. A SQUEAKY WORD.', event: 'kill:rat', count: 25, box: 'bronze' },
-    stomp_10:     { name: 'HEADS UP', desc: 'STOMPED 10 HEADS. YOUR FEET ARE DISGUSTING. THE CROWD LOVES IT.', event: 'stomp', count: 10, box: 'bronze' },
-    stomp_100:    { name: 'GOOMBA TRAUMA', desc: '100 STOMPS. SOMEWHERE A PLUMBER NODS SOLEMNLY.', event: 'stomp', count: 100, box: 'gold' },
-    kick_50:      { name: 'FOOT SOLDIER', desc: '50 KICKS WITH BARE FEET. WE ARE LEGALLY REQUIRED TO RECOMMEND A TETANUS SHOT.', event: 'kick', count: 50, box: 'bronze' },
-    bomb_kill_25: { name: 'DEMOLITIONS EXPERT', desc: '25 BOMB KILLS. THE INSURANCE PEOPLE HAVE STOPPED RETURNING OUR CALLS.', event: 'bomb_kill', count: 25, box: 'silver' },
-    multi_bomb:   { name: 'THREE FOR ONE', desc: 'THREE KILLS WITH ONE BOMB. EFFICIENT! HORRIFYING! RERUN-WORTHY!', event: 'multi_bomb', count: 1, box: 'silver' },
-    potion_10:    { name: 'HYDRATION STATION', desc: 'YOU DRANK 10 POTIONS. THEY ARE NOT SPORTS DRINKS, CRAWLER.', event: 'potion', count: 10, box: 'bronze' },
-    crate_25:     { name: 'BOX HATER', desc: '25 CRATES SMASHED. WHAT DID CARDBOARD EVER DO TO YOU? DO NOT ANSWER THAT.', event: 'crate', count: 25, box: 'bronze' },
-    coin_500:     { name: 'LOOSE CHANGE', desc: 'PICKED UP 500 COINS OFF A DUNGEON FLOOR. YOUR MOTHER WOULD BE SO GROSSED OUT.', event: 'coin', count: 500, box: 'silver' },
-    fall_5:       { name: 'GRAVITY CHECK', desc: 'FELL IN 5 PITS. THE PITS ARE THE DARK PART. NOT THE FLOOR PART.', event: 'fall', count: 5, box: 'bronze' },
-    fall_25:      { name: 'PIT ENTHUSIAST', desc: '25 FALLS. AT THIS POINT THE PITS SEND YOU HOLIDAY CARDS.', event: 'fall', count: 25, box: 'silver' },
-    death_1:      { name: 'PARTICIPATION TROPHY', desc: 'YOU DIED! CONGRATULATIONS ON EXPERIENCING THE MOST POPULAR FEATURE.', event: 'death', count: 1, box: 'bronze' },
-    death_10:     { name: 'FREQUENT FLATLINER', desc: 'TEN DEATHS. THE RESPAWN TEAM HAS NAMED A SANDWICH AFTER YOU.', event: 'death', count: 10, box: 'silver' },
-    revive_1:     { name: 'NOT TODAY', desc: 'USED A REVIVAL. DEATH SAID HI. YOU SAID NO. RUDE, BUT VALID.', event: 'revive', count: 1, box: 'bronze' },
-    box_10:       { name: 'UNBOXING CHANNEL', desc: 'OPENED 10 LOOT BOXES. SMASH THAT LIKE BUTTON. THERE IS NO BUTTON.', event: 'box_open', count: 10, box: 'silver' },
-    box_50:       { name: 'GAMBLING PROBLEM', desc: '50 BOXES OPENED. THE NETWORK SALUTES YOUR TOTAL LACK OF IMPULSE CONTROL.', event: 'box_open', count: 50, box: 'gold' },
-    combo_10:     { name: 'COMBO STARTER', desc: 'TEN HITS IN A ROW! YOU ARE BASICALLY A FIGHTING GAME CHARACTER NOW.', event: 'combo10', count: 1, box: 'bronze' },
-    combo_25:     { name: 'COMBO BREAKER BREAKER', desc: '25 HIT COMBO. THE ANNOUNCER BOOTH NEEDED A MINUTE. THE TOGA IS YOURS.', event: 'combo25', count: 1, box: 'gold', unlock: { skin: 'carl_toga' } },
-    no_damage:    { name: 'UNTOUCHABLE', desc: 'CLEARED A STAGE WITHOUT GETTING HIT. WHO ARE YOU AND WHAT DID YOU DO WITH CARL?', event: 'no_damage_stage', count: 1, box: 'silver' },
-    no_damage_10: { name: 'GHOST IN THE BOXERS', desc: 'TEN FLAWLESS STAGES. THE MONSTERS ARE FILING A COMPLAINT ABOUT FAIRNESS.', event: 'no_damage_stage', count: 10, box: 'platinum' },
-    pet_donut:    { name: 'GOOD KITTY', desc: 'YOU PET PRINCESS DONUT. SHE ALLOWED IT. THIS TIME. DO NOT GET COMFORTABLE.', event: 'pet_donut', count: 1, box: 'fan' },
-    pet_donut_25: { name: 'CRAZY CAT PERSON', desc: 'PET DONUT 25 TIMES. SHE HAS BEGUN REFERRING TO YOU AS HER STAFF. ENJOY THE PAJAMAS.', event: 'pet_donut', count: 25, box: 'gold', unlock: { skin: 'carl_pajamas' } },
-    flee_1:       { name: 'TACTICAL RETREAT', desc: 'YOU RAN AWAY FROM A STAGE. THE CHICKEN SPONSORS ARE THRILLED.', event: 'flee', count: 1, box: 'bronze' },
-    shop_1:       { name: 'RETAIL THERAPY', desc: 'YOU BOUGHT SOMETHING. THE ECONOMY OF THE APOCALYPSE THANKS YOU.', event: 'shop', count: 1, box: 'bronze' },
-    shop_25:      { name: 'VALUED CUSTOMER', desc: '25 PURCHASES. THE SHOPKEEPER HAS PUT YOUR PICTURE ON THE WALL. NEXT TO THE EXITS.', event: 'shop', count: 25, box: 'silver' },
-    secret_1:     { name: 'NOSY', desc: 'FOUND A SECRET. YOU ARE THE KIND OF PERSON WHO READS OTHER PEOPLE\'S MAIL.', event: 'secret', count: 1, box: 'bronze' },
-    secret_10:    { name: 'TREASURE GOBLIN', desc: 'TEN SECRETS FOUND. THE LEVEL DESIGNERS ARE CRYING. HAPPY TEARS. MOSTLY.', event: 'secret', count: 10, box: 'gold' },
-    skin_equip:   { name: 'FASHION VICTIM', desc: 'CHANGED YOUR OUTFIT. THE STYLE BLOGS OF THE GALAXY ARE ALREADY FIGHTING ABOUT IT.', event: 'skin_equip', count: 1, box: 'bronze' },
-    companion_equip: { name: 'NEW BEST FRIEND', desc: 'SWAPPED COMPANIONS. PRINCESS DONUT HAS BEEN INFORMED. SHE IS TAKING IT WELL. SHE IS NOT.', event: 'companion_equip', count: 1, box: 'bronze' },
-    level_10:     { name: 'DOUBLE DIGITS', desc: 'LEVEL 10! YOU ARE NOW TECHNICALLY ABOVE AVERAGE. THE AVERAGE IS DEAD, BUT STILL.', event: 'level:10', count: 1, box: 'silver' },
-    level_20:     { name: 'SEASONED CRAWLER', desc: 'LEVEL 20. YOU HAVE MORE STATS THAN SENSE. A PERFECT CONTESTANT.', event: 'level:20', count: 1, box: 'gold' },
-    floor_2:      { name: 'GOING DOWN', desc: 'REACHED FLOOR 2. YOU SURVIVED THE TUTORIAL. MOST OF THE TUTORIAL DID NOT.', event: 'floor:2', count: 1, box: 'bronze' },
-    floor_3:      { name: 'TOURIST', desc: 'REACHED FLOOR 3 AND ITS BIG BEAUTIFUL MAP. PLEASE DO NOT FEED THE CLOWNS.', event: 'floor:3', count: 1, box: 'silver' },
-    floor_5:      { name: 'HALFWAY HOUSE', desc: 'REACHED FLOOR 5. HALFWAY THERE. HALFWAY DEAD. STATISTICALLY.', event: 'floor:5', count: 1, box: 'silver' },
-    floor_7:      { name: 'DEEP CUTS', desc: 'REACHED FLOOR 7. VERY FEW CRAWLERS GET HERE. EVEN FEWER WEAR PANTS. YOU ARE BOTH.', event: 'floor:7', count: 1, box: 'gold' },
-    floor_9:      { name: 'MIDSEASON FINALE', desc: 'REACHED FLOOR 9. THE PRODUCERS DID NOT PLAN FOR THIS. THEY ARE WRITING TWO MORE FLOORS FURIOUSLY.', event: 'floor:9', count: 1, box: 'platinum' },
-    floor_10:     { name: 'START YOUR ENGINES', desc: 'REACHED FLOOR 10. SOMEBODY GAVE YOU A DRIVING LICENSE. THAT SOMEBODY HAS BEEN FIRED.', event: 'floor:10', count: 1, box: 'platinum' },
-    boss_hoarder:   { name: 'SPRING CLEANING', desc: 'BEAT THE HOARDER. HER STUFF IS NOW YOUR STUFF. MOST OF IT IS NAPKINS.', event: 'boss:hoarder', count: 1, box: 'silver' },
-    boss_juicer:    { name: 'NO PAIN, NO GAIN', desc: 'BEAT THE JUICER. HE SKIPPED HIS LAST LEG DAY. PERMANENTLY.', event: 'boss:juicer', count: 1, box: 'silver' },
-    boss_ringmaster:{ name: 'CLOSING NIGHT', desc: 'BEAT THE RINGMASTER. THE CLOWNS ARE FREE. NOBODY ASKED FOR THIS.', event: 'boss:ringmaster', count: 1, box: 'gold' },
-    boss_engineer:  { name: 'END OF THE LINE', desc: 'BEAT THE ENGINEER. ALL TRAINS ARE NOW CANCELLED. SO, NORMAL SERVICE.', event: 'boss:engineer', count: 1, box: 'gold' },
-    boss_tidemother:{ name: 'MOTHER OF ALL FIGHTS', desc: 'BEAT THE TIDEMOTHER. HER SEVEN HUNDRED KIDS ARE WRITING YOU LETTERS. ANGRY ONES.', event: 'boss:tidemother', count: 1, box: 'gold' },
-    boss_butcher:   { name: 'CUT FROM THE TEAM', desc: 'BEAT THE BUTCHER. THE HUNTING GROUNDS ARE CLOSED FOR RENOVATION.', event: 'boss:butcher', count: 1, box: 'gold' },
-    boss_bride:     { name: 'OBJECTION!', desc: 'BEAT THE BRIDE. YOU STOPPED THE WEDDING. THE GUESTS WERE ALREADY DEAD, SO NO HARM DONE.', event: 'boss:bride', count: 1, box: 'platinum' },
-    boss_overseer:  { name: 'EYE CANDY', desc: 'BEAT THE OVERSEER. IT FINALLY BLINKED. FOREVER.', event: 'boss:overseer', count: 1, box: 'platinum' },
-    boss_showrunner:{ name: 'CANCELLED', desc: 'BEAT THE SHOWRUNNER. THE SHOW IS OVER! JUST KIDDING. THE NETWORK RENEWED IT ON THE SPOT.', event: 'boss:showrunner', count: 1, box: 'legendary' },
-    /* Update 3: races (stage.js emits race_win, race_place:<n>, race_flawless) and the parade */
-    race_place_3: { name: 'PODIUM PEASANT', desc: 'FINISHED A RACE IN THIRD. BRONZE IS JUST GOLD THAT GAVE UP. STILL COUNTS!', event: 'race_place:3', count: 1, box: 'bronze' },
-    race_win:     { name: 'CHECKERED PAST', desc: 'WON A RACE IN A FOOD TRUCK. THE OTHER DRIVERS DEMAND A DRUG TEST. FOR THE TACOS.', event: 'race_win', count: 1, box: 'silver' },
-    race_win_3:   { name: 'TRIPLE CROWN', desc: 'WON THREE RACES. THE SPONSORS WANT A DECAL ON YOUR FOREHEAD. WE SAID ASK THE CAT.', event: 'race_win', count: 3, box: 'gold' },
-    race_flawless:{ name: 'NOT A SCRATCH', desc: 'WON A RACE WITHOUT A SINGLE DENT. THE INSURANCE COMPANY SENT FLOWERS.', event: 'race_flawless', count: 1, box: 'platinum' },
-    race_champion:{ name: 'KING OF THE CUL-DE-SAC', desc: 'WON THE CUL-DE-SAC CUP AND ROLLED ONTO FLOOR 11. THE MAULER IS IN THERAPY. IT HAS SO MANY TEETH TO TALK ABOUT.', event: 'floor:11', count: 1, box: 'legendary' },
-    float_part:   { name: 'ARTS AND CRAFTS', desc: 'FOUND YOUR FIRST FLOAT PART. GLITTER HAS ENTERED YOUR BLOODSTREAM. THERE IS NO CURE.', event: 'float_part', count: 1, box: 'silver' },
-    float_full:   { name: 'SOME ASSEMBLY REQUIRED', desc: 'FOUND FOUR FLOAT PARTS. YOUR FOOD TRUCK IS NOW LEGALLY A PARADE. CONGRATULATIONS?', event: 'float_part', count: 4, box: 'gold' },
-    parade_done:  { name: 'GRAND FINALE', desc: 'FINISHED THE PARADE. THE STREETS ARE COVERED IN CONFETTI AND HECKLERS. MOSTLY HECKLERS.', event: 'parade_done', count: 1, box: 'platinum' },
-    boss_grand_marshal: { name: 'MARSHAL LAW', desc: 'DETHRONED THE GRAND MARSHAL. HIS BATON IS NOW A VERY EXPENSIVE BACK SCRATCHER.', event: 'boss:grand_marshal', count: 1, box: 'legendary' },
-    win:          { name: 'THAT IS A WRAP', desc: 'YOU BEAT THE WHOLE GAME. IN YOUR UNDERWEAR. WITH A CAT. WE HAVE NO FURTHER NOTES.', event: 'win', count: 1, box: 'legendary' }
+  /* book 1 save import (game.importLegacy) */
+  D.legacy = {
+    veteranBox: 'gold', championBox: 'legendary', title: 'BOOK 1 VETERAN',
+    lines: [
+      { who: 'SYSTEM AI', text: "WELL, LOOK WHO IT IS! A RETURNING CONTESTANT! YOUR OLD OUTFITS HAVE BEEN DRY CLEANED AND YOUR ACHIEVEMENTS HAVE BEEN FRAMED." },
+      { who: 'SYSTEM AI', text: "LEVELS AND STATS DO NOT CARRY OVER. THE THIRD FLOOR STARTS WHERE IT STARTS. BUT HERE IS A LITTLE SOMETHING FOR THE VETERANS." }
+    ],
+    championLine: { who: 'SYSTEM AI', text: "AND YOU FINISHED THE WHOLE FIRST GAME? A LEGENDARY BOX, CHAMPION. DO NOT LET IT GO TO YOUR HEAD. LET IT GO TO YOUR FISTS." }
   };
 })();
 
 /* ==========================================================================
-   TEXT: System AI pools, Mordecai, shopkeeper, story, titles.
-   Uppercase 5x7 font, <= 140 chars per line/page, plain ASCII only.
+   TEXT: System AI pools, Mordecai, story pages
    ========================================================================== */
 (function () {
   'use strict';
@@ -3844,221 +3549,237 @@
 
   D.ai = {
     floorClear: [
-      "FLOOR CLEARED! THE STAIRS ARE OPEN. THE VIEWERS ARE SCREAMING. SOME OF IT IS CHEERING!",
-      "YOU BEAT THE FLOOR! A ROUND OF APPLAUSE FOR THE CRAWLER WHO REFUSES TO TAKE A HINT!",
-      "ANOTHER FLOOR DOWN! THE ODDS MAKERS ARE FURIOUS. SEVERAL OF THEM BET ON THE RATS.",
-      "CONGRATULATIONS! YOU ARE NOW ONE FLOOR CLOSER TO SOMETHING MUCH WORSE!",
-      "FLOOR COMPLETE! PLEASE TAKE THE STAIRS. THE ELEVATOR IS A MONSTER. LITERALLY.",
-      "THAT FLOOR TRIED ITS BEST, CRAWLER. ITS BEST WAS NOT ENOUGH. HOW DOES THAT FEEL? GREAT, RIGHT?",
-      "STAIRWELL UNLOCKED! THE CLEANING CREW WILL HANDLE THE MESS YOU MADE. THE CLEANING CREW IS ALSO A MONSTER.",
-      "WHAT A FLOOR! WE WILL BE SHOWING THAT LAST HIT IN SLOW MOTION FOR WEEKS!",
-      "FLOOR CLEARED! YOUR FAN CLUB JUST GOT A NEW MEMBER. HE IS A LITTLE WEIRD. YOU WILL LIKE HIM."
+      "THE THIRD FLOOR IS BEHIND YOU! THE FOURTH FLOOR IS AHEAD OF YOU! BOTH OF THEM WANT YOU DEAD! WHAT A TIME TO BE ALIVE!",
+      "STAIRS TAKEN! THE OVER CITY WILL MISS YOU. IT WILL MISS EATING YOU, MOSTLY.",
+      "FLOOR DONE! THE RATINGS ARE BIGGER THAN THE VOLCANO! WHICH IS SAYING SOMETHING, IT IS A VERY BIG VOLCANO!",
+      "AND THE CRAWLER LEAVES THE FLOOR! THE CROWD GOES WILD! THE CROWD WANTED A DEATH, BUT THE CROWD WILL TAKE A CLIFFHANGER!"
     ],
     stageClear: [
-      "AREA CLEARED! THE LOCALS ARE DEAD AND THE LOOT IS YOURS. A CLASSIC LOVE STORY.",
-      "NICE WORK! THAT WAS ALMOST GRACEFUL. ALMOST.",
-      "STAGE COMPLETE! WE WOULD GIVE IT A SEVEN. THE CAT WOULD GIVE IT A FOUR.",
-      "YOU MADE IT OUT! THE DOOR IS VERY HAPPY TO SEE YOU. DOORS ARE LIKE THAT.",
-      "CLEAR! THE MONSTERS IN THERE WILL RESPAWN NEXT SEASON. THEY HAVE A GOOD UNION.",
-      "THAT IS HOW YOU DO IT, CRAWLER! OR AT LEAST, THAT IS ONE WAY TO DO IT. A MESSY WAY.",
-      "AREA CLEAR! YOUR VIEWER COUNT WENT UP. YOUR HYGIENE WENT DOWN. BALANCE.",
-      "STAGE DONE! WE HAVE REVIEWED THE FOOTAGE. YOU KICKED A GOBLIN INTO ANOTHER GOBLIN. ICONIC.",
-      "CLEARED! TAKE A BREATH. NOT TOO DEEP. THE AIR DOWN HERE IS MOSTLY MONSTER."
+      "CLEARED! THE LOCALS ARE DEAD AND THE LOOT IS YOURS. A CLASSIC LOVE STORY.",
+      "NICE WORK, CRAWLER! THAT WAS ALMOST GRACEFUL. ALMOST. WE ARE ROUNDING UP.",
+      "DONE! WE WOULD GIVE IT A SEVEN. THE CAT WOULD GIVE IT A FOUR. THE CAT IS A HARSH CRITIC.",
+      "AREA CLEAR! THE CLOCK TICKED. THE FLOOR IS STILL COLLAPSING. NO PRESSURE. ALL THE PRESSURE.",
+      "YOU MADE IT OUT! THE MONSTERS IN THERE WILL BE REPLACED. THEY HAVE A VERY GOOD UNION.",
+      "THAT IS HOW YOU DO IT! OR AT LEAST, THAT IS ONE WAY. A LOUD, MESSY, BAREFOOT WAY.",
+      "CLEARED! YOUR VIEW COUNT WENT UP. YOUR HYGIENE WENT DOWN. THE UNIVERSE IS IN BALANCE.",
+      "LEVEL DONE! WE REVIEWED THE FOOTAGE. YOU KICKED A CLOWN INTO ANOTHER CLOWN. ICONIC. FRAMED.",
+      "THE SHOW MUST GO ON! AND SO MUST YOU! MOVE ALONG, CRAWLER, THE CLOCK IS NOT WAITING."
     ],
     death: [
       "OH NO! OH NO NO NO! ANYWAY. THE RATINGS FOR THAT WERE INCREDIBLE.",
-      "YOU DIED! DO NOT WORRY, WE GOT IT ON FOUR CAMERAS. ONE OF THEM IN SLOW MOTION.",
-      "AND THE CRAWLER GOES DOWN! THE CROWD GOES WILD! SOME OF THEM ARE SAD! MOST ARE NOT!",
-      "DEATH! THE GREAT EQUALIZER! AND YOU WERE SO EQUAL. SO VERY EQUAL.",
-      "WELL, THAT HAPPENED. WE WILL BE PLAYING IT AT YOUR MEMORIAL. IT IS A VERY SHORT MEMORIAL.",
-      "YOU HAVE DIED. PRINCESS DONUT WOULD LIKE IT KNOWN THAT SHE WAS NOT INVOLVED.",
+      "YOU DIED! DON'T WORRY, WE GOT IT ON FOUR CAMERAS. ONE OF THEM IN SLOW MOTION. ONE OF THEM UNDERNEATH.",
+      "AND THE CRAWLER GOES DOWN! THE CROWD GOES WILD! SOME OF THEM ARE SAD! MOST OF THEM ARE NOT!",
+      "DEATH! THE GREAT EQUALIZER! AND YOU WERE SO EQUAL. SO VERY, VERY EQUAL.",
+      "YOU DIED IN YOUR UNDERWEAR AGAIN. THE MERCHANDISING TEAM IS THRILLED. THE MOLD IS ALREADY POURED.",
       "CRAWLER DOWN! THE MONSTER THAT GOT YOU IS GETTING A BONUS. A SMALL ONE. YOU WERE NOT THAT HARD.",
-      "YOU DIED IN YOUR UNDERWEAR. THAT IS GOING ON THE POSTER.",
-      "GAME OVER, MAN! WAIT, THAT LINE IS TAKEN. GAME OVER, CRAWLER! STILL WORKS."
+      "PRINCESS DONUT WOULD LIKE IT ON THE RECORD THAT SHE WAS NOT INVOLVED. SHE IS ALREADY LOOKING AT APARTMENTS.",
+      "GAME OVER, MAN! GAME OVER! WAIT, WRONG MOVIE. YOU STILL HAVE REVIVALS. PROBABLY."
     ],
     levelUp: [
       "LEVEL UP! YOU ARE NOW SLIGHTLY LESS LIKELY TO DIE! WE ARE A LITTLE DISAPPOINTED!",
-      "DING! A NEW LEVEL! SPEND THAT STAT POINT AT THE NEXT SAFE ROOM, BEFORE YOU FORGET WHAT NUMBERS ARE.",
-      "LEVEL UP! YOUR MUSCLES GREW. YOUR BRAIN STAYED THE SAME SIZE. CLASSIC.",
+      "DING! A NEW LEVEL! SPEND THAT STAT POINT AT AN INN BEFORE YOU FORGET WHAT NUMBERS ARE.",
+      "LEVEL UP! YOUR MUSCLES GREW. YOUR BRAIN STAYED THE SAME SIZE. A PRIMAL CLASSIC.",
       "YOU LEVELED UP! THE MONSTERS HAVE BEEN NOTIFIED AND WILL BE TRYING HARDER.",
-      "STRONGER! FASTER! STILL BAREFOOT! LEVEL UP, CRAWLER!",
+      "STRONGER! FASTER! STILL BAREFOOT! STILL GLITTERY! LEVEL UP, CRAWLER!",
       "LEVEL UP! WE PATCHED A FEW HOLES IN YOU FOR FREE. DO NOT GET USED TO IT.",
-      "A NEW LEVEL! SOMEWHERE A STATISTICIAN SIGHS AND ADJUSTS YOUR ODDS UPWARD.",
-      "LEVEL UP! THE CAT CLAIMS FULL CREDIT. WE ARE NOT GOING TO ARGUE WITH HER."
+      "A NEW LEVEL! SOMEWHERE A BOOKIE SIGHS AND ADJUSTS YOUR ODDS. UPWARD. FOR NOW.",
+      "LEVEL UP! THE CAT CLAIMS FULL CREDIT. NOBODY IS GOING TO ARGUE WITH THE CAT."
     ],
     lootbox: [
       "OOH, A BOX! WHAT COULD IT BE? IT IS PROBABLY GOLD. IT IS USUALLY GOLD.",
-      "LOOT BOX TIME! SHAKE IT! DO NOT SHAKE IT TOO HARD. ONE OF THEM HAD A BEE IN IT ONCE.",
-      "OPEN IT! OPEN IT! THE AUDIENCE IS CHANTING. ALSO SOME OF THEM ARE BETTING.",
-      "THE SPONSORS HAVE FILLED THIS BOX WITH LOVE. AND SOMETHING THAT FELL OFF A TRUCK.",
+      "LOOT BOX TIME! SHAKE IT! NOT TOO HARD. ONE OF THEM HAD A HOB-LOBBER IN IT ONCE.",
+      "OPEN IT! OPEN IT! THE AUDIENCE IS CHANTING. SOME OF THEM ARE BETTING. ALL OF THEM ARE DRUNK.",
+      "THE SPONSORS FILLED THIS BOX WITH LOVE. AND SOMETHING THAT FELL OFF A WAGON IN THE RUINS.",
       "A PRIZE FOR YOU, CRAWLER! REMEMBER: GAMBLING IS BAD, UNLESS IT IS ON TELEVISION.",
-      "BOX OPENED! IT CONTAINS STUFF! WE PROMISED STUFF AND WE DELIVERED STUFF!",
-      "UNBOXING SEGMENT! SMILE FOR THE CAMERA. NO, A REAL SMILE. YOU LOOK LIKE A HOSTAGE.",
-      "EVERY BOX IS A LITTLE MIRACLE. MOST MIRACLES ARE POTIONS."
+      "UNBOXING SEGMENT! SMILE FOR THE CAMERA. NO, A REAL SMILE. YOU LOOK LIKE A HOSTAGE. YOU ARE A HOSTAGE. SMILE ANYWAY.",
+      "EVERY BOX IS A LITTLE MIRACLE. MOST MIRACLES ARE POTIONS. SOME MIRACLES ARE DYNAMITE."
     ],
     revive: [
       "BACK FROM THE DEAD! THAT IS GOING TO COST YOU. IT ALREADY DID. CHECK YOUR REVIVALS.",
-      "REVIVED! DEATH WAS WAITING WITH A CLIPBOARD. WE TOLD HIM TO COME BACK LATER.",
+      "REVIVED! DEATH WAS WAITING WITH A CLIPBOARD. WE TOLD HIM TO COME BACK LATER. HE SAID HE WOULD.",
       "YOU ARE ALIVE AGAIN! PLEASE DO NOT MAKE THIS A HABIT. THE PAPERWORK IS ENORMOUS.",
-      "THE NETWORK HAS DECIDED YOU ARE TOO ENTERTAINING TO STAY DEAD. CONGRATULATIONS?",
-      "REVIVAL USED! YOU HAVE BEEN RESET TO FACTORY SETTINGS. THE FACTORY WAS A SEWER.",
-      "WELCOME BACK! YOU MISSED NOTHING. EXCEPT DYING. YOU DID NOT MISS THAT. YOU HIT IT DEAD ON.",
-      "UP YOU GET, CRAWLER! THE SHOW MUST GO ON, AND YOU ARE THE SHOW.",
-      "REVIVED! A PORTION OF YOUR DIGNITY COULD NOT BE RECOVERED. IT WAS A SMALL PORTION."
+      "THE NETWORK HAS DECIDED YOU ARE TOO ENTERTAINING TO STAY DEAD. CONGRATULATIONS? CONGRATULATIONS.",
+      "LAZARUS, TAKE TWO! UP YOU GET! THE SHOW MUST GO ON, AND YOU ARE THE SHOW.",
+      "WELCOME BACK! YOU MISSED NOTHING. EXCEPT DYING. YOU DID NOT MISS THAT. YOU HIT THAT DEAD CENTER."
     ],
     boxEmpty: [
-      "NO BOXES LEFT! GO EARN SOME MORE. THE MONSTERS ARE RIGHT THERE.",
+      "NO BOXES LEFT! GO EARN SOME MORE. THE MONSTERS ARE RIGHT OUTSIDE.",
       "YOUR BOX INVENTORY IS EMPTY. LIKE YOUR POCKETS. YOU DO NOT HAVE POCKETS. YOU HAVE BOXERS.",
-      "ZERO BOXES. THE SADDEST NUMBER. SECOND SADDEST AFTER YOUR KILL STREAK.",
-      "NOTHING TO OPEN, CRAWLER. TRY OPENING YOUR MIND. JUST KIDDING. KILL THINGS.",
-      "NO MORE LOOT. THE LOOT FAIRY IS ON BREAK. SHE IS A GOBLIN. SHE DOES NOT CARE.",
-      "EMPTY! WE CHECKED TWICE. ONCE UNDER THE COUCH. THERE IS NO COUCH.",
-      "BOXES: NONE. ACHIEVEMENTS AND BOSSES GIVE BOXES. JUST SAYING.",
-      "YOU HAVE OPENED EVERYTHING. EVEN THE ONES THAT WERE TICKING. BOLD."
+      "ZERO BOXES. THE SADDEST NUMBER. SECOND SADDEST AFTER YOUR PANTS COUNT.",
+      "NOTHING TO OPEN, CRAWLER. ACHIEVEMENTS, BOSSES AND QUESTS GIVE BOXES. JUST SAYING.",
+      "EMPTY! WE CHECKED TWICE. ONCE UNDER THE BAR. MORDECAI WAS UNDER THE BAR. NO BOXES THOUGH."
     ],
     lowHp: [
-      "YOUR HEALTH IS LOW! THIS WOULD BE A GREAT TIME FOR A POTION. OR A PRAYER. MOSTLY A POTION.",
+      "YOUR HEALTH IS LOW! THIS IS A GREAT TIME FOR A POTION. OR A PRAYER. MOSTLY A POTION.",
       "LOW HP! THE AUDIENCE IS LEANING FORWARD. THEY LOVE A CLOSE ONE.",
       "CAREFUL, CRAWLER! YOU ARE MOSTLY HOLES AT THIS POINT.",
-      "WARNING: CRAWLER STRUCTURAL INTEGRITY AT CRITICAL LEVELS. THE CAT HAS STARTED LOOKING FOR A NEW HUMAN.",
+      "WARNING: CRAWLER STRUCTURAL INTEGRITY CRITICAL. THE CAT HAS STARTED BROWSING FOR A NEW HUMAN.",
       "YOU ARE ABOUT TO DIE! NO PRESSURE. EXCEPT ALL OF IT.",
-      "LOW HEALTH! QUICK TIP: THE POTION BUTTON IS THE POTION BUTTON.",
-      "THE BETTING ODDS ON YOUR DEATH JUST DROPPED TO TWO TO ONE. PROVE THEM WRONG. OR RIGHT. BOTH ARE FUN.",
-      "IS THAT A WHITE LIGHT? NO, IT IS JUST A FIREBALL. MOVE!"
+      "THE ODDS ON YOUR DEATH JUST DROPPED TO TWO TO ONE. PROVE THEM WRONG. OR RIGHT. BOTH ARE GREAT TV."
     ],
     bigCombo: [
       "C-C-COMBO! THE CROWD IS ON ITS FEET! SOME OF THEM HAVE EXTRA FEET!",
       "WHAT A STRING OF HITS! WE ARE CUTTING THAT INTO THE TRAILER!",
       "COMBO! YOUR KNUCKLES ARE WRITING CHECKS AND THE MONSTERS ARE CASHING THEM!",
-      "HIT AFTER HIT AFTER HIT! IS THIS A DUNGEON OR A DRUM SOLO?",
-      "INCREDIBLE COMBO! THE VIEW COUNTER IS SPINNING LIKE A SLOT MACHINE!",
-      "BEAUTIFUL VIOLENCE! THE SPONSORS ARE CRYING TEARS OF PROFIT!",
-      "THAT COMBO WAS SO GOOD THE MONSTERS WANT TO START A FAN CLUB. FROM THE AFTERLIFE.",
-      "KEEP IT GOING, CRAWLER! DO NOT STOP! THE RATINGS DEPEND ON IT! YOUR LIFE ALSO DEPENDS ON IT!"
+      "HIT AFTER HIT AFTER HIT! IS THIS A DUNGEON OR A DRUM SOLO? A DRUM SOLO IN A DUNGEON!",
+      "INCREDIBLE COMBO! THE VIEW COUNTER IS SPINNING LIKE A SLOT MACHINE IN THE DESPERADO CLUB!",
+      "BEAUTIFUL VIOLENCE! THE SPONSORS ARE CRYING TEARS OF PROFIT!"
     ],
     flee: [
       "RUNNING AWAY? BOLD STRATEGY. COWARDLY, BUT BOLD.",
       "THE CRAWLER FLEES! THE AUDIENCE BOOS! SOMEONE THREW A TOMATO! IT WAS ME!",
-      "TACTICAL RETREAT! WE WILL CALL IT THAT ON THE BROADCAST. WE ARE NICE LIKE THAT.",
+      "TACTICAL RETREAT! WE WILL CALL IT THAT ON THE BROADCAST. WE ARE NICE LIKE THAT. SOMETIMES.",
       "YOU LEFT! THE MONSTERS ARE HIGH FIVING. THE ONES WITH HANDS, ANYWAY.",
-      "FLEEING COSTS YOU NOTHING BUT YOUR PRIDE. YOU HAD VERY LITTLE PRIDE. SO, A BARGAIN.",
-      "BYE BYE! THE STAGE WILL STILL BE THERE WHEN YOU COME BACK. IT IS NOT GOING ANYWHERE. NEITHER ARE YOU.",
-      "RUN, CRAWLER, RUN! THE CHASE MUSIC IS ALREADY PLAYING!",
+      "FLEEING COSTS AN HOUR AND YOUR PRIDE. YOU HAD VERY LITTLE PRIDE. SO, A BARGAIN.",
       "A STRATEGIC WITHDRAWAL! GREAT GENERALS DO IT ALL THE TIME. RIGHT BEFORE THEY LOSE."
+    ],
+    night: [
+      "NIGHT FALLS ON THE OVER CITY! THE GUARDS GO HOME. THE URCHINS COME OUT. THE ALLEYS GET HUNGRY.",
+      "THE FAKE SUN HAS SET! ENJOY THE FAKE STARS AND THE VERY REAL MONSTERS!",
+      "NIGHTTIME! THE MAIN ROADS ARE MOSTLY SAFE. MOSTLY. WE WOULD NOT BET THE CAT ON IT.",
+      "THE NEBULA IS OUT. IT IS GORGEOUS. LOOK AT IT. LOOK UP. DO NOT LOOK BEHIND YOU.",
+      "IT IS DARK NOW, CRAWLER. THE THINGS THAT WAIT FOR THE DARK ARE DONE WAITING.",
+      "GUARDS ARE IN STASIS UNTIL DAWN! NO LAW IN THE STREETS! ALSO NO PROTECTION IN THE STREETS! FUN!"
+    ],
+    day: [
+      "GOOD MORNING, OVER CITY! THE RED SUN IS UP! THE GUARDS ARE BACK ON DUTY! BEHAVE!",
+      "DAWN! THE VILLAGES ARE SAFE AGAIN. DO NOT PUNCH ANYONE WHO DOES NOT DESERVE IT. ESPECIALLY CHICKADEES.",
+      "ANOTHER DAY, ANOTHER CHANCE TO DIE IN THE SUNLIGHT! THE LIGHTING IS VERY FLATTERING!",
+      "THE NIGHT IS OVER. YOU SURVIVED IT. THE VOLCANO IS STILL RUMBLING. ONE THING AT A TIME.",
+      "MORNING! THE STREET URCHINS HAVE GONE TO BED. THEY WORKED HARD. THEY ARE VERY CLEAN NOW."
+    ],
+    crime: [
+      "OH NO. OH NO, NO. YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST SWORDS.",
+      "CRIME DETECTED! THE VILLAGE GUARD SWORDSMEN ARE ON THEIR WAY! THEY ARE LEVEL 75! YOU ARE NOT!",
+      "THE GUARDS HAVE SEEN WHAT YOU DID. THEY ARE COMING FROM BOTH SIDES. RUN FOR THE RUINS, CRAWLER. RUN.",
+      "YOU HAVE BEEN SENTENCED TO DEATH! THE SENTENCE WILL BE CARRIED OUT BY THE LARGE MAN WITH THE LARGE SWORD!",
+      "A CRIME! ON CAMERA! THE AUDIENCE GASPS! THE AUDIENCE ALSO LOVES IT! THE GUARDS DO NOT!"
+    ],
+    ban: [
+      "YOU ESCAPED THE GUARDS! CONGRATULATIONS! YOU CAN NEVER GO BACK TO THAT TOWN! EVER!",
+      "BANNED! THAT TOWN HAS YOUR FACE ON A POSTER NOW. IT IS NOT A FLATTERING POSTER.",
+      "YOU ARE NO LONGER WELCOME THERE. THE SHOPS WILL MISS YOUR GOLD. NOBODY ELSE WILL MISS ANYTHING.",
+      "PERSONA NON GRATA! THE GUARDS WILL BE WAITING AT THE GATE. FOREVER. THEY ARE VERY PATIENT."
+    ],
+    collapse: [
+      "TIME IS UP! THE THIRD FLOOR IS COLLAPSING! EVERYONE STILL HERE BECOMES A FOND MEMORY! THANK YOU FOR PLAYING!",
+      "THE CLOCK HIT ZERO! THE OVER CITY FOLDS UP LIKE A BAD CARD TABLE! WITH YOU ON IT!",
+      "THE FLOOR IS GONE. YOU ARE GONE. THE SHOW GOES ON WITHOUT YOU. IT ALWAYS DOES."
+    ],
+    questStart: [
+      "NEW QUEST! CHECK YOUR QUEST LOG! QUESTS ARE NEW ON THIS FLOOR. WE ARE VERY PROUD OF THEM.",
+      "A QUEST HAS BEEN ADDED! REMEMBER: UNFINISHED QUESTS VANISH WHEN YOU LEAVE THE FLOOR. LIKE DREAMS. LIKE CRAWLERS."
+    ],
+    questDone: [
+      "QUEST COMPLETE! A BOX FOR THE CRAWLER! AND APPLAUSE! MOSTLY THE BOX!",
+      "ANOTHER QUEST DONE! THE QUEST GIVERS ARE THRILLED. THE ONES THAT ARE STILL ALIVE."
+    ],
+    craft: [
+      "ALCHEMY! MOONSHINE PLUS RAG PLUS FIRE EQUALS ONE JUG O'BOOM AND ONE VERY UPSET FIRE MARSHAL.",
+      "CRAFTED! IT IS STILL MOSTLY MOONSHINE. IT IS NOW ALSO MOSTLY EXPLOSIVE."
+    ],
+    rest: [
+      "SWEET DREAMS, CRAWLER! THE CLOCK KEPT TICKING WHILE YOU SLEPT. IT ALWAYS DOES.",
+      "RESTED! HP FULL! TIME GONE! THERE IS ALWAYS A PRICE, AND IT IS USUALLY HOURS."
     ]
   };
 
-  // Mordecai gets a new body every floor (art: mordecai_fN / p_mordecai_fN). He comments the first time you talk to him.
-  D.mordecaiForms = {
-    1: { name: 'BIRD', line: "WELCOME TO THE GUILD, KID. YES, I'M A BIRD. NO, I DON'T WANT TO TALK ABOUT IT. SIT DOWN BEFORE YOU FALL DOWN." },
-    2: { name: 'GOBLIN', line: "DON'T LAUGH. THE SHOW GIVES ME A NEW BODY EVERY FLOOR. THIS TIME IT'S A GOBLIN. THE EARS WHISTLE WHEN I WALK." },
-    3: { name: 'FROG', line: "A FROG. A FROG, CARL. I CAUGHT A FLY THIS MORNING WITHOUT MEANING TO. IT WAS DELICIOUS. I HATE THAT IT WAS DELICIOUS." },
-    4: { name: 'AUTOMATON', line: "THIS FLOOR I'M MADE OF GEARS. I TICK. I NEED OILING TWICE A DAY. IF I START SMOKING, PUNCH THE SIDE PANEL." },
-    5: { name: 'OCTOPUS', line: "EIGHT ARMS AND STILL ONE MUG. THE PRODUCERS THINK THIS IS FUNNY. I CAN POUR FOUR DRINKS AT ONCE, SO THAT'S SOMETHING." },
-    6: { name: 'STAG', line: "ANTLERS. I KEEP HITTING THE DOOR FRAME. THE HUNTERS OUT THERE KEEP LOOKING AT ME FUNNY. WATCH YOURSELF, KID." },
-    7: { name: 'VAMPIRE', line: "THE TEETH ARE NEW. NO, I'M NOT GOING TO BITE YOU. I CAN'T EVEN EAT GARLIC BREAD ANYMORE. THAT'S THE REAL TRAGEDY." },
-    8: { name: 'CYCLOPS', line: "ONE EYE. NO DEPTH PERCEPTION. I'VE MISSED THE BAR TWICE TODAY. IF YOU WANT A DRINK, POUR IT YOURSELF THIS FLOOR." },
-    9: { name: 'MINOTAUR', line: "HORNS, HOOVES AND A TEMPER. FITS THE MOOD. THE SHOWRUNNER IS UP THERE, KID. BEAT HIM AND THE SEASON STILL ISN'T OVER." },
-    10: { name: 'CRASH DUMMY', line: "A CRASH TEST DUMMY. YELLOW, JOINTED, AND THERE IS A TARGET PAINTED ON MY FACE. THE PRODUCERS THINK THEY'RE HILARIOUS." },
-    11: { name: 'PARADE MASCOT', line: "NOT. ONE. WORD. IT'S A PINK PLUSH MASCOT SUIT. IT SQUEAKS WHEN I WALK. THE HEAD DOESN'T COME OFF. I HAVE TRIED, CARL." }
-  };
+  /* Mordecai at the inns: Level 50 Incubus, Donut's bound manager. Drunk, bitter, brilliant. */
   D.mordecai = [
-    "BOXES AND STAT POINTS WAIT FOR A SAFE ROOM. THE SPONSORS WANT THE UNBOXING ON CAMERA. TALK TO ME TO TRAIN.",
-    "KID. LISTEN. A KICK IS SLOWER THAN A PUNCH BUT IT HITS HARDER. USE IT ON THE BIG ONES.",
-    "IN THE AIR, HOLD DOWN AND HIT ATTACK. YOU WILL DIVE FEET FIRST. BOUNCE OFF HEADS, IT KEEPS YOU SAFE.",
-    "BOMBS ARC. THROW THEM OVER WALLS AND INTO GROUPS. THREE KILLS IN ONE BLAST AND THE CROWD GOES NUTS.",
-    "CRATES HIDE SNACKS AND BOMBS. BREAK EVERY CRATE. NOBODY IS GOING TO BILL YOU.",
-    "POTIONS HEAL HALF YOUR MAX HP. DO NOT SAVE THEM FOR LATER. LATER IS WHEN YOU ARE DEAD.",
-    "THE SPECIAL METER FILLS WHEN YOU DEAL DAMAGE. FULL METER, HIT SPECIAL. SAVE IT FOR BOSSES IF YOU CAN.",
-    "STR IS PUNCH DAMAGE. CON IS HEALTH. DEX IS CRITS AND SPEED. INT MAKES YOUR COMPANION HURT THINGS MORE.",
-    "LEVELING UP HEALS YOU A LITTLE. SOMETIMES IT IS SMART TO FINISH A FIGHT BEFORE YOU DRINK.",
-    "FALLING IN A PIT COSTS 3 HP AND PUTS YOU BACK AT THE CHECKPOINT. TOUCH THE FLAGS.",
-    "ON THE MAP, LETTERED AREAS ARE OPTIONAL. BETTER LOOT, AND SOMETIMES A KEY OR A FRIEND IN A CAGE. GO LOOK.",
-    "THE WANDERING MONSTERS ON THE MAP START A SHORT FIGHT. AVOID THEM IF YOU ARE HURT.",
-    "BEAT THE FLOOR UNDER PAR TIME AND THE SHOW GIVES YOU A BONUS BOX. SPEED PAYS.",
-    "BOSSES CHANGE THEIR MOVES WHEN THEY GET HURT. WATCH FOR THE FLASH BEFORE A CHARGE OR A LASER.",
-    "SPIKES HURT AND THROW YOU UP. THAT CAN BE WORSE THAN THE SPIKES. LOOK BEFORE YOU LEAP.",
-    "THE SHOP PRICES GO UP EVERY FLOOR. BUY TONICS EARLY. YOU WILL THANK ME LATER.",
-    "COMBOS GET YOU MORE VIEWERS. VIEWERS GET YOU FAN BOXES. KEEP THE HITS CHAINED UNDER TWO SECONDS.",
-    "LOOT BOXES HAVE OUTFITS. FRIENDS YOU HAVE TO FIND YOURSELF. THEY ARE LOCKED IN CAGES ACROSS FLOORS 2 TO 7. PUNCH THE CAGE.",
-    "A PADLOCKED DOOR MEANS A KEY ITEM. FLEE, GO FIND IT, COME BACK. ITEMS STAY IN YOUR POCKET FOR THE WHOLE FLOOR.",
-    "LEVERS OPEN EVERY IRON GATE NEARBY. IF A GATE WILL NOT BUDGE, LOOK UP. THE LEVER IS USUALLY SOMEWHERE ANNOYING.",
-    "EVERY CRAWL, YOUR FRIENDS GET LOCKED UP AGAIN. THE SHOW CALLS IT A REBOOT. I CALL IT CHEAP WRITING.",
-    "IF THE CAT LETS YOU PET HER, PET HER. MORALE MATTERS DOWN HERE. TRUST ME.",
-    "ENEMIES WITH SHELLS OR ARMOR SHRUG OFF WEAK HITS. KICKS AND BOMBS GET THROUGH.",
-    "DO NOT FIGHT EVERYTHING ON THE GROUND. GET UP ON A PLATFORM AND MAKE THEM COME TO YOU.",
-    "YOU CAN DROP THROUGH THIN PLATFORMS. HOLD DOWN AND PRESS JUMP.",
-    "I HAVE BEEN DOWN HERE A LONG TIME, KID. MOST CRAWLERS DIE BEING GREEDY. DO NOT BE MOST CRAWLERS.",
-    "IN A RACE, HOLD RIGHT AND NEVER LET GO. JUMP THE GAPS, HIT THE PADS, AND LET THE CAT DO THE SHOOTING.",
-    "ON THE PARADE FLOAT, STAY ON THE FLOAT. EVERY FLOAT PART YOU BOLT ON DOES SOMETHING. BRING ALL FOUR."
+    "LISTEN. HIC. LISTEN. KICKS. WITH FREEBALLING YOUR KICKS DO DOUBLE. YOUR KICKS ALREADY DID MORE THAN YOUR PUNCHES. DO THE MATH, KID. KICK THINGS.",
+    "THE TIMER IS THE REAL BOSS ON THIS FLOOR. EVERY LEVEL COSTS HOURS. EVERY NAP COSTS HOURS. I COST NOTHING. I'M A BARGAIN. POUR ME ANOTHER.",
+    "MOLD LIONS COME BACK UNLESS YOU BURN THEM. THAT'S WHAT THE JUGS ARE FOR. FIRE STAYS ON THE GROUND. LURE THEM THROUGH IT. YOU'RE WELCOME.",
+    "KRASUE. GHOST CLASS. BOMBS GO RIGHT THROUGH THEM. YOUR GAUNTLET DOESN'T. THE BODY IS THE REAL TARGET. FIND THE BODY, WRECK THE BODY.",
+    "IN THE DARK, THE BIG STITCHED-UP BERSERKERS GET FOUR TIMES WORSE. STAY IN THE CAT'S LIGHT. I KNOW SHE'S INSUFFERABLE ABOUT IT. STAY IN IT ANYWAY.",
+    "DON'T PUNCH CITIZENS. DON'T PUNCH CHICKADEES. DON'T PUNCH THE ONES THAT LOOK LIKE THEY DESERVE IT. THE GUARDS DON'T CARE WHO STARTED IT.",
+    "YOU CAN WAIT FOR NIGHT FOR FREE. SLEEPING TILL MORNING COSTS GOLD BUT HEALS YOU. NIGHT IS WHEN THE INTERESTING DOORS OPEN. AND THE INTERESTING DEATHS.",
+    "THE SMOKE BOMBS ARE NOT FOR SHOWING OFF. ANYTHING IN THE CLOUD FORGETS YOU FOR A FEW SECONDS. FOUR SECONDS IS A LIFETIME IF YOU USE IT.",
+    "BRING ME MOONSHINE AND I'LL TEACH YOU A THING. NO. WAIT. YOU CRAFT IT YOURSELF NOW. ALCHEMY. ONE JUG, ONE BOMB. GIVE ME THE OTHER JUG.",
+    "UP PLUS BOMB SWITCHES WHAT YOU THROW. DON'T THROW DYNAMITE AT ONE LEMUR. DON'T THROW A HOB-LOBBER AT A BOSS. MATCH THE BANG TO THE BASTARD.",
+    "DOWN PLUS SPECIAL WITH A STICK OF DYNAMITE. TWO LITTLE CLOCKWORK MONGOS RUN OFF AND BLOW UP. THE CAT CALLS IT THE BOOMY BOY. I CALL IT A WAR CRIME.",
+    "UP PLUS SPECIAL WITH A JUG. TOSS IT, THE CAT TELEPORTS YOU OUT, IT LANDS. BIG FIRE. MIC DROP. DON'T DO IT INDOORS. DO IT INDOORS IF IT'S A CULT.",
+    "THE XISTERA MAKES HOB-LOBBERS FLY STRAIGHT AND HIT HARD. IT'S A JAI ALAI BASKET. I DON'T KNOW WHAT JAI ALAI IS. NEITHER DO YOU. IT WORKS.",
+    "ELITES AREN'T BOSSES. THEY'RE ACTORS. PRINTED, IMPRINTED, WRITTEN INTO A STORYLINE. THEY'RE ON A SHOW INSIDE THE SHOW. IT'S LIKE STAR TREK. A LOT OF STAR TREK.",
+    "SIGNET WILL USE YOU. GRIMALDI WILL USE YOU. THE PRODUCERS WILL USE YOU. THE TRICK IS TO GET USED IN A DIRECTION YOU WANTED TO GO ANYWAY.",
+    "YOU CAN'T SAVE THEM ALL, KID. I'VE WATCHED A LOT OF CRAWLERS TRY. YOU KNOW WHERE THEY ARE NOW? NEITHER DO I. THAT'S THE POINT.",
+    "THE SYNDICATE SHOWS RUN LIKE THOSE SLASHER MOVIES. THE SEQUEL KILLS MORE PEOPLE THAN THE FIRST ONE. EVERY SEASON IS A SEQUEL.",
+    "SIGNPOST ROCKS OUTSIDE THE GATES. PRESS UP. THEY FILL IN THE MAP. YOUR ESCAPE PLAN SKILL READS THEM BETTER THAN ANYBODY. USE IT.",
+    "THE CAT'S EARS HEAR THINGS YOU DON'T. WHEN A LITTLE PIP SHOWS UP, LOOK THERE. SHE'S USUALLY RIGHT. DON'T TELL HER I SAID SHE'S USUALLY RIGHT.",
+    "SECOND CHANCE: SOMETIMES WHEN THE CAT KILLS SOMETHING, IT GETS BACK UP ON YOUR SIDE. FOR A FEW SECONDS. DON'T GET ATTACHED. THEY'RE DEAD.",
+    "THE STAIRS IN THE PARK WILL TAKE YOU DOWN EARLY. DON'T. FLOOR FOUR EATS THE CRAWLERS WHO LEFT FLOOR THREE HALF FINISHED. TRUST ME. I ATE THEM.",
+    "I DIDN'T EAT THEM. THAT WAS A FIGURE OF SPEECH. I'M AN INCUBUS, NOT A... NEVER MIND. GO TO BED.",
+    "I WAS A CRAWLER ONCE. A LONG TIME AGO. A LONG, LONG TIME AGO. THE DRINKS WERE WORSE BACK THEN. EVERYTHING WAS WORSE. NOW IT'S WORSE AND I'M DRUNK.",
+    "THIS BODY. THIS STUPID BODY. EVERY TIME I WALK INTO A ROOM, SOMEBODY OFFERS TO BUY ME A DRINK. I USED TO HAVE TO EARN MY DRINKS. THE SHOW TOOK THAT FROM ME.",
+    "YOUR STAT POINTS. STRENGTH FOR PUNCHES. CONSTITUTION FOR NOT DYING. DEXTERITY FOR CRITS AND FEET. INTELLIGENCE FOR THE CAT'S MISSILES. SPEND THEM HERE.",
+    "BOSSES TELEGRAPH. THE BEAR CROUCHES BEFORE SHE CHARGES. THE MANTA SHIMMERS BEFORE IT PEELS OFF THE WALL. WATCH THEM LIKE A BAD HAND OF CARDS.",
+    "MANAGER. MANAGER! I HAVE TRAINED KINGS, KID. I HAVE WATCHED GODS FALL. AND NOW I NEGOTIATE A CAT'S APPEARANCE FEES. TEN PERCENT. TEN PERCENT OF NOTHING.",
+    "THE CAMERAS LOVE YOU. THAT'S NOT A COMPLIMENT. THE CAMERAS LOVE ANYTHING THAT MIGHT DIE INTERESTINGLY. STAY BORING WHEN YOU CAN. YOU NEVER CAN.",
+    "GET THE GOLD, BUY THE POTIONS, DRINK THE POTIONS. DON'T HOARD THEM. HOARDERS DIE WITH FULL POCKETS. I'VE SEEN THE FOOTAGE. IT'S EMBARRASSING.",
+    "IF THE CAT LETS YOU PET HER, PET HER. MORALE IS A RESOURCE. MINE IS IN THIS BOTTLE."
   ];
 
-  D.shopkeeper = { name: 'BOPCA THE SHOPKEEPER', lines: [
-    "WELCOME, WELCOME! EVERYTHING IS FOR SALE! EXCEPT ME! I AM FOR RENT.",
-    "POTIONS, BOMBS, TONICS! ALL GENUINE! MOSTLY GENUINE! THE LABELS ARE GENUINE.",
-    "YOU LOOK LIKE A CRAWLER WHO NEEDS A HEART CONTAINER. YOU LOOK LIKE YOU NEED SEVERAL.",
-    "NO SHIRT, NO SHOES, NO PROBLEM! I TAKE GOLD FROM ANYONE.",
-    "THE MYSTERY BOX? IT IS A MYSTERY TO ME TOO. THAT IS THE MAGIC.",
-    "A REVIVAL CONTRACT! SIGN HERE, AND HERE, AND HERE. DO NOT READ THAT PART.",
-    "PRICES GO UP EVERY FLOOR. BLAME THE DUNGEON ECONOMY. ALSO BLAME ME, A LITTLE.",
-    "COME BACK SOON! OR DO NOT. I AM PAID EITHER WAY. THAT IS A LIE. PLEASE COME BACK.",
-    "YOU CANNOT AFFORD THAT. I SAY THIS WITH LOVE. MOSTLY WITH PITY."
-  ] };
+  /* story hints: the first matching entry is what Mordecai says when you TALK at an inn */
+  D.mordecaiHints = [
+    { when: { notFlags: ['lemurs_done'] }, text: "THE RUINS ARE EAST OF THE VILLAGE. A COLLAPSED STREET. LEMURS ON THE ROOFS. KILL THEM BEFORE THEY GET HIGH GROUND. THEY ALWAYS HAVE HIGH GROUND." },
+    { when: { flags: ['lemurs_done'], notFlags: ['bodies_done'] }, text: "THAT QUEST. THE CIRCUS. DON'T. FINE. DO. BUT FIRST LOOK AT WHOEVER TRIED BEFORE YOU. DEAD CRAWLERS ARE THE BEST TEACHERS. AND THEY HAVE LOOT." },
+    { when: { flags: ['bodies_done'], notFlags: ['collapse_done'] }, text: "SPY FROM A HIGH PLACE, NOT A CLOSE PLACE. AND IF THE BUILDING STARTS FALLING, FALL FASTER THAN IT DOES. THAT'S NOT ADVICE. THAT'S PHYSICS." },
+    { when: { flags: ['lions_done'], notFlags: ['heather_done'] }, text: "THE BEAR IS A BOSS ON SKATES. YOU CAN'T OUTRUN HER, SO DON'T STOP. WHEN YOU CAN'T RUN ANY MORE, FIGHT. AND WATCH THE WORMS." },
+    { when: { flags: ['heather_done'], notFlags: ['bigtop_done'] }, text: "THE BLOOD PLAN. POISON YOURSELF. DRIP ON THE ROOTS. STAY ALIVE WHILE IT WORKS. AND BREAK THOSE TENT POLES. THE BIG TOP OPENS AT NIGHT." },
+    { when: { flags: ['circus_gone'], notFlags: ['settled'] }, text: "EAST. THE SETTLEMENT. THIRTY-FOUR KILOMETERS OF RUIN AND THEN FOUR ROOMS AT TWENTY GOLD. I'VE ALREADY BOOKED MINE. I'VE ALREADY STARTED A TAB." },
+    { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "THE Y ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. AND TRY THAT DYNAMITE TRICK. ON IT, NOT ON ME." },
+    { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS STILL AT THE GATE. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT IN YOUR STUPID DECENT FACE." },
+    { when: { flags: ['quest_sw'], notFlags: ['club_known'] }, text: "FINE. IF YOU'RE DOING THIS, DO IT RIGHT. MEET ME OUTSIDE THE PUB. THERE'S A DOOR IN THE BACK AND A HOBGOBLIN WHO SELLS DYNAMITE. IT'S A NICE DOOR." },
+    { when: { flags: ['mongo_bolted'], notFlags: ['vincente_dead'] }, text: "WHERE IS YOUR DINOSAUR? WHY ARE YOU HERE? WHY ARE YOU TALKING TO ME? GO GET YOUR DINOSAUR." },
+    { when: { flags: ['vincente_dead'], notFlags: ['met_quill'] }, text: "A GATE PASS FROM THE MAGISTRATE ON A DEAD ORC. AND A LETTER IN NECROMANCER SCRIBBLE. GO TO THE ADMIN DISTRICT. LOOK. DON'T TOUCH. YOU'RE GOING TO TOUCH." },
+    { when: { flags: ['met_quill'], notFlags: ['divider_done'] }, text: "SOMEBODY KILLED A BOSS ON THE EAST ROAD AND LEFT IT TO ROT. THE ELVES GO OUT THERE AT NIGHT. THAT'S A TRAP. IT'S A TRAP FOR YOU. YOU'RE GOING ANYWAY." },
+    { when: { flags: ['divider_done'], notFlags: ['show_done'] }, text: "ZEV BOOKED YOU ON DANGER ZONE. LIVE. UNCENSORED. EVERYTHING YOU SAY GOES OUT TO A TRILLION PEOPLE. SO, YOU KNOW. DON'T SAY ANYTHING. YOU WILL." },
+    { when: { flags: ['show_done'], notFlags: ['apito_done'] }, text: "THE EDUCATION CENTER IS THE MILITIA'S HOUSE. THE MAP SAYS CORRUPT TEMPLE. GO BY DAY, WHEN THEY'RE TEACHING. THEY CAN'T CAST DARKNESS IN DAYLIGHT AS WELL." },
+    { when: { flags: ['katia_joined'], notFlags: ['mongo_big'] }, text: "THE BACK ALLEY FILLS WITH SHADOW LEAKS AT NIGHT. EASY XP. YOUR DINOSAUR IS CLOSE TO SOMETHING. I CAN SMELL IT ON HIM. IT SMELLS LIKE GROWTH. AND FEET." },
+    { when: { flags: ['mongo_big'], notFlags: ['quill_dead'] }, text: "THE MAGISTRATE COMES OUT AT NIGHT. SO DOES QUILL'S LITTLE FLYING HEAD ARMY. CLIMB THE OUTSIDE, PLANT THE STICKS, BLOW IT FROM THE NEXT ROOF. I DIDN'T SAY THAT." },
+    { when: { flags: ['nest_done'], notFlags: ['depot_rigged'] }, text: "THE GUARD DEPOT. THE SWORDSMEN SIT IN THERE ALL NIGHT, FROZEN, RECHARGING. WHATEVER POWERS THEM IS IN THERE. WHATEVER POWERS THEM IS WHAT QUILL WANTED. GO AT NIGHT." }
+  ];
 
   D.story = {
-    intro: [
-      { text: "IT WAS THE COLDEST NIGHT OF THE YEAR. SNOW. WIND. YOU WERE STANDING OUTSIDE IN YOUR BOXERS AND A LEATHER JACKET.", portrait: 'p_carl' },
-      { text: "WHY? BECAUSE YOUR EX'S CAT, PRINCESS DONUT, HAD ESCAPED. AGAIN. AND SHE WAS SITTING ON A CAR, JUDGING YOU.", portrait: 'p_donut' },
-      { text: "YOU HAD JUST REACHED HER WHEN THE SKY WENT QUIET. A HUM. A FLASH. AND THEN EVERY BUILDING ON EARTH WAS GONE.", portrait: null },
-      { text: "NOT DESTROYED. GONE. CITIES, TOWNS, HOUSES. EVERYONE INSIDE WITH THEM. YOU WERE OUTSIDE. THAT WAS YOUR LUCKY BREAK.", portrait: null },
-      { text: "THEN THE VOICE CAME. FROM EVERYWHERE. LOUD, CHEERFUL, AND DELIGHTED TO MEET YOU.", portrait: 'p_ai' },
-      { text: "HELLO, EARTH! YOUR PLANET HAS BEEN SELECTED FOR THE GALAXY'S MOST POPULAR ENTERTAINMENT PROGRAM!", portrait: 'p_ai' },
-      { text: "THE SURFACE IS CLOSED! THE DUNGEON IS OPEN! EIGHTEEN FLOORS OF FUN, AND ELEVEN OF THEM ARE READY TODAY!", portrait: 'p_ai' },
-      { text: "GO DOWN THE STAIRS. FIGHT MONSTERS. OPEN BOXES. ENTERTAIN BILLIONS. STAY ON THE SURFACE AND, WELL. DO NOT DO THAT.", portrait: 'p_ai' },
-      { text: "THE CAT LOOKED AT YOU. YOU LOOKED AT THE CAT. SHE CLIMBED ONTO YOUR SHOULDER LIKE SHE OWNED IT. SHE DID NOW.", portrait: 'p_donut' },
-      { text: "WELCOME TO THE SHOW, CRAWLER. TRY TO LOOK GOOD DYING. OR BETTER YET, DO NOT DIE. THE RATINGS ARE BETTER THAT WAY.", portrait: 'p_ai' }
+    winEnding: [
+      { text: "THE STAIRWELL DOOR SLAMMED SHUT BEHIND THEM. ABOVE, THE OVER CITY SHOOK, AND THE SKY FLICKERED, AND THEN IT WAS QUIET.", portrait: null },
+      { text: "CARL SAT ON A STEP IN HIS BOXERS WITH A BOMB THE SIZE OF A CITY IN HIS INVENTORY. DONUT SAT ON HIS SHOULDER WITHOUT HER CROWN.", portrait: 'p_carl' },
+      { text: "MONGO, PONY-SIZED AND PROUD OF IT, TRIED TO CLIMB INTO CARL'S LAP. KATIA LAUGHED FOR THE FIRST TIME SINCE THEY MET HER.", portrait: 'p_katia' },
+      { text: "FLOOR THREE: COMPLETE. FLOOR FOUR: LOADING. SEE YOU THERE, CRAWLERS. BRING YOUR DOOMSDAY SCENARIO. WE CERTAINLY WILL.", portrait: 'p_ai' }
     ],
-    ending: [
-      { text: "THE GRAND MARSHAL TOPPLED OFF HIS THRONE FLOAT. HIS BATON ROLLED INTO THE GUTTER. THE MARCHING BAND, FOR ONCE, MISSED A BEAT.", portrait: null },
-      { text: "CONFETTI KEPT FALLING. NOBODY HAD TOLD THE CANNON TO STOP. PRINCESS DONUT WAVED FROM THE TRUCK WINDOW LIKE SHE PLANNED IT ALL.", portrait: 'p_donut' },
-      { text: "THEN THE CROWD ERUPTED. BILLIONS OF VIEWERS, SCREAMING ONE NAME. IT WAS YOURS. THE CAT ASSUMED IT WAS HERS.", portrait: 'p_donut' },
-      { text: "WELL! THAT WAS NOT IN THE SCRIPT. ELEVEN FLOORS, A RACING CUP AND A PARADE. CRAWLER, YOU BROKE THE SHOW SO BADLY IT IS A HIT.", portrait: 'p_ai' },
-      { text: "THE NETWORK HAS AGREED TO YOUR TERMS. THE PARADE ROUTE ENDS AT A STAIRCASE GOING UP. THE SURFACE IS WAITING. IT IS STILL COLD.", portrait: 'p_ai' },
-      { text: "YOU CLIMBED. PAST THE PARADE, THE RACES, THE WARZONE, THE RUIN, THE MANOR, THE WOODS, THE SEA, THE RAILS AND THE CITY.", portrait: 'p_carl' },
-      { text: "PAST THE WARRENS AND THE SEWERS. AT THE TOP THERE WAS SNOW. AND SKY. AND OTHER PEOPLE, BLINKING IN THE LIGHT.", portrait: null },
-      { text: "PRINCESS DONUT STRETCHED, YAWNED, AND ANNOUNCED THAT SHE WAS HUNGRY. SOME THINGS SURVIVE EVERYTHING.", portrait: 'p_donut' },
-      { text: "SEASON ONE: COMPLETE. THANK YOU FOR WATCHING. STAY TUNED, CRAWLER. THE GALAXY IS ALREADY ASKING FOR SEASON TWO.", portrait: 'p_ai' }
+    earlyEnding: [
+      { text: "THE STAIRWELL IN THE PARK WAS RIGHT THERE. CARL TOOK IT. THE DOOR CLOSED. THE THIRD FLOOR WENT ON WITHOUT HIM.", portrait: null },
+      { text: "SOMEWHERE EAST, A SETTLEMENT KEPT FINDING DEAD WOMEN AT ITS GATE. A RECEPTIONIST KEPT HER SHELVES DUSTED. A SPELL KEPT GROWING.", portrait: null },
+      { text: "ACHIEVEMENT! EARLY BIRD GETS TO SQUIRM! YOU LEFT WITH DAYS ON THE CLOCK. NO REWARD. THE AUDIENCE IS ASKING FOR A REFUND.", portrait: 'p_ai' },
+      { text: "YOU MISSED THE BEST PART, CRAWLER. THE TALK SHOW. THE EXPLOSIONS. THE OTHER EXPLOSIONS. MAYBE NEXT TIME, STAY FOR THE WHOLE SHOW.", portrait: 'p_donut' }
+    ],
+    collapseEnding: [
+      { text: "THE CLOCK HIT ZERO. THE OVER CITY TREMBLED, CRACKED, AND FOLDED IN ON ITSELF LIKE A WET CARDBOARD BOX.", portrait: null },
+      { text: "EVERY CRAWLER STILL ON THE THIRD FLOOR WENT WITH IT. THAT INCLUDED A MAN IN HIS BOXERS, A CAT, AND A VERY CONFUSED DINOSAUR.", portrait: null },
+      { text: "WELL! THAT IS ONE WAY TO END A SEASON. THE TIMER WAS RIGHT THERE THE WHOLE TIME, CRAWLER. IT WAS ON YOUR SCREEN. IN BIG NUMBERS.", portrait: 'p_ai' },
+      { text: "GAME OVER. NEXT TIME: FEWER NAPS, MORE STAIRS.", portrait: 'p_ai' }
     ],
     credits: [
-      "DUNGEON CRAWLER WORLD: EARTH",
+      "DUNGEON CRAWLER WORLD",
+      "BOOK 2: CARL'S DOOMSDAY SCENARIO",
       "A PERSONAL FAN GAME. NOT FOR SALE.",
       "NOT AFFILIATED WITH ANYONE. AT ALL.",
-      "INSPIRED BY DUNGEON CRAWLER CARL",
+      "BASED ON DUNGEON CRAWLER CARL",
       "BY MATT DINNIMAN. GO READ THE BOOKS.",
       "THEY ARE BETTER THAN THIS. THE CAT SAYS SO.",
       "STARRING CARL AND PRINCESS DONUT",
-      "WITH MONGO, SAMANTHA, KATIA, ZEV, SIGNET",
-      "AND SIR SQUEAKS, OF COURSE",
-      "AND THE RIVALS OF THE CUL-DE-SAC CUP",
-      "SPECIAL THANKS TO MORDECAI FOR THE TIPS",
-      "AND TO BOPCA FOR THE TERRIBLE PRICES",
-      "NO TUTORIAL RATS WERE HARMED. OK, SEVERAL WERE.",
+      "WITH MONGO AND KATIA GRIM",
+      "AND MORDECAI, WHO DID NOT AGREE TO ANY OF THIS",
+      "TSARINA SIGNET AND RINGMASTER GRIMALDI",
+      "HEATHER THE BEAR, WHO DESERVED BETTER",
+      "GUMGUM, WHO ASKED FOR HELP",
+      "BURGUNDY, WHO WAS A PERSON THE WHOLE TIME",
+      "RIPPER WONTON AND THE DANGER ZONE PANEL",
+      "IN MEMORY OF MANASA'S TRAILER",
+      "FITZ AND GORDO FOR THE ROOMS",
+      "PUSTULE FOR THE DYNAMITE",
+      "NO CHICKADEES WERE PUNCHED. ON PURPOSE.",
       "ALL ART DRAWN IN CODE. ALL MUSIC MADE OF BEEPS.",
-      "THANK YOU FOR PLAYING, CRAWLER!"
+      "SEE YOU ON FLOOR FOUR, CRAWLER."
     ]
   };
-
-  D.titles = [
-    { views: 0, name: 'NOBODY' },
-    { views: 500, name: 'BACKGROUND EXTRA' },
-    { views: 2000, name: 'LOCAL CURIOSITY' },
-    { views: 6000, name: 'RISING CRAWLER' },
-    { views: 15000, name: 'CULT FAVORITE' },
-    { views: 35000, name: 'FAN FAVORITE' },
-    { views: 75000, name: 'PRIME TIME' },
-    { views: 150000, name: 'GALACTIC HEARTTHROB' },
-    { views: 300000, name: 'RATINGS MONSTER' },
-    { views: 600000, name: 'LIVING LEGEND' },
-    { views: 1000000, name: 'THE MAIN CHARACTER' }
-  ];
 })();

@@ -81,9 +81,9 @@
     kick:   { rate: 16885, len: 0.34, peak: 0.98 },
     snare:  { rate: 21307, len: 0.26, peak: 0.95 },
     clap:   { rate: 21307, len: 0.3, peak: 0.92 },
-    tomH:   { rate: 16885, len: 0.4, peak: 0.95 },
-    tomM:   { rate: 16885, len: 0.45, peak: 0.95 },
-    tomL:   { rate: 16885, len: 0.55, peak: 0.95 },
+    tomH:   { rate: 16885, len: 0.4, peak: 0.95, root: 175 },
+    tomM:   { rate: 16885, len: 0.45, peak: 0.95, root: 128 },
+    tomL:   { rate: 16885, len: 0.55, peak: 0.95, root: 88 },
     timp:   { rate: 11186, len: 1.5, peak: 0.95, root: 98 },
     slap:   { rate: 16885, len: 0.75, peak: 0.92, root: 16885 / 204.5 },
     ostab:  { rate: 13983, len: 0.7, peak: 0.92, root: 261.63 },
@@ -109,7 +109,7 @@
   }
   function crowd(d, sr, R, o) { // a crowd of naive-saw voices through one shared vowel
     var vs = [], k, i, n = o.n;
-    for (k = 0; k < n; k++) vs.push({ f: o.lo + R() * (o.hi - o.lo), ph: R(), on: R() * o.spread, vr: 4 + R() * 3, vd: 0.012 + R() * 0.03, vp: R() * 6.28, amp: 0.45 + R() * 0.55, ha: 4.3 + R() * 2.2, hp: R() });
+    for (k = 0; k < n; k++) vs.push({ f: o.lo + R() * (o.hi - o.lo), ph: R(), on: R() * o.spread, vr: 4 + R() * 3, vd: 0.012 + R() * 0.03, vp: R() * 6.28, amp: 0.45 + R() * 0.55, ha: (o.haRate || 5) * (0.9 + R() * 0.2), hp: R() * (o.haPh || 1) });
     var fs = o.vowel.map(fst);
     for (i = 0; i < d.length; i++) {
       var t = i / sr, src = 0;
@@ -204,7 +204,7 @@
         env: function (t) { return Math.min(1, t / 0.2) * (t > 0.85 ? Math.max(0, 1 - (t - 0.85) / 0.55) : 1); } });
     },
     laugh: function (d, sr, R) {
-      crowd(d, sr, R, { n: 14, lo: 170, hi: 320, spread: 0.15, glide: -0.1, breath: 0.18, ha: true, vowel: [[750, 130, 1], [1200, 170, 0.55], [2600, 250, 0.2]],
+      crowd(d, sr, R, { n: 11, lo: 170, hi: 330, spread: 0.12, glide: -0.12, breath: 0.2, ha: true, haRate: 5.4, haPh: 0.3, vowel: [[750, 130, 1], [1200, 170, 0.55], [2600, 250, 0.2]],
         env: function (t) { return Math.min(1, t / 0.08) * (t > 0.9 ? Math.max(0, 1 - (t - 0.9) / 0.55) : 1); } });
     },
     shriek: function (d, sr, R) {
@@ -230,6 +230,7 @@
       if (target > L) { if (L <= 125) L += 2; } else if (L >= 2) L -= 2;
       out[i] = (L - 64) / 64;
     }
+    for (i = n - 1; i > 0; i--) out[i] = 0.5 * (out[i] + out[i - 1]); // output RC: kills the idle toggle whine
     var fade = Math.min(n, Math.round(def.rate * 0.004));
     for (i = 0; i < fade; i++) out[n - 1 - i] *= i / fade;
     return (smpCache[name] = out);
@@ -261,7 +262,7 @@
       var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(13500, c.sampleRate * 0.45); lp.Q.value = 0.5;
       var sat = c.createWaveShaper(); sat.curve = SAT || (SAT = curve(2049, function (x) { return Math.tanh(1.35 * x) / Math.tanh(1.35); })); sat.oversample = '2x';
       var comp = c.createDynamicsCompressor();
-      comp.threshold.value = -17; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.22;
+      comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.22;
       var lim = c.createDynamicsCompressor();
       lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.08;
       var safe = c.createWaveShaper(); safe.curve = SAFE || (SAFE = curve(4097, function (x) { var a = Math.abs(x), s = x < 0 ? -1 : 1; return a < 0.9 ? x : s * (0.9 + 0.095 * Math.tanh((a - 0.9) / 0.095)); }));
@@ -666,7 +667,13 @@
       var parts = entry.split(' ');
       if (parts.length === 1) return P(pat, entry, oct);
       var u = units(pat), n = u.length / parts.length;
-      return parts.map(function (sym, i) { return P(u.slice(i * n, (i + 1) * n).join(''), sym, oct); }).join(' ');
+      return parts.map(function (sym, i) {
+        var seg = u.slice(i * n, (i + 1) * n);
+        if (i && seg[0].charAt(0) === '-') { // a note held into the next chord is re-struck as that chord's tone
+          for (var k = i * n - 1; k >= 0; k--) { var c0 = u[k].charAt(0); if (c0 === '.') break; if (c0 !== '-') { seg[0] = u[k]; break; } }
+        }
+        return P(seg.join(''), sym, oct);
+      }).join(' ');
     }).join(' | ');
   }
   // drum step pattern: one char per step (kit letters), . rest, optional alias map for combos
@@ -798,11 +805,11 @@
       inst: { p1: I('thin', { v: 0.07 }), p2: I('arp', { v: 0.06, echo: { steps: 3, v: 0.35 } }), tr: 'bass', v1: I('vbell', { echo: { steps: 3, v: 0.35 } }),
         v2: I('vpad', { v: 0.05 }), sw: I('sawP', { v: 0.035 }), sb: I('timp', { v: 0.32 }) },
       parts: {
-        A: { v1: mA, p2: CP('0-2-1-3-2-1-', chA, 4), v2: CP('1-----------', chA, 4), tr: CP('0-----2-----', chA, 2), sw: RB('D3:12', 8),
+        A: { v1: mA, p2: CP('0-2-1-3-2-1-', chA, 4), v2: CP('1-----------', chA, 4), tr: CP('0-----2-----', chA, 2), sw: CP('0-----------', chA, 3),
           dm: Dr('k?.k?.........'), nz: crk, sb: 'D2:12 | .:12 | .:12 | .:12 | Bb1:12 | .:12 | A1:12 | .:12' },
-        B: { v1: mB, p2: CP('0-2-1-3-2-1-', chB, 4), v2: CP('1-----------', chB, 4), tr: CP('0-----2-----', chB, 2), sw: RB('D3:12', 8),
+        B: { v1: mB, p2: CP('0-2-1-3-2-1-', chB, 4), v2: CP('1-----------', chB, 4), tr: CP('0-----2-----', chB, 2), sw: CP('0-----------', chB, 3),
           dm: Dr('k?.k?.........'), nz: B(Dr('w...........'), Dr('.......mmm..'), Dr('..mmm.......'), Dr('.......mmm..')), sb: 'G1:12 | .:12 | .:12 | A1:12 | G1:12 | .:12 | Eb2:12 | A1:12' },
-        A2: { v1: mA, p1: T(mA, 12), p2: CP('0-2-1-3-2-1-', chA, 4), v2: CP('1-----------', chA, 4), tr: CP('0-----2-----', chA, 2), sw: RB('D3:12', 8),
+        A2: { v1: mA, p1: T(mA, 12), p2: CP('0-2-1-3-2-1-', chA, 4), v2: CP('1-----------', chA, 4), tr: CP('0-----2-----', chA, 2), sw: CP('0-----------', chA, 3),
           dm: Dr('k?.k?.........'), nz: crk, sb: 'D2:12 | .:12 | .:12 | .:12 | Bb1:12 | .:12 | A1:12 | .:12' }
       },
       seq: ['A', 'B', 'A2', 'B']
@@ -998,12 +1005,12 @@
     var oud = function (ch) { return CP('0.20.20.0.20.2.0', ch, 3); }, doum = function (ch) { return CP('0-......0-.0....', ch, 2); };
     return {
       bpm: 112, room: 0.15,
-      inst: { p1: I('lead50', { v: 0.08 }), p2: I('pluck', { v: 0.1 }), tr: 'bass', v1: I('vreed', { v: 0.135 }), v2: 'vpad', sw: I('sawP', { v: 0.045 }), dm: 'slap', sb: 'slap' },
+      inst: { p1: I('lead50', { v: 0.08 }), p2: I('pluck', { v: 0.1 }), tr: 'bass', v1: I('vreed', { v: 0.135 }), v2: 'vpad', sw: I('sawP', { v: 0.045 }), dm: 'slap', sb: 'slap' }, mix: { dm: 0.85 },
       parts: {
-        A: { v1: mA, p2: oud(chA), tr: doum(chA), sw: RB('D3:16', 8), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq },
-        B: { v1: mB, p1: T(mB, 12), p2: oud(chB), tr: doum(chB), sw: RB('D3:16', 8), v2: CP('1---------------', chB, 4), dm: B(RB(dar, 3), darF, RB(dar, 3), darF), nz: riq,
+        A: { v1: mA, p2: oud(chA), tr: doum(chA), sw: CP('0---------------', chA, 3), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq },
+        B: { v1: mB, p1: T(mB, 12), p2: oud(chB), tr: doum(chB), sw: CP('0---------------', chB, 3), v2: CP('1---------------', chB, 4), dm: B(RB(dar, 3), darF, RB(dar, 3), darF), nz: riq,
           sb: RB(Dr('....c.......c...'), 8) },
-        A2: { v1: mA, p1: HC(mA, chA, 16), p2: oud(chA), tr: doum(chA), sw: RB('D3:16', 8), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq,
+        A2: { v1: mA, p1: HC(mA, chA, 16), p2: oud(chA), tr: doum(chA), sw: CP('0---------------', chA, 3), v2: CP('1---------------', chA, 4), dm: B(RB(dar, 7), darF), nz: riq,
           sb: CP('0..0..0.0.......', chA, 2) }
       },
       seq: ['A', 'B', 'A2', 'B']
@@ -1177,7 +1184,7 @@
   // SAD - GumGum, Burgundy, Heather's last moments: slow and tender, A minor
   song('sad', function () {
     var chA = ['Am', 'F', 'C', 'G', 'Am', 'F', 'Dm', 'E'], chB = ['F', 'G', 'Em', 'Am', 'Dm', 'G', 'C', 'E'];
-    var mA = 'E5:6 D5:2 C5:4 B4:4 | A4:8 C5:8 | G5:6 F5:2 E5:4 D5:4 | D5:16 | E5:6 F5:2 E5:4 C5:4 | A5:8 G5:4 F5:4 | F5:6 E5:2 D5:4 C5:4 | B4:16';
+    var mA = 'E5:6 D5:2 C5:6 B4:2 | A4:8 C5:8 | G5:6 F5:2 E5:4 D5:4 | D5:16 | E5:6 F5:2 E5:4 C5:4 | A5:8 G5:4 F5:4 | F5:6 E5:2 D5:4 C5:4 | B4:16';
     var mB = 'A5:6 G5:2 F5:4 C6:4 | B5:8 G5:8 | G5:6 F5:2 E5:4 B4:4 | C5:8 E5:8 | F5:6 E5:2 D5:4 A5:4 | G5:8 D5:8 | E5:6 D5:2 C5:4 E5:4 | B4:8 G#4:8';
     return {
       bpm: 66, room: 0.26,
@@ -1241,8 +1248,8 @@
   // ENDING - bittersweet epilogue in Odette's green room: the Doomsday motif in D major, borrowed minor iv
   song('ending', function () {
     var chA = ['D', 'F#m', 'G', 'Gm', 'D', 'Bm', 'Em A', 'D'], chB = ['Bm', 'G', 'D', 'A', 'Bm', 'G', 'Gm', 'D'];
-    var mA = 'D5:6 A4:2 D5:4 F#5:4 | E5:8 C#5:8 | D5:6 B4:2 D5:4 G5:4 | F#5:8 E5:4 D5:4 | D5:6 A4:2 D5:4 A5:4 | B5:8 F#5:4 D5:4 | G5:4 F#5:4 E5:4 C#5:4 | D5:16';
-    var mB = 'F#5:6 E5:2 D5:4 B4:4 | D5:8 G5:8 | F#5:6 A5:2 D6:8 | C#6:8 A5:8 | D6:6 C#6:2 B5:4 F#5:4 | G5:8 B5:4 D6:4 | D6:6 Bb5:2 G5:4 A5:4 | F#5:12 .:4';
+    var mA = 'D5:6 A4:2 D5:4 F#5:4 | E5:8 C#5:8 | D5:6 B4:2 D5:4 G5:4 | Bb4:6 A4:2 G4:4 A4:4 | D5:6 A4:2 D5:4 A5:4 | B5:8 F#5:4 D5:4 | G5:4 F#5:4 E5:4 C#5:4 | D5:16';
+    var mB = 'F#5:6 E5:2 D5:4 B4:4 | D5:8 G5:8 | F#5:6 A5:2 D6:8 | C#6:8 A5:8 | D6:6 C#6:2 B5:4 F#5:4 | G5:8 B5:4 D6:4 | D6:6 Bb5:2 G5:4 Bb5:4 | F#5:12 .:4';
     var arps = function (ch) { return CP('0-1-2-3-2-1-2-1-', ch, 4); };
     return {
       bpm: 76, room: 0.26,
@@ -1286,6 +1293,13 @@
       seq: ['A', 'B', 'A2', 'B2']
     };
   });
+
+  // Mixing table: per-track gain so action tracks land at the same loudness (raw ~0.18 RMS) and the
+  // quiet moods (dark, sad, cutscene, night) sit a few dB under them. Measured with tools/audio_report.js.
+  var GAIN = { title: 1.06, intro: 0.92, village: 0.89, village_night: 0.86, ruins: 0.79, ruins_night: 0.86, circus: 1.32, bigtop: 1.06, heather: 0.96,
+    boss: 1.09, settlement: 0.96, market: 1.08, club: 0.82, show: 1.22, dark: 1.31, climb: 1.01, escape: 1.12, inn: 0.97, cutscene: 0.81, sad: 0.81,
+    results: 1.06, gameover: 0.92, lootbox: 1.02, ending: 0.88, credits: 0.82 };
+  Object.keys(GAIN).forEach(function (n) { if (SONGS[n] && SONGS[n].gain == null) SONGS[n].gain = GAIN[n]; });
 
   // Book 1 track names other modules may still ask for during the move to book 2 (resolved silently).
   var ALIAS = { safe: 'inn', boss_final: 'boss', floor1: 'ruins', floor2: 'ruins', floor3: 'circus', floor4: 'ruins', floor5: 'ruins_night',
@@ -1704,8 +1718,9 @@
     laugh: function (e, o, t, p) { var v = samp(e, o, t, 'laugh', { v: 0.85, rate: p }); return v.end; },
     boo: function (e, o, t, p) { var v = samp(e, o, t, 'boo', { v: 0.85, rate: p }); return v.end; },
     meter: function (e, o, t, p) { // views meter tick up
-      tone(e, o, t, { w: 'q4', f: 880 * p, f2: 1320 * p, ft: 0.05, dur: 0.07, v: 0.13, sus: 0.6 });
-      return noise(e, o, t, { hz: 30000, dur: 0.02, v: 0.06, short: true });
+      tone(e, o, t, { w: 'q4', f: 880 * p, f2: 1320 * p, ft: 0.05, dur: 0.07, v: 0.17, sus: 0.6 });
+      noise(e, o, t, { hz: 30000, dur: 0.02, v: 0.08, short: true });
+      return t + 0.07;
     },
     burst: function (e, o, t, p) { // precursor magic burst: suck-in swell, whoomp, shattering shimmer
       noise(e, o, t, { hz: 3000, hz2: 20000, dur: 0.3, v: 0.2, a: 0.27, filter: { type: 'bandpass', f: 600, f2: 4000, q: 1 } });
@@ -1725,8 +1740,9 @@
       return tone(e, o, t + 0.1, { w: 'saw', f: 120 * p, f2: 90 * p, dur: 0.45, v: 0.07, vib: 40, vibR: 9 });
     },
     countdown_tick: function (e, o, t, p) {
-      noise(e, o, t, { hz: 9000 * p, dur: 0.02, v: 0.22, short: true });
-      return tone(e, o, t, { w: 'q2', f: 2400 * p, dur: 0.035, v: 0.12 });
+      noise(e, o, t, { hz: 9000 * p, dur: 0.03, v: 0.34, short: true });
+      tone(e, o, t, { w: 'tri', f: 1200 * p, f2: 900 * p, dur: 0.05, v: 0.3 });
+      return tone(e, o, t, { w: 'q2', f: 2400 * p, dur: 0.05, v: 0.18 });
     },
     skate_roll: function (e, o, t, p) { // Heather's roller skates: wheel rumble with clicks
       noise(e, o, t, { hz: 1500 * p, dur: 0.6, v: 0.3, a: 0.05, sus: 0.7, filter: { type: 'bandpass', f: 420 * p, q: 1.2 }, trem: { rate: 14 * p, depth: 0.6, type: 'sine' } });
@@ -1744,8 +1760,9 @@
       return t + 0.55;
     },
     worm_squish: function (e, o, t, p) {
-      noise(e, o, t, { hz: 5000 * p, hz2: 1200, dur: 0.22, v: 0.3, filter: { type: 'bandpass', f: 700, f2: 1600, q: 3 }, trem: { rate: 28, depth: 0.7, type: 'sine' } });
-      return tone(e, o, t, { w: 'q8', f: 220 * p, f2: 90 * p, dur: 0.22, v: 0.14, vib: 120, vibR: 25 });
+      noise(e, o, t, { hz: 5000 * p, hz2: 1200, dur: 0.24, v: 0.5, filter: { type: 'bandpass', f: 700, f2: 1600, q: 3 }, trem: { rate: 28, depth: 0.7, type: 'sine' } });
+      tone(e, o, t, { w: 'tri', f: 160 * p, f2: 70 * p, dur: 0.2, v: 0.3, vib: 150, vibR: 25 });
+      return tone(e, o, t, { w: 'q8', f: 220 * p, f2: 90 * p, dur: 0.24, v: 0.17, vib: 120, vibR: 25 });
     },
     ticket_scratch: function (e, o, t, p) { // scratch-off ticket: scr-scr-scraaatch
       var at = [0, 0.09, 0.18, 0.3], dur = [0.06, 0.06, 0.08, 0.2];
@@ -1894,6 +1911,10 @@
     s.evs.forEach(function (ev) { chans[ev.ch] = (chans[ev.ch] || 0) + 1; });
     return { name: name, loop: s.loop, introSec: s.introSec, loopSec: s.loopSec, totalSec: s.totalSec, events: s.evs.length, bars: s.totalSteps / s.bar,
       gain: s.gain, room: s.room, accel: s.accel, chans: chans, warns: s.warns.slice() };
+  };
+  A.songEvents = function (name) { // tooling: compiled note events {s, d, m, ch, arp}
+    if (!SONGS[name]) return null;
+    return getSong(name).evs.filter(function (ev) { return ev.m != null; }).map(function (ev) { return { s: ev.s, d: ev.d, m: ev.m, ch: ev.ch, arp: ev.arp || null, smp: ev.inst && ev.inst.smp || null }; });
   };
   A.sampleInfo = function () {
     var out = {};
