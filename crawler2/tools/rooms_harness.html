@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DCW2 scenes harness (rooms + show)</title>
+<style>
+  html, body { margin: 0; background: #000; }
+  #wrap { width: 320px; height: 180px; }
+  #screen { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<script>
+  // ?bare  = engine + art + audio + ui + rooms + show only (no data, no game: fallback paths)
+  // else   = every module + the fixture (only fills data that is missing), booted with ?debug&level=...
+  var BARE = /[?&]bare\b/.test(location.search);
+  var mods = BARE
+    ? ['engine', 'art_actors', 'art', 'audio', 'ui', 'rooms', 'show']
+    : ['engine', 'data', '#fixture', 'art_actors', 'art', 'audio', 'ui', 'stage', 'rooms', 'show', 'game'];
+  mods.forEach(function (m) {
+    var src = m === '#fixture' ? 'rooms_fixture.js' : '../js/' + m + '.js';
+    document.write('<script src="' + src + '"><\/script>');
+  });
+</script>
+<script>
+  window.addEventListener('load', function () {
+    DCW.boot();
+    if (BARE) {
+      var q = new URLSearchParams(location.search);
+      var which = q.get('scene') || 'rooms';
+      DCW.setScene(which === 'show' ? DCW.show.scene : DCW.rooms.scene, { levelId: q.get('level') || (which === 'show' ? 'a2_danger_zone' : 'a1_bigtop') });
+    }
+  });
+</script>
+</body>
+</html>

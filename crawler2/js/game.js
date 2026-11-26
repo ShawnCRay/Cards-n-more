@@ -470,7 +470,11 @@
       g = G.addGold(g); rewards.push({ kind: 'gold', amount: g });
     }
     if (first && rw.box) { G.giveLootBox(rw.box, lv.name || 'LEVEL CLEAR', true); rewards.push({ kind: 'box', tier: rw.box }); }
-    if (result.views) { var v = G.addViews(result.views); rewards.push({ kind: 'views', amount: v }); }
+    // stage.js adds views live as you play; rooms and the show only report them at the end
+    if (result.views) {
+      var v = (lv.kind === 'rooms' || lv.kind === 'show' || result.addViews) ? G.addViews(result.views) : result.views;
+      rewards.push({ kind: 'views', amount: v });
+    }
     if (!result.damageTaken && lv.kind !== 'show' && lv.kind !== 'cinema') {
       G.track('no_damage_stage');
       rewards.push({ kind: 'views', amount: G.addViews(400 * G.act()), note: 'FLAWLESS' });
