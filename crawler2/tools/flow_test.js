@@ -70,7 +70,10 @@ fs.mkdirSync(SHOTS, { recursive: true });
       if (sig === lastSig) stall++; else { stall = 0; lastSig = sig; }
       if (stall > 400) throw new Error('stalled at ' + sig);
       if (w.fading) { await step(8); continue; }
-      if (w.blocking) { await page.evaluate(() => DCW.pressKey('confirm', 2)); await step(6); continue; }
+      if (w.blocking) {   // confirm prompts default to NO: the walker always says yes (it never uses the early stairs)
+        await page.evaluate(() => { const t = DCW.ui.top && DCW.ui.top(); if (t && t.kind === 'confirm') { DCW.pressKey('up', 2); DCW.stepFrames(3); } DCW.pressKey('confirm', 2); });
+        await step(6); continue;
+      }
       const key = w.scene + ':' + (w.levelId || w.area || '');
       if (!seenShots.has(key)) { seenShots.add(key); await step(20); await snap(key); }
       if (w.scene === 'stage' || w.scene === 'rooms' || w.scene === 'show') {
@@ -95,16 +98,38 @@ fs.mkdirSync(SHOTS, { recursive: true });
           await step(30);
           continue;
         }
+        const npcEv = await page.evaluate(() => {
+          const G = DCW.game, r = G.run;
+          const ok = w => { w = w || {}; return (w.flags || []).every(G.flag) && !(w.notFlags || []).some(G.flag) && (!w.phase || w.phase === 'any' || G.clock().phase === w.phase); };
+          const e = (DCW.data.events || []).find(e => e.npc && !r.events[e.id] && ok(e.when));
+          return e ? { npc: e.npc, area: e.area, id: e.id } : null;
+        });
+        if (npcEv) {
+          route.push('talk ' + npcEv.npc);
+          if (npcEv.area && npcEv.area !== w.area) { await page.evaluate(a => DCW.game.goArea(a, 'left'), npcEv.area); await step(40); }
+          await page.evaluate(n => DCW.game.talk(n), npcEv.npc); await step(20); continue;
+        }
         if (nd && nd.needNight) { route.push('wait for night'); await page.evaluate(() => { const r = DCW.game.run; DCW.game.advanceClock(((19 - r.hour % 24) + 24) % 24 || 24); }); await page.evaluate(a => DCW.game.goArea(a, 'left'), nd.needNight.a); await step(40); continue; }
         if (nd && nd.needDay) { route.push('wait for day'); await page.evaluate(() => { const r = DCW.game.run; DCW.game.advanceClock(((7 - r.hour % 24) + 24) % 24 || 24); }); await page.evaluate(a => DCW.game.goArea(a, 'left'), nd.needDay.a); await step(40); continue; }
         // nothing left to open: walk every area once so area events can fire
-        const visited = await page.evaluate(() => { const r = DCW.game.run; r._walked = r._walked || {}; const A = Object.keys(DCW.data.areas || {}); const next = A.find(a => !r._walked[a]); if (next) { r._walked[next] = true; DCW.game.goArea(next, 'left'); return next; } return null; });
+        const visited = await page.evaluate(() => { const r = DCW.game.run; const sig = Object.keys(r.flags).length + '/' + Object.keys(r.cleared).length; if (r._walkSig !== sig) { r._walkSig = sig; r._walked = {}; } r._walked = r._walked || {}; const A = Object.keys(DCW.data.areas || {}); const next = A.find(a => !r._walked[a]); if (next) { r._walked[next] = true; DCW.game.goArea(next, 'left'); return next; } return null; });
         if (visited) { route.push('walk ' + visited); await step(60); continue; }
         throw new Error('no open story door and nothing to walk to; objective=' + JSON.stringify(await page.evaluate(() => DCW.game.objective())));
       }
       if (w.scene === 'inn') { await page.evaluate(() => DCW.game.leaveInn()); await step(20); continue; }
       if (w.scene === 'club') { await page.evaluate(() => DCW.game.leaveClub()); await step(20); continue; }
-      if (w.scene === 'classPick' || w.scene === 'cinema' || w.scene === 'results' || w.scene === 'death' || w.scene === 'unknown') {
+      if (w.scene === 'classPick') {   // the real picks hide past the AI's locked three: scroll right, then pick
+        await page.evaluate(() => {
+          const cp = DCW.ui.scenes.classPick;
+          if (cp.phase !== 'cards' || !cp.short) { DCW.pressKey('confirm', 2); return; }
+          let want = cp.short.findIndex(e => e && !e.locked && !e.scroll);
+          if (want < 0) want = cp.short.findIndex(e => e && e.scroll);
+          for (let i = 0; i < 8 && cp.sel !== want; i++) { DCW.pressKey('right', 2); DCW.stepFrames(14); }
+          DCW.pressKey('confirm', 2);
+        });
+        await step(8); continue;
+      }
+      if (w.scene === 'cinema' || w.scene === 'results' || w.scene === 'death' || w.scene === 'unknown') {
         await page.evaluate(() => DCW.pressKey(Math.random() < 0.2 ? 'start' : 'confirm', 2)); await step(8); continue;
       }
       if (w.scene === 'ending') { await snap('ending'); route.push('ENDING'); break; }

@@ -37,6 +37,7 @@
       draw: function () { DCW.text(msg, 160, 80, '#fcfcfc', { align: 'center', wrap: 300 }); if (next) DCW.text('PRESS A', 160, 110, '#f8b800', { align: 'center' }); }
     };
   }
+  var eventBusy = false;   // a street event (dialog/cinema) is running
   function arr(v) { return v === undefined || v === null ? [] : (Array.isArray(v) ? v : [v]); }
   function meta() { return D().meta || {}; }
 
@@ -281,6 +282,7 @@
       toast(pickLine('ban') || 'THE GUARDS REMEMBER YOUR FACE. COME BACK TOMORROW.', { icon: 'skull', color: '#f83800', time: 3.5 });
       return;
     }
+    eventBusy = false;   // a fresh street: any event flow before it is over
     r.area = areaId; r.levelId = null; r.inInn = null; r.inClub = null;
     if (entry && typeof entry === 'object' && entry.x !== undefined) r.areaX = entry.x;
     r.flags['visited_' + areaId] = true;   // the map screen shows where you have been
@@ -400,7 +402,6 @@
   }
 
   // Story events for the street just entered. Runs the first match, then looks again.
-  var eventBusy = false;
   G.areaEvents = function (areaId) {
     var r = G.run; if (!r || eventBusy) return false;
     var ev = (D().events || []).filter(function (e) {
@@ -437,6 +438,7 @@
     var r = G.run; if (!r) return;
     var lv = G.levelDef(levelId);
     if (!lv) { toast('LEVEL MISSING: ' + levelId, { color: '#f83800' }); return; }
+    eventBusy = false;
     r.levelId = levelId; r.inInn = null; r.inClub = null; r.levelStartHp = r.hp;
     persist();
     var start = function () {
