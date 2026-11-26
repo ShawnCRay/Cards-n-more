@@ -425,6 +425,9 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
+## Donut rides Carl's shoulder (lead)
+Donut no longer leaps gaps or puffs back to Carl in smoke. Whenever she couldn't follow him on foot, she hops onto his back shoulder in a short arc (`mountShoulder`) and rides there, drawn in front of him and still casting. That covers: a gap, spikes or liquid ahead of her; Carl on a ladder or a moving platform; a ledge more than a cat-hop up; falling far behind. She stays up for the whole of a chase. She hops down once Carl has stood for 0.45 s on flat, safe ground two tiles either side (`safeToDismount`). Carl as companion (Donut mode) keeps the old leap-or-wait logic, since he can't ride a cat.
+
 ## Character notes (lead)
 - **Mordecai:** their assigned game guide, nothing more. He doesn't own or run the guild halls. He's gruff, tired and rude about them ("the worst crawlers I've seen to date"), and only grudgingly fond.
 - **Hekla:** Donut idolizes her through Book Two; that only sours in Book Three. In Books One and Two, Donut only ever gushes about her and wants to impress her. She never gripes about her or distrusts her.

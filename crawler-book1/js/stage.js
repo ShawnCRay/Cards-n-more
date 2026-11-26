@@ -1456,6 +1456,7 @@
   }
   // back to Carl: beside him on safe ground, or up on his shoulder while he's in the air (like the book)
   function teleportComp(C, P) {
+    if (shoulderRider(C) && C.state !== 'rampage') { C.state = 'follow'; mountShoulder(C, P); return; }
     smoke(cx(C), cy(C), 2);
     C.vx = 0; C.vy = 0; C.stuckT = 0; C.state = 'follow'; C.leap = 0;
     var feetRow = Math.floor((P.y + P.h + 1) / TS), spots = [cx(P) - P.face * C.follow, cx(P) + P.face * C.follow, cx(P)], placed = false;
@@ -1465,7 +1466,32 @@
     if (!placed) { if (C.id === 'carl') C.away = true; else { C.perch = true; perchComp(C, P); } } // Carl can't ride a cat: he catches up
     smoke(cx(C), cy(C), 2);
   }
-  function perchComp(C, P) { C.x = cx(P) - C.w / 2 - P.face * 3; C.y = P.y - C.h + 7; C.face = P.face; C.vx = 0; C.vy = 0; C.onGround = false; }
+  function perchComp(C, P) { C.x = cx(P) - C.w / 2 - P.face * 5; C.y = P.y - C.h + 9; C.face = P.face; C.vx = 0; C.vy = 0; C.onGround = false; } // on his back shoulder
+  // Donut rides Carl's shoulder whenever she couldn't follow him on foot (gaps, spikes, liquid,
+  // ladders, moving platforms, ledges too tall, falling behind). She hops up in a short visible arc
+  // and hops down once he's been standing on flat, safe ground for a moment.
+  function shoulderRider(C) { return !!C && C.id === 'donut'; }
+  function mountShoulder(C, P) {
+    if (C.perch || C.mountT > 0) return;
+    C.state = 'follow'; C.leap = 0; C.stuckT = 0; C.groundT = 0;
+    var dx = cx(P) - cx(C), dy = cy(P) - cy(C);
+    if (dx * dx + dy * dy > 200 * 200 || C.y > S.L.pxH) { smoke(cx(C), cy(C), 2); C.perch = true; perchComp(C, P); smoke(cx(C), cy(C), 2); return; } // way off: just appear
+    C.mx0 = C.x; C.my0 = C.y; C.mountDur = C.mountT = U.clamp(Math.sqrt(dx * dx + dy * dy) / 420, 0.16, 0.38);
+    C.vx = 0; C.vy = 0; C.onGround = false;
+  }
+  function safeToDismount(P) {
+    var feetRow = Math.floor((P.y + P.h + 1) / TS);
+    for (var off = -32; off <= 32; off += 16) {
+      var px = cx(P) + off, tx = Math.floor(px / TS), above = tileAt(tx, feetRow - 1);
+      if (compStandRow(px, P.y + P.h + 1, 1) !== feetRow || above === T_SPIKE || above === T_LIQUID || isSolidT(above)) return false;
+    }
+    return true;
+  }
+  function gapAhead(C, dir) { // nothing to stand on (or something nasty) just ahead of her feet
+    var feet = C.y + C.h, aheadX = dir > 0 ? C.x + C.w + 3 : C.x - 3;
+    var hz = tileAt(Math.floor(aheadX / TS), Math.floor((feet - 1) / TS));
+    return compStandRow(aheadX, feet + 1, 2) < 0 || hz === T_SPIKE || hz === T_LIQUID;
+  }
   // companions never walk into pits or onto spikes: they leap gaps toward Carl or wait at the edge
   function compStandRow(px, feetY, rows) { // first standable tile row at or below feetY in column px, or -1
     var tx = Math.floor(px / TS);
@@ -1535,12 +1561,26 @@
       }
     }
     if (C.away) { if (!P.onGround) return; C.away = false; teleportComp(C, P); if (C.away) return; }
+    if (C.mountT > 0) { // hopping up onto Carl's shoulder
+      C.mountT -= dt;
+      var mk = 1 - Math.max(0, C.mountT) / C.mountDur, msx = cx(P) - C.w / 2 - P.face * 5, msy = P.y - C.h + 9;
+      C.x = C.mx0 + (msx - C.mx0) * mk; C.y = C.my0 + (msy - C.my0) * mk - Math.sin(mk * Math.PI) * 18;
+      C.face = U.sign(msx - C.mx0) || P.face; C.vx = 0; C.vy = 0; C.onGround = false;
+      if (C.mountT <= 0) { C.mountT = 0; C.perch = true; perchComp(C, P); }
+      return;
+    }
     if (C.perch) { // riding Carl's shoulder until he's standing somewhere she can hop down onto
       perchComp(C, P);
-      if (P.onGround && !P.platform && compStandRow(cx(P) - P.face * 10, P.y + P.h + 1, 1) === Math.floor((P.y + P.h + 1) / TS)) {
-        C.perch = false; C.x = cx(P) - P.face * 10 - C.w / 2; C.y = P.y + P.h - C.h - 1; C.vy = -120;
+      var Qp = S.pursuer, chase = Qp && Qp.active && !S.done;
+      C.groundT = (P.onGround && !P.platform && P.state !== 'climb' && !chase) ? num(C.groundT, 0) + dt : 0;
+      var settled = shoulderRider(C) ? C.groundT > 0.45 && safeToDismount(P) :
+        P.onGround && !P.platform && compStandRow(cx(P) - P.face * 10, P.y + P.h + 1, 1) === Math.floor((P.y + P.h + 1) / TS);
+      if (settled) {
+        C.perch = false; C.x = cx(P) - P.face * 10 - C.w / 2; C.y = P.y + P.h - C.h - 1; C.vy = -120; C.groundT = 0;
       }
     }
+    // things she can't do on foot: up she goes
+    if (shoulderRider(C) && !C.perch && C.state === 'follow' && (P.state === 'climb' || P.platform)) { mountShoulder(C, P); return; }
     if (C.leap > 0) { C.leap -= dt; if (C.onGround && C.leap < 0.5) C.leap = 0; }
     C.waitEdge = false;
     if (C.state === 'follow' && !(C.leap > 0) && !C.perch) {
@@ -1550,9 +1590,14 @@
       if (Math.abs(dx) > 3) C.face = U.sign(dx);
       else C.face = P.face;
       // hop up ledges / toward a higher player
+      var tooHigh = P.onGround && (C.y + C.h) - (P.y + P.h) > 44; // more than a cat-hop above her
+      if (shoulderRider(C) && C.onGround && ((C.hitWall && Math.abs(dx) > 8 && (tooHigh || C.stuckT > 0.4)) || (tooHigh && Math.abs(dx) < 64))) { mountShoulder(C, P); return; }
       if (C.onGround && ((C.hitWall && Math.abs(dx) > 8) || (P.y + P.h < C.y + C.h - 18 && Math.abs(dx) < 56 && P.onGround))) { C.vy = -310; C.onGround = false; }
-      // a pit or spikes ahead: leap toward Carl if there's somewhere to land, otherwise wait at the edge
-      if (C.onGround && Math.abs(dx) > 8 && Math.abs(C.vx) > 1) compEdgeCheck(C, P, U.sign(dx));
+      // a pit, spikes or liquid ahead: Donut climbs onto Carl's shoulder; Carl (Donut mode) leaps or waits at the edge
+      if (C.onGround && Math.abs(dx) > 8 && Math.abs(C.vx) > 1) {
+        if (shoulderRider(C)) { if (gapAhead(C, U.sign(dx))) { mountShoulder(C, P); return; } }
+        else compEdgeCheck(C, P, U.sign(dx));
+      }
     }
     // physics
     var wasG = C.onGround;
@@ -3176,8 +3221,10 @@
     drawFighters(ctx, camX, camY);
     if (S.ride) { drawRide(ctx, camX, camY); }
     else {
-      if (S.comp) drawComp(ctx, S.comp, camX, camY);
+      var riding = S.comp && (S.comp.perch || S.comp.mountT > 0);
+      if (S.comp && !riding) drawComp(ctx, S.comp, camX, camY);
       drawPlayer(ctx, P, camX, camY);
+      if (riding) drawComp(ctx, S.comp, camX, camY); // on his shoulder she's in front of him
       // NES-style blinking UP arrow over anything you can use (signs, doors, NPCs, cages)
       var near = !S.done && P.state === 'normal' && P.onGround ? interactAt(P) : null;
       if (near && Math.floor(S.t * 3) % 3 !== 2) DCW.text('\u25B2', Math.round(cx(near) - camX), Math.round(near.y - camY - 12 - (Math.floor(S.t * 3) % 2)), '#fcfcfc', { align: 'center' });
