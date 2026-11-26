@@ -2217,7 +2217,7 @@
   /* ---- HEATHER THE BEAR (L19 neighborhood boss): eight-foot black bear on roller skates, a flaming skull for a
    *      face with round red eyes, a tattered pink clown hat cockeyed on the skull, a pleated ruff, a pink tutu,
    *      and front paws replaced by dozens of glowing white worms ---- */
-  var HP = { f: C.g0, F: C.y0, d: C.K, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, w: C.W, W: C.g1, z: C.W, Z: C.t3, b: C.o3, B: C.n2, x: C.r1, X: C.g1, t: C.y1 };
+  var HP = { f: C.K, F: C.b1, G: C.g0, h: C.K, d: C.K, s: C.W, S: C.g1, r: C.r1, R: C.o1, o: C.o1, y: C.y2, Y: C.y3, p: C.m2, P: C.m1, q: C.m3, w: C.W, W: C.g1, z: C.W, Z: C.t3, b: C.o3, B: C.n2, x: C.r1, X: C.g1, t: C.y1 };
   function heather(g, p) {
     var a = p.a, i = p.i;
     var lean = a === 'attack' ? 4 : a === 'hurt' ? -3 : a === 'walk' ? 2 : 0;
@@ -2225,7 +2225,7 @@
     var st = a === 'walk' ? (i ? 1 : -1) : 0;
     // ---- skates + legs ----
     function leg(x0, y0, x1, back) {
-      line(g, x0, y0 + dy, x1, 48, back ? 'F' : 'f', 6);
+      line(g, x0, y0 + dy, x1, 48, back ? 'h' : 'f', 6);
       rect(g, x1 - 4, 47, 10, 6, 'b'); rect(g, x1 - 4, 47, 10, 1, 'B'); rect(g, x1 + 3, 49, 3, 4, 'b'); px(g, x1 - 1, 49, 'B'); px(g, x1 + 1, 49, 'B'); // boot + laces
       rect(g, x1 - 5, 53, 12, 1, 'X');
       [x1 - 3, x1 + 1, x1 + 5].forEach(function (wx) { oval(g, wx, 55, 1.5, 1.5, 'x'); px(g, wx, 55, 'w'); });
@@ -2233,8 +2233,6 @@
     leg(22, 38, 20 - st * 5, true); leg(32, 38, 34 + st * 5, false);
     // ---- body ----
     oval(g, 27 + lean * 0.5, 27 + dy, 15, 13, 'f');
-    oval(g, 30 + lean * 0.5, 30 + dy, 8, 8, 'F');
-    dots(g, 10, 12, 36, 30, 'f', 'F', function (x, y) { return (x * 3 + y * 7) % 13 === 0; });
     // tutu: tattered pink frills
     var ty = 37 + dy;
     oval(g, 27 + lean * 0.5, ty, 17, 4, 'p'); for (var k = 0; k < 9; k++) { tri(g, 10 + k * 4 + lean * 0.5, ty + 1, 14 + k * 4 + lean * 0.5, ty + 1, 12 + k * 4 + lean * 0.5, ty + 5 + (k % 2), k % 2 ? 'P' : 'q'); }
@@ -2250,27 +2248,47 @@
     }
     var sx = 36 + lean, sy = 20 + dy;
     if (a === 'attack') { line(g, sx - 4, sy, sx + 6, sy + 2, 'f', 6); worms(sx + 8, sy + 2, 18, 0, 9, 0.13); }
-    else if (a === 'special') { line(g, sx - 4, sy, sx + 2, sy - 10, 'f', 6); worms(sx + 2, sy - 12, 4, -12, 9, 0.22); line(g, 16, sy, 10, sy - 10, 'F', 5); worms(10, sy - 12, -4, -12, 7, 0.22); }
+    else if (a === 'special') { line(g, sx - 4, sy, sx + 2, sy - 10, 'f', 6); worms(sx + 2, sy - 12, 4, -12, 9, 0.22); line(g, 16, sy, 10, sy - 10, 'h', 5); worms(10, sy - 12, -4, -12, 7, 0.22); }
     else if (a === 'hurt') { line(g, sx - 4, sy, sx + 4, sy - 8, 'f', 6); worms(sx + 4, sy - 9, 8, -8, 7, 0.25); }
     else { line(g, sx - 4, sy, sx + 4, sy + 8, 'f', 6); worms(sx + 5, sy + 10, 9, 4 + i * 2, 8, 0.2); }
-    line(g, 16, 22 + dy, 12, 31 + dy, 'F', 5); if (a !== 'special') worms(12, 33 + dy, 4, 6, 5, 0.3);
+    line(g, 16, 22 + dy, 12, 31 + dy, 'h', 5); if (a !== 'special') worms(12, 33 + dy, 4, 6, 5, 0.3);
+    // ---- black fur: rim light (gray on top edges, dark blue on the sides) so she reads against dark backgrounds ----
+    var W = g[0].length, Hh = g.length, fur = function (c) { return c === 'f' || c === 'h'; }, tr = function (x, y) { return y < 0 || y >= Hh || x < 0 || x >= W || K.T(g[y][x]); };
+    var rim = [];
+    for (var y = 0; y < Hh; y++) for (var x = 0; x < W; x++) if (fur(g[y][x])) {
+      if (tr(x, y - 1)) rim.push([x, y, 'G']); else if (tr(x - 1, y) || tr(x + 1, y)) rim.push([x, y, 'F']);
+      else if ((x * 5 + y * 3) % 11 === 0) rim.push([x, y, 'F']);
+    }
+    rim.forEach(function (r) { g[r[1]][r[0]] = r[2]; });
     // ---- ruff ----
-    var hx = 36 + lean, hy = 3 + dy;
-    for (k = 0; k < 8; k++) { tri(g, hx - 13 + k * 3, hy + 12, hx - 10 + k * 3, hy + 12, hx - 11 + k * 3, hy + 17, k % 2 ? 'w' : 'W'); }
-    rect(g, hx - 13, hy + 11, 23, 2, 'w');
-    // ---- flames licking up around the skull ----
-    var fl = [[-9, 2], [-7, -3], [-4, -5], [0, -6], [4, -4], [-10, 7]];
-    fl.forEach(function (f, n) { var h = 4 + ((n + i) % 3) * 2; tri(g, hx + f[0] - 2, hy + f[1] + 4, hx + f[0] + 3, hy + f[1] + 4, hx + f[0] + ((n + i) % 2) - 1, hy + f[1] - h + 4, n % 2 ? 'o' : 'y'); px(g, hx + f[0], hy + f[1] + 2, 'Y'); });
-    // ---- skull (bear skull, snout to the right) ----
-    oval(g, hx - 2, hy + 6, 7, 6, 's'); rect(g, hx + 2, hy + 6, 9, 5, 's'); rect(g, hx + 9, hy + 7, 3, 3, 'S');
-    rect(g, hx + 3, hy + 10, 9, 2, 'S'); for (k = 0; k < 4; k++) { px(g, hx + 4 + k * 2, hy + 11, 'w'); px(g, hx + 4 + k * 2, hy + 12 + (a === 'attack' ? 1 : 0), 'w'); }
-    if (a === 'attack' || a === 'special') rect(g, hx + 4, hy + 12, 8, 1, 'd');
-    oval(g, hx + 1, hy + 5, 2.5, 2.5, 'd'); oval(g, hx + 1, hy + 5, 1.5, 1.5, a === 'hurt' ? 'Y' : 'r'); px(g, hx + 1, hy + 4, 'R');   // round red eye
-    px(g, hx + 11, hy + 7, 'd'); px(g, hx - 5, hy + 8, 'S'); px(g, hx - 3, hy + 10, 'S');
-    tri(g, hx - 7, hy, hx - 4, hy - 1, hx - 6, hy + 3, 'f'); // ear stub
-    // ---- tattered pink clown hat, cockeyed ----
-    tri(g, hx - 6, hy + 1, hx + 3, hy - 2, hx - 6 - 1, hy - 12, 'p'); line(g, hx - 6, hy + 1, hx + 3, hy - 2, 'P'); px(g, hx - 4, hy - 4, 'P'); px(g, hx - 2, hy - 2, 'q');
-    oval(g, hx - 7, hy - 12, 1.6, 1.6, 'w'); px(g, hx, hy - 1, '.');
+    var hx = 37 + lean, hy = 8 + dy;
+    for (k = 0; k < 8; k++) { tri(g, hx - 13 + k * 3, hy + 13, hx - 10 + k * 3, hy + 13, hx - 11 + k * 3, hy + 18, k % 2 ? 'w' : 'W'); }
+    rect(g, hx - 13, hy + 12, 23, 2, 'w');
+    // ---- flames wreathing the skull (behind it), flickering between frames ----
+    var fl = [[-9, 9, 5], [-9, 3, 6], [-6, -1, 7], [-2, -3, 7], [2, -3, 6], [6, -1, 5], [-10, 13, 4]];
+    fl.forEach(function (f, n) {
+      var h = f[2] + ((n + i) % 2) * 2, sway = ((n + i) % 3) - 1;
+      tri(g, hx + f[0] - 3, hy + f[1] + 3, hx + f[0] + 3, hy + f[1] + 3, hx + f[0] + sway, hy + f[1] - h + 3, n % 2 ? 'o' : 'y');
+      tri(g, hx + f[0] - 1, hy + f[1] + 3, hx + f[0] + 1, hy + f[1] + 3, hx + f[0] + sway, hy + f[1] - h + 6, 'Y');
+    });
+    // ---- small round black ears ----
+    oval(g, hx - 5, hy + 1, 2, 2, 'f'); px(g, hx - 5, hy, 'G'); px(g, hx - 5, hy + 1, 'F');
+    oval(g, hx + 2, hy, 2, 2, 'f'); px(g, hx + 2, hy - 1, 'G'); px(g, hx + 2, hy, 'F');
+    // ---- bear skull: round cranium, deep eye socket with a red ember, short heavy muzzle, teeth ----
+    oval(g, hx - 1, hy + 7, 6.5, 6, 's');
+    rect(g, hx + 3, hy + 6, 7, 6, 's'); rect(g, hx + 9, hy + 7, 1, 4, 'S');
+    px(g, hx - 5, hy + 9, 'S'); px(g, hx - 6, hy + 6, 'S'); px(g, hx - 2, hy + 12, 'S'); line(g, hx - 3, hy + 2, hx - 1, hy + 4, 'S');   // sutures
+    oval(g, hx + 1, hy + 6, 2.3, 2.3, 'd');                                                                // eye socket
+    if (a === 'hurt') px(g, hx + 1, hy + 6, 'Y'); else { rect(g, hx + 1, hy + 6, 2, 1, 'r'); px(g, hx + 1, hy + 5, 'R'); }
+    rect(g, hx + 8, hy + 6, 2, 2, 'd'); px(g, hx + 7, hy + 7, 'd');                                        // nasal cavity at the muzzle tip
+    var open = a === 'attack' || a === 'special' ? 2 : 0;
+    rect(g, hx + 3, hy + 11, 7, 1, 'd');                                                                   // mouth line
+    for (k = 0; k < 4; k++) px(g, hx + 3 + k * 2, hy + 11, 'w');                                          // upper teeth
+    rect(g, hx + 2, hy + 12 + open, 7, 2, 's'); rect(g, hx + 2, hy + 12 + open, 7, 1, 'S');                // lower jaw
+    if (open) { rect(g, hx + 3, hy + 12, 6, open, 'd'); for (k = 0; k < 3; k++) px(g, hx + 4 + k * 2, hy + 12 + open - 1, 'w'); px(g, hx + 9, hy + 12, 'w'); }
+    // ---- tattered pink clown hat, cockeyed over one ear ----
+    tri(g, hx - 9, hy + 2, hx - 4, hy, hx - 11, hy - 6, 'p'); line(g, hx - 9, hy + 2, hx - 4, hy, 'P'); px(g, hx - 8, hy - 1, 'q');
+    oval(g, hx - 11, hy - 6, 1.5, 1.5, 'w');
   }
   boss('heather', HP, 64, 58, heather);
 

@@ -706,7 +706,7 @@
   song('title', function () {
     var chA = ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'Gm A', 'Dm'], chB = ['Bb', 'C', 'Am', 'Dm', 'Gm', 'C', 'F', 'A7'];
     var mA = 'D5:3 A4 D5:2 F5:4 E5:2 D5:2 C5:2 | D5:6 A4:2 Bb4:4 C5:4 | F5:3 C5 F5:2 A5:4 G5:2 F5:2 E5:2 | G5:8 E5:4 C5:4 | ' +
-             'D5:3 A4 D5:2 F5:4 E5:2 F5:2 G5:2 | A5:4 Bb5:4 A5:2 G5:2 F5:2 D5:2 | G5:3 F5 E5:2 D5:2 E5:4 C#5:4 | D5:12 .:2 A4:2';
+             'D5:3 A4 D5:2 F5:4 E5:2 F5:2 G5:2 | D6:4 Bb5:4 A5:2 G5:2 F5:2 D5:2 | G5:3 F5 E5:2 D5:2 E5:4 C#5:4 | D5:12 .:2 A4:2';
     var mB = 'F5:4 D5:2 F5:2 Bb5:6 A5:2 | G5:4 E5:2 G5:2 C6:6 Bb5:2 | A5:3 G5 E5:2 C5:2 E5:4 A5:4 | F5:6 E5:2 D5:4 A4:4 | ' +
              'Bb4:2 D5:2 G5:2 Bb5:4 A5:2 G5:2 F5:2 | E5:2 G5:2 C6:2 E6:4 D6:2 C6:2 Bb5:2 | A5:4 C6:4 F6:6 E6:2 | E6:4 C#6:4 A5:2 G5:2 E5:2 C#5:2';
     var dr = Dr('k...s..kk.k.s...'), fill = Dr('k.s.s.kss.s.sss!s!'), hat = Dr('h.hhh.o.h.hhh.o.');
@@ -744,7 +744,7 @@
   song('intro', function () {
     var chA = ['Dm', 'Dm', 'Bb', 'Bb', 'Gm', 'Gm', 'A', 'A'], chB = ['Dm', 'F', 'Bb', 'C', 'Gm', 'Bb', 'A', 'A'];
     var mA = '.:16 | .:16 | D5:6 A4:2 D5:4 F5:4 | E5:8 D5:4 C5:4 | D5:12 Bb4:4 | G4:16 | A4:8 C#5:4 E5:4 | A5:16';
-    var mB = 'D5:6 A4:2 D5:4 F5:4 | A5:8 G5:4 F5:4 | F5:6 E5:2 D5:4 F5:4 | G5:12 E5:4 | D5:6 Bb4:2 D5:4 G5:4 | F5:8 E5:4 D5:4 | E5:6 F5:2 E5:4 C#5:4 | A4:16';
+    var mB = 'D5:6 A4:2 D5:4 F5:4 | A5:8 G5:4 F5:4 | F5:6 E5:2 D5:4 F5:4 | G5:12 E5:4 | D5:6 Bb4:2 D5:4 G5:4 | F5:8 D5:4 C5:4 | E5:6 F5:2 E5:4 C#5:4 | A4:16';
     var tick = Dr('m...e...m...e...');
     return {
       bpm: 90, room: 0.22,
@@ -797,7 +797,7 @@
   // VILLAGE NIGHT - the same streets after dark: the jig slowed into a music-box nocturne, D minor, crickets
   song('village_night', function () {
     var chA = ['Dm', 'C', 'Dm', 'Am', 'Bb', 'Gm', 'A7', 'Dm'], chB = ['Gm', 'Dm', 'Bb', 'A', 'Gm', 'Dm', 'Eb', 'A7'];
-    var mA = 'A4:2 D5:2 E5:2 F5:6 | E5:2 G5:2 E5:2 C5:6 | F5:2 E5:2 D5:2 A5:6 | E5:12 | D5:2 F5:2 Bb5:2 A5:6 | G5:2 F5:2 D5:2 Bb4:6 | C#5:2 E5:2 G5:2 F5:4 E5:2 | D5:12';
+    var mA = 'A4:2 D5:2 E5:2 F5:6 | E5:2 G5:2 E5:2 C5:6 | F5:2 E5:2 D5:2 A5:6 | E5:12 | D5:2 F5:2 Bb5:2 D6:6 | G5:2 F5:2 D5:2 Bb4:6 | C#5:2 E5:2 G5:2 F5:4 E5:2 | D5:12';
     var mB = 'D5:6 Bb4:6 | A4:6 F4:6 | F5:4 E5:2 D5:6 | C#5:12 | G5:6 Bb5:6 | A5:4 G5:2 F5:6 | G5:4 F5:2 Eb5:6 | E5:6 C#5:6';
     var crk = B(Dr('..mmm.......'), Dr('.......mmm..'));
     return {
@@ -843,8 +843,8 @@
 
   // RUINS NIGHT - fog thickens, mutants hunt: half-time, Phrygian bII, echoing lead, heartbeat kick
   song('ruins_night', function () {
-    var chA = ['Em', 'Em', 'C', 'F', 'Em', 'Am', 'F', 'B7'], chB = ['Am', 'Em', 'Am', 'B7', 'C', 'F', 'B7', 'Em'];
-    var mA = 'E5:4 G5:4 B5:8 | A5:4 G5:4 F#5:4 D#5:4 | E5:4 G5:4 C6:8 | B5:4 A5:4 F5:8 | E5:4 G5:4 B5:6 C6:2 | C6:4 B5:4 A5:4 E5:4 | F5:6 E5:2 C5:8 | D#5:8 B4:8';
+    var chA = ['Em', 'B7', 'C', 'F', 'Em', 'Am', 'F', 'B7'], chB = ['Am', 'Em', 'Am', 'B7', 'C', 'F', 'B7', 'Em'];
+    var mA = 'E5:4 G5:4 B5:8 | A5:4 G5:4 F#5:4 D#5:4 | E5:4 G5:4 C6:8 | B5:4 A5:4 F5:8 | E5:4 G5:4 B5:6 C6:2 | C6:4 B5:2 A5:6 E5:4 | F5:6 E5:2 C5:8 | D#5:8 B4:8';
     var mB = 'C6:8 A5:8 | B5:8 G5:8 | A5:4 C6:4 E6:8 | D#6:8 B5:8 | E6:6 D6:2 C6:8 | C6:4 B5:4 A5:4 F5:4 | D#5:4 F#5:4 A5:4 B5:4 | G5:8 E5:8';
     var dr = Dr('k.....k.s.......'), dr2 = Dr('k..k..k.s......s?');
     return {
@@ -999,7 +999,7 @@
     var chA = ['D', 'D', 'Gm', 'D', 'Eb', 'D', 'Cm Gm', 'D'], chB = ['Gm', 'D', 'Gm', 'D', 'Cm', 'Eb', 'Cm', 'D'];
     var mA = 'A4:2 Bb4 A4 F#4:2 G4:2 A4:4 .:2 D5:2 | C5:2 Bb4 C5 A4:2 Bb4:2 G4:2 F#4:2 Eb4:2 D4:2 | G4:2 A4 Bb4 C5:2 D5:2 Eb5:4 D5:2 C5:2 | D5:2 Eb5 D5 C5:2 Bb4:2 A4:8 | ' +
              'Bb4:2 C5 D5 Eb5:2 G5:2 F#5:4 Eb5:2 D5:2 | D5:2 C5 D5 Eb5:2 F#5:2 A5:4 G5:2 F#5:2 | G5:2 Eb5:2 C5:2 Eb5:2 D5:2 Bb4:2 G4:2 Bb4:2 | A4:6 Bb4 A4 F#4:4 D4:4';
-    var mB = 'D5:4 G5:4 Bb5:2 A5:2 G5:4 | A5:2 Bb5:2 A5:2 G5:2 F#5:8 | G5:2 Bb5:2 D6:4 C6:2 Bb5:2 A5:4 | Bb5:2 A5:2 G5:2 F#5:2 Eb5:2 D5:2 Eb5:4 | ' +
+    var mB = 'D5:4 G5:4 Bb5:2 A5:2 G5:4 | A5:2 Bb5:2 A5:2 G5:2 F#5:8 | G5:2 Bb5:2 D6:4 C6:2 Bb5:2 G5:4 | Bb5:2 A5:2 G5:2 F#5:2 Eb5:2 D5:2 Eb5:4 | ' +
              'C5:2 Eb5:2 G5:4 F#5:2 G5:2 Eb5:4 | G5:2 Bb5:2 Eb6:4 D6:2 C6:2 Bb5:4 | C6:2 Bb5:2 A5:2 G5:2 F#5:2 G5:2 A5:2 Bb5:2 | A5:8 D5:8';
     var dar = Dr('T.t...t.T...t.tt?'), darF = Dr('T.t.ttt.T.tttttt'), riq = Dr('j.h.j.h.j.h.j.hh');
     var oud = function (ch) { return CP('0.20.20.0.20.2.0', ch, 3); }, doum = function (ch) { return CP('0-......0-.0....', ch, 2); };
@@ -1049,7 +1049,7 @@
              'D6:2 C6:2 Bb5:2 G5:2 F5:2 G5:2 Bb5:4 | Bb5:2 A5:2 G5:2 F5:2 D5:4 G5:4 | Eb5:2 G5:2 C6:4 A5:2 C6:2 Eb6:4 | D6:2 .:2 F6:2 .:2 Bb6:8';
     var chBed = ['Bbmaj7', 'Gm7', 'Cm7', 'F7', 'Dm7', 'G7', 'Cm7', 'F7'];
     var walk = 'Bb1:4 D2:4 F2:4 A2:4 | G1:4 Bb1:4 D2:4 F2:4 | C2:4 Eb2:4 G2:4 Bb2:4 | F1:4 A1:4 C2:4 Eb2:4 | D2:4 F2:4 A2:4 C3:4 | G1:4 B1:4 D2:4 F2:4 | C2:4 Eb2:4 G2:4 A2:4 | F2:4 Eb2:4 C2:4 A1:4';
-    var vib1 = '.:8 F5:2 G5:2 Bb5:4 | D6:8 .:8 | .:8 Eb5:2 G5:2 Bb5:4 | C6:8 .:8 | .:8 F5:2 A5:2 C6:4 | B5:8 .:8 | .:8 Eb6:2 D6:2 C6:2 Bb5:2 | A5:8 .:8';
+    var vib1 = '.:8 F5:2 G5:2 A5:4 | D6:8 .:8 | .:8 Eb5:2 G5:2 Bb5:4 | C6:8 .:8 | .:8 F5:2 A5:2 C6:4 | B5:8 .:8 | .:8 Eb6:2 D6:2 C6:2 Bb5:2 | A5:8 .:8';
     var vib2 = '.:16 | .:8 D6:2 C6:2 Bb5:4 | .:16 | .:8 A5:2 C6:2 Eb6:4 | .:16 | .:8 D6:2 F6:2 B5:4 | .:16 | .:8 A5:2 G5:2 F5:4';
     var ride = Dr('o...o.h.o...o.h.'), brush = Dr('h...h.h.h...h.h.');
     return {
@@ -1097,7 +1097,7 @@
   song('climb', function () {
     var chA = ['Am', 'Am', 'F', 'F', 'G', 'G', 'E', 'E'], chB = ['Dm', 'Am', 'Bb', 'F', 'Dm', 'E', 'F', 'E7'];
     var mA = 'E5:8 A5:8 | G5:4 A5:4 B5:4 C6:4 | C6:8 A5:8 | G5:4 A5:4 C6:4 F6:4 | D6:8 B5:8 | A5:4 B5:4 D6:4 G6:4 | G#6:8 E6:8 | D6:4 B5:4 G#5:4 E5:4';
-    var mB = 'F6:6 E6:2 D6:8 | E6:6 D6:2 C6:8 | D6:6 C6:2 Bb5:4 F6:4 | A6:6 G6:2 F6:8 | F6:4 E6:4 D6:4 A5:4 | B5:4 G#5:4 E5:4 B5:4 | C6:4 A5:4 F5:4 C6:4 | B5:4 D6:4 G#6:8';
+    var mB = 'F6:6 E6:2 D6:8 | E6:6 D6:2 C6:8 | D6:6 C6:2 Bb5:4 F6:4 | A6:6 G6:2 F6:8 | F6:4 D6:4 A5:4 D6:4 | B5:4 G#5:4 E5:4 B5:4 | C6:4 A5:4 F5:4 C6:4 | B5:4 D6:4 G#6:8';
     var dr = Dr('k...s...k.k.s...'), fill = Dr('k...s...ttuuTTT!T!'), hat = Dr('h.h.h.h.h.h.h.hh');
     return {
       bpm: 144, room: 0.14,
@@ -1165,7 +1165,7 @@
 
   // CUTSCENE - neutral story underscore that sits under typewriter text. D minor / F major
   song('cutscene', function () {
-    var chA = ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'Gm', 'A'], chB = ['Bb', 'C', 'Am', 'Dm', 'Gm', 'C', 'F', 'A'];
+    var chA = ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb F', 'Gm', 'A'], chB = ['Bb', 'C', 'Am', 'Dm', 'Gm', 'C', 'F', 'A'];
     var mA = '.:16 | D5:8 F5:8 | A5:12 G5:4 | E5:16 | D5:8 F5:8 | Bb5:8 A5:4 G5:4 | G5:8 F5:4 E5:4 | C#5:16';
     var mB = 'F5:8 D5:8 | E5:8 G5:8 | C6:8 A5:8 | F5:16 | D5:8 G5:8 | E5:8 C5:8 | F5:8 A5:8 | E5:16';
     var dr = Dr('k?...............'), hh = Dr('....h?.......h?...');
@@ -1248,7 +1248,7 @@
   // ENDING - bittersweet epilogue in Odette's green room: the Doomsday motif in D major, borrowed minor iv
   song('ending', function () {
     var chA = ['D', 'F#m', 'G', 'Gm', 'D', 'Bm', 'Em A', 'D'], chB = ['Bm', 'G', 'D', 'A', 'Bm', 'G', 'Gm', 'D'];
-    var mA = 'D5:6 A4:2 D5:4 F#5:4 | E5:8 C#5:8 | D5:6 B4:2 D5:4 G5:4 | Bb4:6 A4:2 G4:4 A4:4 | D5:6 A4:2 D5:4 A5:4 | B5:8 F#5:4 D5:4 | G5:4 F#5:4 E5:4 C#5:4 | D5:16';
+    var mA = 'D5:6 A4:2 D5:4 F#5:4 | E5:8 C#5:8 | D5:6 B4:2 D5:4 G5:4 | Bb4:6 A4:2 G4:6 A4:2 | D5:6 A4:2 D5:4 A5:4 | B5:8 F#5:4 D5:4 | B5:4 G5:4 E5:4 C#5:4 | D5:16';
     var mB = 'F#5:6 E5:2 D5:4 B4:4 | D5:8 G5:8 | F#5:6 A5:2 D6:8 | C#6:8 A5:8 | D6:6 C#6:2 B5:4 F#5:4 | G5:8 B5:4 D6:4 | D6:6 Bb5:2 G5:4 Bb5:4 | F#5:12 .:4';
     var arps = function (ch) { return CP('0-1-2-3-2-1-2-1-', ch, 4); };
     return {

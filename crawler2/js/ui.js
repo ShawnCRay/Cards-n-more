@@ -191,7 +191,7 @@
   // small comic speech bubble (non-blocking flavor text above a character)
   function bubble(ctx, text, cx, by, o) {
     o = o || {};
-    var lines = wrap(up(text), o.w || 120).slice(0, 3), w = 0;
+    var lines = wrap(up(text), o.w || 120).slice(0, o.lines || 3), w = 0;
     lines.forEach(function (l) { w = Math.max(w, tw(l)); });
     w += 8; var h = lines.length * 9 + 5;
     var x = clamp(Math.round(cx - w / 2), 2, W - 2 - w), y = Math.round(by - h - 4);
@@ -554,10 +554,10 @@
   /* ---------------- data helpers ---------------- */
   var STATS = ['str', 'con', 'dex', 'int'];
   var STAT_INFO = {
-    str: { name: 'STRENGTH', short: 'STR', icon: 'sword', desc: 'PUNCHES AND KICKS. THE WAR GAUNTLET DOES THE REST.' },
-    con: { name: 'CONSTITUTION', short: 'CON', icon: 'heart', desc: '+2 MAX HP PER POINT. DIE LESS, DRINK MORE.' },
-    dex: { name: 'DEXTERITY', short: 'DEX', icon: 'boot', desc: 'CRIT CHANCE AND MOVE SPEED. FOR RUNNING AWAY FASTER.' },
-    int: { name: 'INTELLIGENCE', short: 'INT', icon: 'brain', desc: 'DONUT\'S MAGIC MISSILES. SHE SAYS SHE IS THE BRAINS.' }
+    str: { name: 'STRENGTH', short: 'STR', icon: 'sword', desc: 'PUNCH AND KICK DAMAGE.' },
+    con: { name: 'CONSTITUTION', short: 'CON', icon: 'heart', desc: '+2 MAX HP A POINT. DIE LESS.' },
+    dex: { name: 'DEXTERITY', short: 'DEX', icon: 'boot', desc: 'CRITS AND SPEED. RUN AWAY FASTER.' },
+    int: { name: 'INTELLIGENCE', short: 'INT', icon: 'brain', desc: 'DONUT\'S MISSILES. SHE\'S THE BRAINS.' }
   };
   function xpNeed(level) {
     var r = G('xpNeed', level); if (typeof r === 'number' && r > 0) return r;
@@ -1019,7 +1019,7 @@
     // explosive name popup after cycling
     if (ex && hudS.selT > 0) {
       var en = itemName(ex.id) + ' ×' + ex.n, ew = tw(en) + 8;
-      DCW.box(108, 15, ew, 11, { fill: '#000' }); T(en, 112, 17, ex.n > 0 ? C.yellow : C.red);
+      var ey = timer ? 42 : 15; DCW.box(108, ey, ew, 11, { fill: '#000' }); T(en, 112, ey + 2, ex.n > 0 ? C.yellow : C.red);
     }
     // combo popup
     var combo = h.combo || 0;
@@ -1910,7 +1910,7 @@
       DCW.box(50, 20, 260, 36, { fill: '#2c1c00', border: C.orange });
       R(47, 34, 4, 4, C.orange);
       wrap(m.line, 248).slice(0, 3).forEach(function (t, i) { T(t, 56, 24 + i * 10, m.lineCol); });
-      T(fitText(keeperName, 48), 28, 58, C.dgray, { align: 'center', shadow: null });
+      T(fitText(keeperName, 44), 28, 58, C.dgray, { align: 'center', shadow: null });
       icon(ctx, 'coin', 12, 66); T(run.gold || 0, 22, 67, C.gold);
       var ex = EXPLOSIVES.concat(['potion']), ix = 306 - ex.length * 26;
       ex.forEach(function (id, i) { icon(ctx, itemIcon(id), ix + i * 26, 66); T(itemCount(id), ix + i * 26 + 10, 67, C.gray, { shadow: null }); });
@@ -2355,9 +2355,9 @@
     y1 = y1 || H;
     if (night) {
       bands(ctx, ['#05021a', '#0a0424', '#10062e', '#180838', '#200a40', '#2c0c44', '#3c0c40'], 0, y1);
-      ctx.save(); ctx.globalAlpha = 0.16;
-      [[70, 30, 40, '#d800cc'], [120, 22, 30, '#3cbcfc'], [230, 40, 46, '#f878f8'], [280, 18, 26, '#6888fc'], [180, 50, 34, '#9878f8']].forEach(function (n, i) {
-        pdisc(ctx, n[0] + Math.round(Math.sin(t * 0.1 + i) * 4), n[1], n[2], n[3]);
+      ctx.save();
+      [[70, 30, 30, '#d800cc'], [120, 22, 22, '#00a8a8'], [230, 40, 34, '#881488'], [280, 18, 20, '#3c5cb8']].forEach(function (n, i) {
+        for (var k = 0; k < 3; k++) { ctx.globalAlpha = 0.05; pdisc(ctx, n[0] + Math.round(Math.sin(t * 0.1 + i) * 4) + k * 6, n[1] + k * 3, Math.round(n[2] * (1 - k * 0.28)), n[3]); }
       });
       ctx.restore();
       stars(ctx, t, 1, 90, y1 - 20);
@@ -2425,81 +2425,68 @@
     [60, 260].forEach(function (sx) { R(sx - 2, 80, 4, 10, '#503000'); var fl = Math.sin(t * 9 + sx) > 0; R(sx - 2, 75 - (fl ? 1 : 0), 4, 5, fl ? C.yellow : C.orange); ctx.globalAlpha = 0.12; pdisc(ctx, sx, 78, 16, C.yellow); ctx.globalAlpha = 1; });
   }
   var INN_LOOK = {
-    pug: { beam: '#3c2414', plaster: '#7c5c3c', shade: '#6c4c2c', floor: '#5c3c24', floor2: '#4c3020', banner: ['#a81000', '#f8b800', '#0058f8'] },
+    pug: { beam: '#3c2010', plaster: '#7c6040', shade: '#6c5034', floor: '#5c3418', floor2: '#4c2c14', banner: ['#a81000', '#f8b800', '#0058f8'] },
     narwhal: { beam: '#1c2434', plaster: '#3c5c6c', shade: '#30505c', floor: '#3c3c4c', floor2: '#2c2c3c', banner: ['#00a844', '#fcfcfc', '#0058f8'] }
   };
+  // same layout as art.js's inn backdrops: hearth left, red window, three TVs, keg shelf + bar right (top y=120)
   function drawInnRoom(ctx, innId, t, ground) {
     var L = INN_LOOK[innId] || INN_LOOK.pug;
     R(0, 0, W, ground, L.plaster);
     for (var y = 30; y < ground; y += 12) R(0, y, W, 1, L.shade);
-    // timber frame
-    R(0, 0, W, 22, L.beam); R(0, 22, W, 3, '#000');
-    for (var bx = 0; bx < W; bx += 64) { R(bx, 25, 6, ground - 25, L.beam); }
-    R(0, 64, W, 4, L.beam); R(0, ground - 40, W, 4, L.beam);
-    ctx.fillStyle = L.beam;
-    for (var dx = 0; dx < W; dx += 128) { ctx.beginPath(); ctx.moveTo(dx + 6, 68); ctx.lineTo(dx + 10, 68); ctx.lineTo(dx + 64, ground - 40); ctx.lineTo(dx + 60, ground - 40); ctx.closePath(); ctx.fill(); }
-    // pennant string (Renaissance fair)
+    R(0, 0, W, 20, L.beam); R(0, 20, W, 2, '#000');
+    [0, 88, 168, 248].forEach(function (bx) { R(bx, 22, 6, ground - 22, L.beam); });
+    R(0, 66, W, 4, L.beam);
     for (var px = 2; px < W; px += 12) {
-      var sag = Math.round(Math.sin((px / W) * Math.PI * 3) * 3) + 26;
-      ctx.fillStyle = L.banner[(px / 12 | 0) % 3]; ctx.beginPath(); ctx.moveTo(px, sag); ctx.lineTo(px + 10, sag); ctx.lineTo(px + 5, sag + 9 + (Math.sin(t * 2 + px) > 0.7 ? 1 : 0)); ctx.closePath(); ctx.fill();
+      var sag = Math.round(Math.sin((px / W) * Math.PI * 3) * 3) + 24;
+      ctx.fillStyle = L.banner[(px / 12 | 0) % 3]; ctx.beginPath(); ctx.moveTo(px, sag); ctx.lineTo(px + 10, sag); ctx.lineTo(px + 5, sag + 8); ctx.closePath(); ctx.fill();
     }
-    // three TV screens (every safe room has them)
+    // hearth
+    R(5, 72, 80, 78, '#3e3331'); for (var sy = 74; sy < 150; sy += 6) for (var sx = 7 + ((sy / 6) % 2) * 6; sx < 83; sx += 12) R(sx, sy, 10, 4, '#5b4c47');
+    R(3, 68, 84, 5, L.beam); R(20, 96, 50, 54, '#24100a');
+    for (var f = 0; f < 8; f++) { var fh = 8 + Math.round(Math.abs(Math.sin(t * 9 + f * 1.7)) * 12); R(24 + f * 6, 150 - fh, 4, fh, f % 2 ? '#f8b800' : '#cc4114'); }
+    for (var mg = 0; mg < 5; mg++) { R(12 + mg * 14, 62, 7, 6, '#fcfcfc'); R(13 + mg * 14, 63, 5, 5, '#a87c48'); }
+    // red window
+    R(96, 88, 34, 34, '#24100a'); R(98, 90, 30, 30, '#781418'); R(112, 90, 2, 30, '#24100a'); R(98, 104, 30, 2, '#24100a'); pdisc(ctx, 120, 97, 4, '#f83800');
+    // three TVs
     for (var s = 0; s < 3; s++) {
-      var sx = 122 + s * 26, sy = 34;
-      R(sx - 1, sy - 1, 26, 19, '#000'); R(sx, sy, 24, 17, '#3c3c3c'); R(sx + 2, sy + 2, 20, 13, s === 1 ? '#001c5c' : '#0c0c1c');
-      if (s === 0) { R(sx + 6, sy + 5, 3, 3, C.white); R(sx + 14, sy + 5, 3, 3, C.white); R(sx + 7, sy + 10, 10, 1, C.white); }
-      if (s === 1) { T('LIVE', sx + 12, sy + 3, blink(1.2) ? C.red : C.dred, { align: 'center', shadow: null }); R(sx + 4, sy + 11, Math.round(8 + Math.sin(t) * 6 + 6), 2, C.pink); }
-      if (s === 2) for (var b = 0; b < 4; b++) R(sx + 4 + b * 4, sy + 13 - (3 + ((b * 5 + Math.floor(t * 2)) % 7)), 3, 3 + ((b * 5 + Math.floor(t * 2)) % 7), [C.gold, C.green, C.blue, C.pink][b]);
+      var tx = 106 + s * 46, ty = 34;
+      R(tx, ty, 40, 30, '#000'); R(tx + 2, ty + 2, 36, 26, s === 0 ? '#0c1c3c' : '#071521');
+      if (s === 0) { R(tx + 10, ty + 9, 5, 4, C.blue); R(tx + 25, ty + 9, 5, 4, C.blue); R(tx + 12, ty + 19, 16, 2, C.blue); }
+      else { R(tx + 16, ty + 8, 8, 6, '#fcd8a8'); R(tx + 14, ty + 14, 12, 12, s === 1 ? '#7c3c18' : '#503000'); if (blink(1.2)) R(tx + 4, ty + 4, 3, 3, C.red); }
     }
     // wall trophy: a belly-up pug painting / a one-eyed narwhal head
-    if (innId === 'narwhal') {
-      R(54, 72, 28, 14, '#000'); R(55, 73, 26, 12, '#7c9cbc'); R(81, 78, 30, 2, '#fcfcfc'); R(58, 76, 4, 3, '#000'); R(64, 75, 3, 5, '#000');
-      R(50, 70, 36, 2, L.beam);
-    } else {
-      R(52, 72, 32, 24, '#ac7c00'); R(54, 74, 28, 20, '#3c5c3c'); R(58, 84, 20, 8, '#c8a070'); R(61, 81, 6, 4, '#c8a070'); R(64, 82, 2, 1, '#000'); R(70, 88, 6, 3, '#f8b8f8');
-      R(58, 92, 3, 2, '#c8a070'); R(74, 92, 3, 2, '#c8a070');
-    }
-    // floor planks
+    if (innId === 'narwhal') { R(252, 34, 30, 16, '#000'); R(253, 35, 28, 14, '#bcbcbc'); R(281, 40, 30, 2, '#fcfcfc'); R(256, 38, 5, 4, '#000'); R(262, 37, 3, 6, '#000'); }
+    else { R(250, 26, 52, 34, '#ac7c00'); R(253, 29, 46, 28, '#c8a070'); R(262, 40, 28, 12, '#a87850'); R(266, 36, 8, 6, '#a87850'); R(268, 38, 2, 2, '#000'); R(280, 50, 8, 3, '#f8b8f8'); }
+    // keg shelf + bar
+    R(196, 82, 116, 30, '#24100a'); for (var k = 0; k < 5; k++) { R(200 + k * 22, 86, 20, 22, '#7c4c24'); R(200 + k * 22, 90, 20, 1, '#3c2010'); R(200 + k * 22, 102, 20, 1, '#3c2010'); R(209 + k * 22, 96, 3, 3, '#bcbcbc'); }
+    R(150, 120, 170, 4, '#8c5028'); R(150, 124, 170, 26, '#5c3014'); for (var cp = 156; cp < 320; cp += 28) R(cp, 128, 22, 18, '#4c2810');
     R(0, ground, W, H - ground, L.floor);
-    for (var fy = ground; fy < H; fy += 8) { R(0, fy, W, 1, L.floor2); for (var fx = ((fy / 8) % 2) * 24; fx < W; fx += 48) R(fx, fy, 1, 8, L.floor2); }
-    R(0, ground, W, 1, '#a87850');
+    for (var fy = ground; fy < H; fy += 10) { R(0, fy, W, 1, L.floor2); for (var fx = ((fy / 10) % 2) * 24; fx < W; fx += 48) R(fx, fy, 1, 10, L.floor2); }
+    R(0, ground, W, 2, '#784923');
   }
+  // same layout as art.js's club backdrop: neon window center, sign under it, lounge ledge left, bar right, dance floor from y=140
   function drawClubRoom(ctx, t, hype, ground) {
     hype = hype || 0;
-    bands(ctx, ['#0c0018', '#140024', '#1c0030', '#24003c'], 0, ground);
-    // Blade Runner window: rainy neon city
-    R(234, 28, 72, 60, '#000'); R(236, 30, 68, 56, '#04102c');
-    for (var b = 0; b < 7; b++) { var hh = 14 + ((b * 13) % 28); R(238 + b * 10, 86 - hh, 8, hh, '#0c1c3c'); if ((b + Math.floor(t)) % 3) R(240 + b * 10, 86 - hh + 3, 2, 2, b % 2 ? C.pink : C.cyan); }
-    for (var rn = 0; rn < 18; rn++) { var ry = (t * 90 + rn * 23) % 56; R(237 + (rn * 17) % 66, 30 + ry, 1, 4, '#3c5c9c'); }
-    R(268, 28, 2, 60, '#000'); R(234, 56, 72, 2, '#000');
-    // Mardi Gras beads + masks
-    for (var bx = 0; bx < 230; bx += 4) { var by = 12 + Math.round(Math.sin(bx * 0.05) * 5 + 5); R(bx, by, 2, 2, ['#881488', '#f8b800', '#00a800'][(bx / 4 | 0) % 3]); }
-    [[30, 40, '#881488', '#f8b800'], [200, 44, '#00a800', '#f878f8']].forEach(function (mk) { R(mk[0], mk[1], 18, 8, mk[2]); R(mk[0] + 3, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 11, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 7, mk[1] - 6, 3, 7, mk[3]); });
-    // Vegas marquee sign with chasing bulbs
-    var sx = 76, sy = 26, sw = 132, sh = 26;
-    R(sx - 2, sy - 2, sw + 4, sh + 4, '#000'); R(sx, sy, sw, sh, '#3c0028');
-    for (var k = 0; k < 22; k++) { var on = (k + Math.floor(t * 8)) % 3 === 0; var lx = sx + 3 + k * 6; R(lx, sy + 1, 2, 2, on ? C.yellow : '#5c3c00'); R(lx, sy + sh - 3, 2, 2, !on ? C.yellow : '#5c3c00'); }
-    var neon = Math.sin(t * 13) > -0.85 ? C.pink : '#5c003c';
-    T('DESPERADO', sx + sw / 2 + 1, sy + 6, C.cyan, { align: 'center', scale: 2, shadow: null });
-    T('DESPERADO', sx + sw / 2, sy + 5, neon, { align: 'center', scale: 2, shadow: null });
-    // disco ball + light specks
-    var dbx = 184, dby = 64;
-    R(dbx, 0, 1, dby - 6, '#5c5c5c'); pdisc(ctx, dbx, dby, 6, '#bcbcbc');
-    for (var q = 0; q < 6; q++) R(dbx - 5 + q * 2, dby - 4 + ((q + Math.floor(t * 6)) % 3) * 3, 1, 1, C.white);
-    for (var sp = 0; sp < 18 + hype * 20; sp++) {
-      var a = t * (0.6 + hype) + sp * 0.9, rr2 = 30 + (sp * 37) % 120;
-      var spx = dbx + Math.cos(a) * rr2 * 1.4, spy = dby + 10 + Math.abs(Math.sin(a * 1.3)) * (ground - dby - 14);
-      R(spx, spy, 2, 1, [C.white, C.pink, C.cyan, C.yellow][sp % 4]);
+    bands(ctx, ['#08040c', '#0a0414', '#10061c', '#14081c'], 0, 140);
+    stars(ctx, t, 0, 30, 110);
+    for (var bx = 0; bx < W; bx += 4) { var by = 6 + Math.round(Math.sin(bx * 0.04) * 4 + 4); R(bx, by, 2, 2, ['#881488', '#f8b800', '#00a800'][(bx / 4 | 0) % 3]); }
+    R(95, 15, 130, 74, '#000'); R(97, 17, 126, 70, '#04102c');
+    for (var b = 0; b < 12; b++) { var hh = 16 + ((b * 13) % 36); R(99 + b * 10, 87 - hh, 8, hh, '#0c1c3c'); if ((b + Math.floor(t)) % 3) R(101 + b * 10, 87 - hh + 3, 2, 2, b % 2 ? C.pink : C.cyan); }
+    for (var rn = 0; rn < 22; rn++) { var ry = (t * 90 + rn * 23) % 66; R(98 + (rn * 17) % 124, 18 + ry, 1, 4, '#3c5c9c'); }
+    R(159, 15, 2, 74, '#000'); R(95, 50, 130, 2, '#000');
+    pdisc(ctx, 160, 14, 7, '#bcbcbc'); for (var q = 0; q < 6; q++) R(155 + q * 2, 10 + ((q + Math.floor(t * 6)) % 3) * 3, 1, 1, C.white);
+    R(96, 92, 126, 16, '#000'); R(97, 93, 124, 14, '#1c0c24');
+    T('DESPERADO CLUB', 160, 97, Math.sin(t * 13) > -0.85 ? C.pink : '#5c003c', { align: 'center', shadow: null });
+    [[30, 40, '#881488', '#f8b800'], [272, 38, '#00a800', '#d800cc']].forEach(function (mk) { R(mk[0], mk[1], 18, 8, mk[2]); R(mk[0] + 3, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 11, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 8, mk[1] + 8, 2, 7, mk[3]); });
+    R(0, 116, 70, 2, C.cyan); R(0, 118, 70, 22, '#1c0c24'); pdisc(ctx, 20, 112, 4, '#2c2c3c'); pdisc(ctx, 46, 112, 4, '#2c2c3c');
+    R(240, 116, 80, 2, C.pink); R(240, 118, 80, 22, '#1c0c24');
+    for (var bt = 0; bt < 12; bt++) R(244 + bt * 6, 102, 3, 12, [C.cyan, C.yellow, C.pink, C.green][bt % 4]);
+    for (var sp = 0; sp < 18 + hype * 22; sp++) { var a = t * (0.6 + hype) + sp * 0.9, r2 = 30 + (sp * 37) % 130; R(160 + Math.cos(a) * r2 * 1.3, 20 + Math.abs(Math.sin(a * 1.3)) * 110, 2, 1, [C.white, C.pink, C.cyan, C.yellow][sp % 4]); }
+    R(0, 120, W, 20, '#08040c');
+    for (var tx = 0; tx < W; tx += 20) for (var ty = 140; ty < H; ty += 10) {
+      var lit = ((tx / 20 | 0) + (ty / 10 | 0) + Math.floor(t * (2 + hype * 6))) % 6;
+      R(tx + 1, ty + 1, 18, 8, ['#745506', '#332178', '#8c007d', '#009f41', '#042a76', '#6b022e'][lit]);
     }
-    // floor: carpet + light-up 70s dance floor
-    R(0, ground, W, H - ground, '#2c0c2c');
-    for (var cx = 0; cx < W; cx += 8) R(cx, ground + ((cx / 8) % 2) * 4, 4, 2, '#3c143c');
-    for (var tx = 148; tx < 222; tx += 12) for (var ty = ground; ty < H; ty += 8) {
-      var lit = ((tx / 12 | 0) + (ty / 8 | 0) + Math.floor(t * (3 + hype * 5))) % 4;
-      R(tx, ty, 11, 7, ['#d800cc', '#3cbcfc', '#f8b800', '#58d854'][lit]);
-      R(tx, ty, 11, 1, C.white);
-    }
-    R(0, ground, W, 1, '#881488');
   }
   function drawStudio(ctx, t, green) {
     bands(ctx, green ? ['#0c1c0c', '#102410', '#142c14', '#183418'] : ['#1c0024', '#24002c', '#2c0034', '#34003c'], 0, 140);
@@ -2688,7 +2675,7 @@
         y += 12;
       }
       T('TITLE: ' + up(ttl), 14, y, C.pink); y += 10;
-      T('LEVELS AND STATS STAY ON FLOOR 2. RULES ARE RULES.', 14, y, C.dgray, { shadow: null });
+      T('LEVELS AND STATS STAYED ON FLOOR 2. RULES.', 14, y, C.dgray, { shadow: null });
       DCW.box(10, 128, 300, 32, { fill: '#1c0c34' });
       faceSlot(ctx, 'p_ai', 11, 128, m.t < 1.5, 4);
       wrap(up(quip), 260).slice(0, 2).forEach(function (l, k) { T(l, 48, 134 + k * 10, C.white); });
@@ -2858,7 +2845,7 @@
       var self = this, d = cpData();
       this.step++;
       var s = this.STEPS[this.step];
-      var talk = function (lines) { self.phase = 'talk'; ui.say(lineList(lines), { onDone: function () { self.next(); } }); };
+      var talk = function (lines) { self.phase = 'talk'; ui.say(lineList(lines), { pos: 'top', onDone: function () { self.next(); } }); };
       if (s === 'intro') talk(d.intro && lineList(d.intro).length ? d.intro : CP_FB.intro);
       else if (s === 'donut') talk(d.donutLines && lineList(d.donutLines).length ? d.donutLines : CP_FB.donutLines);
       else if (s === 'bind') { this.phase = 'bind'; this.pt = 0; }
@@ -2946,9 +2933,9 @@
       var mx = 254 + (this.phase === 'bind' && this.pt > 0.5 && this.pt < 1.6 ? Math.round(Math.sin(t * 50) * 2) : 0);
       R(226, GY - 22, 44, 22, '#000'); R(227, GY - 21, 42, 21, '#5c2c10'); R(227, GY - 21, 42, 3, '#a85010'); // podium
       spr(ctx, actorName('mordecai', 'idle'), mx, GY - 18, { frame: fr, flip: true });
-      spr(ctx, actorName(compSprite('mongo'), 'idle'), 92, GY + 8, { frame: fr });
-      spr(ctx, actorName('carl', 'idle'), 120, GY + 8, { frame: fr, skin: equipped('skin') });
-      spr(ctx, actorName('donut', 'idle'), 146, GY + 8, { frame: fr });
+      spr(ctx, actorName(compSprite('mongo'), 'idle'), 92, GY + 6, { frame: fr });
+      spr(ctx, actorName('carl', 'idle'), 120, GY + 6, { frame: fr, skin: equipped('skin') });
+      spr(ctx, actorName('donut', 'idle'), 146, GY + 6, { frame: fr });
       if (this.phase === 'bind') {
         var k = clamp(this.pt / 0.5, 0, 1), x0 = 150, y0 = GY - 4, x1 = 248, y1 = GY - 34;
         for (var i = 0; i <= 24 * k; i++) {
@@ -2987,8 +2974,8 @@
             T(e.locked ? 'LOCKED' : 'AVAILABLE', cx + cw / 2, cy + 68, C.white, { align: 'center', shadow: null });
           });
           var e2 = this.short[this.sel];
-          DCW.box(10, 110, 300, 48, { fill: '#0f1630' });
-          if (e2) {
+          if (!ui.isOpen('say')) DCW.box(10, 110, 300, 48, { fill: '#0f1630' });
+          if (e2 && !ui.isOpen('say')) {
             T(up(e2.name), 18, 115, e2.locked ? C.gray : C.gold);
             wrap(up(e2.desc || ''), 286).slice(0, 3).forEach(function (l, k) { T(l, 18, 126 + k * 10, C.white); });
           }
@@ -3016,7 +3003,7 @@
     enter: function (p) {
       closeAll();
       p = p || {};
-      this.p = p; this.t = 0; this.i = -1; this.done = false; this.actors = []; this.flash = 0; this.flashCol = C.white; this.fadeIn = 0; this.fadeOut = 0;
+      this.p = p; this.t = 0; this.i = -1; this.done = false; this.actors = []; this.view = null; this.flash = 0; this.flashCol = C.white; this.fadeIn = 0; this.fadeOut = 0;
       var shots = p.shots;
       if (!shots && p.id) { var cin = D('cinema'); shots = cin && cin[p.id]; }
       if (shots && !Array.isArray(shots) && Array.isArray(shots.shots)) shots = shots.shots;
@@ -3030,7 +3017,9 @@
       var s = this.shots[this.i] || {};
       this.shot = s; this.st = 0; this.talking = false; this.waitLeft = 0;
       if (s.actors !== undefined) this.actors = arr(s.actors).map(cineActor);
-      else this.actors.forEach(function (a) { if (a.move) { a.x = a.move.x1; a.y = a.move.y1; a.move = null; } });
+      else this.actors.forEach(function (a) { if (a.move) { a.x = a.move.x1; a.y = a.move.y1; a.move = null; } a.say = null; });
+      if (s.bg !== undefined) this.view = { bg: s.bg, night: !!s.night, camX: s.camX || 0, camY: s.camY || 0, pan: s.pan || 0, t0: this.t };
+      else if (this.view && s.night !== undefined) this.view.night = !!s.night;
       if (s.music !== undefined) { if (s.music) music(s.music); else tryCall(DCW.audio, 'stopMusic', []); }
       arr(s.sfx).forEach(function (n) { sfx(n); });
       if (s.shake && DCW.shake) DCW.shake(+s.shake || 3, s.shakeTime || 0.5);
@@ -3073,9 +3062,9 @@
     },
     idle: function (dt) { if (!this.done) this.tickFx(dt); },
     draw: function (ctx) {
-      var s = this.shot || {}, t = this.t, st = this.st || 0;
+      var s = this.shot || {}, t = this.t, st = this.st || 0, v = this.view || {};
       R(0, 0, W, H, '#000');
-      var bg = s.bg, camX = (s.camX || 0) + (s.pan || 0) * st;
+      var bg = v.bg, camX = (v.camX || 0) + (v.pan || 0) * (t - (v.t0 || 0));
       if (typeof bg === 'string' && bg.indexOf('panel:') === 0) {
         var pid = bg.slice(6);
         if (!drawPanel(ctx, pid, 32, 22, t)) {
@@ -3085,7 +3074,7 @@
           ctx.restore();
         }
       } else if (bg) {
-        if (!drawBg(ctx, bg, camX, s.camY || 0, { night: !!s.night, t: t })) themeBackdrop(ctx, bg, t, !!s.night, camX);
+        if (!drawBg(ctx, bg, camX, v.camY || 0, { night: !!v.night, t: t })) themeBackdrop(ctx, bg, t, !!v.night, camX);
       }
       // actors
       var self = this;
@@ -3471,7 +3460,15 @@
   };
   var MORD_HELLO = ['I CAN\'T FIGHT, I CAN\'T LEAVE THIS ROOM, AND I CAN\'T DRINK FAST ENOUGH. WHAT DO YOU NEED?', 'YOU\'RE ALIVE. GOOD. I HAD MONEY ON IT. NOT MUCH, BUT SOME.', 'SIT. DRINK. TELL ME WHAT YOU BROKE TODAY.'];
   var MORD_TIPS = ['THE GUARDS ARE LEVEL 75 AND THEY DO NOT DO JAIL. HIT A CITIZEN IN DAYLIGHT AND YOU\'RE A STAIN.', 'NIGHT IS WHEN THE ALLEYS GET INTERESTING. INTERESTING MEANS LETHAL.', 'FIRE IS YOUR FRIEND. MOLD LIONS THAT BURN STAY DEAD.', 'BRING ME MOONSHINE AND I\'LL TURN IT INTO A JUG O\'BOOM. ALCHEMY. ALSO, DRINKING.', 'SPEND YOUR STAT POINTS HERE. THE DUNGEON DOESN\'T ACCEPT IOUS.'];
+  // a sprite standing behind a counter: only the part above counterTop shows
+  function behindCounter(ctx, name, x, counterTop, o) {
+    var inf = artInfo(name) || { h: 26 };
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, counterTop); ctx.clip();
+    spr(ctx, name, x, counterTop + Math.round(inf.h * 0.45), o);
+    ctx.restore();
+  }
   scenes.inn = {
+    COUNTER: 121,
     enter: function (p) {
       closeAll();
       p = p || {};
@@ -3481,18 +3478,19 @@
       this.inn = inns[this.innId] || dflt;
       this.keeper = this.inn.keeper || dflt.keeper;
       this.keeperName = up(this.inn.keeperName || this.keeper.replace(/_/g, ' '));
-      roomInit(this, 270);
+      roomInit(this, 278);
+      this.cx = 292; this.mx = 210; this.mTarget = 210; this.kx = 176;
       this.objs = [
-        { id: 'keeper', x: 40, label: this.keeperName, verb: 'ROOMS', h: 46 },
-        { id: 'mordecai', x: 104, label: 'MORDECAI', verb: 'TALK', h: 44 },
-        { id: 'boxes', x: 160, label: 'LOOT BOXES', verb: 'OPEN', h: 30 },
-        { id: 'wardrobe', x: 214, label: 'WARDROBE', verb: 'CHANGE', h: 42 },
-        { id: 'board', x: 256, label: 'TROPHY BOARD', verb: 'READ', h: 56 },
-        { id: 'door', x: 298, label: 'EXIT', verb: 'LEAVE', h: 44 }
+        { id: 'wardrobe', x: 44, label: 'COSTUME TRUNK', verb: 'CHANGE', h: 30 },
+        { id: 'mordecai', x: 110, label: 'MORDECAI', verb: 'TALK', h: 48 },
+        { id: 'boxes', x: 150, label: 'LOOT BOXES', verb: 'OPEN', h: 30 },
+        { id: 'board', x: 196, label: 'THE TV SCREENS', verb: 'ACHIEVEMENTS', h: 40 },
+        { id: 'keeper', x: 246, label: this.keeperName, verb: 'ROOMS', h: 52 },
+        { id: 'door', x: 302, label: 'EXIT', verb: 'LEAVE', h: 56 }
       ];
-      this.tele = 0; this.telePlayed = false;
+      this.telePlayed = false;
       this.greet = pick(lineList(this.inn.lines || this.inn.hello)) || pick(KEEPER_LINES[this.keeper]) || 'WELCOME. BEDS ARE UPSTAIRS. DON\'T STEAL THE MUGS.';
-      this.greetT = 3.4;
+      this.greetT = 3.6;
       music(this.inn.music || 'inn');
     },
     price: function () {
@@ -3505,7 +3503,7 @@
     keeperMenu: function () {
       var self = this, ck = clockInfo(), price = this.price(), run = getRun() || {};
       ui.menu([
-        { label: 'SLEEP UNTIL MORNING', right: price + 'G', icon: 'bed', disabled: (run.gold || 0) < price, why: 'NOT ENOUGH GOLD. ' + price + ' A NIGHT. NO CREDIT.', hint: 'FULL HEAL. WAKE AT 07:00.', action: function () { self.sleep('morning'); } },
+        { label: 'SLEEP UNTIL MORNING', right: price + 'G', icon: 'bed', disabled: (run.gold || 0) < price, why: 'NOT ENOUGH GOLD. ' + price + ' A NIGHT. NO CREDIT.', hint: 'FULL HEAL. WAKE UP AT 07:00.', action: function () { self.sleep('morning'); } },
         { label: 'WAIT FOR NIGHT', right: 'FREE', icon: 'moon', disabled: !!(ck && ck.night), why: 'IT IS ALREADY NIGHT. THE URCHINS ARE OUT.', hint: 'SKIP TO 19:00. NO HEAL.', action: function () { self.sleep('night'); } },
         { label: 'CHAT', icon: 'eye', action: function () { ui.say([{ who: self.keeperName, text: self.keeperLine() }]); } },
         { label: 'NEVERMIND' }
@@ -3519,8 +3517,8 @@
       function can(rc) { var n = rc.needs || {}, run = getRun() || {}; for (var k in n) if (itemCount(k) < n[k]) return false; return !(rc.gold && (run.gold || 0) < rc.gold); }
       var items = ids.map(function (id) {
         var rc = rec[id] || {}, g = Object.keys(rc.gives || {})[0];
-        return { label: function () { return up(rc.name || id); }, icon: g ? itemIcon(g) : 'gear', right: function () { return can(rc) ? 'READY' : ''; }, keep: true,
-          hint: need(rc) + ' → ' + gives(rc), why: 'NEEDS ' + need(rc),
+        return { label: up(rc.name || id), icon: g ? itemIcon(g) : 'gear', right: function () { return can(rc) ? 'READY' : ''; }, keep: true,
+          hint: need(rc) + ' → ' + gives(rc),
           action: function () {
             if (!can(rc)) { sfx('error'); ui.toast('NEEDS ' + need(rc), { icon: 'skull', color: C.red }); return; }
             var res = G('craft', id) || { ok: false, msg: 'MORDECAI IS TOO DRUNK TO CRAFT RIGHT NOW.' };
@@ -3531,9 +3529,8 @@
       ui.menu(items, { title: 'ALCHEMY WITH MORDECAI', titleColor: C.green, w: 236 });
     },
     mordMenu: function () {
-      var self = this, run = getRun() || {};
-      var tips = lineList(D('mordecai'));
-      if (!tips.length && D('mordecai') && D('mordecai').tips) tips = lineList(D('mordecai').tips);
+      var self = this, run = getRun() || {}, md = D('mordecai');
+      var tips = lineList(md && !Array.isArray(md) && md.tips ? md.tips : md);
       var tip = function () { var tt = pick(tips) || pick(MORD_TIPS); ui.say(typeof tt === 'object' ? [tt] : [{ who: 'MORDECAI', text: tt }]); };
       var obj = function () { var o = objectiveInfo(); ui.say([{ who: 'MORDECAI', text: o ? 'HERE\'S THE JOB: ' + up(o.text) + '. TRY NOT TO DIE DOING IT.' : 'NOTHING URGENT. WHICH MEANS SOMETHING TERRIBLE IS ABOUT TO HAPPEN.' }]); };
       ui.menu([
@@ -3570,8 +3567,8 @@
       sfx('menu_select');
       if (o.id === 'keeper') this.keeperMenu();
       else if (o.id === 'mordecai') {
-        var self = this, run = getRun();
-        if (run && !this.mordSaid) { this.mordSaid = true; ui.say([{ who: 'MORDECAI', text: pick(MORD_HELLO) }], { onDone: function () { self.mordMenu(); } }); }
+        var self = this;
+        if (!this.mordSaid) { this.mordSaid = true; ui.say([{ who: 'MORDECAI', text: pick(MORD_HELLO) }], { onDone: function () { self.mordMenu(); } }); }
         else this.mordMenu();
       }
       else if (o.id === 'boxes') ui.openBoxes();
@@ -3592,36 +3589,27 @@
     },
     idle: function (dt) { this.t += dt; this.greetT -= dt; },
     draw: function (ctx) {
-      var t = this.t, self = this, id = this.innId;
+      var t = this.t, id = this.innId, CT = this.COUNTER;
       if (!drawBg(ctx, this.inn.theme || ('inn_' + id), 0, 0, { t: t, night: !!(clockInfo() || {}).night })) drawInnRoom(ctx, id, t, GROUND);
-      var L = INN_LOOK[id] || INN_LOOK.pug;
-      // bar: kegs, keeper, counter
-      for (var k = 0; k < 3; k++) { var kx = 18 + k * 17; R(kx, 104, 15, 16, '#000'); R(kx + 1, 105, 13, 14, '#7c4c24'); R(kx + 1, 108, 13, 1, '#3c2414'); R(kx + 1, 115, 13, 1, '#3c2414'); R(kx + 6, 111, 3, 3, '#bcbcbc'); }
-      R(14, 120, 58, 3, L.beam);
-      spr(ctx, actorName(this.keeper, 'idle'), 40, GROUND - 8, { frame: Math.floor(t * 2) });
-      R(12, GROUND - 18, 60, 18, '#000'); R(13, GROUND - 17, 58, 17, '#7c4c24'); R(13, GROUND - 17, 58, 3, '#a87850');
-      R(20, GROUND - 22, 5, 5, '#f8d878'); R(21, GROUND - 23, 3, 1, C.white); R(56, GROUND - 22, 5, 5, '#f8d878');
-      // Mordecai (teleports in with a puff) + his table
+      // costume trunk in front of the hearth
+      R(31, GROUND - 14, 26, 14, '#000'); R(32, GROUND - 13, 24, 13, '#7c3c18'); R(32, GROUND - 13, 24, 2, '#a85010'); R(42, GROUND - 9, 4, 4, C.gold);
+      R(30, GROUND - 20, 28, 6, '#000'); R(31, GROUND - 19, 26, 4, '#5c2c10');
+      R(36, GROUND - 17, 4, 5, '#881488'); R(46, GROUND - 18, 3, 6, '#f8b800'); R(51, GROUND - 16, 4, 3, '#0058f8');
+      // Mordecai (teleports in with a puff) at his little table
+      R(82, GROUND - 16, 22, 4, '#000'); R(83, GROUND - 15, 20, 3, '#a85010'); R(91, GROUND - 12, 4, 12, '#5c3c24'); R(86, GROUND - 21, 4, 6, '#f8d878'); R(87, GROUND - 22, 2, 1, C.white); R(97, GROUND - 20, 3, 5, '#5c5c5c');
       var tk = clamp((t - 0.25) / 0.5, 0, 1);
-      if (tk >= 0.5) spr(ctx, actorName('mordecai', 'idle'), 104, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 104 });
-      if (tk > 0 && tk < 1) for (var pf = 0; pf < 10; pf++) { var pa = pf * 0.63 + t * 3, pr = 4 + tk * 16; ctx.globalAlpha = 1 - tk; R(104 + Math.cos(pa) * pr - 2, GROUND - 16 + Math.sin(pa) * pr * 0.8 - 2, 5, 5, pf % 2 ? '#d800cc' : '#bcbcbc'); ctx.globalAlpha = 1; }
-      R(116, GROUND - 14, 22, 4, '#000'); R(117, GROUND - 13, 20, 3, '#a85010'); R(125, GROUND - 10, 4, 10, '#5c3c24'); R(121, GROUND - 19, 4, 5, '#f8d878'); R(130, GROUND - 18, 3, 4, '#5c5c5c');
+      if (tk >= 0.5) spr(ctx, actorName('mordecai', 'idle'), 110, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 110 });
+      if (tk > 0 && tk < 1) for (var pf = 0; pf < 10; pf++) { var pa = pf * 0.63 + t * 3, pr = 4 + tk * 16; ctx.globalAlpha = 1 - tk; R(110 + Math.cos(pa) * pr - 2, GROUND - 16 + Math.sin(pa) * pr * 0.8 - 2, 5, 5, pf % 2 ? '#d800cc' : '#bcbcbc'); ctx.globalAlpha = 1; }
       // loot box pile under the TVs
       var run = getRun() || {}, bx = run.boxes || [];
-      if (!bx.length) spr(ctx, 'box_bronze', 160, GROUND, { alpha: 0.3 });
-      bx.slice(0, 3).forEach(function (b, i) { spr(ctx, 'box_' + b.tier, 154 + (i % 2) * 12, GROUND - Math.floor(i / 2) * 13, { frame: i === 0 ? Math.floor(t * 4) : 0 }); });
-      if (bx.length) { DCW.box(168, GROUND - 32, tw(bx.length) + 8, 11, { fill: C.red }); T(bx.length, 172, GROUND - 30, C.white); }
-      // wardrobe: a folding dressing screen, Renaissance-fair style
-      for (var sp = 0; sp < 3; sp++) { var sx = 200 + sp * 10; R(sx, GROUND - 38 + (sp === 1 ? 0 : 2), 10, 38 - (sp === 1 ? 0 : 2), '#000'); R(sx + 1, GROUND - 37 + (sp === 1 ? 0 : 2), 8, 36 - (sp === 1 ? 0 : 2), sp === 1 ? '#881488' : '#5c0c5c'); R(sx + 3, GROUND - 30, 4, 4, '#f8b800'); }
-      R(208, GROUND - 42, 3, 6, '#7c3c18'); R(205, GROUND - 44, 9, 2, '#fcfcfc');
-      // trophy board
-      R(240, 92, 32, 26, '#000'); R(241, 93, 30, 24, '#a85010'); R(243, 95, 26, 20, '#c88c50');
-      [[245, 97, C.white], [254, 96, C.yellow], [262, 99, C.white], [247, 106, '#f8b8f8'], [258, 107, C.white]].forEach(function (pp) { R(pp[0], pp[1], 7, 7, pp[2]); R(pp[0] + 3, pp[1], 1, 1, C.red); });
-      R(252, GROUND - 12, 8, 4, C.gold); R(254, GROUND - 8, 4, 8, C.gold); R(250, GROUND - 16, 12, 4, C.gold);
-      // door
-      spr(ctx, firstArt(['door_inn', 'door_wood', 'door']) || 'door', 298, GROUND, {});
+      if (!bx.length) spr(ctx, 'box_bronze', 150, GROUND, { alpha: 0.3 });
+      bx.slice(0, 3).forEach(function (b, i) { spr(ctx, 'box_' + b.tier, 144 + (i % 2) * 12, GROUND - Math.floor(i / 2) * 13, { frame: i === 0 ? Math.floor(t * 4) : 0 }); });
+      if (bx.length) { DCW.box(158, GROUND - 32, tw(bx.length) + 8, 11, { fill: C.red }); T(bx.length, 162, GROUND - 30, C.white); }
+      // the keeper, behind the bar
+      behindCounter(ctx, actorName(this.keeper, 'idle'), 246, CT, { frame: Math.floor(t * 2), flip: this.x < 246 });
+      spr(ctx, firstArt(['door_inn', 'door_wood', 'door']) || 'door', 302, GROUND, { frame: Math.floor(t * 2) });
       roomCast(ctx, this, t);
-      if (this.greetT > 0) bubble(ctx, this.greet, 40, GROUND - 34, { w: 120 });
+      if (this.greetT > 0) bubble(ctx, this.greet, 246, CT - 18, { w: 136, lines: 5 });
       ui.drawHUD(ctx, ui.hudFromRun({ party: true }));
       T(fitText(up(this.inn.name), 200), 4, 16, C.gold, { shadow: '#000' });
       roomPrompt(ctx, this, t);
@@ -3644,6 +3632,7 @@
     ]
   };
   scenes.club = {
+    COUNTER: 129,
     enter: function (p) {
       closeAll();
       p = p || {};
@@ -3652,59 +3641,58 @@
       this.club = (D('clubs') || {})[this.clubId] || {};
       this.name = up(this.club.name || 'THE DESPERADO CLUB');
       this.shopId = this.club.shop || 'quint';
-      roomInit(this, 40);
-      this.face = 1; this.cx = 24;
+      roomInit(this, 72);
+      this.face = 1; this.cx = 56; this.mx = 200; this.mTarget = 200; this.kx = 228;
       this.objs = [
-        { id: 'door', x: 18, label: 'EXIT', verb: 'LEAVE', h: 44 },
-        { id: 'bouncer', x: 52, label: 'CLARABELLE', verb: 'TALK', h: 50 },
-        { id: 'quint', x: 112, label: "QUINT'S PHARMACY", verb: 'SHOP', h: 48 },
-        { id: 'dance', x: 185, r: 30, label: 'DANCE FLOOR', verb: 'DANCE', h: 34 },
-        { id: 'bar', x: 266, label: 'THE BAR', verb: 'ORDER', h: 38 }
+        { id: 'door', x: 16, label: 'EXIT', verb: 'LEAVE', h: 58 },
+        { id: 'bouncer', x: 44, label: 'CLARABELLE', verb: 'TALK', h: 46 },
+        { id: 'quint', x: 98, label: "QUINT'S PHARMACY", verb: 'SHOP', h: 44 },
+        { id: 'dance', x: 168, r: 28, label: 'DANCE FLOOR', verb: 'DANCE', h: 34 },
+        { id: 'bar', x: 278, r: 22, label: 'THE BAR', verb: 'ORDER', h: 44 }
       ];
       this.greet = pick(lineList(this.club.lines && this.club.lines.door)) || pick(CLUB_FB.door);
-      this.greetT = 3.4; this.hype = 0; this.danced = false;
+      this.greetT = 3.6; this.hype = 0; this.danced = false;
       music(this.club.music || 'club');
     },
     lines: function (key) { var l = this.club.lines && this.club.lines[key]; return lineList(l).length ? lineList(l) : CLUB_FB[key]; },
     leave: function () {
-      var self = this;
-      self.leaving = true; sfx('door');
-      if (tryCall(DCW.game, 'leaveClub', []) === MISSING) { self.leaving = false; ui.toast('THE DOOR IS STUCK. CLARABELLE IS LEANING ON IT.', { color: C.red }); }
+      this.leaving = true; sfx('door');
+      if (tryCall(DCW.game, 'leaveClub', []) === MISSING) { this.leaving = false; ui.toast('THE DOOR IS STUCK. CLARABELLE IS LEANING ON IT.', { color: C.red }); }
     },
     startDance: function () {
       this.dance = 2.6; this.hype = 1; sfx('fanfare');
       if (!this.danced) { this.danced = true; G('track', 'dance'); }
     },
     clubMenu: function () {
-      var self = this;
+      var self = this, o = {};
+      this.objs.forEach(function (ob) { o[ob.id] = ob; });
       ui.menu([
-        { label: "QUINT'S PHARMACY", action: function () { self.interact(self.objs[2]); } },
+        { label: "QUINT'S PHARMACY", action: function () { self.interact(o.quint); } },
         { label: 'DANCE', action: function () { self.startDance(); } },
-        { label: 'TALK TO CLARABELLE', action: function () { self.interact(self.objs[1]); } },
-        { label: 'THE BAR', action: function () { self.interact(self.objs[4]); } },
+        { label: 'TALK TO CLARABELLE', action: function () { self.interact(o.bouncer); } },
+        { label: 'THE BAR', action: function () { self.interact(o.bar); } },
         { label: 'LEAVE', color: C.orange, action: function () { self.leave(); } },
         { label: 'MORE...', action: function () { ui.openPause({ canFlee: false }); } }
       ], { title: this.name, titleColor: C.pink, border: C.pink, w: 180 });
     },
+    sayPick: function (key, who) {
+      var l = pick(this.lines(key));
+      if (!l) return;
+      ui.say(Array.isArray(l) ? l : [typeof l === 'string' ? { who: who, text: l } : l]);
+    },
     interact: function (o) {
       sfx('menu_select');
-      var self = this;
       if (o.id === 'door') this.leave();
-      else if (o.id === 'bouncer') ui.say(lineList(this.lines('door')).map(function (l) { return typeof l === 'string' ? { who: 'CLARABELLE', text: l } : l; }).slice(0, 2));
-      else if (o.id === 'quint') {
-        var q = pick(this.lines('quint'));
-        ui.openShop(this.shopId, { greet: typeof q === 'string' ? q : q && q.text });
-      } else if (o.id === 'dance') this.startDance();
-      else if (o.id === 'bar') { var b = pick(this.lines('bar')); ui.say(Array.isArray(b) ? b : [typeof b === 'string' ? { who: 'DONUT', text: b } : b]); }
+      else if (o.id === 'bouncer') this.sayPick('door', 'CLARABELLE');
+      else if (o.id === 'quint') { var q = pick(this.lines('quint')); ui.openShop(this.shopId, { greet: typeof q === 'string' ? q : q && q.text }); }
+      else if (o.id === 'dance') this.startDance();
+      else if (o.id === 'bar') this.sayPick('bar', 'DONUT');
     },
     update: function (dt) {
       this.t += dt; this.greetT -= dt;
       if (this.leaving) return;
       tryCall(DCW.game, 'tick', [dt]);
-      if (this.dance > 0) {
-        this.dance -= dt;
-        if (this.dance <= 0) { this.hype = 0; var dl = pick(this.lines('dance')); ui.say(Array.isArray(dl) ? dl : [typeof dl === 'string' ? { who: 'DONUT', text: dl } : dl]); }
-      }
+      if (this.dance > 0) { this.dance -= dt; if (this.dance <= 0) { this.hype = 0; this.sayPick('dance', 'DONUT'); } }
       roomWalk(this, dt);
       if (this.dance > 0) return;
       if (P('start')) { sfx('pause'); this.clubMenu(); return; }
@@ -3714,25 +3702,20 @@
     },
     idle: function (dt) { this.t += dt; this.greetT -= dt; },
     draw: function (ctx) {
-      var t = this.t;
+      var t = this.t, CT = this.COUNTER;
       if (!drawBg(ctx, this.club.theme || 'club', 0, 0, { t: t })) drawClubRoom(ctx, t, this.hype, GROUND);
-      // door + velvet rope
-      spr(ctx, firstArt(['door_club', 'door_pub', 'door']) || 'door', 18, GROUND, {});
-      [66, 84].forEach(function (px) { R(px, GROUND - 14, 3, 14, '#ac7c00'); R(px - 1, GROUND - 16, 5, 3, C.gold); });
-      R(68, GROUND - 12, 17, 2, '#a81000'); R(72, GROUND - 11, 9, 2, '#a81000');
-      spr(ctx, actorName('clarabelle', 'idle'), 50, GROUND, { frame: Math.floor(t * 1.5) });
-      // Quint's pharmacy counter
-      R(90, 92, 46, 24, '#000'); R(91, 93, 44, 22, '#1c1c2c');
-      for (var sh = 0; sh < 2; sh++) for (var bt = 0; bt < 6; bt++) { var bc = ['#58d854', '#d800cc', '#3cbcfc', '#f8b800'][(bt + sh) % 4]; R(94 + bt * 7, 96 + sh * 10, 4, 7, '#000'); R(95 + bt * 7, 97 + sh * 10, 2, 5, bc); }
-      R(106, 80, 14, 10, '#000'); R(107, 81, 12, 8, '#00a800'); R(111, 82, 4, 6, C.white); R(109, 84, 8, 2, C.white);
-      spr(ctx, actorName('quint', 'idle'), 112, GROUND - 8, { frame: Math.floor(t * 2) });
-      R(92, GROUND - 18, 42, 18, '#000'); R(93, GROUND - 17, 40, 17, '#3c3c4c'); R(93, GROUND - 17, 40, 2, '#7c7c9c');
-      // the bar
-      R(240, GROUND - 20, 60, 20, '#000'); R(241, GROUND - 19, 58, 19, '#5c1c3c'); R(241, GROUND - 19, 58, 3, '#d800cc');
-      for (var g2 = 0; g2 < 4; g2++) { R(246 + g2 * 14, GROUND - 26, 4, 6, ['#f8d878', '#f83800', '#58d854', '#3cbcfc'][g2]); }
-      [250, 270, 290].forEach(function (sx) { R(sx - 4, GROUND - 10, 9, 2, '#bcbcbc'); R(sx, GROUND - 8, 1, 8, '#7c7c7c'); });
+      if (this.hype > 0) { ctx.globalAlpha = 0.18 + 0.12 * Math.sin(t * 20); R(0, 0, W, H, ['#d800cc', '#3cbcfc', '#f8b800'][Math.floor(t * 6) % 3]); ctx.globalAlpha = 1; }
+      spr(ctx, firstArt(['door_club', 'door_pub', 'door']) || 'door', 16, GROUND, { frame: Math.floor(t * 3) });
+      [60, 76].forEach(function (px) { R(px, GROUND - 14, 3, 14, '#ac7c00'); R(px - 1, GROUND - 16, 5, 3, C.gold); });
+      R(62, GROUND - 12, 15, 2, '#a81000'); R(65, GROUND - 11, 9, 2, '#a81000');
+      spr(ctx, actorName('clarabelle', 'idle'), 44, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 44 });
+      // Quint's pharmacy counter (Quint stands behind it)
+      behindCounter(ctx, actorName('quint', 'idle'), 98, CT, { frame: Math.floor(t * 2), flip: this.x < 98 });
+      R(78, CT, 42, GROUND - CT, '#000'); R(79, CT + 1, 40, GROUND - CT - 1, '#2c2c3c'); R(79, CT + 1, 40, 2, '#7c7c9c');
+      R(95, CT + 7, 8, 8, '#00a800'); R(98, CT + 8, 2, 6, C.white); R(96, CT + 10, 6, 2, C.white);
+      for (var bt = 0; bt < 4; bt++) { R(82 + bt * 3, CT - 5, 2, 5, [C.green, C.purple, C.blue, C.yellow][bt]); R(108 + bt * 3, CT - 4, 2, 4, [C.yellow, C.blue, C.green, C.purple][bt]); }
       roomCast(ctx, this, t);
-      if (this.greetT > 0) bubble(ctx, this.greet, 52, GROUND - 40, { w: 120 });
+      if (this.greetT > 0) bubble(ctx, this.greet, 44, GROUND - 62, { w: 120, lines: 4 });
       ui.drawHUD(ctx, ui.hudFromRun({ party: true }));
       T(this.name, 4, 16, C.pink, { shadow: '#000' });
       roomPrompt(ctx, this, t);

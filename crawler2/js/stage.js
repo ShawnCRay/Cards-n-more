@@ -1740,6 +1740,10 @@
     if (id === 'katia') return { id: 'katia', kind: 'katia', x: x - 6, y: feetY - 20, w: 12, h: 20, vx: 0, vy: 0, face: 1, onGround: false, cd: 2, actT: 0, state: 'follow', stuckT: 0, t: 0 };
     return null;
   }
+  function shoulder() {
+    var k = DCW.artActorsKit && DCW.artActorsKit.carlShoulder, s = k && k.side;
+    return (s && typeof s.dx === 'number') ? s : { dx: -7, dy: -12 };
+  }
   function setupParty() {
     S.party = {};
     if (S.swap) return;
@@ -1797,7 +1801,7 @@
   function updDonut(C, dt) {
     var P = S.player;
     C.t += dt; C.castT -= dt;
-    C.x = cx(P) - P.face * 5 - 5; C.y = P.y + P.h - (P.crouch ? 18 : 26);
+    var sh = shoulder(); C.x = cx(P) + sh.dx * P.face - 5; C.y = P.y + P.h + sh.dy - 14;
     if (P.state === 'dead' || P.state === 'pit' || S.noMagic) return;
     C.cd -= dt;
     if (C.cd <= 0) {
@@ -2618,21 +2622,40 @@
   }
   function makeFacade(id, d) {
     var spName = (d.sprite || 'dispenser') + '_body';
-    var bsz = artSize(spName, 176, 88);
+    var lay = (DCW.artActorsKit && DCW.artActorsKit.dispenserLayout) || null;
+    var bsz = artSize(spName, 140, 62);
     var w = num(d.w, bsz.w), h = num(d.h, bsz.h), sp = S.bossSpawn, a = S.arena;
     var hp = Math.max(1, Math.round(num(d.hp, 120)));
-    var B = { isBoss: true, facade: true, id: id, def: d, x: U.clamp(sp.x - w / 2, a.x0 + TS, Math.max(a.x0 + TS, a.x1 - TS - w)), y: sp.y - 6 - h, w: w, h: h, vx: 0, vy: 0, face: -1,
+    var B = { isBoss: true, facade: true, id: id, def: d, x: U.clamp(sp.x - w / 2, a.x0 + TS, Math.max(a.x0 + TS, a.x1 - TS - w)), y: sp.y - h, w: w, h: h, vx: 0, vy: 0, face: -1,
       hp: hp, maxHp: hp, phases: sortPhases(d, ['reveal:3', 'spit:spit:3', 'reveal:3', 'sweep', 'cloak']), phase: 0, pIdx: 0, move: null, flash: 0, flying: true,
       active: false, dying: false, dead: false, baseAlpha: num(d.camo, 0.16), alpha: num(d.camo, 0.16), sprite: d.sprite || 'dispenser', onGround: false, stun: 0, pendingPhase: -1,
       anim: 'idle', t: 0, dmg: num(d.dmg, 2), groundY: sp.y, nextPart: null, lastPart: null };
     B.homeY = B.y;
-    B.parts = [
-      { id: 'eye_l', kind: 'eye', dx: w * 0.31, dy: h * 0.30, w: 18, h: 14, open: 0, tele: 0 },
-      { id: 'eye_r', kind: 'eye', dx: w * 0.69, dy: h * 0.30, w: 18, h: 14, open: 0, tele: 0 },
-      { id: 'mouth', kind: 'mouth', dx: w * 0.5, dy: h * 0.62, w: 24, h: 14, open: 0, tele: 0 },
-      { id: 'wing_l', kind: 'wing', dx: w * 0.07, dy: h * 0.82, w: 22, h: 14, open: 0, tele: 0 },
-      { id: 'wing_r', kind: 'wing', dx: w * 0.93, dy: h * 0.82, w: 22, h: 14, open: 0, tele: 0 }
-    ];
+    // part rects: (dx, dy) = centre relative to the body top-left; pieces drawn from their top-left (px, py)
+    function piece(id, kind, name, x, y, dw, dh, flip, hit) {
+      var sz = artSize(name, dw, dh), hb = hit || { x: 0, y: 0, w: sz.w, h: sz.h };
+      return { id: id, kind: kind, px: x, py: y, pw: sz.w, ph: sz.h, flip: !!flip, dx: x + hb.x + hb.w / 2, dy: y + hb.y + hb.h / 2, w: hb.w, h: hb.h, open: 0, tele: 0 };
+    }
+    var sx = w / 140, sy = h / 62, base = B.sprite;
+    if (lay && lay.eyes && lay.mouth && lay.wings) {
+      var wl = lay.wings[1] || { x: 2, y: 12, flip: true }, wr = lay.wings[0] || { x: 78, y: 12 };
+      B.parts = [
+        piece('eye_l', 'eye', base + '_eye', lay.eyes[0][0] * sx, lay.eyes[0][1] * sy, 14, 12, false),
+        piece('eye_r', 'eye', base + '_eye', lay.eyes[1][0] * sx, lay.eyes[1][1] * sy, 14, 12, false),
+        piece('mouth', 'mouth', base + '_mouth', lay.mouth[0] * sx, lay.mouth[1] * sy, 32, 16, false),
+        // wing pieces are big overlays; only their outer tips are vulnerable (low enough to punch standing)
+        piece('wing_l', 'wing', base + '_wing', wl.x * sx, wl.y * sy, 60, 34, wl.flip, { x: 0, y: 14, w: 24, h: 20 }),
+        piece('wing_r', 'wing', base + '_wing', wr.x * sx, wr.y * sy, 60, 34, wr.flip, { x: 36, y: 14, w: 24, h: 20 })
+      ];
+    } else {
+      B.parts = [
+        piece('eye_l', 'eye', base + '_eye', w * 0.34 - 7, h * 0.22, 14, 12, false),
+        piece('eye_r', 'eye', base + '_eye', w * 0.56 - 7, h * 0.22, 14, 12, false),
+        piece('mouth', 'mouth', base + '_mouth', w * 0.5 - 16, h * 0.42, 32, 16, false),
+        piece('wing_l', 'wing', base + '_wing', 2, h * 0.2, 60, 34, true, { x: 0, y: 14, w: 24, h: 20 }),
+        piece('wing_r', 'wing', base + '_wing', w - 62, h * 0.2, 60, 34, false, { x: 36, y: 14, w: 24, h: 20 })
+      ];
+    }
     return B;
   }
   function partById(B, id) { for (var i = 0; i < B.parts.length; i++) if (B.parts[i].id === id) return B.parts[i]; return B.parts[0]; }
@@ -4169,8 +4192,9 @@
   }
   function drawFacade(ctx, B, camX, camY) {
     var x = cx(B) - camX + (B.dying ? U.randi(-2, 2) : 0), y = B.y + B.h - camY;
-    var name = B.sprite + '_body';
-    if (hasArt(name)) spr(ctx, name, x, y, Math.floor(B.t * 2), B.face > 0 && B.anim === 'special', { alpha: B.alpha, flash: B.flash > 0 && B.alpha > 0.5 });
+    var name = B.sprite + '_body', pose = firstArt([B.sprite + '_special', B.sprite + '_walk', B.sprite + '_idle']);
+    if (B.anim === 'special' && hasArt(pose)) spr(ctx, pose, x, y, Math.floor(B.t * 8), B.face < 0, { alpha: B.alpha, scale: 2, flash: B.flash > 0 });
+    else if (hasArt(name)) spr(ctx, name, x, y, Math.floor(B.t * 2), false, { alpha: B.alpha, flash: B.flash > 0 && B.alpha > 0.5 });
     else {
       ctx.globalAlpha = B.alpha;
       ctx.fillStyle = '#3c2c4c';
@@ -4185,11 +4209,14 @@
       var p = B.parts[i];
       if (!(p.open > 0) && !p.tele) continue;
       if (p.tele && Math.floor(S.t * 12) % 2) continue;
-      var r = partRect(B, p), x = cx(r) - camX, y = r.y + r.h - camY;
       var nm = B.sprite + '_' + p.kind, fr = p.open > 0 ? 1 : 0;
-      var flip = p.id === 'wing_l' || p.id === 'eye_l';
-      spr(ctx, nm, x, y + 2, fr, flip, { flash: B.flash > 0 && p.open > 0 }, p.w, p.h, p.kind === 'mouth' ? '#d82800' : p.kind === 'eye' ? '#fcfcfc' : '#5c4c6c');
-      if (!hasArt(nm) && p.kind === 'eye') { ctx.fillStyle = '#000'; ctx.fillRect(Math.round(x) - 2, Math.round(y) - 9, 4, 4); }
+      var x = B.x + p.px + p.pw / 2 - camX, y = B.y + p.py + p.ph - camY;
+      if (hasArt(nm)) spr(ctx, nm, x, y, fr, p.flip, { flash: B.flash > 0 && p.open > 0 });
+      else {
+        var r = partRect(B, p);
+        spr(ctx, nm, cx(r) - camX, r.y + r.h - camY, fr, p.flip, { flash: B.flash > 0 && p.open > 0 }, p.w, p.h, p.kind === 'mouth' ? '#d82800' : p.kind === 'eye' ? '#fcfcfc' : '#5c4c6c');
+        if (p.kind === 'eye') { ctx.fillStyle = '#000'; ctx.fillRect(Math.round(cx(r) - camX) - 2, Math.round(r.y - camY) + 4, 4, 4); }
+      }
     }
   }
   function drawPursuer(ctx, camX, camY) {
@@ -4248,10 +4275,10 @@
   function drawDonut(ctx, C, P, camX, camY) {
     if (P.state === 'pit' || P.state === 'dead' || P.mongo) return;
     var name = C.castT > 0 ? firstArt(['donut_cast', 'donut_shoulder', 'donut_idle']) : firstArt(['donut_shoulder', 'donut_idle']);
-    // shoulder anchor: Carl's shoulder row sits 13 px above his feet (8 when crouched); she rides the back shoulder
-    var feet = P.y + P.h;
-    var y = feet - (P.crouch ? 8 : 13);
-    var x = cx(P) - P.face * 5;
+    // shoulder anchor from art_actors (DCW.artActorsKit.carlShoulder), mirrored when Carl faces left
+    var sh = shoulder(), feet = P.y + P.h;
+    var y = feet + sh.dy + (P.crouch ? 5 : 0);
+    var x = cx(P) + sh.dx * P.face;
     var blink = (P.inv > 0 && P.state !== 'victory') && Math.floor(S.t * 20) % 2 === 0;
     spr(ctx, name, x - camX, y - camY, Math.floor(C.t * 2), P.face < 0, { alpha: blink ? 0.25 : 1 }, 9, 8, '#f8f8f8');
   }
