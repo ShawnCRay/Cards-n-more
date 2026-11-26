@@ -3395,6 +3395,45 @@
     '.hhhygssssg.',
     '.hhhyggggg..',
     '............']]);
+  // the Incubus's charm: a pink heart that wobbles
+  pix('charm', { p: '#f878f8', P: '#d800cc', w: '#fcfcfc' }, [[
+    '..........',
+    '.PPP..PPP.',
+    'PppwPPppPP',
+    'PpwppppppP',
+    'PppppppppP',
+    '.PppppppP.',
+    '..PppppP..',
+    '...PppP...',
+    '....PP....'], [
+    '..........',
+    '..PP..PP..',
+    '.PpwPPppP.',
+    '.PwpppppP.',
+    '.PpppppPP.',
+    '..PppppP..',
+    '...PppP...',
+    '....PP....',
+    '..........']]);
+  // Vincente's Meat Hooks: a rusty hook on a chain
+  pix('meat_hook', { g: '#9c9c9c', d: '#5c5c5c', r: '#a81000', w: '#fcfcfc' }, [[
+    '...dd...',
+    '...gd...',
+    '...dd...',
+    '...gd...',
+    '..gwgg..',
+    '.gg..gg.',
+    '.g....g.',
+    '.gr...g.',
+    '.ggr.gg.',
+    '..ggg...']]);
+  // where a clockwork Mongo decoy can be left (plant levels): a brass gear marker on the floor
+  proc('decoy_spot', 16, 6, 2, function (g, f) {
+    var c = f ? '#f8b800' : '#ac7c00';
+    R(g, 2, 3, 12, 2, '#000000'); R(g, 3, 3, 10, 1, c);
+    R(g, 6, 1, 4, 4, '#000000'); R(g, 7, 2, 2, 2, c);
+    P(g, 4, 2, c); P(g, 11, 2, c);
+  }, false);
   proc('spore', 10, 10, 2, function (g, f) {
     disc(g, 5, 5, 3, '#7c8c18'); disc(g, 5, 5, 2, '#b8c838');
     P(g, 4, 4, '#d8f878'); P(g, 6, 6, '#58a000');
