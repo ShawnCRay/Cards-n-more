@@ -425,6 +425,9 @@ Playtesters never needed a revive, and floor 2 mobs felt no stronger than floor 
 - **Plot armor:** the first death of every crawl is free. Carl returns to the last checkpoint flag with full HP, no revival spent and no gold lost. The System AI complains that it was plot armor and swears it won't allow that meddling again (`D.plotArmor`: `first` plays once per save, `again` on later crawls, plus a Donut line once she can talk). The stage-name banner is skipped on that return. Every later death goes to the death screen and the sponsor revivals.
 - Remaining levers, not yet changed: the level-up heal (1 + 30% of max HP), a full heal at every safe room, +1 max HP per level, the regen shirt, 1.1 s of i-frames, and boss damage.
 
+## Boss phases are full health bars (lead)
+Every boss phase is its own full health bar. When a bar empties and another phase is left, the boss enters it immediately at full health, with the phase banner and a "FULL HEALTH!" pop. Only the last bar kills it. `D.bosses[id].hp` is per bar, set so the whole fight is about 1.5x the old single-bar length. Two-phase bosses: Murder Dozer 53, Hoarder 173, Chieftain 203, Ralph 405. Three-phase bosses: Juicer 190, Ball of Swine 200, Krakaren 230. A phase's `below` value no longer triggers anything.
+
 ## Donut rides Carl's shoulder (lead)
 Donut no longer leaps gaps or puffs back to Carl in smoke. Whenever she couldn't follow him on foot, she hops onto his back shoulder in a short arc (`mountShoulder`) and rides there, drawn in front of him and still casting. That covers: a gap, spikes or liquid ahead of her; Carl on a ladder or a moving platform; a ledge more than a cat-hop up; falling far behind. She stays up for the whole of a chase. She hops down once Carl has stood for 0.45 s on flat, safe ground two tiles either side (`safeToDismount`). Carl as companion (Donut mode) keeps the old leap-or-wait logic, since he can't ride a cat.
 

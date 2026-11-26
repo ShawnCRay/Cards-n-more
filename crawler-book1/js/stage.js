@@ -2315,11 +2315,16 @@
     hitSpark(opts.hitX !== undefined ? opts.hitX : U.clamp(srcX, B.x + 4, B.x + B.w - 4), cy(B) - 4 + U.rand(-6, 6), opts.crit || B.vulnMul > 1);
     numText(cx(B) + U.rand(-8, 8), B.y - 2, n, opts.crit || B.vulnMul > 1 ? '#f8d878' : '#fcfcfc', opts.crit || B.vulnMul > 1 ? 2 : 1);
     if (!opts.noCombo) registerHit(n);
-    var frac = B.hp / B.maxHp;
-    for (var i = B.phases.length - 1; i > B.phase; i--) {
-      if (frac < num(B.phases[i].below, 0)) { if (B.pendingPhase < i) B.pendingPhase = i; break; }
+    // every phase is its own full health bar: when one empties and another phase is left, the boss
+    // goes straight into it at full health; only the last bar kills it
+    if (B.hp <= 0) {
+      if (B.phase < B.phases.length - 1) {
+        B.hp = 1; if (B.pendingPhase <= B.phase) B.pendingPhase = B.phase + 1;
+        if (!(B.move && B.move.name === 'phase')) nextMove(B);
+        return false;
+      }
+      B.hp = 0; bossDie(B); return true;
     }
-    if (B.hp <= 0) { B.hp = 0; bossDie(B); return true; }
     return false;
   }
   function parseMove(str) {
@@ -2330,6 +2335,7 @@
     B.vulnMul = 1; B.rolling = false;
     if (B.pendingPhase > B.phase) {
       B.phase = B.pendingPhase; B.pIdx = 0;
+      B.hp = B.maxHp; sfx('heal'); numText(cx(B), B.y - 12, 'FULL HEALTH!', '#f83800', 2); // back to a full bar
       B.move = { name: 'phase', t: 0, sub: 0, st: 0, invuln: true };
       sfx('boss_roar'); DCW.shake(4, 0.6); flash('#f83800', 0.12); slowMo(0.35, 0.35);
       enterPhase(B, B.phases[B.phase] || {});

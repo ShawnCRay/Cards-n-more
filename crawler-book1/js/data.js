@@ -166,9 +166,11 @@
      the rest ~20-35 s; real players dodge, so roughly 2-3x that.
      New primitives (stage.js): roll, tentacle, sweep, mist:S, frenzy:N, scream,
      flex:S, throw:PROJ:N. Floor 1 bosses drop no gold (boxes instead). */
+  // Boss hp is per phase: each phase is a full health bar, and the boss refills to full when it
+  // enters the next one. Totals are about 1.5x the old single-bar fights. `below` no longer triggers phases.
   D.bosses = {
     murder_dozer: { name: 'GOBLIN MURDER DOZER', title: 'A STEAM TANK FULL OF GOBLINS',
-      hp: 70, dmg: 3, w: 72, h: 44, sprite: 'murder_dozer', xp: 25, gold: [0, 0], flying: false, armor: 'front',
+      hp: 53, dmg: 3, w: 72, h: 44, sprite: 'murder_dozer', xp: 25, gold: [0, 0], flying: false, armor: 'front',
       phases: [
         { below: 1.0, speed: 34, pattern: ['walk:2', 'shoot:junk:2', 'idle:1', 'charge', 'idle:1.6', 'walk:1.5', 'rain:junk:3', 'idle:1.2'] },
         { below: 0.5, speed: 46, name: 'ABANDON SHIP', sub: 'THE GOBLINS ARE CLIMBING OUT',
@@ -181,7 +183,7 @@
       loot: 'boss', unlock: null },
 
     hoarder: { name: 'THE HOARDER', title: 'QUEEN OF THE GARBAGE MOUNTAIN',
-      hp: 230, dmg: 2, w: 52, h: 58, sprite: 'hoarder', xp: 40, gold: [0, 0], flying: false,
+      hp: 173, dmg: 2, w: 52, h: 58, sprite: 'hoarder', xp: 40, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 30, pattern: ['walk:2', 'spawn:scatterer:2', 'idle:1.4', 'charge', 'idle:1.2', 'spawn:scatterer:3', 'jump_slam', 'idle:1.4'] },
         { below: 0.5, speed: 42, name: 'SPRING CLEANING', sub: 'THE GARBAGE AVALANCHE',
@@ -194,7 +196,7 @@
       loot: 'boss', unlock: null },
 
     chieftain: { name: 'GOBLIN WAR CHIEFTAIN', title: 'LORD OF THE GOBLIN WORKSHOP',
-      hp: 270, dmg: 2, w: 30, h: 32, sprite: 'chieftain', xp: 45, gold: [0, 0], flying: false,
+      hp: 203, dmg: 2, w: 30, h: 32, sprite: 'chieftain', xp: 45, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 46, pattern: ['walk:1.5', 'throw:dynamite:3', 'idle:1', 'spawn:goblin_bomber:2', 'charge', 'idle:1.2', 'jump_slam', 'idle:1'] },
         { below: 0.5, speed: 60, name: 'BLOOD AND DYNAMITE', sub: 'THE CHIEFTAIN LIGHTS HIS BELT',
@@ -206,7 +208,7 @@
       loot: 'boss', unlock: null },
 
     juicer: { name: 'THE JUICER', title: 'BRO OF THE 24 HOUR GYM',
-      hp: 380, dmg: 3, w: 44, h: 48, sprite: 'juicer', xp: 60, gold: [0, 0], flying: false,
+      hp: 190, dmg: 3, w: 44, h: 48, sprite: 'juicer', xp: 60, gold: [0, 0], flying: false,
       phases: [
         { below: 1.0, speed: 40, pattern: ['walk:1.5', 'throw:plate:3', 'idle:0.9', 'charge', 'idle:1', 'flex:2', 'walk:1', 'jump_slam', 'idle:1'] },
         { below: 0.55, speed: 54, name: 'PUMP IT UP', sub: 'NO DAYS OFF, BRO',
@@ -221,7 +223,7 @@
       loot: 'boss', unlock: null },
 
     ball_of_swine: { name: 'THE BALL OF SWINE', title: 'THE PORKCHOP EXPRESS',
-      hp: 400, dmg: 4, w: 56, h: 56, sprite: 'ball_of_swine', xp: 90, gold: [0, 0], flying: false, floorBoss: true,
+      hp: 200, dmg: 4, w: 56, h: 56, sprite: 'ball_of_swine', xp: 90, gold: [0, 0], flying: false, floorBoss: true,
       phases: [
         { below: 1.0, speed: 30, pattern: ['idle:1.6', 'roll', 'idle:1', 'roll', 'idle:0.8', 'roll', 'idle:2'] },
         { below: 0.65, speed: 40, name: 'THE PORKCHOP EXPRESS', sub: 'ALL ABOARD',
@@ -237,7 +239,7 @@
       loot: 'boss', unlock: null },
 
     krakaren: { name: 'THE KRAKAREN CLONE', title: 'MANAGER OF THE REV-UP DISTILLERY',
-      hp: 460, dmg: 3, w: 80, h: 72, sprite: 'krakaren', xp: 140, gold: [40, 70], flying: false, gear: 'bigboi_boxers', mistTaint: 4,
+      hp: 230, dmg: 3, w: 80, h: 72, sprite: 'krakaren', xp: 140, gold: [40, 70], flying: false, gear: 'bigboi_boxers', mistTaint: 4,
       phases: [
         { below: 1.0, speed: 0, pattern: ['idle:1.2', 'tentacle', 'idle:0.8', 'shoot:snot:3', 'idle:0.8', 'sweep', 'idle:1', 'tentacle', 'tentacle', 'idle:1', 'mist:4', 'idle:1'] },
         { below: 0.55, speed: 0, name: 'MANAGER MODE', sub: 'SHE WANTS TO SPEAK TO YOUR SUPERVISOR',
@@ -251,7 +253,7 @@
       loot: 'boss', unlock: null },
 
     ralph: { name: 'RALPH', title: 'THE FRENZIED GERBIL',
-      hp: 540, dmg: 2, w: 16, h: 14, sprite: 'ralph', screamW: 104, xp: 120, gold: [30, 60], flying: false,
+      hp: 405, dmg: 2, w: 16, h: 14, sprite: 'ralph', screamW: 104, xp: 120, gold: [30, 60], flying: false,
       phases: [
         { below: 1.0, speed: 60, pattern: ['idle:1', 'frenzy:3', 'idle:0.8', 'walk:1', 'scream', 'idle:1.2', 'frenzy:3', 'idle:0.8'] },
         { below: 0.5, speed: 76, releaseCages: true, name: 'FEEDING TIME', sub: 'EVERY HUNGRY CAGE OPENS',
