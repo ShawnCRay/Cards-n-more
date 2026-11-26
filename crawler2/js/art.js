@@ -2975,6 +2975,8 @@
   };
   /* 4b. carl_tent: crash zoom on Carl's boxers under Signet's charm. Fabric only: the BigBoi boxers
      tent out sideways in a long pointed peak that bobs, anime speed lines behind. */
+  // a 5x4 pixel heart, the BigBoi boxers' print
+  function heart(g, x, y, c) { R(g, x, y, 2, 1, c); R(g, x + 3, y, 2, 1, c); R(g, x, y + 1, 5, 1, c); R(g, x + 1, y + 2, 3, 1, c); R(g, x + 2, y + 3, 1, 1, c); }
   PN.carl_tent = {
     draw: function (g) {
       bands(g, PW_, 0, PH_, ['#3c0c2c', '#5c1040', '#7c1458', '#5c1040', '#3c0c2c']);
@@ -2992,7 +2994,7 @@
       // the boxers: white with the red BigBoi pattern, elastic band on top
       R(g, 34, 44, 80, 6, '#fcfcfc'); R(g, 34, 46, 80, 2, '#f83800');
       R(g, 34, 50, 80, 38, '#fcfcfc'); R(g, 34, 80, 80, 8, '#d8d8d8');
-      for (var y = 54; y < 86; y += 8) for (var x = 38 + (y % 16 ? 4 : 0); x < 110; x += 10) R(g, x, y, 3, 3, '#f83800');
+      for (var y = 53; y < 84; y += 8) for (var x = 37 + (y % 16 === 13 ? 5 : 0); x < 108; x += 10) heart(g, x, y, '#f83800');
       // thighs below the hem, bare
       R(g, 40, 88, 30, 24, '#fce0a8'); R(g, 74, 88, 34, 24, '#fca044'); R(g, 74, 88, 30, 24, '#fce0a8');
       R(g, 34, 88, 80, 1, '#000000'); R(g, 33, 44, 1, 44, '#000000');
@@ -3007,7 +3009,7 @@
       ctx.fillStyle = '#d8d8d8';
       ctx.beginPath(); ctx.moveTo(112, 72); ctx.lineTo(tip.x, tip.y); ctx.lineTo(112, 84); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#f83800';
-      for (var k = 0; k < 5; k++) { var f = (k + 0.5) / 6, cx = Math.round(112 + (tip.x - 112) * f), cy = Math.round(68 + (tip.y - 68) * f); ctx.fillRect(cx - 1, cy - 1 + (k % 2 ? 3 : -3), 3, 3); }
+      for (var k = 0; k < 4; k++) { var f = (k + 0.5) / 5, cx = Math.round(112 + (tip.x - 112) * f), cy = Math.round(68 + (tip.y - 68) * f); heart(ctx, cx - 2, cy - 2 + (k % 2 ? 3 : -3), '#f83800'); }
       // motion ticks and a bead of sweat
       ctx.fillStyle = '#fcfcfc';
       for (k = 0; k < 3; k++) ctx.fillRect(tip.x + 8, tip.y - 9 + k * 8 - bob, 6, 1);
