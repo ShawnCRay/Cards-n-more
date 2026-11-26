@@ -191,6 +191,7 @@
   // small comic speech bubble (non-blocking flavor text above a character)
   function bubble(ctx, text, cx, by, o) {
     o = o || {};
+    if (text && typeof text === 'object') text = text.text || ''; // data lines come as {who, text}
     var lines = wrap(up(text), o.w || 120).slice(0, o.lines || 3), w = 0;
     lines.forEach(function (l) { w = Math.max(w, tw(l)); });
     w += 8; var h = lines.length * 9 + 5;
@@ -3763,7 +3764,7 @@
       R(95, CT + 7, 8, 8, '#00a800'); R(98, CT + 8, 2, 6, C.white); R(96, CT + 10, 6, 2, C.white);
       for (var bt = 0; bt < 4; bt++) { R(82 + bt * 3, CT - 5, 2, 5, [C.green, C.purple, C.blue, C.yellow][bt]); R(108 + bt * 3, CT - 4, 2, 4, [C.yellow, C.blue, C.green, C.purple][bt]); }
       roomCast(ctx, this, t);
-      if (this.greetT > 0) bubble(ctx, this.greet, 44, GROUND - 62, { w: 120, lines: 4 });
+      if (this.greetT > 0) bubble(ctx, this.greet, 44, GROUND - 74, { w: 136, lines: 6 });
       ui.drawHUD(ctx, ui.hudFromRun({ party: true }));
       T(this.name, 4, 16, C.pink, { shadow: '#000' });
       roomPrompt(ctx, this, t);

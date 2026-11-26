@@ -430,7 +430,7 @@
       defeat: "HEATHER THE BEAR HAS SKATED HER LAST ROUTINE. NEIGHBORHOOD BOSS DOWN! YOUR MAP JUST GOT A LITTLE SMARTER.",
       loot: 'boss', unlock: null },
 
-    dispenser: { name: 'THE DISPENSER', title: 'NEIGHBORHOOD BOSS, WALL SPECIES', level: 20, facade: true,
+    dispenser: { name: 'THE DISPENSER', title: 'NEIGHBORHOOD BOSS, WALL SPECIES', level: 20, facade: true, camo: 0.34,
       hp: 320, dmg: 3, w: 192, h: 112, sprite: 'dispenser', xp: 240, gold: [60, 100], flying: false,
       parts: ['eye', 'mouth', 'wing'], boomyMul: 3,
       phases: [
