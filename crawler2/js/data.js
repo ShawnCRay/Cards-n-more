@@ -1987,7 +1987,7 @@
       '.............................ooo.............................oo....................................................................oooo.........................',
       '............................=====...........................====............................====..................................======........................',
       '.........................................................X......................................................................................................',
-      '..........p.........N...........XX......1.........t.....XXX...........t.............2...............t.........XX........3...................XX....t.............',
+      '..........p.........N...........XX......1.........t.....XXX...........t.............2...............t.........XX........3...................XX....t.....N.......',
       '################################################################################################################################################################',
       '################################################################################################################################################################'],
     settlement: [
@@ -2114,7 +2114,8 @@
       },
       edges: { left: { area: 'circus_park', entry: 'right' }, right: { area: 'settlement', entry: 'left' } },
       npcs: [
-        { id: 'lucia', x: 20, sprite: 'lucia', showIf: 'circus_gone', hideIf: 'show_done' }
+        { id: 'lucia', x: 20, sprite: 'lucia', showIf: 'circus_gone', hideIf: 'show_done' },
+        { id: 'gumgum_gate', x: 152, sprite: 'gumgum', showIf: 'quest_sw', hideIf: 'mongo_done' }
       ],
       enemies: { day: [['brain_boiler', 3], ['lemur', 2], ['giraffe', 1]], night: [['street_urchin', 3], ['incubus', 1], ['berserker', 1]] },
       density: { day: 0.5, night: 0.8 },
@@ -2144,9 +2145,9 @@
       },
       edges: { left: { area: 'ruins_e', entry: 'right' }, right: null },
       npcs: [
-        { id: 'gumgum', x: 14, sprite: 'gumgum', showIf: 'gumgum_asked', hideIf: 'mongo_done' },
+        { id: 'gumgum', x: 14, sprite: 'gumgum', showIf: 'gumgum_asked', hideIf: 'dispenser_done' },
         { id: 'hekla_sq', x: 62, sprite: 'hekla', showIf: 'show_done', hideIf: 'quill_dead' },
-        { id: 'mordecai_club', x: 76, sprite: 'mordecai', showIf: 'quest_sw', hideIf: 'club_known' }
+        { id: 'gossip', x: 76, sprite: 'chickadee_walk', phase: 'day' }
       ],
       enemies: { day: [], night: [['street_urchin', 2], ['incubus', 2]] },
       density: { day: 0, night: 0.5 },
@@ -2329,7 +2330,7 @@
     signs: ["NOTICE: POOL CLOSED. GYM CLOSED. LOCKER ROOM CLOSED. THE WALL IS OPEN. THE WALL IS ALWAYS OPEN. THE WALL HAS A MOUTH."],
     reward: { box: 'boss', xp: 60, gold: 50 },
     sets: ['dispenser_done'],
-    outro: 'dispenser_down', thenArea: 'settlement', thenEntry: 'left' });
+    outro: 'dispenser_down' });
 
   lv('a2_mongo', { name: 'MONGO, OFF THE LEASH', act: 2, kind: 'side', swap: 'mongo', theme: 'settlement', night: true, music: 'market', hours: 1,
     chunks: { start: 'settlement_start', pool: SETTLE, count: 3, end: 'settlement_alley_end' },
@@ -2507,8 +2508,8 @@
     { done: 'circus_gone', text: 'GET BACK TO DONUT', area: 'circus_park' },
     { done: 'settled', text: 'TAKE THE EAST ROAD TO TOWN', area: 'settlement' },
     { done: 'dispenser_done', text: 'KILL THE DISPENSER AT THE Y', area: 'ruins_e' },
-    { done: 'quest_sw', text: 'TALK TO GUMGUM AT THE GATE', area: 'settlement' },
-    { done: 'club_known', text: 'MEET MORDECAI OUTSIDE THE PUB', area: 'settlement' },
+    { done: 'quest_sw', text: 'FIND GUMGUM OUTSIDE THE GATE', area: 'ruins_e' },
+    { done: 'club_known', text: 'MORDECAI WANTS YOU IN TOWN', area: 'settlement' },
     { done: 'mongo_done', text: 'CATCH MONGO', area: 'settlement' },
     { done: 'vincente_dead', text: "GO INTO GUMGUM'S ALLEY", area: 'settlement' },
     { done: 'met_quill', text: 'SHOW THE PASS AT THE ADMIN GATE', area: 'admin' },
@@ -2548,9 +2549,9 @@
       sets: ['settled', 'freeballing', 'fang_caps', 'quadrillion'],
       gives: [{ item: 'dyn', n: 4 }, { item: 'hob', n: 4 }, { item: 'upgrade_scroll', n: 1 }, { item: 'fang_caps', n: 1 }, { item: 'sepsis_crown', n: 1 }] },
     { id: 'gumgum_ask', area: 'settlement', when: { flags: ['settled'], notFlags: ['gumgum_asked'] }, cinema: 'gumgum_ask', sets: ['gumgum_asked'] },
-    { id: 'gumgum_bodies', area: 'settlement', npc: 'gumgum', when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, cinema: 'gumgum_bodies',
+    { id: 'gumgum_bodies', area: 'ruins_e', when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, cinema: 'gumgum_bodies',
       sets: ['quest_sw'], quest: { start: 'sex_workers' } },
-    { id: 'desperado_tour', area: 'settlement', npc: 'mordecai_club', when: { flags: ['quest_sw'], notFlags: ['club_known'] }, cinema: 'desperado_tour',
+    { id: 'desperado_tour', area: 'settlement', when: { flags: ['quest_sw'], notFlags: ['club_known'] }, cinema: 'desperado_tour',
       sets: ['club_known', 'met_pustule', 'mongo_bolted'], gives: [{ item: 'pet_carrier', n: 1 }], level: 'a2_mongo' },
     { id: 'quill_desk', area: 'admin', when: { flags: ['has_pass'], notFlags: ['met_quill'] }, cinema: 'quill_desk', sets: ['met_quill', 'shelves_rigged'] },
     { id: 'katia_meet', area: 'settlement', when: { flags: ['apito_done'], notFlags: ['katia_joined'] }, cinema: 'katia_meet', sets: ['katia_joined'] },
@@ -2599,8 +2600,16 @@
         { who: 'GUMGUM', text: "PLEASE. YOU'RE ADVENTURERS. THERE'S SOMETHING OUTSIDE THE GATE YOU NEED TO SEE. YOUR FRIEND SAID NO. I'M ASKING YOU." },
         { who: 'CARL', text: "LET ME DEAL WITH THE BIG MANTA RAY EVERYBODY KEEPS WARNING ME ABOUT. THEN SHOW ME." } ] }
     ],
-    mordecai_club: [
-      { lines: [{ who: 'MORDECAI', text: "THERE YOU ARE. COME ON. I'M BUYING. WELL, YOU'RE BUYING. I'M WALKING IN FIRST SO CLARABELLE DOESN'T EAT YOU." }] }
+    gumgum_gate: [
+      { lines: [
+        { who: 'GUMGUM', text: "I'LL KEEP BURYING THEM UNTIL SOMEBODY TELLS ME WHO THEY WERE. GO. ASK QUESTIONS IN TOWN. THE PUB HEARS EVERYTHING." },
+        { who: 'CARL', text: "WE'LL FIND OUT, GUMGUM. I PROMISE." } ] }
+    ],
+    gossip: [
+      { when: { flags: ['quill_dead'] }, lines: [{ who: 'CHICKADEE', text: "THE MAGISTRATE IS DEAD! THE OTHER MAGISTRATE IS YOU! THE RECEPTIONIST IS A CLOUD! I HAVE NEVER HAD SO MUCH TO TALK ABOUT!" }] },
+      { lines: [
+        { who: 'CHICKADEE', text: "PSST. NOBODY HAS SEEN THE MAGISTRATE IN YEARS. MISS QUILL SIGNS EVERYTHING. HIS SIGNATURE LOOKS EXACTLY LIKE HER SIGNATURE. I'M JUST SAYING." },
+        { who: 'CHICKADEE', text: "AND THE MALL GIRLS? THEY PLUCK A FEATHER FROM EVERY SKYFOWL WHO SHOPS THERE. A SOUVENIR, THEY SAY. WHO KEEPS FEATHERS?" } ] }
     ],
     hekla_sq: [
       { when: { flags: ['katia_joined'] }, lines: [{ who: 'HEKLA', text: "KATIA FOUND YOU. GOOD. SHE NEEDS FRIENDS WHO WON'T ASK HER TO BE SOMEONE ELSE. AND YOU, LITTLE PRINCESS, THINK ABOUT MY OFFER." }] },
@@ -3813,8 +3822,8 @@
     { when: { flags: ['heather_done'], notFlags: ['bigtop_done'] }, text: "THE BLOOD PLAN. POISON YOURSELF. DRIP ON THE ROOTS. STAY ALIVE WHILE IT WORKS. AND BREAK THOSE TENT POLES. THE BIG TOP OPENS AT NIGHT." },
     { when: { flags: ['circus_gone'], notFlags: ['settled'] }, text: "EAST. THE SETTLEMENT. THIRTY-FOUR KILOMETERS OF RUIN AND THEN FOUR ROOMS AT TWENTY GOLD. I'VE ALREADY BOOKED MINE. I'VE ALREADY STARTED A TAB." },
     { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "THE Y ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. AND TRY THAT DYNAMITE TRICK. ON IT, NOT ON ME." },
-    { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS STILL AT THE GATE. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT IN YOUR STUPID DECENT FACE." },
-    { when: { flags: ['quest_sw'], notFlags: ['club_known'] }, text: "FINE. IF YOU'RE DOING THIS, DO IT RIGHT. MEET ME OUTSIDE THE PUB. THERE'S A DOOR IN THE BACK AND A HOBGOBLIN WHO SELLS DYNAMITE. IT'S A NICE DOOR." },
+    { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS OUT PAST THE GATE WITH A SHOVEL. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT IN YOUR STUPID DECENT FACE." },
+    { when: { flags: ['quest_sw'], notFlags: ['club_known'] }, text: "FINE. IF YOU'RE DOING THIS, DO IT RIGHT. COME FIND ME IN TOWN. THERE'S A DOOR IN THE BACK OF THE PUB AND A HOBGOBLIN WHO SELLS DYNAMITE." },
     { when: { flags: ['mongo_bolted'], notFlags: ['vincente_dead'] }, text: "WHERE IS YOUR DINOSAUR? WHY ARE YOU HERE? WHY ARE YOU TALKING TO ME? GO GET YOUR DINOSAUR." },
     { when: { flags: ['vincente_dead'], notFlags: ['met_quill'] }, text: "A GATE PASS FROM THE MAGISTRATE ON A DEAD ORC. AND A LETTER IN NECROMANCER SCRIBBLE. GO TO THE ADMIN DISTRICT. LOOK. DON'T TOUCH. YOU'RE GOING TO TOUCH." },
     { when: { flags: ['met_quill'], notFlags: ['divider_done'] }, text: "SOMEBODY KILLED A BOSS ON THE EAST ROAD AND LEFT IT TO ROT. THE ELVES GO OUT THERE AT NIGHT. THAT'S A TRAP. IT'S A TRAP FOR YOU. YOU'RE GOING ANYWAY." },

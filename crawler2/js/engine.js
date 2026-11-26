@@ -388,12 +388,14 @@
       for (var k = 0; k < p.buttons.length; k++) if (p.buttons[k] && p.buttons[k].pressed) { input.lastDevice = 'pad'; break; }
     }
   }
+  var carry = {}; // presses that landed during hitstop, replayed on the first live frame
   function sampleInput() {
     pollPad();
     BUTTONS.forEach(function (b) {
       prev[b] = cur[b];
       cur[b] = kb[b] > 0 || kbHit[b] || touch[b] || pad[b];
       kbHit[b] = false;
+      if (carry[b] && freezeFrames === 0) { cur[b] = true; prev[b] = false; carry[b] = false; }
     });
     // a key tapped and released between two frames still registers once
   }
@@ -535,7 +537,10 @@
     var ui = DCW.ui;
     if (ui && ui.update) { try { ui.update(DCW.dt); } catch (e) { console.error(e); } }
     var blocked = ui && ui.blocking && ui.blocking();
-    if (freezeFrames > 0) freezeFrames--;
+    if (freezeFrames > 0) {
+      freezeFrames--;
+      BUTTONS.forEach(function (b) { if (cur[b] && !prev[b]) carry[b] = true; });
+    }
     else if (!blocked && DCW.scene && DCW.scene.update) DCW.scene.update(DCW.dt);
     else if (blocked && DCW.scene && DCW.scene.idle) DCW.scene.idle(DCW.dt);
     if (fade.dir === 1) {
