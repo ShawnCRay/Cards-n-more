@@ -194,26 +194,21 @@
       </div>
     </a>
 
-    <div class="cart locked" aria-disabled="true">
+    <a class="cart" href="../crawler2/index.html" aria-label="Play Dungeon Crawler Carl: Book Two">
       <div class="label">
-        <!-- a locked loot box -->
-        <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
-          <rect x="1" y="5" width="14" height="10" fill="#000"/><rect x="2" y="6" width="12" height="8" fill="#503000"/>
-          <rect x="2" y="6" width="12" height="2" fill="#7c7c7c"/><rect x="1" y="4" width="14" height="2" fill="#000"/>
-          <rect x="2" y="5" width="12" height="1" fill="#bcbcbc"/>
-          <rect x="6" y="8" width="4" height="4" fill="#000"/><rect x="7" y="9" width="2" height="2" fill="#f8b800"/>
-          <rect x="6" y="5" width="1" height="3" fill="#bcbcbc"/><rect x="9" y="5" width="1" height="3" fill="#bcbcbc"/>
-          <rect x="7" y="4" width="2" height="1" fill="#bcbcbc"/>
-        </svg>
-        <div class="gen">Gen 2 &#183; 16-bit</div>
+        <img src="book2.png" width="320" height="180" alt="Book Two title screen: the Over City circus at night, with Carl, Donut and Mongo">
+        <div class="gen">Gen 1.5 &#183; Late 8-bit</div>
       </div>
       <div class="body">
         <h2>Book Two</h2>
-        <div class="floors">Locked</div>
-        <p>A locked box. The sponsors are still arguing about which console it ships on. Do not shake it.</p>
-        <span class="go">Coming later</span>
+        <div class="floors">Floor 3 &#183; The Over City</div>
+        <p>Carl's Doomsday Scenario as a late-life cartridge with the extra sound chip. Eight days on a
+        clock, an undead circus, a talk show, a murdered-hooker mystery in a bird town, and a soul crystal
+        that is about to go off. Walk the streets by day and night. Imports your Book One save.</p>
+        <div class="save none" id="save-book2">No crawl saved yet</div>
+        <span class="go">Enter the Over City &#9654;</span>
       </div>
-    </div>
+    </a>
   </div>
 
   <div class="section">Archive</div>
@@ -256,13 +251,27 @@
   }
   var st = book1Status(), el = document.getElementById('save-book1');
   if (st && el) { el.textContent = st.text; el.className = 'save'; }
+  function book2Status() {
+    var save = readJSON('dcw2_save_v1');
+    if (!save) return null;
+    var run = save.run, meta = save.meta || {};
+    if (run && !run.won) {
+      var left = Math.max(0, Math.ceil(run.hoursLeft || 0));
+      return { text: 'Crawl in progress: LV ' + (run.level || 13) + ' · ' + Math.floor(left / 24) + 'D ' + (left % 24) + 'H left on the floor', live: true };
+    }
+    if (meta.wins > 0) return { text: 'Book beaten' + (meta.wins > 1 ? ' ' + meta.wins + ' times' : '') + ' · Made it to the Fourth Floor', live: true };
+    if (meta.runs > 0) return { text: meta.runs + ' crawl' + (meta.runs === 1 ? '' : 's') + ', no wins yet', live: true };
+    return null;
+  }
+  var st2 = book2Status(), el2 = document.getElementById('save-book2');
+  if (st2 && el2) { el2.textContent = st2.text; el2.className = 'save'; }
 
   // The System AI has opinions. One line at a time, typed out like the in-game dialog box.
   var lines = [
     'Welcome to crawler select. Pick a book. Every book is its own game.',
     'Book One runs on a cartridge from 1987. Blowing on it does not help. Do it anyway.',
     'Every new book gets a new console generation. Progress is a ladder, crawler. Mind the rungs.',
-    'The next book is in a locked box. No, you may not shake it.',
+    'Book Two came out of the box. The Over City has eight days. Do not waste them in the bar.',
     'Reminder: pits are fatal, plot armor is limited, and the cat is in charge.',
     'The sponsors are standing by. The sponsors are always standing by.',
     'That skull down there is the prototype. We do not talk about the prototype.'

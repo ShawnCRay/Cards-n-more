@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DCW2 art gallery</title>
+<style>
+  body { background: #111; color: #ccc; font: 12px monospace; margin: 8px; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; margin: 0 0 8px 0; }
+  .sec { margin-bottom: 14px; display: inline-block; vertical-align: top; margin-right: 10px; }
+  h2 { font-size: 13px; margin: 4px 0; color: #fc8; }
+  #wrap { position: absolute; left: -2000px; top: 0; width: 320px; height: 180px; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<div id="out"></div>
+<script src="../js/engine.js"></script>
+<script src="../js/art_actors.js"></script>
+<script src="../js/art.js"></script>
+<script>
+/* Book 2 art gallery (art-core). Sections: every side-view theme day + night (background +
+   a mini level + door/object sprites), tile sheets, backdrops, cutscene panels, objects/fx/
+   projectiles/pickups/key items, HUD icons. Params: ?scale=2 &t=1.5 &cam=220 &only=themes|tiles|backdrops|panels|objects|icons */
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var SCALE = +(qs.get('scale') || 2), ONLY = qs.get('only'), CAM = +(qs.get('cam') || 220), T = qs.has('t') ? +qs.get('t') : 1.3;
+  DCW.boot();
+  DCW.t = T;
+  var A = DCW.art, out = document.getElementById('out');
+  var report = window.ART_REPORT = { errors: [], sections: [] };
+  window.addEventListener('error', function (e) { report.errors.push('window: ' + e.message); });
+
+  function section(id, title, w, h, scale) {
+    var d = document.createElement('div'); d.className = 'sec'; d.id = 'sec_' + id;
+    var hh = document.createElement('h2'); hh.textContent = title; d.appendChild(hh);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.style.width = (w * (scale || SCALE)) + 'px'; c.style.height = (h * (scale || SCALE)) + 'px';
+    d.appendChild(c); out.appendChild(d); report.sections.push(id);
+    var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    return g;
+  }
+  function label(g, s, x, y, col, o) { var old = DCW.ctx; DCW.ctx = g; try { DCW.text(s, x, y, col || '#fff', o || {}); } finally { DCW.ctx = old; } }
+  function want(k) { return !ONLY || ONLY === k; }
+  function tryDo(what, fn) { try { fn(); } catch (e) { report.errors.push(what + ': ' + e.message); console.error(what, e); } }
+
+  var LEVEL = [
+    '.....................',
+    '.....................',
+    '.....................',
+    '...............====..',
+    '..XXX................',
+    '..XXX.........H......',
+    '..............H...b..',
+    '......===.....H..####',
+    '..............H..####',
+    '####.......######..LL',
+    '####~~~~####^^^######',
+    '####~~~~#############'
+  ];
+  var SOLID = { '#': 1, 'X': 1, 'L': 1 };
+  function cell(m, x, y) { return (m[y] && m[y].charAt(x)) || ''; }
+  function drawLevel(g, theme, camX, camY, night, t) {
+    for (var y = 0; y < LEVEL.length; y++) for (var x = 0; x < LEVEL[y].length; x++) {
+      var ch = cell(LEVEL, x, y);
+      if (ch === '.' || ch === '') continue;
+      var info;
+      if (ch === '#' || ch === 'X') info = { up: !!SOLID[cell(LEVEL, x, y - 1)], down: !!SOLID[cell(LEVEL, x, y + 1)] || y === LEVEL.length - 1, left: !!SOLID[cell(LEVEL, x - 1, y)] || x === 0, right: !!SOLID[cell(LEVEL, x + 1, y)] || x === LEVEL[0].length - 1, tx: x + 40, ty: y, t: t, night: night };
+      else info = { up: cell(LEVEL, x, y - 1) === ch, down: cell(LEVEL, x, y + 1) === ch, left: cell(LEVEL, x - 1, y) === ch, right: cell(LEVEL, x + 1, y) === ch, tx: x, ty: y, t: t, night: night };
+      A.tile(g, theme, ch, x * 16 - camX, y * 16 - camY, info);
+    }
+  }
+  var STREET_DOORS = {
+    village: ['door_inn', 'door_shop', 'manhole', 'gate', 'signpost_on'],
+    ruins: ['door_wood', 'manhole', 'alley_mouth', 'signpost'],
+    circus: ['tent_flap', 'gate', 'stairs_down', 'trash'],
+    settlement: ['door_pub', 'door_club', 'trailer', 'alley_mouth', 'door_school'],
+    admin: ['door_admin', 'guard_statue', 'door_wood']
+  };
+
+  // ---------- 1. themes, day + night ----------
+  if (want('themes')) {
+    (A.themes || []).forEach(function (theme) {
+      [false, true].forEach(function (night) {
+        var g = section('theme_' + theme + (night ? '_night' : '_day'), theme.toUpperCase() + (night ? ' NIGHT' : ' DAY'), 320, 180);
+        tryDo(theme + (night ? ' night' : ' day'), function () {
+          var camY = 12;
+          A.background(g, theme, CAM, camY, { night: night, t: T });
+          drawLevel(g, theme, 8, camY, night, T);
+          var f = Math.floor(T * 8), gy = 160 - camY;
+          var props = STREET_DOORS[theme] || ['door', 'checkpoint', 'chest'];
+          for (var i = 0; i < props.length; i++) A.sprite(g, props[i], 84 + i * 46, gy, { frame: f });
+          if (A.has('carl_idle')) A.sprite(g, 'carl_idle', 40, gy - 16, { frame: f });
+          A.sprite(g, 'coin', 120, 104 - camY, { frame: f });
+          A.sprite(g, 'box_gold', 64, 64 - camY, { frame: f });
+          label(g, theme.toUpperCase() + (night ? ' NIGHT' : ' DAY'), 4, 4, '#fff');
+        });
+      });
+    });
+  }
+
+  // ---------- 2. tile sheets ----------
+  if (want('tiles')) {
+    var th = A.themes || [];
+    var g = section('tiles', 'TILE SHEETS day | night  (# 16 masks, X 16, = 4, ^ ~ ~sub H b L)', 2 * (8 * 17 * 2 + 140) + 80, th.length * 38 + 4, 2);
+    g.fillStyle = '#203040'; g.fillRect(0, 0, 9999, 9999);
+    th.forEach(function (theme, i) {
+      var y = 2 + i * 38;
+      label(g, theme.toUpperCase(), 2, y + 12, '#fc8');
+      [false, true].forEach(function (night, ni) {
+        var x = 70 + ni * (8 * 17 * 2 + 150);
+        for (var m = 0; m < 16; m++) A.tile(g, theme, '#', x + (m % 8) * 17, y + (m >> 3) * 17, { up: m & 1, down: m & 2, left: m & 4, right: m & 8, tx: m, ty: i, night: night });
+        x += 8 * 17 + 4;
+        for (m = 0; m < 16; m++) A.tile(g, theme, 'X', x + (m % 8) * 17, y + (m >> 3) * 17, { up: m & 1, down: m & 2, left: m & 4, right: m & 8, night: night });
+        x += 8 * 17 + 4;
+        A.tile(g, theme, '=', x, y, { right: true, night: night }); A.tile(g, theme, '=', x + 16, y, { left: true, right: true, night: night }); A.tile(g, theme, '=', x + 32, y, { left: true, night: night });
+        A.tile(g, theme, '=', x + 52, y, { night: night });
+        A.tile(g, theme, '^', x, y + 17, { night: night }); A.tile(g, theme, '~', x + 17, y + 17, { t: T, night: night }); A.tile(g, theme, '~', x + 33, y + 17, { up: true, t: T, night: night });
+        A.tile(g, theme, 'H', x + 52, y + 17, { night: night }); A.tile(g, theme, 'b', x + 70, y, { night: night });
+        A.tile(g, theme, 'L', x + 70, y + 17, { night: night }); A.tile(g, theme, 'L', x + 88, y + 17, { night: night, up: true });
+      });
+    });
+  }
+
+  // ---------- 3. backdrops ----------
+  if (want('backdrops')) {
+    (A.backdrops || []).forEach(function (id) {
+      [false, true].forEach(function (night) {
+        if (night && id.indexOf('inn') !== 0) return;
+        var g = section('backdrop_' + id + (night ? '_night' : ''), 'BACKDROP ' + id + (night ? ' (night)' : ''), 320, 180);
+        tryDo('backdrop ' + id, function () {
+          A.background(g, id, 0, 0, { night: night, t: T });
+          label(g, id.toUpperCase(), 4, 170, '#fff');
+        });
+      });
+    });
+  }
+
+  // ---------- 4. cutscene panels ----------
+  if (want('panels')) {
+    (A.panels || []).forEach(function (id) {
+      var sz = A.panelSize ? A.panelSize(id) : { w: 256, h: 112 };
+      var g = section('panel_' + id, 'PANEL ' + id, sz.w, sz.h);
+      tryDo('panel ' + id, function () { g.fillStyle = '#000'; g.fillRect(0, 0, sz.w, sz.h); A.panel(g, id, 0, 0, T); });
+    });
+  }
+
+  // ---------- 5. objects / fx / projectiles / pickups / key items ----------
+  if (want('objects')) {
+    var names = (A.ownNames || []).filter(function (n) { return n.indexOf('icon_') !== 0; });
+    var cols = 8, cw = 76, chh = 70, rowsN = Math.ceil(names.length / cols);
+    var go = section('objects', 'OBJECTS, DOORS, FX, PROJECTILES, PICKUPS, KEY ITEMS (all frames)', cols * cw, rowsN * chh, 2);
+    go.fillStyle = '#3c4c5c'; go.fillRect(0, 0, 9999, 9999);
+    names.forEach(function (n, i) {
+      var x = (i % cols) * cw, y = Math.floor(i / cols) * chh;
+      go.fillStyle = (i + Math.floor(i / cols)) & 1 ? '#34444f' : '#3c4c5c'; go.fillRect(x, y, cw, chh);
+      tryDo('sprite ' + n, function () {
+        var inf = A.info(n), fr = Math.min(inf.frames, 4), sc = inf.h > 56 || inf.w * fr > cw ? 0.5 : 1;
+        for (var k = 0; k < fr; k++) A.sprite(go, n, x + 6 + (inf.w * sc) / 2 + k * Math.min((cw - 8) / fr, inf.w * sc + 2), y + chh - 12, { frame: k, scale: sc });
+        label(go, n.toUpperCase().slice(0, 12), x + 2, y + chh - 9, '#fff', { shadow: '#000' });
+      });
+    });
+  }
+
+  // ---------- 6. icons ----------
+  if (want('icons')) {
+    var icons = (A.ownNames || []).filter(function (n) { return n.indexOf('icon_') === 0; });
+    var gi = section('icons', 'HUD ICONS 8x8 (x3)', 8 * 92, Math.ceil(icons.length / 8) * 40, 2);
+    gi.fillStyle = '#0f1630'; gi.fillRect(0, 0, 9999, 9999);
+    icons.forEach(function (n, i) {
+      var x = (i % 8) * 92, y = Math.floor(i / 8) * 40;
+      tryDo('icon ' + n, function () { A.icon(gi, n.slice(5), x + 4, y + 4, { scale: 3 }); A.icon(gi, n.slice(5), x + 34, y + 12); label(gi, n.slice(5).toUpperCase(), x + 4, y + 30, '#fff'); });
+    });
+  }
+
+  // perf: ms per frame for background + a screen of tiles + 200 sprites, per theme (day and night)
+  window.artPerf = function (frames) {
+    var c = document.createElement('canvas'); c.width = 320; c.height = 180; var g = c.getContext('2d');
+    var res = {};
+    (A.themes || []).concat(A.backdrops || []).forEach(function (theme) {
+      [false, true].forEach(function (night) {
+        A.background(g, theme, 0, 12, { night: night, t: 0 }); // warm the cache
+        var t0 = performance.now();
+        for (var f = 0; f < frames; f++) {
+          A.background(g, theme, f * 3, 12, { night: night, t: f / 60 });
+          for (var ty = 0; ty < 12; ty++) for (var tx = 0; tx < 21; tx++) if (ty >= 9) A.tile(g, theme, '#', tx * 16 - (f * 3) % 16, ty * 16 - 12, { up: ty > 9, down: true, left: true, right: true, tx: tx + f, ty: ty, t: f / 60, night: night });
+          for (var s = 0; s < 200; s++) A.sprite(g, 'coin', (s * 37) % 320, 40 + (s * 13) % 120, { frame: s + f });
+        }
+        res[theme + (night ? '_n' : '')] = +((performance.now() - t0) / frames).toFixed(2);
+      });
+    });
+    return res;
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>stage.js test harness (book 2)</title>
+<style>
+  html, body { margin: 0; background: #000; }
+  #wrap { width: 960px; height: 540px; }
+  #screen { width: 100%; height: 100%; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="screen" width="320" height="180"></canvas></div>
+<script src="../js/engine.js"></script>
+<script src="stage_fixtures.js"></script>
+<script>
+  // ?noart: skip the art modules (exercise every fallback); ?nogame: skip game.js (stage standalone)
+  (function () {
+    var q = location.search;
+    var files = [];
+    if (!/noart/.test(q)) files.push('../js/art_actors.js', '../js/art.js');
+    files.push('../js/stage.js');
+    if (!/nogame/.test(q)) files.push('../js/game.js');
+    files.forEach(function (f) { document.write('<script src="' + f + '"><\/script>'); });
+  })();
+</script>
+<script>
+  if (/manual/.test(location.search)) window.requestAnimationFrame = function () {};
+  if (/nogame/.test(location.search)) {
+    // minimal stand-in for game.js: only boots the scene (stage.js must cope with everything else)
+    DCW.game = { init: function () {
+      var p = DCW.params;
+      if (p.get('area')) DCW.setScene(DCW.stage.scene, { areaId: p.get('area'), entry: p.get('entry') || 'left' });
+      else DCW.setScene(DCW.stage.scene, { levelId: p.get('level') || 't_side' });
+    } };
+  }
+  // spy on the game flow calls stage.js makes (calls still go through)
+  window.__spy = function () {
+    var G = DCW.game; if (!G || G.__spied) return; G.__spied = true;
+    ['levelCleared', 'playerDied', 'useDoor', 'edge', 'crime', 'talk', 'areaEvents', 'saveStreetPos', 'enterLevel', 'goArea', 'fleeLevel'].forEach(function (fn) {
+      if (typeof G[fn] !== 'function') return;
+      var orig = G[fn];
+      G[fn] = function () { DCW.testLog.calls.push([fn].concat(Array.prototype.slice.call(arguments).map(function (a) { try { return JSON.parse(JSON.stringify(a)); } catch (e) { return String(a); } }))); return orig.apply(G, arguments); };
+    });
+  };
+  var boot = DCW.boot;
+  DCW.boot = function () { if (DCW.game && !/nogame/.test(location.search)) window.__spy(); boot(); };
+  DCW.boot();
+</script>
+</body>
+</html>
