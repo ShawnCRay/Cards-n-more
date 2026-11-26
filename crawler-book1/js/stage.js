@@ -1543,6 +1543,7 @@
     if (P.state === 'dead' || P.state === 'pit') { C.vx = 0; return; }
     var def = C.def, power = num(def.power, 1) * C.pw;
     if (C.state === 'stomp') { updCarlStomp(C, dt); return; }
+    if (C.id === 'carl') { updCarlTrail(C, dt); return; } // Donut mode: Carl walks Donut's own trail
     if (C.state === 'rampage') { // MONGO RAMPAGE (only if Mongo is ever the main companion)
       C.rt -= dt;
       C.x += C.face * 330 * dt; C.y = P.y + P.h - C.h;
@@ -1698,6 +1699,84 @@
       var c = BIGFOOT_PAL[BIGFOOT[y][x]]; if (!c) continue;
       ctx.fillStyle = c; ctx.fillRect(x0 + (flip ? (BIGFOOT[y].length - 1 - x) : x) * sc, top + y * sc, sc, sc);
     }
+  }
+  // Donut mode: Carl follows Donut's actual trail a few steps behind (the levels are built for Carl,
+  // so anywhere Donut got, he can). Where her path breaks (a moving platform, a door, a respawn, his
+  // own stomp) he makes one big human leap to the next solid spot on it. He punches anything that
+  // comes within arm's reach without leaving the trail. He never falls and never vanishes.
+  function carlTrailPush(C, P) {
+    var tr = C.trail, last = tr[tr.length - 1], x = cx(P), y = P.y + P.h;
+    var dx = x - last.x, dy = y - last.y, dd = Math.sqrt(dx * dx + dy * dy);
+    if (dd < 0.5) return;
+    tr.push({ x: x, y: y, g: !!P.onGround, plat: !!P.platform, d: last.d + dd, jump: dd > 40 });
+    if (tr.length > 900 && !C.arc) tr.splice(0, tr.length - 900);
+  }
+  function trailAt(tr, d) { // the point d along the trail (interpolated)
+    for (var i = 1; i < tr.length; i++) if (tr[i].d >= d) {
+      var a = tr[i - 1], b = tr[i], k = b.d > a.d ? (d - a.d) / (b.d - a.d) : 1;
+      return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, g: k < 0.5 ? a.g : b.g };
+    }
+    return tr[tr.length - 1];
+  }
+  function carlArc(C, idx) {
+    var p = C.trail[idx], x0 = cx(C), y0 = C.y + C.h, dx = p.x - x0, dy = p.y - y0, dist = Math.sqrt(dx * dx + dy * dy);
+    C.arc = { x0: x0, y0: y0, x1: p.x, y1: p.y, t: 0, dur: U.clamp(dist / 210, 0.28, 0.8), h: 16 + Math.min(40, Math.abs(dx) * 0.2) + Math.max(0, -dy) * 0.5, idx: idx };
+    sfx('jump', { pitch: 0.85 });
+  }
+  function updCarlTrail(C, dt) {
+    var P = S.player; C.away = false; C.state = 'follow';
+    if (!C.trail) C.trail = [{ x: cx(C), y: C.y + C.h, g: true, plat: false, d: 0 }];
+    if (P.y + P.h < S.L.pxH - 4) carlTrailPush(C, P);
+    var tr = C.trail, ox = cx(C);
+    if (C.arc) {
+      var A = C.arc; A.t += dt; var k = Math.min(1, A.t / A.dur);
+      C.x = A.x0 + (A.x1 - A.x0) * k - C.w / 2; C.y = A.y0 + (A.y1 - A.y0) * k - Math.sin(k * Math.PI) * A.h - C.h;
+      C.face = A.x1 >= A.x0 ? 1 : -1; C.onGround = false; C.vx = (A.x1 - A.x0) / A.dur;
+      if (k >= 1) { C.arc = null; C.onGround = true; C.s = tr[A.idx] ? tr[A.idx].d : C.s; tr.splice(0, A.idx); }
+      carlPunch(C, dt); return;
+    }
+    // walk along the trail by distance (C.s = how far along it he is), never closer than `follow`
+    // behind Donut, at most a little faster than she runs
+    if (C.s === undefined || C.s < tr[0].d) C.s = tr[0].d;
+    var off = Math.abs(ox - trailAt(tr, C.s).x) + Math.abs(C.y + C.h - trailAt(tr, C.s).y);
+    var end = tr[tr.length - 1].d, lag = Math.max(0, end - C.follow - C.s), speed = Math.max(115, Math.abs(P.vx) * 1.35, lag * 3); // catches up faster the further back he is
+    var goal = Math.min(end - C.follow, C.s + speed * dt);
+    if (goal > C.s) {
+      for (var k2 = 1; k2 < tr.length && tr[k2].d <= goal; k2++) {
+        if (tr[k2].d <= C.s || !(tr[k2].plat || tr[k2].jump)) continue;
+        // the path breaks here: leap to the next solid ground after it, or wait at the edge for Donut
+        var j = k2; while (j < tr.length && (tr[j].plat || !tr[j].g)) j++;
+        if (j < tr.length) { C.s = tr[j].d; carlArc(C, j); carlPunch(C, dt); return; }
+        goal = tr[k2 - 1].d; break;
+      }
+      C.s = Math.max(C.s, goal);
+    }
+    var p = trailAt(tr, C.s);
+    if (off > 8) { var jj = 0; while (jj < tr.length - 1 && tr[jj].d < C.s) jj++; carlArc(C, jj); carlPunch(C, dt); return; }
+    C.x = p.x - C.w / 2; C.y = p.y - C.h; C.onGround = p.g; C.vy = 0;
+    C.vx = (p.x - ox) / Math.max(dt, 1e-3);
+    if (Math.abs(p.x - ox) > 0.2) C.face = p.x > ox ? 1 : -1; else if (!(C.actT > 0)) C.face = P.face;
+    var cut = 0; while (cut < tr.length - 2 && tr[cut + 1].d <= C.s) cut++;
+    if (cut > 0) tr.splice(0, cut);
+    carlPunch(C, dt);
+  }
+  function carlPunch(C, dt) {
+    C.cd -= dt;
+    if (C.cd > 0 || !compCanAttack(C)) return;
+    var power = num(C.def.power, 3) * num(C.pw, 1), best = null, bd = 1e9;
+    for (var i = 0; i < S.enemies.length; i++) {
+      var e = S.enemies[i];
+      if (e.dead || !e.active || e.state === 'hang' || e.state === 'latched') continue;
+      var dx = cx(e) - cx(C);
+      if (Math.abs(dx) < 22 + e.w / 2 && e.y < C.y + C.h && e.y + e.h > C.y && Math.abs(dx) < bd) { bd = Math.abs(dx); best = e; }
+    }
+    var B = S.boss;
+    if (!best && bossHittable(B) && Math.abs(cx(B) - cx(C)) < 22 + B.w / 2 && B.y < C.y + C.h && B.y + B.h > C.y) best = B;
+    if (!best) { C.cd = 0.1; return; }
+    var dir = cx(best) >= cx(C) ? 1 : -1; C.face = dir; C.actT = 0.25;
+    damageActor(best, Math.round(power * 1.5), { kind: 'comp', kb: 90, dir: dir, srcX: cx(C) });
+    sfx('punch');
+    C.cd = Math.max(0.35, num(C.def.cooldown, 0.9) / (0.5 + 0.5 * num(C.pw, 1)));
   }
   function missileDmg(power) { return Math.max(1, Math.round(power) + Math.round(num(stats().missileDmg, 0))); }
   function fireMissile(x, y, target, dmg, face) {
