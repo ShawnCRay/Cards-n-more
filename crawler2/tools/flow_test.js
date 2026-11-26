@@ -1,104 +1,124 @@
-// Full-run flow test: walks a run from title through every floor by forcing stage clears,
-// visiting safe rooms, overworld entrances, the stairwell and the ending. Reports errors.
-// Usage: node crawler/tools/flow_test.js [maxFloor]
+// Book 2 story walker: plays a whole run from NEW CRAWL to the ending by following the story.
+// On a street it picks the next open, uncleared story door (teleporting between streets),
+// waits for night at an inn when a door needs it, force-clears each level, and presses
+// through every cinema, dialog and results screen. Reports errors, stalls and the route.
+// Usage: node crawler2/tools/flow_test.js [shotsDir] [--real]   (--real: also lets each level run 3 s first)
 const { chromium } = require('playwright');
 const path = require('path');
-const SHOTS = '/tmp/claude-0/-home-user-Cards-n-more/b83025b8-a245-5c35-8e64-17484dc5caba/scratchpad/flow/';
-require('fs').mkdirSync(SHOTS, { recursive: true });
+const fs = require('fs');
+const SHOTS = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2]
+  : '/tmp/claude-0/-home-user-Cards-n-more/5126f6e1-8ae9-52b1-b560-09304b97a236/scratchpad/flow/';
+const REAL = process.argv.includes('--real');
+fs.mkdirSync(SHOTS, { recursive: true });
+
 (async () => {
-  const maxFloor = parseInt(process.argv[2] || '9', 10);
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
-  await page.goto('file://' + path.resolve(__dirname, '../index.html') + '?debug&skipintro');
-  await page.waitForTimeout(300);
-  await page.evaluate(() => { localStorage.clear(); DCW.resetSave(); });
-  const name = () => page.evaluate(() => {
-    const s = DCW.scene, U = DCW.ui && DCW.ui.scenes || {};
-    for (const k in U) if (U[k] === s) return k;
-    if (DCW.stage && s === DCW.stage.scene) return 'stage';
-    if (DCW.overworld && s === DCW.overworld.scene) return 'overworld';
-    return 'unknown';
-  });
+  await page.goto('file://' + path.resolve(__dirname, '../index.html') + '?debug');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { localStorage.removeItem('dcw2_save_v1'); DCW.resetSave(); });
   const step = n => page.evaluate(n => DCW.stepFrames(n), n);
-  // press confirm until scene matches one of targets
-  async function advanceTo(targets, maxIters = 400) {
-    for (let i = 0; i < maxIters; i++) {
-      const n = await name();
-      if (targets.includes(n) && !(await page.evaluate(() => DCW.fading() || (DCW.ui.blocking && DCW.ui.blocking())))) return n;
-      await page.evaluate(() => DCW.pressKey('confirm', 2));
-      await step(6);
-    }
-    throw new Error('stuck: wanted ' + targets + ' got ' + (await name()));
-  }
+  const where = () => page.evaluate(() => {
+    const s = DCW.scene, U = (DCW.ui && DCW.ui.scenes) || {};
+    let n = 'unknown';
+    for (const k in U) if (U[k] === s) n = k;
+    if (DCW.stage && s === DCW.stage.scene) n = 'stage';
+    if (DCW.rooms && s === DCW.rooms.scene) n = 'rooms';
+    if (DCW.show && s === DCW.show.scene) n = 'show';
+    const r = DCW.game.run || {};
+    return { scene: n, area: r.area, levelId: r.levelId, inn: r.inInn, club: r.inClub, blocking: !!(DCW.ui.blocking && DCW.ui.blocking()), fading: DCW.fading(), won: r.won, clock: DCW.game.clock().label, phase: DCW.game.clock().phase, flags: Object.keys(r.flags || {}).length };
+  });
   let shot = 0;
-  const snap = async label => page.screenshot({ path: SHOTS + String(shot++).padStart(2, '0') + '_' + label + '.png' });
+  const snap = async label => page.screenshot({ path: SHOTS + String(shot++).padStart(3, '0') + '_' + label.replace(/[^a-z0-9_]/gi, '_') + '.png' });
+  const route = [];
+  const seenShots = new Set();
+
+  // the next open story door anywhere (current area first)
+  const nextDoor = () => page.evaluate(() => {
+    const G = DCW.game, r = G.run, A = DCW.data.areas || {};
+    const ids = [r.area].concat(Object.keys(A).filter(a => a !== r.area));
+    let needNight = null, needDay = null;
+    for (const a of ids) {
+      const doors = (A[a] && A[a].doors) || {};
+      for (const ch of Object.keys(doors)) {
+        const d = doors[ch]; if (d.kind !== 'level') continue;
+        const lv = G.levelDef(d.target); if (!lv || lv.optional || r.cleared[d.target]) continue;
+        const st = G.doorState(a, ch);
+        if (!st || !st.visible) continue;
+        if (st.locked) {
+          if (/AFTER DARK/.test(st.lockText)) needNight = needNight || { a, ch };
+          else if (/MORNING/.test(st.lockText)) needDay = needDay || { a, ch };
+          continue;
+        }
+        return { a, ch, target: d.target };
+      }
+    }
+    return { needNight, needDay };
+  });
+
+  let stall = 0, lastSig = '';
   try {
     await step(30); await snap('title');
     await page.evaluate(() => DCW.game.newRun());
-    for (let f = 1; f <= maxFloor; f++) {
-      const n = await advanceTo(['stage', 'overworld', 'safeRoom']);
-      await snap('floor' + f + '_' + n);
-      const fd = await page.evaluate(() => { const f = DCW.game.floorDef(); return { ow: !!f.overworld, seq: f.sequence, req: f.required, boss: f.boss, ents: f.overworld && f.overworld.entrances }; });
-      if (!fd.ow) {
-        for (let guard = 0; guard < 12; guard++) {
-          const cur = await name();
-          if (cur === 'stage') {
-            await step(60); await snap('f' + f + '_stage');
-            await page.evaluate(() => { (() => { const st = DCW.data.stages[DCW.game.run.currentStage] || {}; if (st.questItem) DCW.game.giveItem(st.questItem); if (st.rescue) DCW.game.rescueCompanion(st.rescue); })(); DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 1, maxCombo: 4, views: 100, gold: 10 }); });
-          } else if (cur === 'safeRoom') {
-            await snap('f' + f + '_safe');
-            await page.evaluate(() => DCW.game.leaveSafeRoom());
-          } else if (cur === 'results' || cur === 'floorCard') {
-            await page.evaluate(() => DCW.pressKey('confirm', 2)); await step(10);
-          }
-          await step(40);
-          const fl = await page.evaluate(() => DCW.game.run && DCW.game.run.floor);
-          if (fl !== f) break;
-          await advanceTo(['stage', 'safeRoom', 'floorCard', 'overworld', 'ending']).catch(() => {});
+    for (let it = 0; it < 3000; it++) {
+      const w = await where();
+      if (w.won && (w.scene === 'ending' || w.scene === 'title')) { await snap('ending'); route.push('WIN'); break; }
+      const sig = JSON.stringify([w.scene, w.area, w.levelId, w.flags, w.clock]);
+      if (sig === lastSig) stall++; else { stall = 0; lastSig = sig; }
+      if (stall > 400) throw new Error('stalled at ' + sig);
+      if (w.fading) { await step(8); continue; }
+      if (w.blocking) { await page.evaluate(() => DCW.pressKey('confirm', 2)); await step(6); continue; }
+      const key = w.scene + ':' + (w.levelId || w.area || '');
+      if (!seenShots.has(key)) { seenShots.add(key); await step(20); await snap(key); }
+      if (w.scene === 'stage' || w.scene === 'rooms' || w.scene === 'show') {
+        if (w.levelId) {
+          if (REAL) await step(180);
+          route.push(w.levelId);
+          await page.evaluate(() => {
+            const r = DCW.game.run, lv = DCW.game.levelDef(r.levelId) || {};
+            if (lv.questItem) DCW.game.giveItem(lv.questItem);
+            DCW.game.levelCleared({ levelId: r.levelId, kills: 9, time: 80, damageTaken: 2, maxCombo: 6, views: 300, gold: 12 });
+          });
+          await step(10);
+          continue;
         }
-      } else {
-        await step(30); await snap('f' + f + '_ow');
-        const codes = Object.keys(fd.ents);
-        // keep sweeping the map: locked areas open as key items turn up
-        for (let pass = 0; pass < 6; pass++) {
-          let progressed = false;
-          for (const c of codes) {
-            const st = await page.evaluate(c => DCW.game.entranceState(c), c);
-            if (st.kind !== 'stage' || st.locked || st.cleared) continue;
-            await page.evaluate(c => DCW.game.enterEntrance(c), c);
-            await advanceTo(['stage']);
-            await step(30);
-            const exitNeeds = await page.evaluate(() => (DCW.data.stages[DCW.game.run.currentStage] || {}).exitNeeds);
-            await page.evaluate(() => { (() => { const st = DCW.data.stages[DCW.game.run.currentStage] || {}; if (st.questItem) DCW.game.giveItem(st.questItem); if (st.rescue) DCW.game.rescueCompanion(st.rescue); })(); });
-            if (exitNeeds && !(await page.evaluate(n => DCW.game.hasItem(n), exitNeeds))) {
-              await page.evaluate(() => DCW.game.fleeStage()); await advanceTo(['overworld']); continue;  // padlocked: come back later
-            }
-            await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 5, time: 60, damageTaken: 0, maxCombo: 4, views: 100, gold: 10 }));
-            await advanceTo(['overworld']);
-            progressed = true;
-          }
-          if (!progressed) break;
+        // on a street: let events run, then pick a door
+        await step(10);
+        const nd = await nextDoor();
+        if (nd && nd.target) {
+          if (nd.a !== w.area) { await page.evaluate(a => DCW.game.goArea(a, 'left'), nd.a); await step(40); continue; }
+          route.push('door ' + nd.a + ':' + nd.ch);
+          await page.evaluate(nd => DCW.game.useDoor(nd.a, nd.ch), nd);
+          await step(30);
+          continue;
         }
-        const bossCode = codes.find(c => fd.ents[c] === fd.boss);
-        const bs = await page.evaluate(c => DCW.game.entranceState(c), bossCode);
-        if (bs.locked) throw new Error('boss still locked on floor ' + f + ': ' + bs.lockText);
-        await page.evaluate(c => DCW.game.enterEntrance(c), bossCode);
-        await advanceTo(['stage']); await step(90); await snap('f' + f + '_boss');
-        await page.evaluate(() => DCW.game.stageCleared({ stageId: DCW.game.run.currentStage, kills: 1, time: 90, damageTaken: 3, maxCombo: 9, views: 900, gold: 50, boss: DCW.data.stages[DCW.game.run.currentStage].boss }));
-        if ((await advanceTo(['overworld', 'ending'])) === 'ending') { console.log('reached the ending after floor ' + f); break; }
-        const stairs = codes.find(c => fd.ents[c] === 'STAIRS');
-        await page.evaluate(c => DCW.game.enterEntrance(c), stairs);
-        await step(20);
-        await advanceTo(['floorCard', 'ending', 'stage', 'overworld']);
+        if (nd && nd.needNight) { route.push('wait for night'); await page.evaluate(() => { const r = DCW.game.run; DCW.game.advanceClock(((19 - r.hour % 24) + 24) % 24 || 24); }); await page.evaluate(a => DCW.game.goArea(a, 'left'), nd.needNight.a); await step(40); continue; }
+        if (nd && nd.needDay) { route.push('wait for day'); await page.evaluate(() => { const r = DCW.game.run; DCW.game.advanceClock(((7 - r.hour % 24) + 24) % 24 || 24); }); await page.evaluate(a => DCW.game.goArea(a, 'left'), nd.needDay.a); await step(40); continue; }
+        // nothing left to open: walk every area once so area events can fire
+        const visited = await page.evaluate(() => { const r = DCW.game.run; r._walked = r._walked || {}; const A = Object.keys(DCW.data.areas || {}); const next = A.find(a => !r._walked[a]); if (next) { r._walked[next] = true; DCW.game.goArea(next, 'left'); return next; } return null; });
+        if (visited) { route.push('walk ' + visited); await step(60); continue; }
+        throw new Error('no open story door and nothing to walk to; objective=' + JSON.stringify(await page.evaluate(() => DCW.game.objective())));
       }
-      const st = await page.evaluate(() => ({ floor: DCW.game.run && DCW.game.run.floor, lvl: DCW.game.run && DCW.game.run.level, boxes: DCW.game.run && DCW.game.run.boxes.length, skins: DCW.save.unlocks.skins, comps: DCW.game.run && DCW.game.run.companions, items: DCW.game.run && Object.keys(DCW.game.run.items || {}).length }));
-      console.log('after floor', f, JSON.stringify(st));
+      if (w.scene === 'inn') { await page.evaluate(() => DCW.game.leaveInn()); await step(20); continue; }
+      if (w.scene === 'club') { await page.evaluate(() => DCW.game.leaveClub()); await step(20); continue; }
+      if (w.scene === 'classPick' || w.scene === 'cinema' || w.scene === 'results' || w.scene === 'death' || w.scene === 'unknown') {
+        await page.evaluate(() => DCW.pressKey(Math.random() < 0.2 ? 'start' : 'confirm', 2)); await step(8); continue;
+      }
+      if (w.scene === 'ending') { await snap('ending'); route.push('ENDING'); break; }
+      await page.evaluate(() => DCW.pressKey('confirm', 2)); await step(8);
     }
-    await snap('end_' + (await name()));
-  } catch (e) { errors.push('FLOW: ' + e.message); await snap('fail'); }
-  console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'flow ok, no errors');
+  } catch (e) {
+    errors.push('FLOW: ' + e.message);
+    await snap('fail');
+  }
+  const final = await where();
+  console.log('ROUTE:', route.join(' > '));
+  console.log('FINAL:', JSON.stringify(final));
+  console.log(errors.length ? 'ERRORS (' + errors.length + '):\n' + [...new Set(errors)].slice(0, 40).join('\n') : 'NO ERRORS');
+  console.log('shots in', SHOTS);
   await browser.close();
+  process.exit(errors.length ? 1 : 0);
 })();

@@ -1,5 +1,5 @@
-// Usage: node crawler/tools/shot.js "<query string e.g. ?debug>" out.png [framesToStep] [jsToEval]
-// Loads crawler/index.html headless at 3x, steps frames, screenshots, prints console errors.
+// Usage: node crawler2/tools/shot.js "<query string e.g. ?debug>" out.png [framesToStep] [jsToEval]
+// Loads crawler2/index.html headless at 3x, steps frames, screenshots, prints console errors.
 const { chromium } = require('playwright');
 const path = require('path');
 (async () => {

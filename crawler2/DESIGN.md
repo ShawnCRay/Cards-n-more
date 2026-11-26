@@ -94,7 +94,10 @@ RUN = {
   hoursLeft: 192,           // floor timer: 8 days. 0 = the floor collapses (game over)
   hour: 7,                  // clock hour of day 0-23 (day is 07:00-18:59, night 19:00-06:59)
   area: 'village', areaX: null,   // street area + x (px) to return to
-  level: null,              // current level id while inside one
+  levelId: null,            // current level id while inside one (run.level is Carl's level number)
+  inInn: null, inClub: null,  // inn / club id while inside one
+  act: 1,                   // 1-3, raised by levels (level.act) and flags act2 / act3
+  wanted: null,             // areaId while guards are after you
   cleared: { levelId: true },
   flags: { flagName: true },      // story flags (data.events / levels set them)
   quests: { questId: 'active' | 'done' },
