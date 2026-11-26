@@ -2765,10 +2765,14 @@
         actors: crew(90).map(function (a) { return a.sprite === 'carl_idle' ? A('carl_charmed', 90) : a; }).concat([A('signet', 200, { flip: true })]), lines: [
         L('SIGNET', "COME HERE, LITTLE CRAWLER. LET ME HAVE A LOOK AT YOU. ALL OF YOU."),
         L(AI, "CHARISMA EFFECT! A LEVEL 60 ELITE VERSUS A MAN IN HIS UNDERWEAR. THE UNDERWEAR IS LOSING."),
-        L(CARL, "MY HEAD IS FOGGY. SHE'S CHARMING ME. I WANT TO AGREE WITH WHATEVER SHE SAYS NEXT. WHATEVER IT IS."),
-        L(DONUT, "CARL! YOUR BOXERS! THERE IS A CIRCUS TENT IN YOUR BOXERS AND IT IS NOT GRIMALDI'S!"),
+        L(CARL, "MY HEAD IS FOGGY. SHE'S CHARMING ME. I WANT TO AGREE WITH WHATEVER SHE SAYS NEXT. WHATEVER IT IS.") ] },
+      { bg: 'panel:carl_tent', shake: 0.6, sfx: 'pickup', lines: [
+        L(DONUT, "CARL! PUT THAT THING AWAY!"),
+        L(DONUT, "THERE IS A CIRCUS TENT IN YOUR BOXERS AND IT IS NOT GRIMALDI'S! MONGO, DON'T LOOK! MONGO! I SAID DON'T LOOK!"),
+        L(AI, "CLOSE-UP! WE ARE GOING TO NEED A BIGGER CAMERA. THE BIGBOI BOXERS ARE HOLDING THE LINE. THE BOXERS ARE THE MVP OF THIS EPISODE.") ] },
+      { bg: 'basement', night: true, wobble: 1, actors: crew(90).map(function (a) { return a.sprite === 'carl_idle' ? A('carl_charmed', 90) : a; }).concat([A('signet', 200, { flip: true })]), lines: [
         L(CARL, "THAT'S NOT ME. THAT'S A SPELL. THAT IS A STATUS EFFECT. I WANT THAT ON THE RECORD."),
-        L(AI, "IT IS ON THE RECORD. IT IS ON EVERY RECORD. THE BIGBOI BOXERS ARE HOLDING THE LINE. THE BOXERS ARE THE MVP OF THIS EPISODE."),
+        L('SIGNET', "OH, IT'S ON THE RECORD, LITTLE CRAWLER. IT'S ON EVERY SCREEN IN THE GALAXY."),
         L(CARL, "OKAY. OKAY. THIS IS GOING TO HURT.") ] },
       { bg: 'basement', night: true, shake: 0.2, sfx: 'crit', actors: crew(90).concat([A('signet', 220, { flip: true })]), lines: [
         L(DONUT, "CARL! YOU BROKE YOUR OWN FINGER! YOU JUST GRABBED IT AND SNAPPED IT!"),

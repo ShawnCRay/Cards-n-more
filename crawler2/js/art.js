@@ -2931,13 +2931,13 @@
       var mask = mkCanvas(PW_, PH_), mg = g2(mask);
       [g, mg].forEach(function (q) {
         blob(q, 128, 104, 54, 36, skin); R(q, 121, 50, 14, 22, skin);                            // tapering shoulders
-        blob(q, 112, 90, 17, 14, skin); blob(q, 144, 90, 17, 14, skin);
+        blob(q, 112, 101, 17, 15, skin); blob(q, 144, 101, 17, 15, skin);
       });
       st.misc.push(mask);
-      // give the chest its form: a crescent of shade under each curve, a highlight on top
-      blob(g, 112, 92, 17, 13, sk2); blob(g, 112, 89, 16, 12, skin); blob(g, 107, 83, 5, 3, skL);
-      blob(g, 144, 92, 17, 13, sk2); blob(g, 144, 89, 16, 12, skin); blob(g, 139, 83, 5, 3, skL);
-      R(g, 127, 82, 2, 22, sk2);                                                                // cleavage
+      // give the chest its form: shade along the inner curves, a highlight on top
+      blob(g, 112, 103, 17, 14, sk2); blob(g, 112, 100, 16, 13, skin); blob(g, 106, 92, 5, 3, skL);
+      blob(g, 144, 103, 17, 14, sk2); blob(g, 144, 100, 16, 13, skin); blob(g, 138, 92, 5, 3, skL);
+      R(g, 127, 86, 2, 26, sk2);                                                                // cleavage
       line(g, 104, 72, 121, 69, sk2); line(g, 135, 69, 152, 72, sk2);                       // collarbones
       R(g, 121, 50, 2, 16, sk2);
       // the face
@@ -2967,8 +2967,51 @@
       for (i = 0; i < 9; i++) { var py = 70 + ((t * 8 + i * 4) % 34); tg.fillStyle = ink; tg.fillRect(i & 1 ? 123 : 131, Math.round(py), 2, 2); }
       tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mask, 0, 0); tg.globalCompositeOperation = 'source-over';
       ctx.drawImage(tmp, 0, 0);
+      // the frame's bottom edge just catches the start of her areolae, a deeper violet-blue than her skin
+      [112, 144].forEach(function (ax) { R(ctx, ax - 3, 108, 7, 1, '#6888fc'); R(ctx, ax - 5, 109, 11, 1, '#6888fc'); R(ctx, ax - 6, 110, 13, 2, '#5c6cf0'); });
       var gl = 0.6 + Math.sin(t * 3) * 0.4;
       for (i = 0; i < st.lamps.length; i++) { var e = st.lamps[i]; ctx.fillStyle = '#e8fcfc'; ctx.fillRect(e[0], e[1], 5, 2); ctx.globalAlpha = 0.25 * gl; ctx.fillStyle = '#58f8f8'; ctx.fillRect(e[0] - 3, e[1] - 2, 11, 6); ctx.globalAlpha = 1; }
+    }
+  };
+  /* 4b. carl_tent: crash zoom on Carl's boxers under Signet's charm. Fabric only: the BigBoi boxers
+     tent out sideways in a long pointed peak that bobs, anime speed lines behind. */
+  PN.carl_tent = {
+    draw: function (g) {
+      bands(g, PW_, 0, PH_, ['#3c0c2c', '#5c1040', '#7c1458', '#5c1040', '#3c0c2c']);
+      g.strokeStyle = '#f878f8'; g.lineWidth = 1;
+      for (var i = 0; i < 40; i++) {                                                        // speed lines toward the tip
+        var a = i / 40 * Math.PI * 2, r0 = 30 + (i * 7) % 20;
+        g.globalAlpha = i % 2 ? 0.55 : 0.3;
+        g.beginPath(); g.moveTo(Math.round(196 + Math.cos(a) * r0), Math.round(60 + Math.sin(a) * r0)); g.lineTo(Math.round(196 + Math.cos(a) * 240), Math.round(60 + Math.sin(a) * 240)); g.stroke();
+      }
+      g.globalAlpha = 1;
+      // Carl side-on, cropped at the ribs and mid-thigh: cloak, jacket, trollskin shirt, skin
+      R(g, 0, 0, 34, 112, '#0c2c2c'); R(g, 30, 0, 4, 112, '#081c1c');
+      R(g, 34, 0, 26, 44, '#881400'); R(g, 56, 0, 4, 44, '#581000');
+      R(g, 60, 0, 52, 44, '#2c6c2c'); R(g, 60, 36, 52, 8, '#fce0a8');
+      // the boxers: white with the red BigBoi pattern, elastic band on top
+      R(g, 34, 44, 80, 6, '#fcfcfc'); R(g, 34, 46, 80, 2, '#f83800');
+      R(g, 34, 50, 80, 38, '#fcfcfc'); R(g, 34, 80, 80, 8, '#d8d8d8');
+      for (var y = 54; y < 86; y += 8) for (var x = 38 + (y % 16 ? 4 : 0); x < 110; x += 10) R(g, x, y, 3, 3, '#f83800');
+      // thighs below the hem, bare
+      R(g, 40, 88, 30, 24, '#fce0a8'); R(g, 74, 88, 34, 24, '#fca044'); R(g, 74, 88, 30, 24, '#fce0a8');
+      R(g, 34, 88, 80, 1, '#000000'); R(g, 33, 44, 1, 44, '#000000');
+    },
+    anim: function (ctx, t) {
+      // the tent: a long fabric peak from the front of the boxers, bobbing
+      var bob = Math.round(Math.sin(t * 9) * 3), tip = { x: 206, y: 58 + bob };
+      ctx.fillStyle = '#000000';
+      ctx.beginPath(); ctx.moveTo(112, 50); ctx.lineTo(tip.x + 3, tip.y); ctx.lineTo(112, 86); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fcfcfc';
+      ctx.beginPath(); ctx.moveTo(112, 52); ctx.lineTo(tip.x, tip.y); ctx.lineTo(112, 84); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d8d8d8';
+      ctx.beginPath(); ctx.moveTo(112, 72); ctx.lineTo(tip.x, tip.y); ctx.lineTo(112, 84); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f83800';
+      for (var k = 0; k < 5; k++) { var f = (k + 0.5) / 6, cx = Math.round(112 + (tip.x - 112) * f), cy = Math.round(68 + (tip.y - 68) * f); ctx.fillRect(cx - 1, cy - 1 + (k % 2 ? 3 : -3), 3, 3); }
+      // motion ticks and a bead of sweat
+      ctx.fillStyle = '#fcfcfc';
+      for (k = 0; k < 3; k++) ctx.fillRect(tip.x + 8, tip.y - 9 + k * 8 - bob, 6, 1);
+      ctx.fillStyle = '#3cbcfc'; ctx.fillRect(120, 30, 2, 3); ctx.fillRect(121, 33, 1, 1);
     }
   };
   /* 5. heather_skates: Heather the Bear charging on roller skates */

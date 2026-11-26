@@ -23,7 +23,7 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 const SIDE_THEMES = 'village ruins circus basement settlement alley admin office nest ymca school depot escape restroom temple'.split(' ');
 const BACKDROPS = 'inn_pug inn_narwhal club studio greenroom guide_room'.split(' ');
 const LEVEL_THEMES = SIDE_THEMES.concat(['bigtop', 'studio']);
-const PANELS = ('guide_room arrival circus_night signet_tattoos heather_skates bigtop_vine grimaldi_peace settlement_view desperado ' +
+const PANELS = ('guide_room arrival circus_night signet_tattoos carl_tent heather_skates bigtop_vine grimaldi_peace settlement_view desperado ' +
   'danger_zone trailer_blast quill_desk featherfall remex glass_case doomsday bursts stairwell greenroom').split(' ');
 const AREA_IDS = 'village ruins_w circus_park ruins_e settlement admin east_stairs'.split(' ');
 const LEVEL_IDS = ('a1_lemurs a1_bodies a1_collapse a1_lions a1_solo a1_heather a1_bigtop a1_barricade a2_dispenser a2_mongo a2_alley ' +
