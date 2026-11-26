@@ -1,9 +1,11 @@
 /* ============================================================
-   DCW UI - modal stack, dialog, toasts, banners, menus, HUD,
-   pause + sub-screens (character, loot boxes, wardrobe,
-   achievements, settings, shop, map, how-to) and the
-   non-gameplay scenes (title, intro, floor card, results,
-   death, safe room, ending). Contract: ../DESIGN.md "UI contract".
+   DCW UI (book 2) - modal stack, dialog with talking portraits,
+   toasts, banners, menus, HUD, pause + sub-screens (map, quests,
+   inventory, character, loot boxes, wardrobe, achievements,
+   settings, controls, shops) and the non-gameplay scenes (title +
+   book 1 import, class pick, cinema player, inn, Desperado Club,
+   results, death, endings + credits).
+   Contract: ../DESIGN.md section 11 (book 1's UI contract still applies).
    Every call into game/art/audio/data is feature-detected.
    ============================================================ */
 (function () {
@@ -13,12 +15,12 @@
   var U = DCW.U || {};
   var W = 320, H = 180;
 
-  /* ---------------- palette ---------------- */
+  /* ---------------- palette (NES 2C02 + a few UI darks) ---------------- */
   var C = {
-    white: '#fcfcfc', gray: '#bcbcbc', dgray: '#7c7c7c', ddgray: '#3c3c3c', black: '#000000',
+    white: '#fcfcfc', lgray: '#dcdcdc', gray: '#bcbcbc', dgray: '#7c7c7c', ddgray: '#3c3c3c', black: '#000000',
     red: '#f83800', dred: '#a81000', gold: '#f8b800', yellow: '#f8d878', green: '#58d854', dgreen: '#00a800',
-    blue: '#3cbcfc', dblue: '#0058f8', purple: '#d800cc', pink: '#f878f8', orange: '#fca044',
-    fill: '#0f1630', cyan: '#00e8d8', brown: '#a85010'
+    blue: '#3cbcfc', dblue: '#0058f8', nblue: '#6888fc', purple: '#d800cc', pink: '#f878f8', orange: '#fca044',
+    fill: '#0f1630', cyan: '#00e8d8', brown: '#a85010', skin: '#fcd8a8'
   };
   ui.colors = C;
 
@@ -40,29 +42,65 @@
     if (r === undefined || r === null) r = (DCW.save && DCW.save.run) || null;
     return r;
   }
-  function floorDef(n) {
-    var f = G('floorDef', n);
-    if (f) return f;
-    var run = getRun(), fl = D('floors');
-    n = n || (run ? run.floor : 1);
-    return (fl && fl[n - 1]) || null;
+  function floorDef(n) { var f = G('floorDef', n); return f || { n: 3, name: 'THE OVER CITY' }; } // book 1 shim
+  function levelDef(id) {
+    if (!id) return null;
+    var l = G('levelDef', id); if (l) return l;
+    var d = D('levels'); if (d && d[id]) return d[id];
+    var s = D('stages'); return (s && s[id]) || null;
   }
-  function stageDef(id) { var s = D('stages'); return (s && s[id]) || null; }
+  var stageDef = levelDef;
+  function areaDef(id) { if (!id) return null; var a = G('areaDef', id); if (a) return a; var d = D('areas'); return (d && d[id]) || null; }
+  function itemDef(id) { var d = D('items'); return (d && d[id]) || null; }
+  function itemName(id) {
+    if (id === 'potion' && !itemDef('potion')) return 'HEALTH POTION';
+    var d = itemDef(id); if (d && d.name) return String(d.name).toUpperCase();
+    var n = G('itemName', id); if (n) return String(n).toUpperCase();
+    return String(id || '').toUpperCase().replace(/_/g, ' ');
+  }
+  function itemCount(id) {
+    var n = G('itemCount', id); if (typeof n === 'number') return n;
+    var r = getRun(); if (!r) return 0;
+    if (id === 'potion') return r.potions || 0;
+    return (r.items && r.items[id]) || 0;
+  }
+  function flag(name) { var f = G('flag', name); if (typeof f === 'boolean') return f; var r = getRun(); return !!(r && r.flags && r.flags[name]); }
+  function clockInfo() {
+    var c = G('clock'); if (c && typeof c === 'object') return c;
+    var r = getRun(); if (!r || r.hoursLeft === undefined) return null;
+    var left = Math.max(0, Math.ceil(r.hoursLeft)), hour = Math.floor((((r.hour || 0) % 24) + 24) % 24), night = hour < 7 || hour >= 19;
+    return { hoursLeft: left, hour: hour, day: Math.min(8, Math.floor((192 - left) / 24) + 1), phase: night ? 'night' : 'day', night: night, label: Math.floor(left / 24) + 'D ' + (left % 24) + 'H' };
+  }
+  function hourText(c) { if (!c) return '--:--'; var h = c.hour || 0, mi = c.minute || 0; return (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi; }
+  function objectiveInfo() { var o = G('objective'); if (o && typeof o === 'object' && o.text) return o; if (typeof o === 'string') return { text: o }; return null; }
+  function partyList() {
+    var p = G('party'); if (Array.isArray(p)) return p;
+    var r = getRun(); if (!r) return [];
+    var out = ['donut', 'mongo']; if (r.flags && r.flags.katia_joined) out.push('katia');
+    return out;
+  }
+  function actNum() { var a = G('act'); if (typeof a === 'number') return a; var r = getRun(); return (r && r.act) || 1; }
+  function questDef(id) { var q = G('questDef', id); if (q && typeof q === 'object') return q; var d = D('quests'); return (d && d[id]) || { name: String(id || '').toUpperCase().replace(/_/g, ' ') }; }
   function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : null; }
   function aiLine(key, fb) { var ai = D('ai'); var l = ai && pick(ai[key]); return l || fb; }
   function persist() { if (typeof DCW.persist === 'function') DCW.persist(); }
   function fmtNum(n) { n = +n || 0; return U.fmtNum ? U.fmtNum(n) : String(Math.floor(n)); }
   function fmtTime(s) { return U.fmtTime ? U.fmtTime(s || 0) : String(Math.floor(s || 0)); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
-  function save() { return DCW.save || { unlocks: { skins: ['carl_boxers'], companions: ['donut'] }, equipped: { skin: 'carl_boxers', companion: 'donut' }, meta: { achievements: {}, counters: {} }, settings: {} }; }
-  function equipped(kind) { var s = save(); return (s.equipped && s.equipped[kind]) || (kind === 'skin' ? 'carl_boxers' : 'donut'); }
+  function arr(v) { return v === undefined || v === null ? [] : (Array.isArray(v) ? v : [v]); }
+  function lineList(v) { // normalizes data line pools: 'text' | ['text', {who,text}] | {lines:[...]}
+    if (!v) return [];
+    if (typeof v === 'string') return [v];
+    if (Array.isArray(v)) return v.filter(function (l) { return l !== null && l !== undefined && l !== ''; });
+    if (v.lines) return lineList(v.lines);
+    return [];
+  }
+  function save() { return DCW.save || { unlocks: { skins: ['carl_f3'] }, equipped: { skin: 'carl_f3' }, meta: { achievements: {}, counters: {} }, settings: {} }; }
+  function equipped(kind) { var s = save(); return (s.equipped && s.equipped[kind]) || (kind === 'skin' ? 'carl_f3' : 'donut'); }
   function owned(kind, id) {
-    var s = save();
-    if (kind !== 'skin') { // companions are rescued per crawl
-      if (id === 'donut') return true;
-      if (DCW.game && typeof DCW.game.hasCompanion === 'function') return !!DCW.game.hasCompanion(id);
-    }
-    var l = s.unlocks && s.unlocks[kind === 'skin' ? 'skins' : 'companions']; return !!(l && l.indexOf(id) >= 0);
+    if (kind !== 'skin') return partyList().indexOf(id) >= 0 || id === 'donut';
+    var s = save(), l = s.unlocks && s.unlocks.skins;
+    return id === 'carl_f3' || !!(l && l.indexOf(id) >= 0);
   }
 
   /* ---------------- input ---------------- */
@@ -78,13 +116,13 @@
     else m._rep[b] = 0;
     return false;
   }
-  function listNav(m, n, dt, wrap) {
+  function listNav(m, n, dt, wrapAround) {
     if (n <= 0) { m.sel = 0; return 0; }
     var d = 0;
     if (rep(m, 'up', dt)) d = -1; else if (rep(m, 'down', dt)) d = 1;
     if (d) {
       var s = (m.sel || 0) + d;
-      if (wrap === false) s = clamp(s, 0, n - 1); else s = (s + n) % n;
+      if (wrapAround === false) s = clamp(s, 0, n - 1); else s = (s + n) % n;
       if (s !== m.sel) sfx('menu_move');
       m.sel = s;
     }
@@ -129,6 +167,7 @@
   function tw(s, sc) { return DCW.textWidth(String(s), sc || 1); }
   function fitText(s, px) { s = String(s === undefined || s === null ? '' : s); var max = Math.max(1, Math.floor((px + 1) / 6)); return s.length > max ? s.slice(0, Math.max(1, max - 1)) + '.' : s; }
   function wrap(s, px) { return DCW.wrapText(String(s === undefined || s === null ? '' : s), px); }
+  function up(s) { return String(s === undefined || s === null ? '' : s).toUpperCase(); }
   function blink(rate) { return Math.floor((DCW.t || 0) * (rate || 3)) % 2 === 0; }
   function cursor(x, y, col) { T('▶', x + (Math.floor((DCW.t || 0) * 4) % 2), y, col || C.white); }
   function R(x, y, w, h, c) { DCW.rect(x, y, w, h, c); }
@@ -149,11 +188,22 @@
     if (scroll > 0) T('▲', x, yTop + (blink(4) ? 0 : -1), C.gray);
     if (scroll + vis < n) T('▼', x, yBot + (blink(4) ? 0 : 1), C.gray);
   }
+  // small comic speech bubble (non-blocking flavor text above a character)
+  function bubble(ctx, text, cx, by, o) {
+    o = o || {};
+    var lines = wrap(up(text), o.w || 120).slice(0, 3), w = 0;
+    lines.forEach(function (l) { w = Math.max(w, tw(l)); });
+    w += 8; var h = lines.length * 9 + 5;
+    var x = clamp(Math.round(cx - w / 2), 2, W - 2 - w), y = Math.round(by - h - 4);
+    R(x - 1, y - 1, w + 2, h + 2, '#000'); R(x, y, w, h, C.white);
+    R(clamp(cx - 2, x + 2, x + w - 6), y + h, 4, 2, C.white); R(clamp(cx - 1, x + 3, x + w - 5), y + h + 2, 2, 2, C.white);
+    lines.forEach(function (l, i) { T(l, x + 4, y + 3 + i * 9, o.color || '#000', { shadow: null }); });
+  }
 
   /* ---------------- art helpers (all with fallbacks) ---------------- */
   function artOK() { return !!(DCW.art && typeof DCW.art.sprite === 'function'); }
   function hasArt(name) {
-    if (!artOK()) return false;
+    if (!artOK() || !name) return false;
     if (typeof DCW.art.has === 'function') { try { return !!DCW.art.has(name); } catch (e) { return false; } }
     return true;
   }
@@ -161,68 +211,101 @@
     if (hasArt(name) && typeof DCW.art.info === 'function') { try { var i = DCW.art.info(name); if (i && i.w && !i.missing) return i; } catch (e) { /* fall through */ } }
     return null;
   }
-  var COMP_COL = { donut: ['#fcfcfc', '#f878f8'], mongo: ['#58d854', '#00a800'], katia: ['#bcbcbc', '#7c7c7c'], zev: ['#3cbcfc', '#0058f8'], squeaks: ['#9c9c9c', '#f8b8f8'] };
+  function firstArt(list) { for (var i = 0; i < list.length; i++) if (hasArt(list[i])) return list[i]; return null; }
+  // look table for code-drawn stand-ins (only used when the art module lacks a sprite)
+  var LOOK = {
+    carl: { skin: '#fcd8a8', hair: '#7c3c18', body: '#503000', legs: '#fcfcfc', h: 24 },
+    mordecai: { skin: '#9c9c9c', hair: '#202020', body: '#fcfcfc', legs: '#202020', h: 28, horns: 1, wings: '#202020' },
+    gordo: { skin: '#80d010', hair: '#3c5c10', body: '#7c4c24', legs: '#503000', h: 18, wide: 1 },
+    bopca: { skin: '#c87838', hair: '#7c3c18', body: '#7c4c24', legs: '#503000', h: 18, wide: 1 },
+    fitz: { skin: '#fcd8a8', hair: '#7c3c18', body: '#fcfcfc', legs: '#503000', h: 26 },
+    clarabelle: { skin: '#3c8c30', hair: null, body: '#881488', legs: '#3c8c30', h: 32, wide: 1, snout: 1 },
+    quint: { skin: '#6888fc', hair: '#202020', body: '#3c3c3c', legs: '#202020', h: 30 },
+    pustule: { skin: '#58a830', hair: '#202020', body: '#f878f8', legs: '#503000', h: 30, wide: 1 },
+    gumgum: { skin: '#7c9c3c', hair: '#bcbcbc', body: '#a81000', legs: '#503000', h: 24, wide: 1 },
+    signet: { skin: '#a4e4fc', hair: '#fcfcfc', body: '#a4e4fc', legs: '#a4e4fc', h: 28, horns: 1 },
+    lucky: { skin: '#fca044', hair: '#fcfcfc', body: '#0058f8', legs: '#503000', h: 24, beak: 1 },
+    edge_dancer: { skin: '#bcbcbc', hair: '#7c7c7c', body: '#00a800', legs: '#503000', h: 24, beak: 1 },
+    talon: { skin: '#a85010', hair: '#fcfcfc', body: '#a81000', legs: '#503000', h: 24, beak: 1 },
+    quill: { skin: '#bcbcbc', hair: '#fcfcfc', body: '#3c3c3c', legs: '#3c3c3c', h: 26, beak: 1 },
+    zev: { skin: '#3cbcfc', hair: null, body: '#0058f8', legs: '#0058f8', h: 16 },
+    odette: { skin: '#fcd8a8', hair: '#a81000', body: '#d800cc', legs: '#202020', h: 26 },
+    katia: { skin: '#fcd8a8', hair: '#f8d878', body: '#3c3c3c', legs: '#202020', h: 24 }
+  };
+  var COMP_COL = { donut: ['#fcfcfc', '#3c3c3c'], mongo: ['#f878f8', '#3cbcfc'], katia: ['#bcbcbc', '#7c7c7c'], zev: ['#3cbcfc', '#0058f8'] };
   // simple pixel stand-ins so screens stay readable before/without real art
   function fallbackSprite(g, name, x, y, o) {
     o = o || {};
     x = Math.round(x); y = Math.round(y);
-    var flash = !!o.flash, f = o.frame || 0;
-    function r(px, py, w, h, c) { g.fillStyle = flash ? '#fcfcfc' : c; g.fillRect(x + px, y + py, w, h); }
-    var n = String(name);
-    if (n.indexOf('carl') === 0) {
-      if (n.indexOf('dead') >= 0) { r(-12, -7, 24, 7, '#000'); r(-11, -6, 6, 5, '#fcd8a8'); r(-5, -6, 8, 5, '#7c3c18'); r(3, -6, 5, 5, '#fcfcfc'); r(8, -6, 3, 5, '#fcd8a8'); return; }
-      var ow = n.indexOf('_ow_') >= 0, sh = ow ? 0.7 : 1;
-      var hh = Math.round(24 * sh), bob = (f % 2) ? 1 : 0;
-      r(-6, -hh + bob, 12, hh - bob, '#000');
-      r(-5, -hh + 1 + bob, 10, 6, '#fcd8a8'); r(-5, -hh + 1 + bob, 10, 2, '#7c3c18');
-      if (n.indexOf('up') < 0) { r(-3, -hh + 4 + bob, 1, 1, '#000'); r(2, -hh + 4 + bob, 1, 1, '#000'); }
-      var by = -hh + 7 + bob, bh = Math.round(7 * sh);
-      r(-5, by, 10, bh, '#7c3c18'); r(-2, by, 4, bh, '#fcd8a8');
-      var sk = o.skin || 'carl_boxers', bc = sk === 'carl_kilt' ? '#d82800' : sk === 'carl_gold' ? '#f8b800' : sk === 'carl_hazmat' ? '#f8d878' : sk === 'carl_clown' ? '#f878f8' : '#fcfcfc';
-      r(-5, by + bh, 10, 4, bc); r(-3, by + bh + 1, 1, 1, '#d82800'); r(2, by + bh + 2, 1, 1, '#d82800');
-      r(-4, by + bh + 4, 3, Math.max(1, -(by + bh + 4) - 1), '#fcd8a8'); r(1, by + bh + 4, 3, Math.max(1, -(by + bh + 4) - 1), '#fcd8a8');
-      return;
-    }
-    var comp = n.split('_')[0];
-    if (COMP_COL[comp]) {
-      var cc = COMP_COL[comp], hop = (f % 2) && n.indexOf('run') >= 0 ? -1 : 0;
-      r(-7, -9 + hop, 14, 8, '#000'); r(-6, -8 + hop, 12, 6, cc[0]); r(2, -12 + hop, 6, 7, '#000'); r(3, -11 + hop, 4, 5, cc[0]);
-      r(3, -13 + hop, 1, 2, '#000'); r(6, -13 + hop, 1, 2, '#000'); r(5, -9 + hop, 1, 1, '#000'); r(-6, -3 + hop, 12, 1, cc[1]);
-      r(-5, -2, 2, 2, '#000'); r(3, -2, 2, 2, '#000');
-      return;
-    }
-    if (n.indexOf('ai_screen') === 0) {
-      r(-12, -20, 24, 18, '#000'); r(-11, -19, 22, 16, '#7c7c7c'); r(-9, -17, 18, 12, '#0058f8');
-      r(-6, -14, 3, 3, '#fcfcfc'); r(3, -14, 3, 3, '#fcfcfc'); r(-5, -9, 10, 1, '#fcfcfc'); r(-1, -2, 2, 2, '#3c3c3c');
-      return;
-    }
-    if (n.indexOf('mordecai') === 0) { r(-6, -28, 12, 28, '#000'); r(-5, -27, 10, 9, '#a8a8a8'); r(-3, -24, 2, 2, '#f8b800'); r(1, -24, 2, 2, '#f8b800'); r(-5, -18, 10, 17, '#5c7c3c'); return; }
-    if (n.indexOf('bopca') === 0) { r(-8, -20, 16, 20, '#000'); r(-7, -19, 14, 18, '#c87838'); r(-4, -15, 2, 2, '#000'); r(2, -15, 2, 2, '#000'); r(-3, -10, 6, 2, '#a81000'); return; }
-    if (n.indexOf('box_') === 0) {
-      var tier = n.slice(4), bc2 = boxColor(tier);
-      r(-8, -13, 16, 13, '#000'); r(-7, -12, 14, 11, bc2); r(-7, -9, 14, 1, '#000'); r(-1, -12, 2, 11, '#fcfcfc'); r(-2, -10, 4, 3, '#f8d878');
-      return;
-    }
-    if (n.indexOf('door') === 0) { r(-9, -30, 18, 30, '#000'); r(-8, -29, 16, 29, n.indexOf('open') >= 0 ? '#1c0c00' : '#7c3c18'); r(4, -16, 2, 2, '#f8b800'); return; }
-    if (n.indexOf('ow_') === 0) {
-      var mc = { ow_safe: '#3cbcfc', ow_boss: '#f83800', ow_boss_locked: '#7c0800', ow_stairs: '#d800cc', ow_stairs_locked: '#5c2c5c', ow_flag: '#58d854', ow_tent: '#f878f8', ow_cave: '#7c7c7c', ow_manhole: '#5c5c5c' }[n] || '#c87838';
-      if (n === 'ow_flag') { r(-1, -16, 1, 12, '#000'); r(0, -16, 6, 4, mc); return; }
-      r(-7, -14, 14, 13, '#000'); r(-6, -13, 12, 11, mc); r(-3, -10, 6, 8, '#000');
-      return;
-    }
-    // generic critter
-    r(-6, -12, 12, 12, '#000'); r(-5, -11, 10, 10, '#d82800'); r(-3, -8, 2, 2, '#fcfcfc'); r(1, -8, 2, 2, '#fcfcfc');
+    var flash = !!o.flash, f = o.frame || 0, flip = o.flip ? -1 : 1;
+    function r(px, py, w, h, c) { g.fillStyle = flash ? '#fcfcfc' : c; g.fillRect(flip < 0 ? x - px - w : x + px, y + py, w, h); }
+    var n = String(name), base = n.split('_')[0];
+    var pa = g.globalAlpha; if (o.alpha !== undefined) g.globalAlpha = pa * o.alpha;
+    try {
+      if (n.indexOf('carl') === 0 && n.indexOf('dead') >= 0) { r(-12, -7, 24, 7, '#000'); r(-11, -6, 6, 5, '#fcd8a8'); r(-5, -6, 8, 5, '#503000'); r(3, -6, 5, 5, '#fcfcfc'); r(8, -6, 3, 5, '#fcd8a8'); return; }
+      if (n.indexOf('donut_shoulder') === 0) { r(-4, -8, 9, 7, '#000'); r(-3, -7, 7, 5, '#fcfcfc'); r(2, -10, 4, 4, '#000'); r(2, -9, 3, 3, '#fcfcfc'); r(2, -11, 3, 1, '#f8b800'); return; }
+      if (COMP_COL[base] && base !== 'katia') {
+        var cc = COMP_COL[base], big = n.indexOf('mongo_big') === 0 ? 1.6 : 1, hop = (f % 2) && n.indexOf('run') >= 0 ? -1 : 0;
+        var w2 = Math.round(14 * big), h2 = Math.round(8 * big);
+        r(-w2 / 2, -h2 - 1 + hop, w2, h2, '#000'); r(-w2 / 2 + 1, -h2 + hop, w2 - 2, h2 - 2, cc[0]); r(w2 / 2 - 5, -h2 - 4 + hop, 6, 7, '#000'); r(w2 / 2 - 4, -h2 - 3 + hop, 4, 5, cc[0]);
+        if (base === 'donut') { r(w2 / 2 - 4, -h2 - 5 + hop, 1, 2, '#000'); r(w2 / 2 - 1, -h2 - 5 + hop, 1, 2, '#000'); r(w2 / 2 - 4, -h2 - 6 + hop, 4, 1, '#f8b800'); }
+        r(w2 / 2 - 2, -h2 - 1 + hop, 1, 1, '#000'); r(-w2 / 2 + 1, -3 + hop, w2 - 2, 1, cc[1]);
+        r(-w2 / 2 + 1, -2, 2, 2, '#000'); r(w2 / 2 - 3, -2, 2, 2, '#000');
+        return;
+      }
+      if (n.indexOf('ai_screen') === 0) {
+        r(-12, -20, 24, 18, '#000'); r(-11, -19, 22, 16, '#7c7c7c'); r(-9, -17, 18, 12, '#0058f8');
+        r(-6, -14, 3, 3, '#fcfcfc'); r(3, -14, 3, 3, '#fcfcfc'); r(-5, -9, 10, 1, '#fcfcfc'); r(-1, -2, 2, 2, '#3c3c3c');
+        return;
+      }
+      if (n.indexOf('box_') === 0) {
+        var tier = n.slice(4), bc2 = boxColor(tier);
+        r(-8, -13, 16, 13, '#000'); r(-7, -12, 14, 11, bc2); r(-7, -9, 14, 1, '#000'); r(-1, -12, 2, 11, '#fcfcfc'); r(-2, -10, 4, 3, '#f8d878');
+        return;
+      }
+      if (n.indexOf('door') === 0) { r(-9, -30, 18, 30, '#000'); r(-8, -29, 16, 29, n.indexOf('open') >= 0 ? '#1c0c00' : '#7c3c18'); r(-8, -29, 16, 2, '#a85010'); r(4, -16, 2, 2, '#f8b800'); return; }
+      var lk = LOOK[base] || (base === 'carl' ? LOOK.carl : null);
+      if (lk || n.indexOf('_idle') > 0 || n.indexOf('_walk') > 0 || n.indexOf('_run') > 0) {
+        lk = lk || { skin: '#fcd8a8', hair: '#3c3c3c', body: ['#a81000', '#0058f8', '#00a800', '#881488', '#ac7c00'][(U.hash ? U.hash(base) : 3) % 5], legs: '#3c3c3c', h: 24 };
+        var hh = lk.h, ww = lk.wide ? 16 : 12, bob = (f % 2) ? 1 : 0;
+        if (lk.wings) { r(-ww / 2 - 5, -hh + 6, 5, 10, '#000'); r(ww / 2, -hh + 6, 5, 10, '#000'); r(-ww / 2 - 4, -hh + 7, 4, 8, lk.wings); r(ww / 2 + 1, -hh + 7, 4, 8, lk.wings); }
+        r(-ww / 2, -hh + bob, ww, hh - bob, '#000');
+        r(-ww / 2 + 1, -hh + 1 + bob, ww - 2, 7, lk.skin);
+        if (lk.hair) r(-ww / 2 + 1, -hh + 1 + bob, ww - 2, 2, lk.hair);
+        if (lk.horns) { r(-ww / 2 + 1, -hh - 2 + bob, 2, 3, '#000'); r(ww / 2 - 3, -hh - 2 + bob, 2, 3, '#000'); }
+        if (lk.beak) { r(ww / 2 - 1, -hh + 4 + bob, 4, 2, '#000'); r(ww / 2 - 1, -hh + 4 + bob, 3, 1, '#f8b800'); }
+        if (lk.snout) r(ww / 2 - 1, -hh + 5 + bob, 5, 3, lk.skin);
+        r(-ww / 2 + 3, -hh + 4 + bob, 1, 1, '#000'); r(ww / 2 - 4, -hh + 4 + bob, 1, 1, '#000');
+        var by = -hh + 8 + bob, bh = Math.max(4, Math.round((hh - 8) * 0.55));
+        r(-ww / 2 + 1, by, ww - 2, bh, lk.body);
+        if (base === 'carl') { r(-2, by, 4, bh, lk.skin); r(-ww / 2 + 1, by + bh, ww - 2, 3, '#fcfcfc'); r(-3, by + bh + 1, 1, 1, '#d82800'); r(2, by + bh + 2, 1, 1, '#d82800'); }
+        var ly = by + bh + (base === 'carl' ? 3 : 0), lh = Math.max(1, -ly - 1);
+        r(-ww / 2 + 2, ly, 3, lh, base === 'carl' ? lk.skin : lk.legs); r(ww / 2 - 5, ly, 3, lh, base === 'carl' ? lk.skin : lk.legs);
+        return;
+      }
+      // generic critter
+      r(-6, -12, 12, 12, '#000'); r(-5, -11, 10, 10, '#d82800'); r(-3, -8, 2, 2, '#fcfcfc'); r(1, -8, 2, 2, '#fcfcfc');
+    } finally { g.globalAlpha = pa; }
   }
   function spr(ctx, name, x, y, o) {
     if (hasArt(name)) { try { DCW.art.sprite(ctx, name, Math.round(x), Math.round(y), o || {}); return true; } catch (e) { /* fall back */ } }
     fallbackSprite(ctx, name, x, y, o);
     return false;
   }
+  // actor sprite with animation-name fallbacks: actorSprite('mordecai', 'idle') -> 'mordecai_idle' | 'mordecai'
+  function actorName(base, anim) {
+    base = String(base || 'carl');
+    var tries = anim === 'walk' || anim === 'run' ? [base + '_run', base + '_walk', base + '_idle', base]
+      : anim === 'talk' ? [base + '_talk', base + '_idle', base]
+        : anim === 'act' ? [base + '_act', base + '_attack', base + '_idle', base]
+          : [base + '_idle', base];
+    return firstArt(tries) || tries[0];
+  }
   // scaled and/or silhouetted sprite via an offscreen canvas (bottom-center anchor)
   var tmpC = null;
   function bigSprite(ctx, name, x, y, o) {
     o = o || {};
-    var s = o.scale || 2, inf = artInfo(name) || { w: 30, h: 32 };
+    var s = o.scale || 2, inf = artInfo(name) || { w: 30, h: 34 };
     var w = Math.max(16, (inf.w | 0) + 8), h = Math.max(16, (inf.h | 0) + 6);
     if (!tmpC) tmpC = document.createElement('canvas');
     tmpC.width = w; tmpC.height = h;
@@ -234,39 +317,158 @@
     ctx.drawImage(tmpC, 0, 0, w, h, Math.round(x - (w / 2 | 0) * s), Math.round(y - (h - 3) * s), w * s, h * s);
     ctx.globalAlpha = pa;
   }
+  // stand-in faces: key = portrait name without 'p_'
+  var FACE = {
+    carl: { skin: '#fcd8a8', hair: '#7c3c18', bg: '#0058f8', shirt: '#503000' },
+    mordecai: { skin: '#9c9c9c', hair: '#202020', bg: '#440028', horns: 1, eye: '#f8b800', shirt: '#fcfcfc', pony: 1 },
+    katia: { skin: '#fcd8a8', hair: '#f8d878', bg: '#005878', shirt: '#3c3c3c' },
+    signet: { skin: '#a4e4fc', hair: '#fcfcfc', bg: '#001c5c', horns: 1, eye: '#00e8d8', tattoo: '#0058f8', shirt: null },
+    grimaldi: { skin: '#00a800', hair: '#005800', bg: '#203000', eye: '#f83800', vine: 1 },
+    apollon: { skin: '#7c9c3c', hair: '#3c5c10', bg: '#5c3c00', shirt: '#f8b800', scar: 1 },
+    clammy: { skin: '#fcfcfc', hair: '#3cbcfc', bg: '#5c0040', mouth: '#a81000', paint: '#f83800', shirt: '#f878f8' },
+    heather: { skin: '#202020', hair: '#202020', bg: '#5c0000', skull: 1, eye: '#f83800' },
+    gordo: { skin: '#80d010', hair: '#3c5c10', bg: '#3c2414', beard: '#3c5c10', shirt: '#7c4c24' },
+    fitz: { skin: '#fcd8a8', hair: '#7c3c18', bg: '#203c5c', shirt: '#fcfcfc' },
+    clarabelle: { skin: '#3c8c30', hair: null, bg: '#3c003c', snout: 1, eye: '#f8b800', shirt: '#881488' },
+    quint: { skin: '#6888fc', hair: '#202020', bg: '#000c3c', eye: '#f8b800', shirt: '#3c3c3c' },
+    pustule: { skin: '#58a830', hair: '#202020', bg: '#3c1c00', sore: 1, shirt: '#f878f8' },
+    gumgum: { skin: '#7c9c3c', hair: '#bcbcbc', bg: '#3c1c00', tusk: 1, shirt: '#a81000' },
+    vincente: { skin: '#fce0a8', hair: '#202020', bg: '#3c0000', ears: 1, shirt: '#203c5c' },
+    quill: { skin: '#bcbcbc', hair: '#fcfcfc', bg: '#2c1c3c', beak: 1, eye: '#f8b800', shirt: '#3c3c3c' },
+    burgundy: { skin: '#fcd8a8', hair: '#202020', bg: '#3c0010', eye2: '#3cbcfc', shirt: '#881400' },
+    remex: { skin: '#9c9c9c', hair: '#5c5c5c', bg: '#001c1c', beak: 1, eye: '#00e8d8', shirt: '#203030' },
+    featherfall: { skin: '#9c9c9c', hair: '#5c5c5c', bg: '#1c1c1c', beak: 1, eye: '#dcdcdc' },
+    bautista: { skin: '#fca044', hair: '#202020', bg: '#5c2000', stripes: 1, ears: 1, shirt: null },
+    hekla: { skin: '#fcd8a8', hair: '#f8d878', bg: '#003c5c', helm: 1, eye: '#0058f8', shirt: '#bcbcbc' },
+    ripper: { skin: '#a85010', hair: '#7c3c18', bg: '#5c005c', big: 1, shirt: '#fca044' },
+    zev: { skin: '#3cbcfc', hair: null, bg: '#00285c', fish: 1, shirt: '#0058f8' },
+    odette: { skin: '#fcd8a8', hair: '#a81000', bg: '#3c003c', shirt: '#d800cc' },
+    lucia: { skin: '#fcd8a8', hair: '#202020', bg: '#3c3c00', shirt: '#f8d878' },
+    eunice: { skin: '#fcd8a8', hair: '#bcbcbc', bg: '#3c2c1c', shirt: '#7c3c18' },
+    edge_dancer: { skin: '#bcbcbc', hair: '#7c7c7c', bg: '#1c3c1c', beak: 1, shirt: '#00a800' },
+    talon: { skin: '#a85010', hair: '#fcfcfc', bg: '#3c1400', beak: 1, shirt: '#a81000' },
+    lucky: { skin: '#fca044', hair: '#fcfcfc', bg: '#002c5c', beak: 1, shirt: '#0058f8' },
+    bopca: { skin: '#c87838', hair: '#7c3c18', bg: '#3c2414', shirt: '#7c4c24' },
+    manasa: { skin: '#f0d0b0', hair: '#9878f8', bg: '#2c003c', shirt: '#f878f8' },
+    tucker: { skin: '#fcd8a8', hair: '#ac7c00', bg: '#002c2c', shirt: '#00a844' },
+    dnadia: { skin: '#d8b8f8', hair: '#f8b800', bg: '#3c0030', shirt: '#f8b800' }
+  };
   function portrait(ctx, name, x, y, o) {
+    o = o || {};
     x = Math.round(x); y = Math.round(y);
     if (name && DCW.art && typeof DCW.art.portrait === 'function' && hasArt(name)) { try { DCW.art.portrait(ctx, name, x, y, o); return; } catch (e) { /* fall back */ } }
-    // fallback: tinted panel with a simple face (drawn into the given ctx)
+    // fallback: tinted panel with a simple face (drawn into the given ctx); frames 0 neutral, 1 mouth open, 2 blink
+    var fr = o.frame || 0;
     withCtx(ctx, function () {
-      var key = String(name || 'x').replace('p_', '');
+      var key = String(name || 'x').replace(/^p_/, '');
       var hsh = U.hash ? U.hash(key) : 7;
       var cols = ['#0058f8', '#a81000', '#00a800', '#881488', '#ac7c00', '#005878'];
-      R(x, y, 32, 32, '#000'); R(x + 1, y + 1, 30, 30, cols[hsh % cols.length]);
+      var fc = FACE[key];
+      R(x, y, 32, 32, '#000'); R(x + 1, y + 1, 30, 30, fc ? fc.bg : cols[hsh % cols.length]);
       for (var i = 3; i < 32; i += 4) R(x + 1, y + i, 30, 1, 'rgba(0,0,0,0.18)');
-      if (key === 'ai') { R(x + 5, y + 6, 22, 18, '#000'); R(x + 6, y + 7, 20, 16, '#7c7c7c'); R(x + 8, y + 9, 16, 12, '#0058f8'); R(x + 11, y + 12, 3, 3, '#fcfcfc'); R(x + 18, y + 12, 3, 3, '#fcfcfc'); R(x + 12, y + 17, 8, 1, '#fcfcfc'); R(x + 14, y + 24, 4, 4, '#3c3c3c'); return; }
-      var cc = COMP_COL[key];
-      if (cc) { // animal-ish face
-        R(x + 7, y + 6, 5, 7, '#000'); R(x + 20, y + 6, 5, 7, '#000'); R(x + 8, y + 7, 3, 5, cc[0]); R(x + 21, y + 7, 3, 5, cc[0]);
-        R(x + 6, y + 11, 20, 16, '#000'); R(x + 7, y + 12, 18, 14, cc[0]);
-        R(x + 11, y + 16, 3, 3, '#000'); R(x + 18, y + 16, 3, 3, '#000'); R(x + 15, y + 20, 2, 2, cc[1]);
-        if (key === 'donut') { R(x + 12, y + 8, 8, 3, '#f8b800'); R(x + 13, y + 6, 2, 2, '#f8b800'); R(x + 17, y + 6, 2, 2, '#f8b800'); }
+      if (key === 'ai') {
+        R(x + 5, y + 6, 22, 18, '#000'); R(x + 6, y + 7, 20, 16, '#7c7c7c'); R(x + 8, y + 9, 16, 12, '#0058f8');
+        if (fr === 2) { R(x + 11, y + 13, 3, 1, '#fcfcfc'); R(x + 18, y + 13, 3, 1, '#fcfcfc'); } else { R(x + 11, y + 12, 3, 3, '#fcfcfc'); R(x + 18, y + 12, 3, 3, '#fcfcfc'); }
+        if (fr === 1) R(x + 12, y + 16, 8, 3, '#fcfcfc'); else R(x + 12, y + 17, 8, 1, '#fcfcfc');
+        R(x + 14, y + 24, 4, 4, '#3c3c3c');
         return;
       }
-      var skin = key === 'mordecai' ? '#a8a8a8' : key === 'bopca' ? '#c87838' : '#fcd8a8';
-      R(x + 7, y + 7, 18, 20, '#000'); R(x + 8, y + 8, 16, 18, skin);
-      R(x + 8, y + 8, 16, 4, key === 'carl' ? '#7c3c18' : '#3c3c3c');
-      R(x + 11, y + 15, 3, 3, '#000'); R(x + 18, y + 15, 3, 3, '#000'); R(x + 13, y + 22, 6, 1, '#7c0800');
-      R(x + 4, y + 27, 24, 4, key === 'carl' ? '#7c3c18' : '#3c3c3c');
+      var cc = COMP_COL[key];
+      if (cc && key !== 'katia') { // animal-ish face
+        R(x + 7, y + 6, 5, 7, '#000'); R(x + 20, y + 6, 5, 7, '#000'); R(x + 8, y + 7, 3, 5, cc[0]); R(x + 21, y + 7, 3, 5, cc[0]);
+        R(x + 6, y + 11, 20, 16, '#000'); R(x + 7, y + 12, 18, 14, cc[0]);
+        if (key === 'donut') { R(x + 7, y + 20, 5, 6, '#7c5c3c'); R(x + 20, y + 20, 5, 6, '#7c5c3c'); }
+        if (fr === 2) { R(x + 10, y + 17, 4, 1, '#000'); R(x + 18, y + 17, 4, 1, '#000'); }
+        else { R(x + 11, y + 16, 3, 3, '#000'); R(x + 18, y + 16, 3, 3, '#000'); if (key === 'donut') { R(x + 12, y + 17, 1, 1, '#f8d878'); R(x + 19, y + 17, 1, 1, '#f8d878'); } }
+        R(x + 15, y + 20, 2, 2, cc[1]);
+        if (fr === 1) R(x + 13, y + 23, 6, 2, '#a81000');
+        if (key === 'donut') { R(x + 11, y + 6, 10, 4, '#f8b800'); R(x + 11, y + 4, 2, 2, '#f8b800'); R(x + 15, y + 4, 2, 2, '#f8b800'); R(x + 19, y + 4, 2, 2, '#f8b800'); R(x + 15, y + 7, 2, 2, '#f83800'); }
+        return;
+      }
+      fc = fc || { skin: '#fcd8a8', hair: '#3c3c3c', shirt: '#3c3c3c' };
+      var skin = fc.skin, ox = fc.big ? -2 : 0;
+      if (fc.ears) { R(x + 5, y + 12, 3, 5, '#000'); R(x + 24, y + 12, 3, 5, '#000'); R(x + 5, y + 13, 2, 3, skin); R(x + 25, y + 13, 2, 3, skin); }
+      R(x + 7 + ox, y + 7, 18 - ox * 2, 20, '#000'); R(x + 8 + ox, y + 8, 16 - ox * 2, 18, skin);
+      if (fc.hair) R(x + 8 + ox, y + 8, 16 - ox * 2, 4, fc.hair);
+      if (fc.pony) { R(x + 24, y + 10, 3, 16, '#000'); R(x + 24, y + 11, 2, 14, fc.hair); }
+      if (fc.horns) { R(x + 8, y + 4, 3, 5, '#000'); R(x + 21, y + 4, 3, 5, '#000'); R(x + 9, y + 5, 1, 3, '#dcdcdc'); R(x + 22, y + 5, 1, 3, '#dcdcdc'); }
+      if (fc.helm) { R(x + 7, y + 5, 18, 6, '#bcbcbc'); R(x + 4, y + 3, 4, 6, '#fcfcfc'); R(x + 24, y + 3, 4, 6, '#fcfcfc'); }
+      if (fc.stripes) { R(x + 9, y + 13, 3, 1, '#202020'); R(x + 20, y + 13, 3, 1, '#202020'); R(x + 15, y + 9, 2, 3, '#202020'); }
+      if (fc.tattoo) { R(x + 9, y + 20, 2, 4, fc.tattoo); R(x + 21, y + 19, 2, 5, fc.tattoo); }
+      if (fc.skull) { R(x + 10, y + 11, 12, 12, '#dcdcdc'); R(x + 9, y + 6, 4, 4, '#f83800'); R(x + 19, y + 5, 4, 5, '#fca044'); }
+      if (fc.vine) { R(x + 6, y + 22, 4, 9, '#005800'); R(x + 22, y + 20, 4, 11, '#005800'); }
+      var ey = y + 15, e1 = fc.eye || '#000', e2 = fc.eye2 || e1;
+      if (fr === 2) { R(x + 11, ey + 1, 3, 1, '#000'); R(x + 18, ey + 1, 3, 1, '#000'); }
+      else { R(x + 11, ey, 3, 3, '#000'); R(x + 18, ey, 3, 3, '#000'); if (fc.eye) { R(x + 12, ey + 1, 1, 1, e1); R(x + 19, ey + 1, 1, 1, e2); } else if (fc.eye2) R(x + 19, ey + 1, 1, 1, e2); }
+      if (fc.beak) { R(x + 14, y + 18, 5, 4, '#000'); R(x + 15, y + 19, 3, 2, '#f8b800'); }
+      else if (fc.snout) { R(x + 12, y + 19, 12, 6, '#000'); R(x + 13, y + 20, 11, 4, skin); R(x + 22, y + 20, 1, 1, '#000'); }
+      else if (fc.fish) { R(x + 6, y + 14, 2, 6, '#0058f8'); R(x + 24, y + 14, 2, 6, '#0058f8'); }
+      if (fc.paint) { R(x + 10, y + 14, 5, 1, fc.paint); R(x + 17, y + 14, 5, 1, fc.paint); }
+      if (fc.scar) R(x + 18, y + 9, 1, 8, '#a81000');
+      if (fc.sore) R(x + 19, y + 19, 3, 3, '#f8d878');
+      if (fc.tusk) { R(x + 11, y + 21, 1, 2, '#fcfcfc'); R(x + 20, y + 21, 1, 2, '#fcfcfc'); }
+      if (fc.beard) R(x + 8, y + 21, 16, 6, fc.beard);
+      if (!fc.beak) { if (fr === 1) R(x + 13, y + 21, 6, 3, '#5c0000'); else R(x + 13, y + 22, 6, 1, fc.mouth || '#7c0800'); }
+      if (fc.shirt) R(x + 4, y + 27, 24, 4, fc.shirt);
     });
+  }
+  // which portrait frame to show: talking alternates 0/1, idle blinks (frame 2) now and then
+  function faceFrame(name, talking, t, seed) {
+    var inf = artInfo(name), n = inf ? (inf.frames || 1) : 3;
+    t = t || 0;
+    if (talking && n >= 2) return Math.floor(t * 9) % 2;
+    if (n >= 3) { var ph = (t + (seed || 0) * 0.61) % 3.3; if (ph > 3.16) return 2; }
+    return 0;
+  }
+  ui.faceFrame = faceFrame;
+  // NES-style portrait slot (white rim) with a talking face
+  function faceSlot(ctx, name, x, y, talking, seed) {
+    R(x - 1, y - 1, 34, 34, C.white); R(x, y, 32, 32, '#000');
+    portrait(ctx, name, x, y, { frame: faceFrame(name, talking, DCW.t || 0, seed) });
   }
   // draw with DCW.rect/DCW.text into another context
   function withCtx(ctx, fn) {
     var old = DCW.ctx; DCW.ctx = ctx;
     try { fn(); } finally { DCW.ctx = old; }
   }
+  // backgrounds / panels / wobble from art.js, if it has them
+  function hasBg(theme) {
+    var a = DCW.art; if (!theme || !a || typeof a.background !== 'function') return false;
+    if (typeof a.hasBackground === 'function') { try { return !!a.hasBackground(theme); } catch (e) { return false; } }
+    var lists = [a.bgThemes, a.backgrounds, a.backdrops, a.themes];
+    for (var i = 0; i < lists.length; i++) if (Array.isArray(lists[i]) && lists[i].indexOf(theme) >= 0) return true;
+    return false;
+  }
+  function drawBg(ctx, theme, camX, camY, opts) {
+    if (!hasBg(theme)) return false;
+    try { DCW.art.background(ctx, theme, camX || 0, camY || 0, opts || { t: DCW.t || 0 }); return true; } catch (e) { return false; }
+  }
+  function hasPanel(id) {
+    var a = DCW.art; if (!id || !a || typeof a.panel !== 'function') return false;
+    if (typeof a.hasPanel === 'function') { try { return !!a.hasPanel(id); } catch (e) { return false; } }
+    return true;
+  }
+  function drawPanel(ctx, id, x, y, t) { if (!hasPanel(id)) return false; try { DCW.art.panel(ctx, id, x, y, t || 0); return true; } catch (e) { return false; } }
+  var wobC = null;
+  function wobble(ctx, y0, y1, amp, freq, t) {
+    if (!amp) return;
+    if (DCW.art && typeof DCW.art.wobble === 'function') { try { DCW.art.wobble(ctx, y0, y1, amp, freq, t); return; } catch (e) { /* fall back */ } }
+    var cv = ctx.canvas; if (!cv) return;
+    var sc = cv.width / W;
+    y0 = Math.max(0, Math.floor(y0)); y1 = Math.min(H, Math.ceil(y1)); var hh = y1 - y0; if (hh <= 0) return;
+    if (!wobC) wobC = document.createElement('canvas');
+    if (wobC.width !== cv.width || wobC.height !== Math.ceil(hh * sc)) { wobC.width = cv.width; wobC.height = Math.ceil(hh * sc); }
+    var g = wobC.getContext('2d'); g.clearRect(0, 0, wobC.width, wobC.height); g.drawImage(cv, 0, y0 * sc, cv.width, hh * sc, 0, 0, cv.width, hh * sc);
+    ctx.save(); ctx.setTransform(sc, 0, 0, sc, 0, 0); ctx.imageSmoothingEnabled = false;
+    for (var y = y0; y < y1; y++) {
+      var off = Math.round(Math.sin(y * (freq || 0.15) + (t || 0) * 5) * amp);
+      if (off) ctx.drawImage(wobC, 0, (y - y0) * sc, cv.width, sc, off, y, W, 1);
+    }
+    ctx.restore();
+  }
+  ui.wobble = wobble;
   // small 8x8 icons (art.icon if it knows the name, else built-in bitmaps)
-  var ICON_PAL = { k: '#000000', r: '#f83800', R: '#a81000', w: '#fcfcfc', y: '#f8b800', Y: '#ac7c00', G: '#3c3c3c', g: '#5c5c5c', o: '#fca044', p: '#d800cc', P: '#881488', n: '#a85010', b: '#3cbcfc', e: '#58d854' };
+  var ICON_PAL = { k: '#000000', r: '#f83800', R: '#a81000', w: '#fcfcfc', y: '#f8b800', Y: '#ac7c00', G: '#3c3c3c', g: '#5c5c5c', o: '#fca044', p: '#d800cc', P: '#881488', n: '#a85010', N: '#503000', b: '#3cbcfc', B: '#0058f8', e: '#58d854', E: '#00a800', l: '#bcbcbc', c: '#a4e4fc', s: '#f8d878' };
   var ICONS = {
     heart: ['.kk.kk..', 'krrkrrk.', 'krwrrrk.', 'krrrrrk.', '.krrrk..', '..krk...', '...k....', '........'],
     heart_half: ['.kk.kk..', 'krrkggk.', 'krwrggk.', 'krrrggk.', '.krrgk..', '..krk...', '...k....', '........'],
@@ -283,7 +485,25 @@
     boot: ['.kkk....', '.knnk...', '.knnk...', '.knnk...', '.knnnkk.', 'knnnnnnk', 'kkkkkkkk', '........'],
     brain: ['.kkkkk..', 'kppPppk.', 'kpPppPpk', 'kpppPppk', 'kPppppPk', '.kpppkk.', '..kkk...', '........'],
     eye: ['........', '..kkkk..', '.kwwwwk.', 'kwwbbwwk', 'kwwbkwwk', '.kwwwwk.', '..kkkk..', '........'],
-    lock: ['..kkk...', '.kgGgk..', '.kg.gk..', 'kkkkkkk.', 'kyyyyyk.', 'kyykyyk.', 'kyyyyyk.', 'kkkkkkk.']
+    lock: ['..kkk...', '.kgGgk..', '.kg.gk..', 'kkkkkkk.', 'kyyyyyk.', 'kyykyyk.', 'kyyyyyk.', 'kkkkkkk.'],
+    sun: ['...y....', '.y.k.y..', '..kok...', 'ykoyoky.', '..kok...', '.y.k.y..', '...y....', '........'],
+    moon: ['..kkk...', '.kcck...', 'kcck....', 'kcck....', 'kccck...', '.kccckk.', '..kkk...', '........'],
+    jug: ['..ko....', '..kr....', '.kkkk...', 'kNnnnk..', 'knnwnnk.', 'knnnnNk.', 'kNnnnNk.', '.kkkkk..'],
+    hob: ['....o...', '...k....', '..kkk...', '.kgllk..', 'kgwlllk.', 'kglllgk.', '.kgggk..', '..kkk...'],
+    dyn: ['......o.', '.....k..', '..kkkk..', '.krrrrk.', '.kRwrrk.', '.krrrrk.', '.krrrRk.', '..kkkk..'],
+    smoke: ['..lll...', '.lwwll..', 'lwwlll..', '.llll...', '..kkk...', '.kGGGk..', '.kGGGk..', '..kkk...'],
+    moonshine: ['..kkk...', '..kNk...', '.kkkkk..', 'kwwwwwk.', 'kwkwkwk.', 'kwwwwwk.', 'kwwwwwk.', '.kkkkk..'],
+    clock: ['..kkkk..', '.kwwwwk.', 'kwwkwwwk', 'kwwkwwwk', 'kwwkkkwk', 'kwwwwwwk', '.kwwwwk.', '..kkkk..'],
+    quest: ['.kkkkkk.', 'kswssssk', 'ksssssk.', '.kswsk..', '.ksssk..', 'ksswsssk', 'kssssssk', '.kkkkkk.'],
+    map: ['kkkkkkkk', 'kssEsssk', 'ksEEssrk', 'ksssEssk', 'kssssEEk', 'krsssssk', 'kssssssk', 'kkkkkkkk'],
+    ticket: ['........', 'kkkkkkkk', 'kyyyyyyk', '.yRyyRy.', '.yyyyyy.', 'kyyyyyyk', 'kkkkkkkk', '........'],
+    bed: ['........', 'k.......', 'kww.....', 'kwwrrrrk', 'krrrrrrk', 'kkkkkkkk', 'k......k', '........'],
+    bag: ['..kkk...', '.k...k..', 'kkkkkkk.', 'knnnnnk.', 'knnynnk.', 'knnnnnk.', 'kkkkkkk.', '........'],
+    glass: ['kkkkkkk.', 'kpppppk.', '.kpppk..', '..kpk...', '...k....', '...k....', '.kkkkk..', '........'],
+    stairs: ['......kk', '....kkwk', '....kwlk', '..kkwllk', '..kwlllk', 'kkwllllk', 'kwlllllk', 'kkkkkkkk'],
+    check: ['........', '......ke', '.....kek', 'ke..kek.', 'keekek..', '.keek...', '..kk....', '........'],
+    gear: ['..k.k...', '.kllllk.', 'klkkklk.', '.lk.kl..', 'klkkklk.', '.kllllk.', '..k.k...', '........'],
+    door: ['.kkkkk..', 'knnnnnk.', 'knnnnnk.', 'knnnnyk.', 'knnnnnk.', 'knnnnnk.', 'knnnnnk.', 'kkkkkkk.']
   };
   var iconCache = {};
   function iconCanvas(name) {
@@ -294,18 +514,25 @@
     for (var y = 0; y < 8; y++) for (var x = 0; x < 8; x++) { var ch = rows[y].charAt(x); if (ICON_PAL[ch]) { g.fillStyle = ICON_PAL[ch]; g.fillRect(x, y, 1, 1); } }
     iconCache[name] = c; return c;
   }
-  function icon(ctx, name, x, y) {
+  var ICON_ALIAS = { scratch_ticket: 'ticket', big_top_ticket: 'ticket', gate_pass: 'ticket', custard: 'ticket', potion_item: 'potion', snack: 'heart', dynamite: 'dyn' };
+  function icon(ctx, name, x, y, o) {
     if (!name) return;
     x = Math.round(x); y = Math.round(y);
-    if (DCW.art && typeof DCW.art.icon === 'function' && (hasArt('icon_' + name) || (hasArt(name) && !ICONS[name]))) { try { DCW.art.icon(ctx, name, x, y); return; } catch (e) { /* fall back */ } }
-    var c = iconCanvas(name);
-    if (c) ctx.drawImage(c, x, y);
+    var a = DCW.art;
+    if (a && typeof a.icon === 'function' && (hasArt('icon_' + name) || (hasArt(name) && !ICONS[name] && /^(icon_|[a-z]+$)/.test(name) && (artInfo(name) || {}).w <= 10))) {
+      try { a.icon(ctx, name, x, y, o); return; } catch (e) { /* fall back */ }
+    }
+    var c = iconCanvas(name) || iconCanvas(ICON_ALIAS[name]);
+    if (!c) { var d = itemDef(name); if (d && d.icon && d.icon !== name) { icon(ctx, d.icon, x, y, o); return; } c = iconCanvas(d && d.kind === 'key' ? 'key' : d && d.kind === 'material' ? 'moonshine' : null); }
+    if (c) { if (o && o.scale > 1) ctx.drawImage(c, 0, 0, 8, 8, x, y, 8 * o.scale, 8 * o.scale); else ctx.drawImage(c, x, y); }
     else T('●', x + 1, y, C.gray, { shadow: null });
   }
-  var BOX_FB = { bronze: '#c87838', silver: '#bcbcbc', gold: '#f8b800', platinum: '#a4e4fc', legendary: '#9878f8', fan: '#f878f8', boss: '#e40058' };
+  function itemIcon(id) { var d = itemDef(id); return (d && d.icon) || id; }
+  var BOX_FB = { bronze: '#c87838', silver: '#bcbcbc', gold: '#f8b800', platinum: '#a4e4fc', legendary: '#9878f8', fan: '#f878f8', boss: '#e40058', celestial: '#00fcfc' };
   function boxColor(tier) {
+    var bt = D('boxTiers'); if (bt && bt[tier] && bt[tier].color) return bt[tier].color;
     if (DCW.art && typeof DCW.art.boxColor === 'function') { try { var c = DCW.art.boxColor(tier); if (c) return c; } catch (e) { /* fall back */ } }
-    var bt = D('boxTiers'); return (bt && bt[tier] && bt[tier].color) || BOX_FB[tier] || C.gray;
+    return BOX_FB[tier] || C.gray;
   }
   function tierName(tier) {
     var n = G('tierName', tier); if (n) return n;
@@ -327,20 +554,25 @@
   /* ---------------- data helpers ---------------- */
   var STATS = ['str', 'con', 'dex', 'int'];
   var STAT_INFO = {
-    str: { name: 'STRENGTH', short: 'STR', icon: 'sword', desc: 'PUNCH, KICK AND BOMB DAMAGE.' },
-    con: { name: 'CONSTITUTION', short: 'CON', icon: 'heart', desc: '+2 MAX HP PER POINT. DIE LESS.' },
-    dex: { name: 'DEXTERITY', short: 'DEX', icon: 'boot', desc: 'CRIT CHANCE AND MOVE SPEED.' },
-    int: { name: 'INTELLIGENCE', short: 'INT', icon: 'brain', desc: 'COMPANION POWER. SMART PETS HIT HARDER.' }
+    str: { name: 'STRENGTH', short: 'STR', icon: 'sword', desc: 'PUNCHES AND KICKS. THE WAR GAUNTLET DOES THE REST.' },
+    con: { name: 'CONSTITUTION', short: 'CON', icon: 'heart', desc: '+2 MAX HP PER POINT. DIE LESS, DRINK MORE.' },
+    dex: { name: 'DEXTERITY', short: 'DEX', icon: 'boot', desc: 'CRIT CHANCE AND MOVE SPEED. FOR RUNNING AWAY FASTER.' },
+    int: { name: 'INTELLIGENCE', short: 'INT', icon: 'brain', desc: 'DONUT\'S MAGIC MISSILES. SHE SAYS SHE IS THE BRAINS.' }
   };
-  function xpNeed(level) { var r = G('xpNeed', level); if (typeof r === 'number' && r > 0) return r; return Math.round(18 * Math.pow(level || 1, 1.5)); }
+  function xpNeed(level) {
+    var r = G('xpNeed', level); if (typeof r === 'number' && r > 0) return r;
+    var L = Math.max(1, (level || 13) - 12); return Math.round(25 * Math.pow(L, 1.5));
+  }
   function pStats() {
     var s = G('playerStats');
     if (s && typeof s === 'object') return s;
-    var run = getRun() || {}; var st = run.stats || { str: 3, con: 3, dex: 3, int: 3 }; var lv = run.level || 1;
-    var dmg = 2 + (st.str - 3) + Math.floor((lv - 1) / 2);
-    return { maxHp: 10 + (st.con - 3) * 2 + (lv - 1) + ((run.bonus && run.bonus.hp) || 0), dmg: dmg, kickDmg: Math.round(dmg * 1.5),
-      crit: 0.04 + (st.dex - 3) * 0.02, speedMul: 1 + (st.dex - 3) * 0.03, bombDmg: 8 + lv * 2 + (st.str - 3), bombRadius: 28,
-      compPower: 1 + (st.int - 3) * 0.15 + (lv - 1) * 0.04, def: 0 };
+    var run = getRun() || {}; var st = run.stats || { str: 5, con: 4, dex: 4, int: 4 }; var L = Math.max(1, (run.level || 13) - 12);
+    var b = run.bonus || {}, fb = !!(run.flags && run.flags.freeballing);
+    var dmg = 3 + (st.str - 5) + Math.floor((L - 1) / 2);
+    return { maxHp: 16 + (st.con - 4) * 2 + (L - 1) * 2 + (b.hp || 0), dmg: dmg, kickDmg: Math.round(dmg * 1.5) * (fb ? 2 : 1),
+      crit: 0.05 + (st.dex - 4) * 0.02, speedMul: 1 + (st.dex - 4) * 0.03, def: 0,
+      hobDmg: 10 + L * 2, dynDmg: 22 + L * 3, jugDmg: 8 + L * 2, missileDmg: 3 + Math.floor(st.int / 2) + Math.floor((L - 1) / 2),
+      biteDmg: 2 + L, freeballing: fb, party: partyList() };
   }
   function titleFor(views) {
     var t = D('titles'), best = null;
@@ -348,22 +580,15 @@
     return best ? best.name : 'NOBODY';
   }
   function skinDef(id) { var s = D('skins'); return (s && s[id]) || null; }
+  function skinName(id) { var d = skinDef(id); return (d && d.name) || String(id || '').replace('carl_', '').replace(/_/g, ' ').toUpperCase(); }
+  var PAL_NAMES = { donut: 'PRINCESS DONUT', mongo: 'MONGO', katia: 'KATIA GRIM', zev: 'ZEV' };
   function compDef(id) { var s = D('companions'); return (s && s[id]) || null; }
-  function skinName(id) { var d = skinDef(id); return (d && d.name) || String(id || '').replace('carl_', '').toUpperCase(); }
-  function compName(id) { var d = compDef(id); return (d && d.name) || String(id || '').toUpperCase(); }
+  function compName(id) { var d = compDef(id); return (d && d.name) || PAL_NAMES[id] || String(id || '').toUpperCase(); }
+  function compSprite(id) { var d = compDef(id); var s = (d && d.sprite) || id || 'donut'; if (s === 'mongo' && flag('mongo_big') && hasArt('mongo_big_idle')) s = 'mongo_big'; return s; }
   function inSafe() {
     if (hasG('inSafeRoom')) return !!G('inSafeRoom');
-    return !!(ui.scenes && DCW.scene === ui.scenes.safeRoom);
+    return !!(ui.scenes && (DCW.scene === ui.scenes.inn || DCW.scene === ui.scenes.safeRoom));
   }
-  // Mordecai's body for the current floor
-  function mordForm() {
-    var run = getRun() || {}, n = run.floor || 1;
-    var f = (D('mordecaiForms') || {})[n] || {};
-    return { n: n, name: f.name || '', line: f.line || '',
-      sprite: hasArt('mordecai_f' + n) ? 'mordecai_f' + n : 'mordecai',
-      portrait: hasArt('p_mordecai_f' + n) ? 'p_mordecai_f' + n : 'p_mordecai' };
-  }
-  function compSprite(id) { var d = compDef(id); return (d && d.sprite) || id || 'donut'; }
   function perkText(p) {
     if (!p) return '';
     var out = [];
@@ -374,31 +599,33 @@
     if (p.speed) out.push('+' + pct(p.speed) + '% SPEED');
     if (p.gold) out.push('+' + pct(p.gold) + '% GOLD');
     if (p.views) out.push('+' + pct(p.views) + '% VIEWS');
-    if (p.bombs) out.push('+' + p.bombs + ' BOMBS PER FLOOR');
+    if (p.bombs) out.push('+' + p.bombs + ' EXPLOSIVES');
     if (p.crit) out.push('+' + Math.round(p.crit * 100) + '% CRIT');
     if (p.doubleJump) out.push('DOUBLE JUMP');
     return out.join(', ');
   }
   function rewardInfo(r) {
     if (r === null || r === undefined) return { text: 'NOTHING. WOW.', icon: 'skull', color: C.dgray };
-    if (typeof r === 'string') return { text: r, icon: 'star', color: C.white };
+    if (typeof r === 'string') return { text: up(r), icon: 'star', color: C.white };
     var n;
     switch (r.kind) {
       case 'gold': return { text: '+' + (r.amount || 0) + ' GOLD' + (r.converted ? ' (DUPE)' : ''), icon: 'coin', color: C.gold };
       case 'item':
-        n = r.count || 1;
-        var nm = r.id === 'bomb' ? 'BOMB' : r.id === 'potion' ? 'POTION' : String(r.id || 'ITEM').toUpperCase();
-        return { text: '+' + n + ' ' + nm + (n > 1 ? 'S' : ''), icon: r.id === 'bomb' ? 'bomb' : 'potion', color: C.white };
+        n = r.count || r.n || 1;
+        var id = r.id === 'bomb' ? 'dyn' : r.id;
+        return { text: '+' + n + ' ' + itemName(id), icon: itemIcon(id), color: C.white };
       case 'skin': return { text: (r.isNew ? 'NEW SKIN: ' : 'SKIN: ') + skinName(r.id), icon: 'star', color: r.isNew ? C.yellow : C.gray, unlock: !!r.isNew };
-      case 'companion': return { text: (r.isNew ? 'NEW PAL: ' : 'PAL: ') + compName(r.id), icon: 'star', color: r.isNew ? C.yellow : C.gray, unlock: !!r.isNew };
+      case 'companion': return { text: (r.isNew ? 'NEW PAL: ' : 'PAL: ') + compName(r.id), icon: 'star', color: r.isNew ? C.yellow : C.gray };
       case 'stat': var si = STAT_INFO[r.stat] || { short: String(r.stat || '?').toUpperCase(), icon: 'star' }; return { text: '+' + (r.amount || 1) + ' ' + si.short, icon: si.icon, color: C.green };
       case 'xp': return { text: '+' + (r.amount || 0) + ' XP', icon: 'star', color: C.green };
       case 'hp': return { text: '+' + (r.amount || 1) + ' MAX HP', icon: 'heart', color: C.red };
       case 'box': return { text: tierName(r.tier), icon: 'box', color: boxColor(r.tier) };
-      case 'views': return { text: '+' + fmtNum(r.amount) + ' VIEWS' + (r.note ? ' (' + r.note + ')' : ''), icon: 'eye', color: C.pink };
-      case 'place': return { text: (r.place === 1 ? '1ST' : r.place === 2 ? '2ND' : r.place === 3 ? '3RD' : r.place + 'TH') + ' PLACE' + (r.of ? ' OF ' + r.of : ''), icon: 'star', color: r.place === 1 ? C.gold : C.white };
-      case 'revival': n = r.count || 1; return { text: '+' + n + ' SPONSOR REVIVAL' + (n > 1 ? 'S' : ''), icon: 'heart', color: C.pink };
-      default: return { text: r.text || String(r.kind || '?').toUpperCase(), icon: r.icon || 'star', color: C.white };
+      case 'views': return { text: '+' + fmtNum(r.amount) + ' VIEWS' + (r.note ? ' (' + up(r.note) + ')' : ''), icon: 'eye', color: C.pink };
+      case 'revival': n = r.count || 1; return { text: '+' + n + ' REVIVAL' + (n > 1 ? 'S' : ''), icon: 'heart', color: C.pink };
+      case 'flag': return { text: up(r.text || r.name || 'SOMETHING HAPPENED'), icon: 'star', color: C.yellow };
+      case 'nothing': return { text: up(r.text || 'ABSOLUTELY NOTHING'), icon: 'skull', color: C.dgray };
+      case 'title': return { text: 'TITLE: ' + up(r.name || r.id), icon: 'star', color: C.pink };
+      default: return { text: up(r.text || String(r.kind || '?')), icon: r.icon || 'star', color: C.white };
     }
   }
   ui.rewardInfo = rewardInfo;
@@ -421,10 +648,43 @@
   ui.blocking = function () { return stack.length > 0; };
 
   /* ================================================================
-     DIALOG (say)
+     DIALOG (say) with talking portraits
      ================================================================ */
-  var WHO_PORTRAIT = { 'SYSTEM AI': 'p_ai', 'AI': 'p_ai', 'THE AI': 'p_ai', 'CARL': 'p_carl', 'DONUT': 'p_donut', 'PRINCESS DONUT': 'p_donut',
-    'MORDECAI': 'p_mordecai', 'BOPCA': 'p_bopca', 'MONGO': 'p_mongo', 'KATIA': 'p_katia', 'ZEV': 'p_zev', 'SIR SQUEAKS': 'p_squeaks', 'SQUEAKS': 'p_squeaks' };
+  var WHO_PORTRAIT = {
+    'SYSTEM AI': 'p_ai', 'AI': 'p_ai', 'THE AI': 'p_ai', 'SYSTEM': 'p_ai', 'ANNOUNCER': 'p_ai',
+    'CARL': 'p_carl', 'DONUT': 'p_donut', 'PRINCESS DONUT': 'p_donut', 'MONGO': 'p_mongo',
+    'MORDECAI': 'p_mordecai', 'KATIA': 'p_katia', 'KATIA GRIM': 'p_katia',
+    'SIGNET': 'p_signet', 'TSARINA SIGNET': 'p_signet', 'TSARINA': 'p_signet',
+    'GRIMALDI': 'p_grimaldi', 'RINGMASTER GRIMALDI': 'p_grimaldi', 'RINGMASTER': 'p_grimaldi',
+    'APOLLON': 'p_apollon', 'APOLLON THE MIGHTY': 'p_apollon',
+    'CLAMMY': 'p_clammy', 'CLAMMY THE CLOWN': 'p_clammy',
+    'HEATHER': 'p_heather', 'HEATHER THE BEAR': 'p_heather',
+    'GORDO': 'p_gordo', 'FITZ': 'p_fitz', 'CLARABELLE': 'p_clarabelle', 'QUINT': 'p_quint',
+    'PUSTULE': 'p_pustule', 'GUMGUM': 'p_gumgum', 'GUM GUM': 'p_gumgum',
+    'VINCENTE': 'p_vincente', 'QUILL': 'p_quill', 'MISS QUILL': 'p_quill',
+    'BURGUNDY': 'p_burgundy', 'REMEX': 'p_remex',
+    'BAUTISTA': 'p_bautista', 'DANIEL BAUTISTA': 'p_bautista', 'DANIEL BAUTISTA 2': 'p_bautista',
+    'HEKLA': 'p_hekla', 'RIPPER': 'p_ripper', 'RIPPER WONTON': 'p_ripper',
+    'ZEV': 'p_zev', 'ODETTE': 'p_odette', 'LUCIA': 'p_lucia', 'LUCIA MAR': 'p_lucia',
+    'EUNICE': 'p_eunice', 'EDGE DANCER': 'p_edge_dancer', 'EDGE-DANCER': 'p_edge_dancer', 'TALON': 'p_talon', 'LUCKY': 'p_lucky',
+    'MANASA': 'p_manasa', 'TUCKER': 'p_tucker', "PRINCESS D'NADIA": 'p_dnadia', "D'NADIA": 'p_dnadia', 'DNADIA': 'p_dnadia',
+    'FEATHERFALL': 'p_featherfall', 'MAGISTRATE FEATHERFALL': 'p_featherfall', 'BOPCA': 'p_bopca'
+  };
+  ui.WHO_PORTRAIT = WHO_PORTRAIT;
+  function portraitFor(who) {
+    if (who === null || who === undefined || who === '') return null;
+    var k = up(who).trim();
+    if (WHO_PORTRAIT[k]) return WHO_PORTRAIT[k];
+    var k2 = k.replace(/^THE /, '');
+    if (WHO_PORTRAIT[k2]) return WHO_PORTRAIT[k2];
+    var slug = k2.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!slug) return null;
+    if (hasArt('p_' + slug)) return 'p_' + slug;
+    var first = slug.split('_')[0];
+    if (first && hasArt('p_' + first)) return 'p_' + first;
+    return 'p_' + slug; // the fallback face is drawn for unknown names
+  }
+  ui.portraitFor = portraitFor;
   function paginate(lines, opts) {
     if (lines === null || lines === undefined) return [];
     if (!Array.isArray(lines)) lines = [lines];
@@ -435,10 +695,11 @@
       var who = o.who !== undefined ? o.who : (opts.who !== undefined ? opts.who : 'SYSTEM AI');
       var por;
       if (o.portrait !== undefined) por = o.portrait;
-      else if (o.who !== undefined) por = WHO_PORTRAIT[String(o.who).toUpperCase()] || null;
-      else por = opts.portrait !== undefined ? opts.portrait : 'p_ai';
-      var wl = wrap(String(o.text === undefined ? '' : o.text).toUpperCase(), por ? 256 : 296);
-      for (var i = 0; i < wl.length; i += 4) pages.push({ who: who, portrait: por, lines: wl.slice(i, i + 4), color: o.color });
+      else if (o.who !== undefined) por = portraitFor(o.who);
+      else if (opts.portrait !== undefined) por = opts.portrait;
+      else por = portraitFor(who) || 'p_ai';
+      var wl = wrap(up(o.text === undefined ? '' : o.text), por ? 256 : 296);
+      for (var i = 0; i < wl.length; i += 4) pages.push({ who: who ? up(who) : '', portrait: por, lines: wl.slice(i, i + 4), color: o.color, seed: pages.length });
     });
     return pages;
   }
@@ -447,11 +708,7 @@
     var y = pos === 'top' ? 18 : 126, x = 4, w = 312, h = 50;
     DCW.box(x, y, w, h);
     var tx = x + 8;
-    if (page.portrait) {
-      R(x + 5, y + 8, 34, 34, C.white); R(x + 6, y + 9, 32, 32, '#000');
-      portrait(ctx, page.portrait, x + 6, y + 9, { frame: done ? 0 : Math.floor((DCW.t || 0) * 6) });
-      tx = x + 44;
-    }
+    if (page.portrait) { faceSlot(ctx, page.portrait, x + 6, y + 9, !done, page.seed); tx = x + 44; }
     var left = shown;
     for (var i = 0; i < page.lines.length && left > 0; i++) {
       var s = page.lines[i].slice(0, Math.max(0, Math.floor(left)));
@@ -460,17 +717,21 @@
     }
     if (page.who) {
       var nw = tw(page.who) + 10;
-      DCW.box(x + 6, y - 9, nw, 12, { fill: '#a81000' });
+      DCW.box(x + 6, y - 9, nw, 12, { fill: page.portrait === 'p_ai' ? '#5c007c' : '#a81000' });
       T(page.who, x + 11, y - 7, C.white);
     }
     if (done && blink(2.5)) T('▼', x + w - 12, y + h - 10, C.gold);
   }
+  // opts: { onDone, onSkip (START pressed; else START finishes like onDone), pos:'top'|'bottom', speed, who, portrait, skippable }
   ui.say = function (lines, opts) {
     opts = opts || {};
     var pages = paginate(lines, opts);
     if (!pages.length) { if (opts.onDone) opts.onDone(); return null; }
     var m = { kind: 'say', pages: pages, i: 0, shown: 0, blip: 0 };
-    function finish() { if (m.done) return; m.done = true; close(m); if (opts.onDone) opts.onDone(); }
+    function finish(skipped) {
+      if (m.done) return; m.done = true; close(m);
+      if (skipped && opts.onSkip) opts.onSkip(); else if (opts.onDone) opts.onDone();
+    }
     m.update = function (dt) {
       var p = m.pages[m.i], total = pageLen(p);
       if (m.shown < total) {
@@ -479,10 +740,10 @@
         var now = Math.floor(m.shown);
         if (now !== before) { m.blip += now - before; if (m.blip >= 3) { m.blip = 0; sfx('text_blip'); } }
       }
-      if (P('start') && opts.skippable !== false && m.t > 0.15) { finish(); return; }
+      if (P('start') && opts.skippable !== false && m.t > 0.15) { finish(true); return; }
       if ((P('confirm') || P('back')) && m.t > 0.08) {
         if (m.shown < total) m.shown = total;
-        else { m.i++; m.shown = 0; if (m.i >= m.pages.length) finish(); }
+        else { m.i++; m.shown = 0; if (m.i >= m.pages.length) finish(false); }
       }
       m.t += dt;
     };
@@ -500,9 +761,9 @@
   ui.toast = function (text, o) {
     o = o || {};
     var ach = !!(o.achievement || (o.title && /ACHIEVEMENT/i.test(o.title)));
-    var t = { text: String(text === undefined || text === null ? '' : text).toUpperCase(), title: o.title ? String(o.title).toUpperCase() : (ach ? 'NEW ACHIEVEMENT!' : ''),
+    var t = { text: up(text), title: o.title ? up(o.title) : (ach ? 'NEW ACHIEVEMENT!' : ''),
       icon: o.icon || (ach ? 'star' : null), color: o.color || (ach ? C.gold : C.white), time: o.time || (ach ? 4 : 2.6),
-      sub: o.sub || o.desc ? String(o.sub || o.desc).toUpperCase() : '', ach: ach, t: 0, y: null };
+      sub: o.sub || o.desc ? up(o.sub || o.desc) : '', ach: ach, t: 0, y: null };
     var iw = t.icon ? 12 : 0, maxIn = 176 - iw;
     t.lines = wrap(t.text, maxIn).slice(0, 4);
     t.subLines = t.sub ? wrap(t.sub, maxIn).slice(0, 3) : [];
@@ -557,7 +818,7 @@
   var banner = null;
   ui.announce = function (text, o) {
     o = o || {};
-    banner = { text: String(text === undefined ? '' : text).toUpperCase(), sub: o.sub ? String(o.sub).toUpperCase() : '', color: o.color || C.gold, time: o.time || 2.2, t: 0, y: o.y || 60 };
+    banner = { text: up(text), sub: o.sub ? up(o.sub) : '', color: o.color || C.gold, time: o.time || 2.2, t: 0, y: o.y || 60 };
     if (o.sfx) sfx(o.sfx);
     return banner;
   };
@@ -585,6 +846,7 @@
      ================================================================ */
   function itemsOf(items) { var a = typeof items === 'function' ? items() : items; return (a || []).filter(function (it) { return it && !it.hidden; }); }
   function labelOf(it) { return typeof it.label === 'function' ? it.label() : String(it.label === undefined ? '' : it.label); }
+  // items [{label, action(m), disabled, why, hint, right, rightColor, color, keep, icon}], opts {title, titleColor, w, x, y, keep, cancel, onBack, startCloses, kind, fill, border, dim, portrait}
   ui.menu = function (items, opts) {
     opts = opts || {};
     var m = { kind: opts.kind || 'menu', sel: opts.sel || 0, msg: '', msgT: 0 };
@@ -607,11 +869,11 @@
       var its = itemsOf(items);
       if (opts.dim !== false) dim(ctx, opts.dim === undefined ? 0.45 : opts.dim);
       var maxTitle = opts.w ? opts.w - 16 : 240;
-      var tl = opts.title ? wrap(String(opts.title).toUpperCase(), maxTitle) : [];
-      var iw = 0; its.forEach(function (it) { iw = Math.max(iw, tw(labelOf(it)) + (it.right ? tw(it.right) + 12 : 0)); });
+      var tl = opts.title ? wrap(up(opts.title), maxTitle) : [];
+      var iw = 0; its.forEach(function (it) { iw = Math.max(iw, tw(labelOf(it)) + (it.right ? tw(it.right) + 12 : 0) + (it.icon ? 11 : 0)); });
       var w = opts.w || Math.max(80, iw + 30, tl.reduce(function (a, l) { return Math.max(a, tw(l) + 16); }, 0));
       var hint = (m.msgT > 0 && m.msg) ? m.msg : (its[m.sel] && its[m.sel].hint) || '';
-      var hl = hint ? wrap(String(hint).toUpperCase(), w - 12).slice(0, 2) : [];
+      var hl = hint ? wrap(up(hint), w - 12).slice(0, 2) : [];
       var h = 8 + tl.length * 10 + (tl.length ? 4 : 0) + its.length * 12 + (hl.length ? hl.length * 10 + 4 : 0);
       var x = opts.x !== undefined ? opts.x : Math.round(160 - w / 2), y = opts.y !== undefined ? opts.y : Math.round(90 - h / 2);
       DCW.box(x, y, w, h, { fill: opts.fill, border: opts.border });
@@ -621,8 +883,10 @@
       its.forEach(function (it, i) {
         var col = it.disabled ? C.dgray : (i === m.sel ? (it.color || C.white) : (it.color || C.gray));
         if (i === m.sel) cursor(x + 6, yy + 1);
-        T(labelOf(it), x + 16, yy + 1, col);
-        if (it.right) T(it.right, x + w - 8, yy + 1, it.rightColor || C.gold, { align: 'right' });
+        var lx = x + 16;
+        if (it.icon) { icon(ctx, it.icon, lx, yy); lx += 11; }
+        T(labelOf(it), lx, yy + 1, col);
+        if (it.right) T(it.right, x + w - 8, yy + 1, it.disabled ? C.dgray : (it.rightColor || C.gold), { align: 'right' });
         yy += 12;
       });
       if (hl.length) { yy += 2; hl.forEach(function (l) { T(l, x + w / 2, yy, m.msgT > 0 ? C.red : C.dgray, { align: 'center', shadow: null }); yy += 10; }); }
@@ -639,17 +903,35 @@
 
   /* ================================================================
      HUD
+     h = { hp, maxHp, special 0..1, specialLocked, potions, gold, level, xpFrac, views, combo,
+           player:'carl'|'mongo', explosive:'jug'|{id,count}|null (default run.selected), explosiveCount,
+           clock: true(default)|false|{label,night}, objective: true|'text'|{text} (streets),
+           party: true|['donut','mongo']|[{id, state:'ok'|'stunned'|'down'|'away'}],
+           timer: seconds|{t, label, warn, color}, meters: [{label, value 0..1, color, text}],
+           bossHp 0..1|null, bossName, time|null, par|null (book 1), bombs (book 1) }
      ================================================================ */
-  var hudS = { combo: 0, pop: 0, trail: null, bossTrail: null, lastT: 0 };
+  var hudS = { combo: 0, pop: 0, trail: null, bossTrail: null, lastT: 0, sel: null, selT: 0 };
+  var EXPLOSIVES = ['jug', 'hob', 'dyn', 'smoke'];
+  ui.EXPLOSIVES = EXPLOSIVES;
+  function hudExplosive(h) {
+    if (h.explosive === null || h.explosive === false) return null;
+    var id, n;
+    if (h.explosive && typeof h.explosive === 'object') { id = h.explosive.id; n = h.explosive.count !== undefined ? h.explosive.count : h.explosive.n; }
+    else if (typeof h.explosive === 'string') id = h.explosive;
+    else if (h.bombs !== undefined && !getRun()) return { id: 'bomb', icon: 'bomb', n: h.bombs };
+    if (!id) { var r = getRun(); id = (r && r.selected) || 'jug'; }
+    if (n === undefined) n = h.explosiveCount !== undefined ? h.explosiveCount : itemCount(id);
+    return { id: id, icon: itemIcon(id), n: n };
+  }
   ui.drawHUD = function (ctx, h) {
     h = h || {};
     var now = DCW.t || 0, dt = clamp(now - hudS.lastT, 0, 0.1); hudS.lastT = now;
     ctx.globalAlpha = 0.82; R(0, 0, W, 13, '#000'); ctx.globalAlpha = 1;
     R(0, 13, W, 1, '#1c1c3c');
-    // companion mini portrait
-    var comp = h.companion || equipped('companion');
+    // player mini portrait
+    var who = h.player || (h.swap === 'mongo' ? 'mongo' : 'carl');
     R(0, 0, 14, 14, '#000'); R(0, 0, 14, 1, C.dgray); R(0, 13, 14, 1, C.dgray); R(0, 0, 1, 14, C.dgray); R(13, 0, 1, 14, C.dgray);
-    miniPortrait(ctx, 'p_' + comp, 1, 1);
+    miniPortrait(ctx, 'p_' + who, 1, 1);
     // hp bar (segmented) + numbers
     var hp = Math.max(0, +h.hp || 0), mx = Math.max(1, +h.maxHp || hp || 1);
     if (hudS.trail === null || hudS.trail < hp) hudS.trail = hp;
@@ -661,33 +943,94 @@
     R(bx, 2, Math.round(bw * clamp(hp / mx, 0, 1)), 1, low && blink(5) ? C.white : '#fc7460');
     if (mx <= 60) { var step = mx <= 30 ? 1 : 2; for (var s = step; s < mx; s += step) R(bx + Math.round(bw * s / mx), 2, 1, 4, 'rgba(0,0,0,0.55)'); }
     if (h.special !== undefined && h.special !== null) {
-      var full = h.special >= 1;
-      DCW.bar(bx, 9, bw, 2, h.special, full ? (blink(6) ? C.white : C.yellow) : C.purple, '#200828');
+      if (h.specialLocked) DCW.bar(bx, 9, bw, 2, 1, blink(3) ? C.ddgray : '#202020', '#200828');
+      else { var full = h.special >= 1; DCW.bar(bx, 9, bw, 2, h.special, full ? (blink(6) ? C.white : C.yellow) : C.purple, '#200828'); }
     }
     T(Math.ceil(hp) + '/' + mx, 77, 3, low ? C.red : C.white);
     var x = 113;
-    icon(ctx, 'bomb', x, 2); T(h.bombs === undefined ? '-' : h.bombs, x + 9, 3, C.white); x += 22;
-    icon(ctx, 'potion', x, 2); T(h.potions === undefined ? '-' : h.potions, x + 9, 3, C.white); x += 22;
+    // selected explosive
+    var ex = hudExplosive(h);
+    if (ex) {
+      if (hudS.sel !== null && hudS.sel !== ex.id) hudS.selT = 1.3;
+      hudS.sel = ex.id;
+      if (hudS.selT > 0) { hudS.selT -= dt; if (blink(10)) R(x - 1, 1, 10, 10, C.white); }
+      icon(ctx, ex.icon, x, 2);
+      T(ex.n, x + 9, 3, ex.n > 0 ? C.white : C.red);
+    }
+    x += 22;
+    if (h.potions !== null) { icon(ctx, 'potion', x, 2); T(h.potions === undefined ? itemCount('potion') : h.potions, x + 9, 3, C.white); }
+    x += 22;
     icon(ctx, 'coin', x, 2); T(fitText(h.gold || 0, 30), x + 9, 3, C.gold); x += 44;
-    T('LV' + (h.level || 1), x, 2, C.green);
+    T('LV' + (h.level || 13), x, 2, C.green);
     DCW.bar(x, 11, 24, 1, h.xpFrac || 0, C.green, '#002800');
     x += 30;
-    icon(ctx, 'eye', x, 2); T(fmtNum(h.views || 0), x + 9, 3, C.pink);
-    // timer vs par (or stage name)
-    if (h.time !== undefined && h.time !== null) {
+    icon(ctx, 'eye', x, 2); T(fitText(fmtNum(h.views || 0), 24), x + 9, 3, C.pink);
+    // clock (8-day floor timer) with sun/moon
+    var ck = (h.clock === false || h.clock === null) ? null : (h.clock && typeof h.clock === 'object') ? h.clock : clockInfo();
+    if (ck) {
+      var lab = String(ck.label || ''), lw = tw(lab), urgent = ck.hoursLeft !== undefined && ck.hoursLeft <= 24;
+      T(lab, 318, 3, urgent ? (blink(2) ? C.red : C.orange) : C.white, { align: 'right' });
+      icon(ctx, ck.night ? 'moon' : 'sun', 318 - lw - 10, 2);
+    } else if (h.time !== undefined && h.time !== null) { // book 1 style level timer
       var ts = fmtTime(h.time), over = h.par && h.time > h.par;
-      T(ts, 318, 2, h.par ? (over ? C.red : C.white) : C.white, { align: 'right' });
+      T(ts, 318, 2, over ? C.red : C.white, { align: 'right' });
       if (h.par) DCW.bar(318 - tw(ts), 11, tw(ts), 1, clamp(h.time / h.par, 0, 1), over ? C.red : C.green, '#202020');
-    } else if (h.stageName) T(fitText(h.stageName, 58), 318, 3, C.gray, { align: 'right' });
+    }
+    // ---- second row ----
+    var party = h.party === true ? partyList() : (Array.isArray(h.party) ? h.party : null);
+    var timer = h.timer;
+    if (timer !== undefined && timer !== null && typeof timer !== 'object') timer = { t: +timer };
+    var obj = h.objective === true ? objectiveInfo() : h.objective;
+    if (obj && typeof obj === 'object') obj = obj.text;
+    var partyW = party && party.length ? party.length * 13 + 4 : 0;
+    if (obj) {
+      var maxW = timer ? 112 : 312 - partyW - 14;
+      var os = fitText(up(obj), maxW - 12);
+      ctx.globalAlpha = 0.62; R(0, 14, tw(os) + 15, 11, '#000'); ctx.globalAlpha = 1;
+      T('▶', 3, 16, C.gold, { shadow: null }); T(os, 11, 16, C.white);
+    }
+    if (party && party.length) {
+      var px0 = 318 - party.length * 13 + 1;
+      party.forEach(function (p, i) {
+        var id = typeof p === 'string' ? p : (p && p.id), st = (p && p.state) || 'ok';
+        if (!id) return;
+        var ix = px0 + i * 13, iy = 15;
+        R(ix - 1, iy - 1, 14, 14, '#000'); R(ix - 1, iy - 1, 14, 1, C.ddgray); R(ix - 1, iy + 12, 14, 1, C.ddgray);
+        miniPortrait(ctx, 'p_' + id, ix, iy);
+        if (st !== 'ok') { ctx.globalAlpha = 0.6; R(ix, iy, 12, 12, '#000'); ctx.globalAlpha = 1; T(st === 'stunned' ? 'Z' : st === 'away' ? '?' : '×', ix + 3, iy + 3, st === 'stunned' ? (blink(4) ? C.white : C.gray) : C.red, { shadow: null }); }
+      });
+    }
+    if (timer && timer.t !== undefined && !isNaN(timer.t)) {
+      var secs = Math.max(0, timer.t), warn = timer.warn === undefined ? 30 : timer.warn;
+      var tcol = timer.color || (secs <= warn ? (blink(4) ? C.red : C.white) : C.white);
+      T(fmtTime(Math.ceil(secs)), 160, 16, tcol, { align: 'center', scale: 2 });
+      if (timer.label) T(up(timer.label), 160, 32, secs <= warn ? C.red : C.gray, { align: 'center' });
+    }
+    var meters = Array.isArray(h.meters) ? h.meters : (h.meter ? [h.meter] : []);
+    var my = party && party.length ? 30 : 16;
+    meters.forEach(function (mt, i) {
+      if (!mt) return;
+      var v = clamp(+(mt.value !== undefined ? mt.value : mt.frac) || 0, 0, 1), yy = my + i * 10;
+      var mc = mt.color || C.green, lab2 = up(mt.label || '');
+      DCW.bar(264, yy + 2, 52, 4, v, mt.flash && blink(5) ? C.white : mc, '#202020');
+      T(lab2, 260, yy, C.white, { align: 'right' });
+      if (mt.text !== undefined) T(up(mt.text), 290, yy + 7, C.gray, { align: 'center', shadow: null });
+    });
+    // explosive name popup after cycling
+    if (ex && hudS.selT > 0) {
+      var en = itemName(ex.id) + ' ×' + ex.n, ew = tw(en) + 8;
+      DCW.box(108, 15, ew, 11, { fill: '#000' }); T(en, 112, 17, ex.n > 0 ? C.yellow : C.red);
+    }
     // combo popup
     var combo = h.combo || 0;
     if (combo > hudS.combo && combo > 1) hudS.pop = 0.18;
     hudS.combo = combo; if (hudS.pop > 0) hudS.pop -= dt;
     if (combo > 1) {
+      var cy0 = obj ? 28 : 18;
       var cc = combo >= 25 ? (blink(8) ? C.pink : C.gold) : combo >= 10 ? C.gold : C.white;
       var py = hudS.pop > 0 ? -2 : 0;
-      var r1 = T(combo, 6, 18 + py, cc, { scale: 2 });
-      T('HIT', 9 + r1.w, 18 + py, cc); T('COMBO!', 9 + r1.w, 26 + py, combo >= 10 ? C.white : C.gray);
+      var r1 = T(combo, 6, cy0 + py, cc, { scale: 2 });
+      T('HIT', 9 + r1.w, cy0 + py, cc); T('COMBO!', 9 + r1.w, cy0 + 8 + py, combo >= 10 ? C.white : C.gray);
     }
     // boss bar
     if (h.bossHp !== undefined && h.bossHp !== null) {
@@ -695,21 +1038,22 @@
       if (hudS.bossTrail === null || hudS.bossTrail < bf) hudS.bossTrail = bf; else hudS.bossTrail = Math.max(bf, hudS.bossTrail - dt * 0.35);
       ctx.globalAlpha = 0.6; R(0, 160, W, 20, '#000'); ctx.globalAlpha = 1;
       icon(ctx, 'skull', 6, 162);
-      T(fitText(h.bossName || 'BOSS', 290), 17, 162, C.gold);
+      T(fitText(up(h.bossName || 'BOSS'), 290), 17, 162, C.gold);
       DCW.bar(8, 173, 304, 4, hudS.bossTrail, C.white, '#3a1020');
       R(8, 173, Math.round(304 * bf), 4, '#d82800'); R(8, 173, Math.round(304 * bf), 1, '#fc7460');
     } else hudS.bossTrail = null;
   };
+  // a HUD object built from the run (for scenes that don't track their own numbers)
   ui.hudFromRun = function (extra) {
-    var run = getRun() || {}, st = pStats(), lv = run.level || 1;
-    var h = { hp: run.hp, maxHp: st.maxHp || run.hp, special: null, bombs: run.bombs, potions: run.potions, gold: run.gold,
-      level: lv, xpFrac: (run.xp || 0) / xpNeed(lv), views: run.views, combo: 0, companion: equipped('companion'), bossHp: null, time: null, par: null };
+    var run = getRun() || {}, st = pStats(), lv = run.level || 13;
+    var h = { hp: run.hp, maxHp: st.maxHp || run.hp, special: null, potions: run.potions, gold: run.gold,
+      level: lv, xpFrac: (run.xp || 0) / xpNeed(lv), views: run.views, combo: 0, bossHp: null, clock: true };
     if (extra) for (var k in extra) h[k] = extra[k];
     return h;
   };
 
   /* ================================================================
-     PAUSE
+     PAUSE  (RESUME, MAP, QUESTS, CHARACTER, INVENTORY, SETTINGS, FLEE, QUIT)
      ================================================================ */
   function toTitle() {
     closeAll();
@@ -717,37 +1061,47 @@
     if (r === MISSING) DCW.fade(function () { DCW.setScene(ui.scenes.title, {}); });
   }
   ui.toTitle = toTitle;
+  function placeName() {
+    var run = getRun() || {};
+    if (run.levelId) { var lv = levelDef(run.levelId); return up((lv && lv.name) || run.levelId); }
+    if (run.inInn) { var inn = (D('inns') || {})[run.inInn]; return up((inn && inn.name) || 'THE INN'); }
+    if (run.inClub) { var cl = (D('clubs') || {})[run.inClub]; return up((cl && cl.name) || 'THE DESPERADO CLUB'); }
+    var a = areaDef(run.area); return up((a && a.name) || run.area || 'THE OVER CITY');
+  }
+  function activeQuests() { var r = getRun(); var q = (r && r.quests) || {}; return Object.keys(q).filter(function (k) { return q[k] === 'active'; }).length; }
   ui.openPause = function (o) {
     o = o || {};
     if (ui.isOpen('pause')) return null;
     sfx('pause');
     var m = { kind: 'pause', sel: 0, canFlee: !!o.canFlee };
     function items() {
-      var run = getRun(), fd = floorDef(), n = run && run.boxes ? run.boxes.length : 0;
+      var run = getRun();
       return [
         { label: 'RESUME', action: function () { close(m); } },
-        { label: 'CHARACTER', action: ui.openCharacter, badge: run && run.statPoints > 0 },
-        { label: 'LOOT BOXES (' + n + ')', action: ui.openBoxes, badge: n > 0 },
-        { label: 'WARDROBE', action: ui.openWardrobe },
-        { label: 'ACHIEVEMENTS', action: ui.openAchievements },
-        { label: fd && fd.overworld ? 'MAP' : 'OBJECTIVES', action: ui.openMap },
+        { label: 'MAP', action: ui.openMap },
+        { label: 'QUESTS', action: ui.openQuests, badge: activeQuests() > 0 && !m.seenQuests },
+        { label: 'CHARACTER', action: ui.openCharacter, badge: run && run.statPoints > 0 && inSafe() },
+        { label: 'INVENTORY', action: ui.openInventory },
         { label: 'SETTINGS', action: ui.openSettings },
-        m.canFlee ? { label: 'FLEE AREA', color: C.orange, action: function () {
-          ui.confirm('FLEE THIS AREA? NO REWARDS. THE AUDIENCE WILL BOO.', function () { closeAll(); G('fleeStage'); });
+        m.canFlee ? { label: 'FLEE', color: C.orange, action: function () {
+          ui.confirm('FLEE THIS LEVEL? NO REWARDS, IT COSTS AN HOUR, AND THE AUDIENCE WILL BOO.', function () {
+            closeAll(); if (G('fleeLevel') === undefined && !hasG('fleeLevel')) G('fleeStage');
+          });
         } } : null,
-        { label: 'QUIT TO TITLE', action: function () { ui.confirm('QUIT TO TITLE? YOUR PROGRESS IS SAVED.', toTitle); } }
+        { label: 'QUIT TO TITLE', action: function () { ui.confirm('QUIT TO TITLE? YOUR CRAWL IS SAVED.', toTitle); } }
       ].filter(Boolean);
     }
     m.update = function (dt) {
       m.t += dt;
       var its = items();
       listNav(m, its.length, dt);
-      if (P('confirm')) { sfx('menu_select'); var it = its[m.sel]; if (it && it.action) it.action(); }
+      if (P('confirm')) { sfx('menu_select'); var it = its[m.sel]; if (it && it.label === 'QUESTS') m.seenQuests = true; if (it && it.action) it.action(); }
       else if ((P('back') || P('start')) && m.t > 0.1) { sfx('menu_back'); close(m); }
+      else if (P('select') && m.t > 0.1) { sfx('menu_select'); ui.openMap(); }
     };
     m.draw = function (ctx) {
       dim(ctx, 0.55);
-      var its = items(), run = getRun() || {}, fd = floorDef() || {};
+      var its = items(), run = getRun() || {};
       var h = 26 + its.length * 12 + 4;
       var y0 = Math.round(90 - h / 2);
       DCW.box(12, y0, 120, h);
@@ -765,23 +1119,28 @@
       T('● LIVE', px + 8, py + 6, blink(1.2) ? C.red : C.dred);
       T(fmtNum(run.views || 0) + ' VIEWERS', px + pw - 8, py + 6, C.pink, { align: 'right' });
       R(px + 6, py + 16, pw - 12, 1, '#2c3c7c');
-      var yy = py + 21;
-      T('FLOOR ' + (run.floor || 1), px + 8, yy, C.gold); yy += 10;
-      wrap(fd.name || '', pw - 16).slice(0, 2).forEach(function (l) { T(l, px + 8, yy, C.white); yy += 10; });
-      yy += 4;
+      var yy = py + 21, ck = clockInfo();
+      if (ck) {
+        T('DAY ' + (ck.day || 1), px + 8, yy, C.gold);
+        T(hourText(ck), px + pw - 8, yy, ck.night ? C.nblue : C.orange, { align: 'right' });
+        icon(ctx, ck.night ? 'moon' : 'sun', px + pw - 8 - tw(hourText(ck)) - 11, yy - 1);
+        yy += 10;
+        T(ck.label + ' UNTIL COLLAPSE', px + 8, yy, ck.hoursLeft <= 24 ? C.red : C.gray); yy += 11;
+      }
+      T(fitText(placeName(), pw - 16), px + 8, yy, C.white); yy += 13;
       var st = pStats();
       var rows = [
-        ['LEVEL', String(run.level || 1), C.green],
+        ['LEVEL', String(run.level || 13), C.green],
         ['HP', Math.ceil(run.hp || 0) + '/' + (st.maxHp || '?'), C.red],
         ['GOLD', String(run.gold || 0), C.gold],
-        ['BOMBS / POTIONS', (run.bombs || 0) + ' / ' + (run.potions || 0), C.white],
-        ['REVIVALS', String(run.revivals === undefined ? '-' : run.revivals), C.pink],
-        ['FLOOR TIME', fmtTime(run.floorTime || 0) + (fd.par ? ' / ' + fmtTime(fd.par) : ''), fd.par && run.floorTime > fd.par ? C.red : C.white]
+        ['POTIONS', String(run.potions || 0), C.white],
+        ['REVIVALS', String(run.revivals === undefined ? '-' : run.revivals), C.pink]
       ];
-      rows.forEach(function (r) { T(r[0], px + 8, yy, C.gray); T(r[1], px + pw - 8, yy, r[2], { align: 'right' }); yy += 11; });
-      R(px + 6, py + ph - 27, pw - 12, 1, '#2c3c7c');
-      T('FAN TITLE', px + 8, py + ph - 23, C.dgray);
-      T(fitText(titleFor(run.views || 0), pw - 16), px + 8, py + ph - 13, C.pink);
+      rows.forEach(function (r) { T(r[0], px + 8, yy, C.gray); T(r[1], px + pw - 8, yy, r[2], { align: 'right' }); yy += 10; });
+      R(px + 6, py + ph - 37, pw - 12, 1, '#2c3c7c');
+      var ob = objectiveInfo();
+      T('OBJECTIVE', px + 8, py + ph - 33, C.dgray, { shadow: null });
+      wrap(ob ? up(ob.text) : 'SURVIVE. ENTERTAIN. LOOT.', pw - 16).slice(0, 2).forEach(function (l, i) { T(l, px + 8, py + ph - 23 + i * 10, C.yellow); });
     };
     return push(m);
   };
@@ -789,6 +1148,15 @@
   /* ================================================================
      CHARACTER
      ================================================================ */
+  function raceClass() {
+    var run = getRun() || {}, cp = D('classPick') || {};
+    function nameOf(listKey, id, fb) {
+      var l = cp[listKey] || [], e = null;
+      l.forEach(function (x) { if (x && (x.id === id || (!id && !x.locked))) e = e || x; });
+      return up((e && e.name) || fb);
+    }
+    return { race: nameOf('carlRaces', run.race, 'PRIMAL'), cls: nameOf('carlClasses', run.klass || run.cls || run['class'], 'COMPENSATED ANARCHIST') };
+  }
   ui.openCharacter = function () {
     var m = { kind: 'character', sel: 0, msg: '', msgT: 0, pop: 0, popI: -1 };
     m.update = function (dt) {
@@ -797,7 +1165,7 @@
       listNav(m, 4, dt);
       if (P('confirm')) {
         if (!run) { sfx('error'); m.msg = 'NO CRAWL IN PROGRESS.'; m.msgT = 1.6; }
-        else if (!inSafe()) { sfx('error'); m.msg = 'STAT POINTS CAN ONLY BE SPENT IN A SAFE ROOM.'; m.msgT = 1.8; }
+        else if (!inSafe()) { sfx('error'); m.msg = 'STAT POINTS CAN ONLY BE SPENT AT AN INN.'; m.msgT = 1.8; }
         else if (!(run.statPoints > 0)) { sfx('error'); m.msg = 'NO STAT POINTS. LEVEL UP FIRST.'; m.msgT = 1.6; }
         else {
           var stat = STATS[m.sel], ok;
@@ -808,50 +1176,64 @@
       } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
     };
     m.draw = function (ctx) {
-      var run = getRun() || { level: 1, xp: 0, statPoints: 0, stats: { str: 3, con: 3, dex: 3, int: 3 }, views: 0 };
-      var safeNow = inSafe();
-      frame(ctx, 'CRAWLER PROFILE', { footer: safeNow ? '↑↓:STAT  ' + bn('confirm') + ':SPEND POINT  ' + bn('back') + ':BACK' : 'SPEND POINTS IN A SAFE ROOM  ' + bn('back') + ':BACK' });
+      var run = getRun() || { level: 13, xp: 0, statPoints: 0, stats: { str: 5, con: 4, dex: 4, int: 4 }, views: 0 };
+      var safeNow = inSafe(), t = DCW.t || 0;
+      frame(ctx, 'CRAWLER PROFILE', { footer: safeNow ? '↑↓:STAT  ' + bn('confirm') + ':SPEND POINT  ' + bn('back') + ':BACK' : 'SPEND POINTS AT AN INN  ' + bn('back') + ':BACK' });
       // left: portrait column
       DCW.box(10, 22, 110, 70, { fill: '#1c0c34' });
       R(12, 80, 106, 10, '#2c1c4c');
-      bigSprite(ctx, 'carl_idle', 46, 84, { scale: 2, skin: equipped('skin'), frame: Math.floor((DCW.t || 0) * 2) });
-      bigSprite(ctx, compSprite(equipped('companion')) + '_idle', 94, 84, { scale: 2, frame: Math.floor((DCW.t || 0) * 2) });
-      var lv = run.level || 1, need = xpNeed(lv);
-      T('LEVEL ' + lv, 12, 98, C.green);
-      DCW.bar(12, 109, 106, 4, (run.xp || 0) / need, C.green, '#002800');
-      T('XP ' + (run.xp || 0) + '/' + need, 12, 116, C.gray);
-      T('TITLE', 12, 128, C.dgray);
-      wrap(titleFor(run.views || 0), 108).slice(0, 2).forEach(function (l, i) { T(l, 12, 138 + i * 10, C.pink); });
+      var fr = Math.floor(t * 2);
+      bigSprite(ctx, actorName('carl', 'idle'), 50, 84, { scale: 2, skin: equipped('skin'), frame: fr });
+      var party = partyList();
+      if (party.indexOf('donut') >= 0 || !party.length) {
+        if (hasArt('donut_shoulder')) bigSprite(ctx, 'donut_shoulder', 56, 50, { scale: 2, frame: fr });
+        else bigSprite(ctx, actorName('donut', 'idle'), 92, 84, { scale: 2, frame: fr, flip: true });
+      }
+      if (party.indexOf('mongo') >= 0) spr(ctx, actorName(compSprite('mongo'), 'idle'), 22, 88, { frame: fr });
+      if (party.indexOf('katia') >= 0) spr(ctx, actorName('katia', 'idle'), 110, 88, { frame: fr, flip: true });
+      var lv = run.level || 13, need = xpNeed(lv), rc = raceClass();
+      T('LEVEL ' + lv, 12, 97, C.green);
+      DCW.bar(12, 107, 106, 3, (run.xp || 0) / need, C.green, '#002800');
+      T('XP ' + (run.xp || 0) + '/' + need, 12, 113, C.gray);
+      T(fitText(rc.race, 108), 12, 124, C.white);
+      wrap(rc.cls, 108).slice(0, 2).forEach(function (l, i) { T(l, 12, 134 + i * 9, C.blue); });
+      var ttl = (save().meta && save().meta.legacyTitle) || titleFor(run.views || 0);
+      T(fitText(up(ttl), 108), 12, 154, C.pink);
       // right: stats
       var px = 128;
       var pts = run.statPoints || 0;
-      T('STAT POINTS: ' + pts, px, 24, pts > 0 ? (blink(2) ? C.gold : C.yellow) : C.dgray);
+      T('STAT POINTS: ' + pts, px, 23, pts > 0 ? (blink(2) ? C.gold : C.yellow) : C.dgray);
       STATS.forEach(function (s, i) {
-        var yy = 37 + i * 11, inf = STAT_INFO[s];
+        var yy = 35 + i * 11, inf = STAT_INFO[s];
         if (i === m.sel) cursor(px, yy);
         icon(ctx, inf.icon, px + 9, yy - 1);
         T(inf.short, px + 20, yy, i === m.sel ? C.white : C.gray);
-        var v = (run.stats && run.stats[s]) || 0;
-        T(v, px + 66, yy, m.pop > 0 && m.popI === i ? C.gold : C.white, { align: 'right' });
-        if (pts > 0 && safeNow) T('[+]', px + 72, yy, i === m.sel ? C.gold : C.dgray);
+        var v = (run.stats && run.stats[s]) || 0, bonus = (run.bonus && run.bonus[s]) || 0;
+        T(v + (bonus ? '+' + bonus : ''), px + 70, yy, m.pop > 0 && m.popI === i ? C.gold : C.white, { align: 'right' });
+        if (pts > 0 && safeNow) T('[+]', px + 76, yy, i === m.sel ? C.gold : C.dgray);
       });
       // derived stats
       var st = pStats();
       var d = [
         ['MAX HP', st.maxHp], ['DEFENSE', st.def || 0],
-        ['PUNCH', st.dmg], ['KICK', st.kickDmg],
+        ['PUNCH', st.dmg], ['KICK', (st.kickDmg === undefined ? '-' : st.kickDmg) + (st.freeballing ? '★' : '')],
         ['CRIT', Math.round((st.crit || 0) * 100) + '%'], ['SPEED', Math.round((st.speedMul || 1) * 100) + '%'],
-        ['BOMB', st.bombDmg], ['PET PWR', Math.round((st.compPower || 1) * 100) + '%']
+        ['JUG', st.jugDmg], ['DYNAMITE', st.dynDmg !== undefined ? st.dynDmg : st.bombDmg],
+        ['MISSILE', st.missileDmg], ['BITE', (st.biteDmg === undefined ? '-' : st.biteDmg) + (st.mongoBig ? '★' : '')]
       ];
-      R(px, 83, 180, 1, '#2c3c7c');
+      R(px, 80, 180, 1, '#2c3c7c');
       d.forEach(function (r, i) {
-        var cx = px + (i % 2) * 92, cy = 88 + Math.floor(i / 2) * 10;
+        var cx = px + (i % 2) * 92, cy = 84 + Math.floor(i / 2) * 10;
         T(r[0], cx, cy, C.dgray); T(r[1] === undefined ? '-' : r[1], cx + 84, cy, C.white, { align: 'right' });
       });
-      R(px, 130, 180, 1, '#2c3c7c');
+      R(px, 135, 180, 1, '#2c3c7c');
+      var perks = [];
+      if (st.freeballing) perks.push('FREEBALLING'); if (st.xistera) perks.push('XISTERA'); if (st.fangCaps) perks.push('FANG CAPS'); if (st.mongoBig) perks.push('BIG MONGO');
       var inf2 = STAT_INFO[STATS[m.sel]];
       var msg = m.msgT > 0 ? m.msg : inf2.name + ': ' + inf2.desc;
-      wrap(msg, 178).slice(0, 2).forEach(function (l, i) { T(l, px, 135 + i * 10, m.msgT > 0 ? C.red : C.gray); });
+      var ml = wrap(msg, 178).slice(0, perks.length && m.msgT <= 0 ? 1 : 2);
+      ml.forEach(function (l, i) { T(l, px, 139 + i * 10, m.msgT > 0 ? C.red : C.gray); });
+      if (perks.length && m.msgT <= 0) T(fitText('★ ' + perks.join(' ★ '), 180), px, 149, C.yellow);
     };
     return push(m);
   };
@@ -941,12 +1323,12 @@
       var list = boxes();
       if (m.mode === 'list') {
         var canOpen = inSafe();
-        frame(ctx, 'LOOT BOXES', { footer: !list.length ? bn('back') + ':BACK' : canOpen ? bn('confirm') + ':OPEN  ' + bn('back') + ':BACK' : 'OPEN BOXES IN A SAFE ROOM  ' + bn('back') + ':BACK' });
+        frame(ctx, 'LOOT BOXES', { footer: !list.length ? bn('back') + ':BACK' : canOpen ? bn('confirm') + ':OPEN  ' + bn('back') + ':BACK' : 'OPEN BOXES AT AN INN  ' + bn('back') + ':BACK' });
         if (!list.length) {
           bigSprite(ctx, 'box_bronze', 160, 82, { scale: 3, silhouette: '#1c2448' });
           T('NO UNOPENED BOXES.', 160, 92, C.white, { align: 'center' });
           if (!m.empty) m.empty = aiLine('boxEmpty', 'NO BOXES? GO HIT SOMETHING. THE SPONSORS ARE WATCHING.');
-          wrap(m.empty, 270).slice(0, 4).forEach(function (l, i) { T(l, 160, 108 + i * 10, C.gray, { align: 'center' }); });
+          wrap(up(m.empty), 270).slice(0, 4).forEach(function (l, i) { T(l, 160, 108 + i * 10, C.gray, { align: 'center' }); });
           return;
         }
         T(list.length + ' UNOPENED', 300, 21, C.dgray, { align: 'right', shadow: null });
@@ -955,8 +1337,8 @@
           var b = list[i], yy = 32 + (i - m.scroll) * 21;
           if (i === m.sel) { R(10, yy - 2, 300, 20, '#1c2c5c'); cursor(13, yy + 4); }
           spr(ctx, 'box_' + b.tier, 32, yy + 16, { frame: i === m.sel ? Math.floor((DCW.t || 0) * 6) : 0 });
-          T(fitText(tierName(b.tier), 250), 46, yy, boxColor(b.tier));
-          T(fitText('FROM: ' + (b.from || 'THE SPONSORS'), 250), 46, yy + 9, C.dgray, { shadow: null });
+          T(fitText(up(tierName(b.tier)), 250), 46, yy, boxColor(b.tier));
+          T(fitText('FROM: ' + up(b.from || 'THE SPONSORS'), 250), 46, yy + 9, C.dgray, { shadow: null });
         }
         scrollArrows(300, 30, 152, m.scroll, vis, list.length);
         return;
@@ -966,8 +1348,8 @@
       var col = boxColor(m.tier);
       var spin = (DCW.t || 0) * (m.mode === 'shake' ? 0.6 + m.mt : 0.4);
       rays(ctx, 160, 92, col, spin, m.mode === 'shake' ? Math.min(0.16, 0.06 + m.mt * 0.05) : 0.14);
-      T(tierName(m.tier), 160, 8, col, { align: 'center' });
-      if (m.from) T(fitText('FROM: ' + m.from, 300), 160, 18, C.dgray, { align: 'center', shadow: null });
+      T(up(tierName(m.tier)), 160, 8, col, { align: 'center' });
+      if (m.from) T(fitText('FROM: ' + up(m.from), 300), 160, 18, C.dgray, { align: 'center', shadow: null });
       if (m.mode === 'shake') {
         var amp = 1 + m.mt * 2.2;
         var ox = Math.round((Math.random() * 2 - 1) * amp), oy = Math.round((Math.random() * 2 - 1) * amp * 0.5);
@@ -996,23 +1378,21 @@
         var c = m.card, rr = c.r || {};
         dim(ctx, 0.6);
         DCW.box(60, 26, 200, 128, { border: C.gold, fill: '#1c0c34' });
-        T(rr.kind === 'companion' ? 'NEW COMPANION!' : 'NEW SKIN UNLOCKED!', 160, 32, blink(3) ? C.gold : C.yellow, { align: 'center' });
+        T('NEW SKIN UNLOCKED!', 160, 32, blink(3) ? C.gold : C.yellow, { align: 'center' });
         var ang = (DCW.t || 0) * 0.8;
         ctx.save(); ctx.beginPath(); ctx.rect(62, 44, 196, 62); ctx.clip(); rays(ctx, 160, 92, C.gold, ang, 0.12); ctx.restore();
-        if (rr.kind === 'companion') bigSprite(ctx, compSprite(rr.id) + '_idle', 160, 102, { scale: 3, frame: Math.floor((DCW.t || 0) * 3) });
-        else bigSprite(ctx, 'carl_idle', 160, 102, { scale: 2, skin: rr.id, frame: Math.floor((DCW.t || 0) * 2) });
+        bigSprite(ctx, actorName('carl', 'idle'), 160, 102, { scale: 2, skin: rr.id, frame: Math.floor((DCW.t || 0) * 2) });
         for (var s = 0; s < 6; s++) { var sa = (DCW.t || 0) * 2 + s; R(160 + Math.cos(sa) * 40, 76 + Math.sin(sa * 1.3) * 22, 2, 2, C.white); }
-        var def = rr.kind === 'companion' ? compDef(rr.id) : skinDef(rr.id);
-        var nm = rr.kind === 'companion' ? compName(rr.id) : skinName(rr.id);
-        T(fitText(nm, 190), 160, 110, C.white, { align: 'center' });
-        var extra = rr.kind === 'companion' ? (def && def.desc) : (def && (perkText(def.perk) ? 'PERK: ' + perkText(def.perk) : def.desc));
-        wrap(extra || '', 186).slice(0, 2).forEach(function (l, i) { T(l, 160, 121 + i * 10, C.gray, { align: 'center' }); });
+        var def = skinDef(rr.id);
+        T(fitText(skinName(rr.id), 190), 160, 110, C.white, { align: 'center' });
+        var extra = def && (perkText(def.perk) ? 'PERK: ' + perkText(def.perk) : def.desc);
+        wrap(up(extra || ''), 186).slice(0, 2).forEach(function (l, i) { T(l, 160, 121 + i * 10, C.gray, { align: 'center' }); });
         if (m.mt > 0.5 && blink(2)) T(bn('confirm') + ': SWEET', 160, 142, C.gold, { align: 'center' });
       }
       if (m.mode === 'done') {
         DCW.box(4, 134, 312, 42);
-        R(9, 138, 34, 34, C.white); R(10, 139, 32, 32, '#000'); portrait(ctx, 'p_ai', 10, 139);
-        wrap(m.quip, 262).slice(0, 3).forEach(function (l, i) { T(l, 48, 140 + i * 10, C.white); });
+        faceSlot(ctx, 'p_ai', 10, 139, m.mt < 1.2, 3);
+        wrap(up(m.quip), 262).slice(0, 3).forEach(function (l, i) { T(l, 48, 140 + i * 10, C.white); });
         if (blink(2.5)) T('▼', 304, 166, C.gold);
       }
     };
@@ -1021,7 +1401,7 @@
       drawBoxes(ctx);
       if (m.mode === 'list' && m.lockT > 0 && boxes().length) {
         DCW.box(50, 70, 220, 34, { fill: '#2c0808', border: C.red });
-        T('BOXES ONLY OPEN IN A SAFE ROOM', 160, 77, C.red, { align: 'center' });
+        T('BOXES ONLY OPEN AT AN INN', 160, 77, C.red, { align: 'center' });
         T('THE SPONSORS WANT IT ON CAMERA.', 160, 89, C.gray, { align: 'center', shadow: null });
       }
     };
@@ -1036,11 +1416,11 @@
     o = o || {};
     var m = { kind: 'reader', scroll: 0 };
     var lines = [];
-    (o.blocks || []).forEach(function (b, bi) {
+    (o.blocks || []).forEach(function (b) {
       if (!b || (!b.text && !b.head)) return;
       if (lines.length) lines.push(['', C.gray]);
-      if (b.head) lines.push([String(b.head).toUpperCase(), b.headColor || C.gold]);
-      if (b.text) wrap(String(b.text).toUpperCase(), 284).forEach(function (t) { lines.push([t, b.color || C.white]); });
+      if (b.head) lines.push([up(b.head), b.headColor || C.gold]);
+      if (b.text) wrap(up(b.text), 284).forEach(function (t) { lines.push([t, b.color || C.white]); });
     });
     var VIS = 13;
     var maxScroll = Math.max(0, lines.length - VIS);
@@ -1053,7 +1433,7 @@
       else if (m.t > 0.1 && (backPressed() || P('confirm') || P('start') || P('special') || P('select'))) { sfx('menu_back'); close(m); }
     };
     m.draw = function (ctx) {
-      frame(ctx, o.title || 'DETAILS', { titleColor: o.titleColor, border: o.border,
+      frame(ctx, o.title ? up(o.title) : 'DETAILS', { titleColor: o.titleColor, border: o.border,
         footer: maxScroll ? '↑↓:SCROLL  ◀▶:PAGE  ' + bn('back') + ':CLOSE' : bn('back') + ':CLOSE' });
       for (var i = 0; i < VIS && i + m.scroll < lines.length; i++) {
         var ln = lines[i + m.scroll];
@@ -1070,97 +1450,74 @@
   };
 
   /* ================================================================
-     WARDROBE
+     WARDROBE (skins; the party is story-driven in book 2)
      ================================================================ */
+  var DEF_SKINS = ['carl_f3', 'carl_primal', 'carl_magistrate', 'carl_boxers', 'carl_jacket', 'carl_bodyguard', 'carl_kilt', 'carl_hazmat', 'carl_pajamas', 'carl_clown', 'carl_toga', 'carl_gold'];
   ui.openWardrobe = function () {
-    var m = { kind: 'wardrobe', tab: 0, sel: 0, scroll: 0, msg: '', msgT: 0 };
-    var DEF_SKINS = ['carl_boxers', 'carl_jacket', 'carl_bodyguard', 'carl_kilt', 'carl_hazmat', 'carl_pajamas', 'carl_clown', 'carl_toga', 'carl_gold'];
-    var DEF_COMPS = ['donut', 'mongo', 'katia', 'zev', 'squeaks'];
-    function ids() { var d = m.tab === 0 ? D('skins') : D('companions'); var l = d ? Object.keys(d) : (m.tab === 0 ? DEF_SKINS : DEF_COMPS); return l.length ? l : (m.tab === 0 ? DEF_SKINS : DEF_COMPS); }
-    function kind() { return m.tab === 0 ? 'skin' : 'companion'; }
-    function detailBlocks(k, id) {
-      var dd = (k === 'skin' ? skinDef(id) : compDef(id)) || {}, own = owned(k, id), out = [];
-      if (!own) {
-        out.push({ head: 'HOW TO UNLOCK', text: dd.how || 'FIND IT IN A LOOT BOX.', color: C.yellow });
-        return out;
-      }
+    var m = { kind: 'wardrobe', sel: 0, scroll: 0, msg: '', msgT: 0 };
+    var VIS = 12;
+    function ids() { var d = D('skins'); var l = d ? Object.keys(d) : DEF_SKINS; return l.length ? l : DEF_SKINS; }
+    function detailBlocks(id) {
+      var dd = skinDef(id) || {}, own = owned('skin', id), out = [];
+      if (!own) { out.push({ head: 'HOW TO UNLOCK', text: dd.how || 'FIND IT IN A LOOT BOX.', color: C.yellow }); return out; }
       if (dd.desc) out.push({ text: dd.desc, color: C.gray });
-      if (k === 'skin') out.push({ head: 'PERK', text: dd.perk ? perkText(dd.perk) : 'NONE. PURE STYLE.', color: C.green, headColor: C.green });
-      else {
-        if (dd.ability) out.push({ head: 'ABILITY', text: String(dd.ability).toUpperCase() + (dd.cooldown ? ' (EVERY ' + dd.cooldown + 'S)' : ''), color: C.green, headColor: C.green });
-        if (dd.special) out.push({ head: 'SPECIAL: ' + (dd.special.name || ''), text: dd.special.desc || '', color: C.blue, headColor: C.blue });
-      }
+      out.push({ head: 'PERK', text: dd.perk ? perkText(dd.perk) || 'SECRET.' : 'NONE. PURE STYLE.', color: C.green, headColor: C.green });
       return out;
     }
     function openInfo() {
-      var l = ids(), id = l[m.sel], k = kind(), own = owned(k, id);
+      var l = ids(), id = l[m.sel], own = owned('skin', id);
       sfx('menu_select');
-      ui.readMore({ title: own ? (k === 'skin' ? skinName(id) : compName(id)) : 'LOCKED', titleColor: own ? C.gold : C.dgray, blocks: detailBlocks(k, id) });
+      ui.readMore({ title: own ? skinName(id) : 'LOCKED', titleColor: own ? C.gold : C.dgray, blocks: detailBlocks(id) });
     }
-    function selectEquipped() { var l = ids(), e = equipped(kind()); m.sel = Math.max(0, l.indexOf(e)); m.scroll = 0; scrollTo(m, 11, l.length); }
+    function selectEquipped() { var l = ids(), e = equipped('skin'); m.sel = Math.max(0, l.indexOf(e)); m.scroll = 0; scrollTo(m, VIS, l.length); }
     selectEquipped();
     m.update = function (dt) {
       m.t += dt; if (m.msgT > 0) m.msgT -= dt;
       var l = ids();
-      if (P('left') || P('right')) { m.tab = 1 - m.tab; m.msgT = 0; sfx('menu_move'); selectEquipped(); return; }
-      listNav(m, l.length, dt); scrollTo(m, 11, l.length);
+      listNav(m, l.length, dt); scrollTo(m, VIS, l.length);
       if (P('special') || P('select')) { openInfo(); return; }
       if (P('confirm')) {
         var id = l[m.sel];
-        if (!owned(kind(), id)) { openInfo(); return; }
-        if (equipped(kind()) === id) { sfx('menu_move'); return; }
+        if (!owned('skin', id)) { openInfo(); return; }
+        if (equipped('skin') === id) { sfx('menu_move'); return; }
         var ok;
-        if (hasG('equip')) ok = G('equip', kind(), id);
-        else { var s = save(); s.equipped[kind()] = id; persist(); ok = true; }
+        if (hasG('equip')) ok = G('equip', 'skin', id);
+        else { var s = save(); s.equipped.skin = id; persist(); ok = true; }
         if (ok !== false) { sfx('menu_select'); m.msg = 'EQUIPPED!'; m.msgT = 1.0; }
       } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
     };
     m.draw = function (ctx) {
-      var l = ids(), k = kind();
-      frame(ctx, 'WARDROBE', { footer: '◀▶:TAB  ' + bn('confirm') + ':EQUIP  ' + bn('special') + ':INFO  ' + bn('back') + ':BACK' });
-      // tabs
-      var tabs = ['SKINS', 'PALS'];
-      tabs.forEach(function (t, i) {
-        var tx = 14 + i * 62, act = i === m.tab;
-        DCW.box(tx, 20, 58, 12, { fill: act ? '#a81000' : '#0f1630', border: act ? C.white : C.dgray });
-        T(t, tx + 29, 22, act ? C.white : C.dgray, { align: 'center' });
-      });
-      var vis = 11;
-      for (var i = m.scroll; i < Math.min(l.length, m.scroll + vis); i++) {
-        var id = l[i], yy = 38 + (i - m.scroll) * 11, own = owned(k, id), eq = equipped(k) === id;
-        if (i === m.sel) cursor(12, yy);
-        var nm = own ? (k === 'skin' ? skinName(id) : compName(id)) : '? ? ? ? ?';
-        T(fitText(nm, 96), 22, yy, own ? (i === m.sel ? C.white : C.gray) : C.ddgray);
+      var l = ids(), have = l.filter(function (id) { return owned('skin', id); }).length;
+      frame(ctx, 'WARDROBE', { footer: '↑↓:BROWSE  ' + bn('confirm') + ':EQUIP  ' + bn('special') + ':INFO  ' + bn('back') + ':BACK' });
+      T('SKINS ' + have + '/' + l.length, 12, 21, C.white);
+      for (var i = m.scroll; i < Math.min(l.length, m.scroll + VIS); i++) {
+        var id = l[i], yy = 33 + (i - m.scroll) * 10, own = owned('skin', id), eq = equipped('skin') === id;
+        if (i === m.sel) { R(10, yy - 1, 124, 10, '#1c2c5c'); cursor(12, yy); }
+        T(fitText(own ? skinName(id) : '? ? ? ? ?', 98), 22, yy, own ? (i === m.sel ? C.white : C.gray) : C.ddgray);
         if (eq) T('✓', 124, yy, C.green);
       }
-      scrollArrows(124, 34, 150, m.scroll, vis, l.length);
+      scrollArrows(124, 29, 153, m.scroll, VIS, l.length);
       // preview
-      var id2 = l[m.sel], own2 = owned(k, id2);
+      var id2 = l[m.sel], own2 = owned('skin', id2);
       var pv = { x: 140, y: 20, w: 170, h: 72 };
       DCW.box(pv.x, pv.y, pv.w, pv.h, { fill: '#2c2450' });
       R(pv.x + 2, pv.y + 56, pv.w - 4, 14, '#1c1438');
       for (var s = 0; s < 6; s++) R(pv.x + 8 + s * 28, pv.y + 6 + (s % 2) * 4, 1, 1, C.gray);
       var fr = Math.floor((DCW.t || 0) * 2);
-      var skin = k === 'skin' ? id2 : equipped('skin');
-      var comp = k === 'companion' ? id2 : equipped('companion');
-      var sil = !own2 ? '#000' : null;
-      bigSprite(ctx, 'carl_idle', pv.x + 60, pv.y + 62, { scale: 2, skin: skin, frame: fr, silhouette: k === 'skin' ? sil : null });
-      bigSprite(ctx, compSprite(comp) + '_idle', pv.x + 124, pv.y + 62, { scale: 2, frame: fr, silhouette: k === 'companion' ? sil : null });
-      var dd = (k === 'skin' ? skinDef(id2) : compDef(id2)) || {};
+      bigSprite(ctx, actorName('carl', 'idle'), pv.x + 70, pv.y + 62, { scale: 2, skin: id2, frame: fr, silhouette: own2 ? null : '#000' });
+      if (hasArt('donut_shoulder')) bigSprite(ctx, 'donut_shoulder', pv.x + 76, pv.y + 28, { scale: 2, frame: fr, silhouette: own2 ? null : '#000' });
+      else bigSprite(ctx, actorName('donut', 'idle'), pv.x + 128, pv.y + 62, { scale: 2, frame: fr, flip: true });
       var yy2 = pv.y + pv.h + 5;
-      T(fitText(own2 ? (k === 'skin' ? skinName(id2) : compName(id2)) : 'LOCKED', 168), pv.x, yy2, own2 ? C.gold : C.dgray);
-      if (equipped(k) === id2) T('EQUIPPED', pv.x + pv.w, yy2, C.green, { align: 'right' });
+      T(fitText(own2 ? skinName(id2) : 'LOCKED', 168), pv.x, yy2, own2 ? C.gold : C.dgray);
+      if (equipped('skin') === id2) T('EQUIPPED', pv.x + pv.w, yy2, C.green, { align: 'right' });
       yy2 += 11;
       var lines = [];
-      detailBlocks(k, id2).forEach(function (b) {
-        if (b.head) lines.push([String(b.head).toUpperCase() + (b.text ? '' : ''), b.headColor || C.gold]);
-        if (b.text) wrap(String(b.text).toUpperCase(), 168).forEach(function (t) { lines.push([t, b.color || C.gray]); });
+      detailBlocks(id2).forEach(function (b) {
+        if (b.head) lines.push([up(b.head), b.headColor || C.gold]);
+        if (b.text) wrap(up(b.text), 168).forEach(function (t) { lines.push([t, b.color || C.gray]); });
       });
       var FIT = 5;
-      if (lines.length > FIT) {
-        lines = lines.slice(0, FIT - 1);
-        lines.push([(blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE', C.white]);
-      }
+      if (lines.length > FIT) { lines = lines.slice(0, FIT - 1); lines.push([(blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE', C.white]); }
       lines.forEach(function (ln, i) { T(ln[0], pv.x, yy2 + i * 10, ln[1]); });
       if (m.msgT > 0) { DCW.box(80, 74, 160, 18, { border: m.msg === 'EQUIPPED!' ? C.green : C.red }); T(fitText(m.msg, 150), 160, 79, m.msg === 'EQUIPPED!' ? C.green : C.red, { align: 'center' }); }
     };
@@ -1174,6 +1531,7 @@
     var m = { kind: 'achievements', sel: 0, scroll: 0 };
     function list() { var d = D('achievements') || {}; return Object.keys(d).map(function (id) { var a = d[id] || {}; return { id: id, a: a }; }); }
     function got(id) { var s = save(); return !!(s.meta && s.meta.achievements && s.meta.achievements[id]); }
+    var LOCKED_TXT = '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.';
     m.update = function (dt) {
       m.t += dt;
       var l = list();
@@ -1183,9 +1541,9 @@
         var cnt = (save().meta && save().meta.counters && save().meta.counters[a.event]) || 0;
         sfx('menu_select');
         ui.readMore({ title: g ? (a.name || e.id) : 'LOCKED ACHIEVEMENT', titleColor: g ? C.gold : C.dgray, border: g ? C.gold : C.dgray, blocks: [
-          { text: g ? (a.desc || '') : '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.', color: g ? C.white : C.dgray },
+          { text: g ? (a.desc || '') : (a.hint || LOCKED_TXT), color: g ? C.white : C.dgray },
           (!g && (a.count || 1) > 1) ? { head: 'PROGRESS', text: Math.min(cnt, a.count) + ' / ' + a.count, color: C.gray } : null,
-          { head: 'REWARD', text: String(a.box || 'bronze').toUpperCase() + ' BOX', color: boxColor(a.box || 'bronze') }
+          a.box !== null ? { head: 'REWARD', text: up(tierName(a.box || 'bronze')), color: boxColor(a.box || 'bronze') } : null
         ].filter(Boolean) });
       } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
     };
@@ -1194,33 +1552,34 @@
       frame(ctx, 'ACHIEVEMENTS', { footer: '↑↓:BROWSE  ' + bn('confirm') + ':READ  ' + bn('back') + ':BACK' });
       T('UNLOCKED ' + n + '/' + l.length, 12, 21, C.white);
       DCW.bar(110, 23, 44, 3, l.length ? n / l.length : 0, C.gold, '#2c2000');
+      var imp = save().meta && save().meta.imported;
+      if (imp && imp.achievements) T('BOOK 1: ' + imp.achievements, 308, 21, C.dgray, { align: 'right', shadow: null });
       if (!l.length) { T('NO ACHIEVEMENTS LOADED.', 160, 90, C.gray, { align: 'center' }); return; }
       var vis = 12;
       for (var i = m.scroll; i < Math.min(l.length, m.scroll + vis); i++) {
         var e = l[i], yy = 33 + (i - m.scroll) * 10, g = got(e.id);
         if (i === m.sel) { R(10, yy - 1, 148, 10, '#1c2c5c'); }
         icon(ctx, g ? 'star' : 'lock', 13, yy);
-        T(fitText(g ? (e.a.name || e.id) : '???', 128), 24, yy + 1, g ? (i === m.sel ? C.gold : C.yellow) : C.dgray);
+        T(fitText(g ? up(e.a.name || e.id) : '???', 128), 24, yy + 1, g ? (i === m.sel ? C.gold : C.yellow) : C.dgray);
       }
       scrollArrows(150, 29, 153, m.scroll, vis, l.length);
-      // detail
       var e2 = l[m.sel]; if (!e2) return;
       var g2 = got(e2.id), a = e2.a;
       var px = 164, pw = 144;
-      DCW.box(px, 20, pw, 138, { fill: g2 ? '#2c1c00' : '#101018', border: g2 ? C.gold : C.dgray });
-      bigSprite(ctx, g2 ? 'box_' + (a.box || 'bronze') : 'box_bronze', px + 20, 46, { scale: 1, silhouette: g2 ? null : '#000' });
-      var yy2 = 26;
-      wrap(g2 ? (a.name || e2.id) : '???', pw - 44).slice(0, 2).forEach(function (t) { T(t, px + 36, yy2, g2 ? C.gold : C.dgray); yy2 += 10; });
-      yy2 = Math.max(yy2, 50) + 4;
-      var dl = wrap(g2 ? (a.desc || '') : '??? KEEP CRAWLING. THE AI WILL TELL YOU WHEN YOU DO SOMETHING DUMB ENOUGH.', pw - 12);
-      if (dl.length > 6) { dl = dl.slice(0, 5); dl.push((blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ ALL'); }
-      dl.forEach(function (t, i) { T(t, px + 6, yy2, i === 5 && t.indexOf('READ ALL') >= 0 ? C.gold : g2 ? C.white : C.dgray); yy2 += 10; });
+      DCW.box(px, 30, pw, 128, { fill: g2 ? '#2c1c00' : '#101018', border: g2 ? C.gold : C.dgray });
+      bigSprite(ctx, 'box_' + (a.box || 'bronze'), px + 20, 56, { scale: 1, silhouette: g2 ? null : '#000' });
+      var yy2 = 36;
+      wrap(g2 ? up(a.name || e2.id) : '???', pw - 44).slice(0, 2).forEach(function (t) { T(t, px + 36, yy2, g2 ? C.gold : C.dgray); yy2 += 10; });
+      yy2 = Math.max(yy2, 60) + 4;
+      var dl = wrap(g2 ? up(a.desc || '') : up(a.hint || LOCKED_TXT), pw - 12);
+      if (dl.length > 5) { dl = dl.slice(0, 4); dl.push((blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ ALL'); }
+      dl.forEach(function (t, i) { T(t, px + 6, yy2, i === 4 && t.indexOf('READ ALL') >= 0 ? C.gold : g2 ? C.white : C.dgray); yy2 += 10; });
       var cnt = (save().meta && save().meta.counters && save().meta.counters[a.event]) || 0;
       if (!g2 && (a.count || 1) > 1) {
         T('PROGRESS ' + Math.min(cnt, a.count) + '/' + a.count, px + 6, 128, C.gray);
         DCW.bar(px + 6, 139, pw - 12, 2, cnt / a.count, C.green, '#002800');
       }
-      T('REWARD: ' + String(a.box || 'bronze').toUpperCase() + ' BOX', px + 6, 146, g2 ? boxColor(a.box || 'bronze') : C.ddgray, { shadow: null });
+      if (a.box !== null) T(fitText('REWARD: ' + up(tierName(a.box || 'bronze')), pw - 12), px + 6, 146, g2 ? boxColor(a.box || 'bronze') : C.ddgray, { shadow: null });
     };
     return push(m);
   };
@@ -1254,7 +1613,7 @@
     function change(r, d) {
       var s = settings();
       if (r.type === 'vol') { var v = Math.round(clamp((s[r.key] === undefined ? 0.6 : s[r.key]) + d * 0.1, 0, 1) * 10) / 10; s[r.key] = v; applySettings(); sfx(r.key === 'sfx' ? 'coin' : 'menu_move'); }
-      else if (r.type === 'bool') { s[r.key] = !(s[r.key] !== false); applySettings(); sfx('menu_move'); if (r.key === 'shake' && s.shake && DCW.shake) DCW.shake(2, 0.2); }
+      else if (r.type === 'bool') { s[r.key] = r.key === 'easy' ? !(s.easy === true) : !(s[r.key] !== false); applySettings(); sfx('menu_move'); if (r.key === 'shake' && s.shake && DCW.shake) DCW.shake(2, 0.2); }
       else if (r.type === 'touch') { var i = TOUCH.indexOf(s.touch || 'auto'); s.touch = TOUCH[(i + (d || 1) + 3) % 3]; applySettings(); sfx('menu_move'); }
       else return;
       persist();
@@ -1271,7 +1630,7 @@
         else if (r.type === 'controls') { sfx('menu_select'); ui.openControls(); }
         else if (r.type === 'reset') {
           sfx('menu_select');
-          ui.confirm('ERASE ALL PROGRESS, UNLOCKS AND ACHIEVEMENTS?', function () {
+          ui.confirm('ERASE ALL BOOK 2 PROGRESS, UNLOCKS AND ACHIEVEMENTS? (BOOK 1 IS NOT TOUCHED.)', function () {
             ui.confirm('REALLY? THE AI WILL REMEMBER THIS. FOREVER.', function () {
               if (typeof DCW.resetSave === 'function') DCW.resetSave();
               applySettings();
@@ -1297,11 +1656,11 @@
           T('▶', 252, yy, act ? C.white : C.ddgray);
           T(Math.round(v * 100) + '%', 300, yy, C.white, { align: 'right' });
         } else if (r.type === 'bool') {
-          T('◀ ' + (r.val ? 'ON' : 'OFF') + ' ▶', 205, yy, r.val ? C.green : C.dgray, { align: 'center' });
+          T('◀ ' + (r.val ? 'ON' : 'OFF') + ' ▶', 230, yy, r.val ? C.green : C.dgray, { align: 'center' });
         } else if (r.type === 'touch') {
-          T('◀ ' + r.val + ' ▶', 205, yy, C.blue, { align: 'center' });
+          T('◀ ' + r.val + ' ▶', 230, yy, C.blue, { align: 'center' });
         } else if (r.type === 'controls') {
-          T('REBIND ▶', 205, yy, act ? C.gold : C.dgray, { align: 'center' });
+          T('REBIND ▶', 230, yy, act ? C.gold : C.dgray, { align: 'center' });
         }
       });
     };
@@ -1314,11 +1673,12 @@
   // o = { bossId, name, title, portrait, onDone }
   ui.versus = function (o) {
     o = o || {};
-    var compId = equipped('companion');
-    var m = { kind: 'versus', slam: false, done: false, out: 0 };
+    var pals = partyList();
+    var compId = pals[0] || null;
+    var m = { kind: 'versus', slam: false, done: false };
     var DUR = 3.2;
-    var bossName = String(o.name || 'THE BOSS').toUpperCase();
-    var bossTitle = String(o.title || '').toUpperCase();
+    var bossName = up(o.name || 'THE BOSS');
+    var bossTitle = up(o.title || '');
     var bossPortrait = o.portrait || ('p_' + (o.bossId || ''));
     var streaks = [];
     for (var i = 0; i < 26; i++) streaks.push({ y: Math.random() * H, x: Math.random() * W, w: 20 + Math.random() * 60, sp: 260 + Math.random() * 320, left: i % 2 === 0 });
@@ -1338,7 +1698,6 @@
     };
     m.draw = function (ctx) {
       var t = m.t, outT = clamp((t - (DUR - 0.25)) / 0.25, 0, 1);
-      // backdrop: two halves wipe in on a diagonal
       var wipe = ease(t / 0.3) * (1 - outT);
       ctx.save();
       ctx.globalAlpha = 0.92 * (1 - outT * 0.6);
@@ -1349,9 +1708,7 @@
       ctx.globalAlpha = 0.35 * wipe;
       streaks.forEach(function (st) { R(st.x, st.y, st.w, 1, st.left ? '#3cbcfc' : '#f83800'); });
       ctx.restore();
-      // the diagonal seam
       if (wipe > 0.9) { ctx.save(); ctx.globalAlpha = 1 - outT; ctx.strokeStyle = '#fcfcfc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * 0.56, 0); ctx.lineTo(W * 0.44, H); ctx.stroke(); ctx.restore(); }
-      // fighter panels
       var inL = ease((t - 0.12) / 0.4), inR = ease((t - 0.22) / 0.4);
       var lx = Math.round(-120 + (26 + 120) * inL - outT * 160);
       var rx = Math.round(W + 20 - (W + 20 - 194) * inR + outT * 160);
@@ -1359,22 +1716,20 @@
       function panel(x, pname, border, fill) {
         DCW.box(x, py, 100, 100, { fill: fill, border: border });
         ctx.save(); ctx.translate(x + 2, py + 2); ctx.scale(3, 3);
-        portrait(ctx, pname, 0, 0);
+        portrait(ctx, pname, 0, 0, { frame: t > 0.7 && t < 1.4 ? Math.floor(t * 9) % 2 : 0 });
         ctx.restore();
       }
       panel(lx, 'p_carl', C.blue, '#081440');
       panel(rx, bossPortrait, C.red, '#3c0808');
-      // companion badge on Carl's panel
-      if (inL > 0.95 && outT === 0) {
+      if (compId && inL > 0.95 && outT === 0) {
         DCW.box(lx + 70, py + 72, 34, 34, { fill: '#081440', border: C.gold });
         portrait(ctx, 'p_' + compId, lx + 71, py + 73);
       }
-      // names
       var nameA = Math.max(0, Math.min(1, (t - 0.7) / 0.2)) * (1 - outT);
       if (nameA > 0) {
         ctx.save(); ctx.globalAlpha = nameA;
         T('CARL', lx + 50, py + 108, C.gold, { align: 'center', scale: 2 });
-        T('& ' + compName(compId), lx + 50, py + 128, C.blue, { align: 'center', shadow: null });
+        if (compId) T('& ' + compName(compId), lx + 50, py + 128, C.blue, { align: 'center', shadow: null });
         if (DCW.textWidth(bossName, 2) <= 148) T(bossName, rx + 50, py + 108, C.red, { align: 'center', scale: 2 });
         else if (/^THE /.test(bossName) && DCW.textWidth(bossName.slice(4), 2) <= 148) {
           T('THE', rx + 50, py + 102, C.red, { align: 'center', shadow: null });
@@ -1383,7 +1738,6 @@
         wrap(bossTitle, 150).slice(0, 2).forEach(function (l, i) { T(l, rx + 50, py + 128 + i * 9, C.gray, { align: 'center', shadow: null }); });
         ctx.restore();
       }
-      // VS slam
       if (t >= 0.55 && outT < 1) {
         var k = clamp((t - 0.55) / 0.12, 0, 1);
         var sc = Math.max(3, Math.round(7 - 4 * k));
@@ -1402,8 +1756,8 @@
   /* ================================================================
      KEYBOARD CONTROLS (rebinding)
      ================================================================ */
-  var CTRL_LABELS = { left: 'MOVE LEFT', right: 'MOVE RIGHT', up: 'UP / CLIMB', down: 'DOWN / CROUCH', jump: 'JUMP / OK',
-    attack: 'ATTACK / BACK', bomb: 'BOMB', special: 'SPECIAL', potion: 'POTION', start: 'PAUSE', select: 'MAP' };
+  var CTRL_LABELS = { left: 'MOVE LEFT', right: 'MOVE RIGHT', up: 'UP / DOOR', down: 'DOWN / CROUCH', jump: 'JUMP / OK',
+    attack: 'PUNCH / BACK', bomb: 'THROW', special: 'SPECIAL', potion: 'POTION', start: 'PAUSE', select: 'MAP' };
   var PRESET_ORDER = [['classic', 'CLASSIC Z X C'], ['wasd', 'WASD + SPACE J'], ['arrows', 'ARROWS + SPACE F']];
   ui.openControls = function () {
     var inp = DCW.input;
@@ -1426,7 +1780,7 @@
         acts.forEach(function (o) { for (var i = 0; i < 2; i++) if (b[o][i] === code && !(o === a && i === sl)) moved = o; });
         inp.setBinding(a, sl, code);
         sfx('menu_select');
-        say2(CTRL_LABELS[a] + ' = ' + inp.keyName(code) + (moved && moved !== a ? '  (REMOVED FROM ' + CTRL_LABELS[moved] + ')' : ''), moved && moved !== a ? C.orange || C.gold : C.green);
+        say2(CTRL_LABELS[a] + ' = ' + inp.keyName(code) + (moved && moved !== a ? '  (REMOVED FROM ' + CTRL_LABELS[moved] + ')' : ''), moved && moved !== a ? C.orange : C.green);
       });
     }
     m.onClose = function () { if (inp.cancelCapture) inp.cancelCapture(); };
@@ -1458,7 +1812,7 @@
           if (on) R(cx2 - 31, yy - 2, 62, 10, m.cap ? C.gold : '#3050a0');
           var code = b[a][sl];
           var label = (m.cap && on) ? (blink(5) ? '...' : '') : inp.keyName(code);
-          var col = (m.cap && on) ? '#000' : !code ? (sl === 0 && (a === 'jump' || a === 'attack' || a === 'left' || a === 'right') ? C.red : C.ddgray) : on ? C.white : C.lgray || C.white;
+          var col = (m.cap && on) ? '#000' : !code ? (sl === 0 && (a === 'jump' || a === 'attack' || a === 'left' || a === 'right') ? C.red : C.ddgray) : on ? C.white : C.lgray;
           T(label, cx2, yy, col, { align: 'center', shadow: null });
         }
       });
@@ -1481,57 +1835,101 @@
   };
 
   /* ================================================================
-     SHOP
+     SHOPS  openShop(shopId) - buy list from data.shops[shopId] via DCW.game.buy(shopId, itemId)
      ================================================================ */
-  ui.openShop = function () {
-    var m = { kind: 'shop', sel: 0, scroll: 0, flash: 0 };
-    var sk = D('shopkeeper') || {};
-    var keeper = sk.name || 'BOPCA';
-    m.line = pick(sk.lines) || 'WELCOME, CRAWLER! EVERYTHING IS FOR SALE. EXCEPT ME. PROBABLY.';
+  var SHOP_HELLO = {
+    lucky: 'LUCKY\'S GENERAL GOODS. IF IT ISN\'T NAILED DOWN, I SELL IT. IF IT IS NAILED DOWN, I SELL THE NAILS.',
+    pustule: 'HOBGOBS AND BOOM STICKS! EVERYTHING HERE EXPLODES. THAT IS THE WHOLE BUSINESS MODEL, SWEETIE.',
+    quint: 'YOU NEED SOMETHING. I HAVE SOMETHING. LET\'S NOT MAKE THIS WEIRD.',
+    edge_dancer: 'FINE SILKS, FINER BLADES, AND A RETURN POLICY OF ABSOLUTELY NOT.',
+    talon: 'FRESH FROM THE MARKET. MOSTLY FRESH. SOME OF IT IS STILL MOVING.'
+  };
+  function shopDef(id) { var s = D('shops') || {}; return s[id] || null; }
+  function shopEntryGive(it) { var g = it.give; if (Array.isArray(g)) g = g[0]; return g || { item: it.id, n: 1 }; }
+  function shopEntryName(it) {
+    if (it.name) return up(it.name);
+    var g = shopEntryGive(it);
+    if (g.item) return itemName(g.item) + ((g.n || 1) > 1 ? ' ×' + g.n : '');
+    if (g.potion) return 'HEALTH POTION' + (g.potion > 1 ? ' ×' + g.potion : '');
+    if (g.skin) return 'OUTFIT: ' + skinName(g.skin);
+    if (g.box) return up(tierName(g.box));
+    return itemName(it.id);
+  }
+  function shopEntryDesc(it) {
+    if (it.desc) return up(it.desc);
+    var g = shopEntryGive(it), d = g.item ? itemDef(g.item) : g.skin ? skinDef(g.skin) : null;
+    if (d && d.desc) return up(d.desc);
+    if (g.potion || g.item === 'potion') return 'HEALS HALF YOUR HP. TASTES LIKE A GAS STATION SLUSHIE.';
+    return '';
+  }
+  function shopEntryIcon(it) { var g = shopEntryGive(it); if (g.item) return itemIcon(g.item); if (g.potion) return 'potion'; if (g.box) return 'box'; if (g.skin) return 'star'; return itemIcon(it.id); }
+  function shopOwned(it) {
+    var g = shopEntryGive(it);
+    if (g.item) return itemCount(g.item);
+    if (g.potion) return itemCount('potion');
+    if (g.skin) return owned('skin', g.skin) ? 'OWNED' : null;
+    return null;
+  }
+  ui.openShop = function (shopId, o) {
+    o = o || {};
+    var all = D('shops') || {};
+    if (!shopId || !all[shopId]) shopId = shopId && !all[shopId] ? shopId : (Object.keys(all)[0] || 'shop');
+    var sh = shopDef(shopId) || { name: 'SHOP', items: [] };
+    var keeper = sh.keeper || shopId;
+    var keeperName = up(sh.keeperName || (sh.keeper ? String(sh.keeper).replace(/_/g, ' ') : 'SHOPKEEP'));
+    var por = sh.portrait || ('p_' + keeper);
+    var m = { kind: 'shop', sel: 0, scroll: 0, flash: 0, lineT: 0 };
+    var lines = lineList(sh.lines || sh.hello);
+    m.line = up(o.greet || pick(lines) || SHOP_HELLO[shopId] || 'WELCOME, CRAWLER. EVERYTHING IS FOR SALE. EXCEPT ME. PROBABLY.');
     m.lineCol = C.white;
-    function items() { var s = D('shop'); return Array.isArray(s) ? s : []; }
-    function price(it) { var p = G('price', it.id); return typeof p === 'number' ? p : (it.price || 0); }
+    function items() { return Array.isArray(sh.items) ? sh.items.filter(function (it) { return it && (!it.showIf || flag(it.showIf)) && !(it.hideIf && flag(it.hideIf)); }) : []; }
+    function price(it) { var p = G('price', shopId, it.id); return typeof p === 'number' ? p : (it.price || 0); }
+    function soldOut(it) { var r = getRun(); return !!(it.limit && r && r.bought && (r.bought[shopId + ':' + it.id] || 0) >= it.limit); }
+    function setLine(t, col) { m.line = up(t); m.lineCol = col || C.white; m.lineT = 0; }
     m.update = function (dt) {
-      m.t += dt; if (m.flash > 0) m.flash -= dt;
+      m.t += dt; m.lineT += dt; if (m.flash > 0) m.flash -= dt;
       var l = items();
       listNav(m, l.length, dt); scrollTo(m, 6, l.length);
       if ((P('special') || P('select')) && l.length) {
         var iti = l[m.sel]; sfx('menu_select');
-        ui.readMore({ title: iti.name || iti.id, titleColor: C.orange, blocks: [{ text: iti.desc || '', color: C.white }, { head: 'PRICE', text: price(iti) + ' GOLD', color: C.gold }] });
+        ui.readMore({ title: shopEntryName(iti), titleColor: C.orange, blocks: [{ text: shopEntryDesc(iti) || 'NO DESCRIPTION. LIVE A LITTLE.', color: C.white }, { head: 'PRICE', text: price(iti) + ' GOLD', color: C.gold }] });
       } else if (P('confirm') && l.length) {
         var it = l[m.sel], res;
-        if (hasG('buy')) res = G('buy', it.id) || { ok: false, msg: 'SOMETHING WENT WRONG.' };
+        if (soldOut(it)) { sfx('error'); setLine('SOLD OUT. COME BACK NEVER.', C.red); return; }
+        if (hasG('buy')) res = G('buy', shopId, it.id) || { ok: false, msg: 'SOMETHING WENT WRONG.' };
         else { res = { ok: false, msg: 'THE REGISTER IS BROKEN. COME BACK LATER.' }; sfx('error'); }
         m.flash = 0.35;
-        if (res.ok) { m.line = (res.msg ? res.msg + '! ' : '') + (pick(sk.lines) || 'PLEASURE DOING BUSINESS.'); m.lineCol = C.green; }
-        else { m.line = res.msg || 'NO.'; m.lineCol = C.red; }
-        m.line = String(m.line).toUpperCase();
-      } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
+        if (res.ok) setLine((res.msg ? res.msg + '! ' : '') + (pick(lineList(sh.thanks)) || 'PLEASURE DOING BUSINESS.'), C.green);
+        else setLine(res.msg || 'NO.', C.red);
+      } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); if (o.onClose) o.onClose(); }
     };
     m.draw = function (ctx) {
       var l = items(), run = getRun() || {};
-      frame(ctx, keeper + "'S SHOP", { footer: bn('confirm') + ':BUY  ' + bn('special') + ':INFO  ' + bn('back') + ':LEAVE' });
-      R(11, 21, 34, 34, C.white); R(12, 22, 32, 32, '#000');
-      portrait(ctx, 'p_bopca', 12, 22, { frame: Math.floor((DCW.t || 0) * 3) });
+      frame(ctx, fitText(up(sh.name || keeperName + "'S SHOP"), 280), { footer: bn('confirm') + ':BUY  ' + bn('special') + ':INFO  ' + bn('back') + ':LEAVE' });
+      faceSlot(ctx, por, 12, 22, m.lineT < 1.4, 1);
       DCW.box(50, 20, 260, 36, { fill: '#2c1c00', border: C.orange });
       R(47, 34, 4, 4, C.orange);
       wrap(m.line, 248).slice(0, 3).forEach(function (t, i) { T(t, 56, 24 + i * 10, m.lineCol); });
-      // gold
-      icon(ctx, 'coin', 12, 60); T(run.gold || 0, 22, 61, C.gold);
-      T('BOMBS ' + (run.bombs || 0) + '  POTIONS ' + (run.potions || 0), 300, 61, C.dgray, { align: 'right' });
-      R(10, 71, 300, 1, '#2c3c7c');
-      if (!l.length) { T('SOLD OUT. EVERYTHING. SOMEHOW.', 160, 100, C.gray, { align: 'center' }); return; }
+      T(fitText(keeperName, 48), 28, 58, C.dgray, { align: 'center', shadow: null });
+      icon(ctx, 'coin', 12, 66); T(run.gold || 0, 22, 67, C.gold);
+      var ex = EXPLOSIVES.concat(['potion']), ix = 306 - ex.length * 26;
+      ex.forEach(function (id, i) { icon(ctx, itemIcon(id), ix + i * 26, 66); T(itemCount(id), ix + i * 26 + 10, 67, C.gray, { shadow: null }); });
+      R(10, 77, 300, 1, '#2c3c7c');
+      if (!l.length) { T('SOLD OUT. EVERYTHING. SOMEHOW.', 160, 104, C.gray, { align: 'center' }); return; }
       var vis = 6;
       for (var i = m.scroll; i < Math.min(l.length, m.scroll + vis); i++) {
-        var it = l[i], yy = 76 + (i - m.scroll) * 11, p = price(it), afford = (run.gold || 0) >= p;
-        if (i === m.sel) { R(10, yy - 2, 300, 11, m.flash > 0 ? '#3c2c00' : '#1c2c5c'); cursor(13, yy); }
-        T(fitText(it.name || it.id, 200), 24, yy, i === m.sel ? C.white : C.gray);
-        T(p, 298, yy, afford ? C.gold : C.red, { align: 'right' });
-        icon(ctx, 'coin', 298 - tw(p) - 10, yy - 1);
+        var it = l[i], yy = 81 + (i - m.scroll) * 10, p = price(it), afford = (run.gold || 0) >= p, so = soldOut(it);
+        if (i === m.sel) { R(10, yy - 1, 300, 10, m.flash > 0 ? '#3c2c00' : '#1c2c5c'); cursor(12, yy); }
+        icon(ctx, shopEntryIcon(it), 21, yy - 1);
+        T(fitText(shopEntryName(it), 172), 32, yy, so ? C.ddgray : i === m.sel ? C.white : C.gray);
+        var ow = shopOwned(it);
+        if (ow !== null && ow !== undefined && !so) T(ow === 'OWNED' ? 'OWNED' : 'HAVE ' + ow, 246, yy, C.dgray, { align: 'right', shadow: null });
+        if (so) T('SOLD OUT', 298, yy, C.dred, { align: 'right' });
+        else { T(p, 298, yy, afford ? C.gold : C.red, { align: 'right' }); icon(ctx, 'coin', 298 - tw(p) - 10, yy - 1); }
       }
-      scrollArrows(302, 72, 136, m.scroll, vis, l.length);
+      scrollArrows(302, 77, 139, m.scroll, vis, l.length);
       R(10, 143, 300, 1, '#2c3c7c');
-      var d = l[m.sel] && l[m.sel].desc;
+      var d = l[m.sel] && shopEntryDesc(l[m.sel]);
       var sl = wrap(d || '', 296);
       if (sl.length > 2) { sl = sl.slice(0, 1); sl.push((blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE'); }
       sl.forEach(function (t, i) { T(t, 12, 146 + i * 9, i === 1 && t.indexOf('READ MORE') >= 0 ? C.white : C.gray, { shadow: null }); });
@@ -1540,84 +1938,318 @@
   };
 
   /* ================================================================
-     MAP / OBJECTIVES
+     MAP  (schematic of the Over City: areas as boxes linked by roads)
      ================================================================ */
-  var MM_COL = { '#': '#5c5c6c', '.': '#4c3c2c', ',': '#2c5c24', '=': '#8c7c5c', '~': '#1c3c9c', 'T': '#1c3c14', 'P': '#4c3c2c' };
-  function entranceInfo(ch, ow) {
-    var st = G('entranceState', ch);
-    if (st && typeof st === 'object') return st;
-    var tgt = ow && ow.entrances && ow.entrances[ch];
-    if (!tgt) return null;
-    if (tgt === 'SAFE') return { kind: 'safe', name: 'SAFE ROOM' };
-    if (tgt === 'STAIRS') { var r0 = getRun(); return { kind: 'stairs', name: 'STAIRWELL', locked: !(r0 && r0.bossDown), lockText: 'DEFEAT THE FLOOR BOSS FIRST' }; }
-    var sd = stageDef(tgt) || {}, r = getRun();
-    return { kind: sd.kind === 'boss' ? 'boss' : 'stage', side: sd.kind === 'side', stageId: tgt, name: sd.name || tgt, cleared: !!(r && r.cleared && r.cleared[tgt]), locked: false };
-  }
-  ui.entranceInfo = entranceInfo;
-  function entranceColor(st) {
-    if (!st) return C.white;
-    if (st.kind === 'safe') return C.blue;
-    if (st.kind === 'boss') return st.cleared ? C.green : st.locked ? C.dred : C.red;
-    if (st.kind === 'stairs') return st.locked ? '#5c2c5c' : C.purple;
-    return st.cleared ? C.green : st.side ? C.orange : C.yellow;
-  }
-  ui.entranceColor = entranceColor;
-  function drawMinimap(ctx, ow, x, y, maxW, maxH) {
-    var rows = ow.map || [];
-    var mh = rows.length, mw = rows.reduce(function (a, r) { return Math.max(a, r.length); }, 0);
-    if (!mw || !mh) return;
-    var s = Math.max(1, Math.min(6, Math.floor(Math.min(maxW / mw, maxH / mh))));
-    var ox = Math.round(x + (maxW - mw * s) / 2), oy = Math.round(y + (maxH - mh * s) / 2);
-    R(ox - 2, oy - 2, mw * s + 4, mh * s + 4, '#000');
-    var ents = ow.entrances || {}, marks = [];
-    for (var ty = 0; ty < mh; ty++) for (var tx = 0; tx < mw; tx++) {
-      var ch = rows[ty].charAt(tx) || '#';
-      if (ents[ch]) { R(ox + tx * s, oy + ty * s, s, s, MM_COL['.']); marks.push([tx, ty, ch]); }
-      else R(ox + tx * s, oy + ty * s, s, s, MM_COL[ch] || MM_COL['.']);
+  var MAP_ROW = ['village', 'ruins_w', 'circus_park', 'ruins_e', 'settlement', 'east_stairs'];
+  var MAP_UP = { admin: 'settlement' };           // boxes drawn above another
+  var MAP_SHORT = { village: 'VILLAGE', ruins_w: 'RUINS W', circus_park: 'CIRCUS', ruins_e: 'RUINS E', settlement: 'SKYFOWL', admin: 'ADMIN', east_stairs: 'STAIRS' };
+  function mapAreas() {
+    var row = MAP_ROW.slice(), ups = {}, k;
+    for (k in MAP_UP) ups[k] = MAP_UP[k];
+    var all = D('areas');
+    if (all) {
+      Object.keys(all).forEach(function (id) {
+        if (row.indexOf(id) >= 0 || ups[id]) return;
+        var a = all[id] || {};
+        if (a.mapAbove && row.indexOf(a.mapAbove) >= 0) ups[id] = a.mapAbove; else if (row.length < 7) row.push(id);
+      });
+      row = row.filter(function (id) { return all[id] || MAP_SHORT[id]; });
     }
-    marks.forEach(function (mk) {
-      var st = entranceInfo(mk[2], ow), c = entranceColor(st), sz = Math.max(3, s + 2);
-      R(ox + mk[0] * s + s / 2 - sz / 2 - 1, oy + mk[1] * s + s / 2 - sz / 2 - 1, sz + 2, sz + 2, '#000');
-      R(ox + mk[0] * s + s / 2 - sz / 2, oy + mk[1] * s + s / 2 - sz / 2, sz, sz, c);
-    });
-    var ow2 = DCW.overworld;
-    var roam = ow2 && typeof ow2.roamerTiles === 'function' ? ow2.roamerTiles() : [];
-    (roam || []).forEach(function (rp) { R(ox + rp.x * s + s / 2 - 1, oy + rp.y * s + s / 2 - 1, 2, 2, '#e40058'); });
-    var pt = ow2 && typeof ow2.playerTile === 'function' ? ow2.playerTile() : null;
-    var run = getRun();
-    if (!pt && run && run.owPos) pt = run.owPos;
-    if (!pt) { for (var yy = 0; yy < mh && !pt; yy++) { var xx = rows[yy].indexOf('P'); if (xx >= 0) pt = { x: xx, y: yy }; } }
-    if (pt) { var ps = Math.max(3, s); R(ox + pt.x * s + s / 2 - ps / 2 - 1, oy + pt.y * s + s / 2 - ps / 2 - 1, ps + 2, ps + 2, blink(3) ? '#000' : C.white); R(ox + pt.x * s + s / 2 - ps / 2, oy + pt.y * s + s / 2 - ps / 2, ps, ps, blink(3) ? C.white : '#000'); }
+    return { row: row, ups: ups };
   }
-  ui.drawMinimap = drawMinimap;
+  function areaEvidence(id) {
+    var r = getRun(); if (!r) return id === 'village';
+    if (r.area === id) return true;
+    if (flag('map_' + id) || flag('visited_' + id) || (r.visited && r.visited[id])) return true;
+    var a = areaDef(id);
+    if (a && a.doors) for (var ch in a.doors) { var d = a.doors[ch]; if (d && d.kind === 'level' && r.cleared && r.cleared[d.target]) return true; }
+    return false;
+  }
+  // everything up to the furthest area with evidence counts as walked through (the story runs west to east)
+  function knownAreas() {
+    var lay = mapAreas(), known = {}, maxI = 0;
+    lay.row.forEach(function (id, i) { if (areaEvidence(id)) maxI = Math.max(maxI, i); });
+    Object.keys(lay.ups).forEach(function (id) { if (areaEvidence(id)) maxI = Math.max(maxI, lay.row.indexOf(lay.ups[id])); });
+    lay.row.forEach(function (id, i) { if (i <= maxI) known[id] = true; });
+    Object.keys(lay.ups).forEach(function (id) { if (areaEvidence(id)) known[id] = true; });
+    return known;
+  }
+  ui.knownAreas = knownAreas;
+  function doorInfo(areaId, ch) {
+    var st = G('doorState', areaId, ch);
+    var a = areaDef(areaId), d = a && a.doors && a.doors[ch];
+    if (st && typeof st === 'object') { if (!st.kind && d) st.kind = d.kind; if (!st.target && d) st.target = d.target; return st; }
+    if (!d) return null;
+    var r = getRun(), lv = d.kind === 'level' ? levelDef(d.target) : null;
+    var vis = !(d.showIf && !flag(d.showIf)) && !(d.hideIf && flag(d.hideIf));
+    return { visible: vis, locked: !!(d.needs && !flag(d.needs)), lockText: d.lockText || '', label: d.label || (lv && lv.name) || '', kind: d.kind, target: d.target, cleared: !!(r && r.cleared && r.cleared[d.target]) };
+  }
+  function areaDoors(areaId) {
+    var a = areaDef(areaId); if (!a || !a.doors) return [];
+    var out = [];
+    Object.keys(a.doors).forEach(function (ch) {
+      var d = a.doors[ch]; if (!d || d.kind === 'npc' || d.kind === 'area' || d.kind === 'cinema') return;
+      var st = doorInfo(areaId, ch); if (!st || !st.visible) return;
+      var lv = d.kind === 'level' ? levelDef(d.target) : null;
+      var label = up(st.label || d.label || (lv && lv.name) || d.target || ch);
+      if (d.kind === 'shop') { var s = shopDef(d.target); label = up(d.label || (s && s.name) || label); }
+      out.push({ ch: ch, kind: d.kind, label: label, st: st, optional: !!(lv && lv.optional) });
+    });
+    var order = { level: 0, stairs: 1, inn: 2, club: 3, shop: 4 };
+    out.sort(function (x, y) { return (order[x.kind] || 5) - (order[y.kind] || 5); });
+    return out;
+  }
+  ui.areaDoors = areaDoors;
+  function doorColor(dd) {
+    if (dd.kind === 'inn') return C.blue;
+    if (dd.kind === 'shop') return C.orange;
+    if (dd.kind === 'club') return C.pink;
+    if (dd.kind === 'stairs') return dd.st.locked ? '#5c2c5c' : C.purple;
+    if (dd.st.cleared) return C.green;
+    if (dd.st.locked) return C.dred;
+    return dd.optional ? C.orange : C.yellow;
+  }
   ui.openMap = function () {
-    var m = { kind: 'map' };
-    m.update = function (dt) { m.t += dt; if (backPressed() || P('start') || P('select') || P('confirm')) { sfx('menu_back'); close(m); } };
+    if (ui.isOpen('map')) return null;
+    var lay = mapAreas();
+    var run = getRun() || {};
+    var m = { kind: 'map', cur: run.area && (lay.row.indexOf(run.area) >= 0 || lay.ups[run.area]) ? run.area : lay.row[0], scroll: 0 };
+    sfx('menu_select');
+    function boxes() {
+      var out = {}, bw = 46, gap = Math.floor((304 - bw * lay.row.length) / Math.max(1, lay.row.length - 1));
+      gap = Math.min(gap, 14);
+      var total = lay.row.length * bw + (lay.row.length - 1) * gap, x0 = Math.round(160 - total / 2);
+      lay.row.forEach(function (id, i) { out[id] = { x: x0 + i * (bw + gap), y: 60, w: bw, h: 22 }; });
+      Object.keys(lay.ups).forEach(function (id) { var b = out[lay.ups[id]]; if (b) out[id] = { x: b.x, y: 34, w: bw, h: 18 }; });
+      return out;
+    }
+    m.update = function (dt) {
+      m.t += dt;
+      var i = lay.row.indexOf(m.cur), moved = null;
+      if (rep(m, 'left', dt)) { if (lay.ups[m.cur]) moved = lay.row[Math.max(0, lay.row.indexOf(lay.ups[m.cur]) - 1)]; else if (i > 0) moved = lay.row[i - 1]; }
+      else if (rep(m, 'right', dt)) { if (lay.ups[m.cur]) moved = lay.row[Math.min(lay.row.length - 1, lay.row.indexOf(lay.ups[m.cur]) + 1)]; else if (i < lay.row.length - 1) moved = lay.row[i + 1]; }
+      else if (P('up')) { for (var k in lay.ups) if (lay.ups[k] === m.cur) moved = k; if (!moved && areaDoors(m.cur).length > 5) { m.scroll = Math.max(0, m.scroll - 1); } }
+      else if (P('down')) { if (lay.ups[m.cur]) moved = lay.ups[m.cur]; else { var n = areaDoors(m.cur).length; if (n > 5) m.scroll = Math.min(n - 5, m.scroll + 1); } }
+      if (moved && moved !== m.cur) { m.cur = moved; m.scroll = 0; sfx('menu_move'); }
+      if ((backPressed() || P('start') || P('select') || P('confirm')) && m.t > 0.1) { sfx('menu_back'); close(m); }
+    };
     m.draw = function (ctx) {
-      var fd = floorDef() || {}, run = getRun() || {};
-      var ow = fd.overworld;
-      frame(ctx, ow ? 'MAP' : 'OBJECTIVES', { footer: bn('back') + ':BACK' });
-      var obj = G('objectives');
-      if (!Array.isArray(obj) || !obj.length) obj = ['FLOOR ' + (run.floor || 1) + ': ' + (fd.name || '???'), 'FIND THE STAIRWELL. TRY NOT TO DIE.'];
-      function objLines(l, i, width, x, y, maxY, lh) {
-        var col = i === 0 ? C.gold : /^✓/.test(l) ? C.green : /^▶/.test(l) ? C.white : C.gray;
-        var ind = /^(✓|▶|-) /.test(l) ? 12 : 0;
-        var first = wrap(l, width), lines = [first[0]];
-        if (first.length > 1) lines = lines.concat(wrap(String(l).slice(first[0].length).trim(), width - ind));
-        lines.forEach(function (t, k) { if (y <= maxY) { T(t, x + (k > 0 ? ind : 0), y, col); y += lh; } });
-        return y;
+      var known = knownAreas(), bx = boxes(), ck = clockInfo(), ob = objectiveInfo(), runNow = getRun() || {};
+      frame(ctx, 'THE OVER CITY', { footer: '◀▶↑↓:AREA  ' + bn('back') + ':CLOSE' });
+      if (ck) {
+        T('DAY ' + (ck.day || 1) + ' ' + hourText(ck), 310, 9, ck.night ? C.nblue : C.orange, { align: 'right', shadow: null });
+        T(ck.label + ' LEFT', 10, 9, ck.hoursLeft <= 24 ? C.red : C.gray, { shadow: null });
       }
-      if (ow) {
-        DCW.box(8, 20, 164, 140, { fill: '#000' });
-        drawMinimap(ctx, ow, 12, 24, 156, 132);
-        var x = 180, y = 21;
-        obj.forEach(function (l, i) { if (y <= 124) y = objLines(l, i, 126, x, y, 124, 9); });
-        var leg = [[C.white, 'YOU'], [C.yellow, 'AREA'], [C.green, 'CLEARED'], [C.blue, 'SAFE'], [C.red, 'BOSS'], [C.purple, 'EXIT']];
-        leg.forEach(function (lg, i) { var lx = x + (i % 2) * 66, ly = 132 + Math.floor(i / 2) * 9; R(lx, ly + 1, 5, 5, lg[0]); T(lg[1], lx + 8, ly, C.dgray, { shadow: null }); });
-      } else {
-        var y2 = 24;
-        obj.forEach(function (l, i) { if (y2 < 150) y2 = objLines(l, i, 290, 16, y2, 150, 11); });
+      T(fitText('▶ ' + (ob ? up(ob.text) : 'FIND THE STAIRS. TRY NOT TO DIE.'), 300), 160, 22, C.yellow, { align: 'center' });
+      // roads
+      for (var i = 0; i < lay.row.length - 1; i++) {
+        var a = bx[lay.row[i]], b = bx[lay.row[i + 1]];
+        var both = known[lay.row[i]] && known[lay.row[i + 1]];
+        for (var rx = a.x + a.w; rx < b.x; rx += both ? 1 : 3) R(rx, a.y + 10, 1, 3, both ? '#8c7c5c' : '#3c3428');
       }
+      Object.keys(lay.ups).forEach(function (id) {
+        var u = bx[id], d = bx[lay.ups[id]]; if (!u || !d) return;
+        var kk = known[id] && known[lay.ups[id]];
+        for (var ry = u.y + u.h; ry < d.y; ry += kk ? 1 : 3) R(u.x + u.w / 2 - 1, ry, 3, 1, kk ? '#8c7c5c' : '#3c3428');
+      });
+      // boxes
+      Object.keys(bx).forEach(function (id) {
+        var b = bx[id], kn = !!known[id], here = runNow.area === id, sel = m.cur === id;
+        var ar = areaDef(id) || {};
+        var border = sel ? (blink(4) ? C.white : C.gold) : here ? C.gold : kn ? C.gray : C.ddgray;
+        DCW.box(b.x, b.y, b.w, b.h, { fill: kn ? (ar.guarded ? '#1c2c1c' : '#1c1c2c') : '#080808', border: border });
+        T(kn ? fitText(up(ar.short || MAP_SHORT[id] || ar.name || id), b.w - 4) : '???', b.x + b.w / 2, b.y + 4, kn ? C.white : C.ddgray, { align: 'center', shadow: null });
+        if (kn) {
+          var ds = areaDoors(id).slice(0, 7), dx = b.x + Math.round((b.w - ds.length * 6 + 2) / 2);
+          ds.forEach(function (dd, k) { R(dx + k * 6 - 1, b.y + b.h - 8, 6, 6, '#000'); R(dx + k * 6, b.y + b.h - 7, 4, 4, doorColor(dd)); });
+        }
+        if (here) { var bob = blink(3) ? 0 : -1; R(b.x + b.w - 11, b.y - 8 + bob, 14, 14, '#000'); miniPortrait(ctx, 'p_carl', b.x + b.w - 10, b.y - 7 + bob); }
+        if (ob && ob.area === id) T('★', b.x + 1, b.y - 6, blink(2.5) ? C.gold : C.yellow);
+      });
+      // detail panel for the selected area
+      var sb = { x: 8, y: 88, w: 304, h: 72 };
+      DCW.box(sb.x, sb.y, sb.w, sb.h, { fill: '#0b1024' });
+      var ad = areaDef(m.cur) || {}, kn2 = !!known[m.cur];
+      T(kn2 ? fitText(up(ad.name || m.cur), 200) : 'UNEXPLORED', sb.x + 6, sb.y + 5, kn2 ? C.gold : C.dgray);
+      var tags = [];
+      if (kn2 && ad.guarded) tags.push(['GUARDED BY DAY', C.green]);
+      if (runNow.banned && runNow.banned[m.cur] !== undefined && (runNow.hoursLeft || 0) > runNow.banned[m.cur]) tags.push(['BANNED', C.red]);
+      if (runNow.wanted === m.cur) tags.push(['WANTED', C.red]);
+      var tx = sb.x + sb.w - 6;
+      tags.forEach(function (tg) { T(tg[0], tx, sb.y + 5, tg[1], { align: 'right', shadow: null }); tx -= tw(tg[0]) + 8; });
+      R(sb.x + 5, sb.y + 15, sb.w - 10, 1, '#2c3c7c');
+      if (!kn2) { T('NOBODY HAS DRAWN THIS PART OF THE MAP YET.', 160, sb.y + 30, C.dgray, { align: 'center' }); T('FIND A SIGNPOST ROCK, OR JUST WALK THERE.', 160, sb.y + 42, C.dgray, { align: 'center' }); return; }
+      var ds2 = areaDoors(m.cur);
+      if (!ds2.length) { T('NOTHING HERE BUT STREET. AND WHATEVER LIVES IN IT.', 160, sb.y + 34, C.gray, { align: 'center' }); return; }
+      var VIS = 5; m.scroll = clamp(m.scroll, 0, Math.max(0, ds2.length - VIS));
+      ds2.slice(m.scroll, m.scroll + VIS).forEach(function (dd, k) {
+        var yy = sb.y + 19 + k * 10, col = doorColor(dd);
+        R(sb.x + 7, yy + 1, 5, 5, col);
+        var kindTxt = { inn: 'INN', shop: 'SHOP', club: 'CLUB', stairs: 'STAIRS' }[dd.kind];
+        T(fitText(dd.label, 150), sb.x + 16, yy, C.white);
+        var stTxt, stCol;
+        if (kindTxt) { stTxt = dd.st.locked ? (dd.st.lockText || 'LOCKED') : kindTxt; stCol = dd.st.locked ? C.red : col; }
+        else if (dd.st.cleared) { stTxt = dd.optional ? '✓ CLEARED (REPLAY OK)' : '✓ CLEARED'; stCol = C.green; }
+        else if (dd.st.locked) { stTxt = dd.st.lockText || 'LOCKED'; stCol = C.red; }
+        else { stTxt = dd.optional ? 'SIDE AREA' : 'OPEN'; stCol = col; }
+        T(fitText(up(stTxt), 128), sb.x + sb.w - 6, yy, stCol, { align: 'right', shadow: null });
+      });
+      scrollArrows(sb.x + sb.w - 12, sb.y + 16, sb.y + 62, m.scroll, VIS, ds2.length);
+    };
+    return push(m);
+  };
+
+  /* ================================================================
+     QUEST LOG
+     ================================================================ */
+  ui.openQuests = function () {
+    var m = { kind: 'quests', sel: 0, scroll: 0 };
+    var VIS = 9;
+    function list() {
+      var r = getRun(), q = (r && r.quests) || {};
+      var ids = Object.keys(q);
+      var act = ids.filter(function (id) { return q[id] !== 'done'; }), done = ids.filter(function (id) { return q[id] === 'done'; });
+      return act.concat(done).map(function (id) { return { id: id, done: q[id] === 'done', def: questDef(id) }; });
+    }
+    m.update = function (dt) {
+      m.t += dt;
+      var l = list();
+      listNav(m, l.length, dt); scrollTo(m, VIS, l.length);
+      if (P('confirm') && l[m.sel]) {
+        var e = l[m.sel]; sfx('menu_select');
+        ui.readMore({ title: up(e.def.name || e.id), titleColor: e.done ? C.green : C.gold, blocks: [
+          { text: e.def.desc || e.def.text || 'THE AI DIDN\'T WRITE A DESCRIPTION. IT\'S BUSY.', color: C.white },
+          e.def.reward ? { head: 'REWARD', text: typeof e.def.reward === 'string' ? e.def.reward : 'SOMETHING SHINY', color: C.gold } : null,
+          { head: 'STATUS', text: e.done ? 'COMPLETE' : 'IN PROGRESS', color: e.done ? C.green : C.yellow }
+        ].filter(Boolean) });
+      } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
+    };
+    m.draw = function (ctx) {
+      var l = list();
+      frame(ctx, 'QUESTS', { footer: l.length ? '↑↓:BROWSE  ' + bn('confirm') + ':READ  ' + bn('back') + ':BACK' : bn('back') + ':BACK' });
+      var ob = objectiveInfo();
+      DCW.box(10, 21, 300, 24, { fill: '#2c1c00', border: C.gold });
+      icon(ctx, 'quest', 15, 24);
+      T('OBJECTIVE', 27, 25, C.gold, { shadow: null });
+      var oa = ob && ob.area ? areaDef(ob.area) : null;
+      if (oa) T(fitText(up(oa.name || ob.area), 150), 304, 25, C.dgray, { align: 'right', shadow: null });
+      T(fitText(ob ? up(ob.text) : 'NOTHING RIGHT NOW. ENJOY IT. IT WON\'T LAST.', 290), 16, 35, C.white);
+      if (!l.length) {
+        T('NO QUESTS YET.', 160, 86, C.white, { align: 'center' });
+        wrap('THE AI WILL HAND YOU SOME SOON. YOU WON\'T LIKE THEM.', 260).forEach(function (t, i) { T(t, 160, 100 + i * 10, C.gray, { align: 'center' }); });
+        return;
+      }
+      var na = l.filter(function (e) { return !e.done; }).length;
+      T('ACTIVE ' + na + '  DONE ' + (l.length - na), 12, 50, C.dgray, { shadow: null });
+      for (var i = m.scroll; i < Math.min(l.length, m.scroll + VIS); i++) {
+        var e = l[i], yy = 61 + (i - m.scroll) * 10;
+        if (i === m.sel) R(10, yy - 1, 140, 10, '#1c2c5c');
+        T(e.done ? '✓' : '▶', 13, yy, e.done ? C.green : C.yellow, { shadow: null });
+        T(fitText(up(e.def.name || e.id), 124), 22, yy, e.done ? (i === m.sel ? C.green : C.dgreen) : (i === m.sel ? C.white : C.gray));
+      }
+      scrollArrows(140, 56, 151, m.scroll, VIS, l.length);
+      var e2 = l[m.sel]; if (!e2) return;
+      var px = 156, pw = 154;
+      DCW.box(px, 50, pw, 108, { fill: e2.done ? '#0c2010' : '#101828', border: e2.done ? C.green : C.gray });
+      var yy2 = 55;
+      wrap(up(e2.def.name || e2.id), pw - 12).slice(0, 2).forEach(function (t) { T(t, px + 6, yy2, e2.done ? C.green : C.gold); yy2 += 10; });
+      T(e2.done ? 'COMPLETE' : 'IN PROGRESS', px + 6, yy2, e2.done ? C.dgreen : C.orange, { shadow: null }); yy2 += 12;
+      var dl = wrap(up(e2.def.desc || e2.def.text || ''), pw - 12);
+      var room = Math.floor((152 - yy2) / 10);
+      if (dl.length > room) { dl = dl.slice(0, room - 1); dl.push((blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ ALL'); }
+      dl.forEach(function (t, i) { T(t, px + 6, yy2 + i * 10, t.indexOf('READ ALL') >= 0 ? C.gold : C.white); });
+    };
+    return push(m);
+  };
+
+  /* ================================================================
+     INVENTORY  (explosives, consumables, materials, key items)
+     ================================================================ */
+  ui.openInventory = function () {
+    var m = { kind: 'inventory', sel: 0, scroll: 0, msg: '', msgT: 0 };
+    var VIS = 12;
+    function rows() {
+      var r = getRun() || {}, items = r.items || {}, defs = D('items') || {};
+      var out = [{ head: 'EXPLOSIVES' }];
+      EXPLOSIVES.forEach(function (id) { out.push({ id: id, kind: 'explosive', n: itemCount(id) }); });
+      var groups = { consumable: [], material: [], key: [] };
+      Object.keys(items).forEach(function (id) {
+        if (EXPLOSIVES.indexOf(id) >= 0 || !(items[id] > 0)) return;
+        var k = (defs[id] && defs[id].kind) || 'key';
+        if (k === 'explosive') { out.splice(EXPLOSIVES.length + 1, 0, { id: id, kind: 'explosive', n: items[id] }); return; }
+        (groups[k === 'consumable' || k === 'food' ? 'consumable' : k === 'material' ? 'material' : 'key']).push({ id: id, kind: k, n: items[id] });
+      });
+      out.push({ head: 'CONSUMABLES' }); out.push({ id: 'potion', kind: 'consumable', n: itemCount('potion') });
+      groups.consumable.forEach(function (e) { out.push(e); });
+      if (groups.material.length) { out.push({ head: 'MATERIALS' }); groups.material.forEach(function (e) { out.push(e); }); }
+      out.push({ head: 'KEY ITEMS' });
+      if (groups.key.length) groups.key.forEach(function (e) { out.push(e); }); else out.push({ none: true });
+      return out;
+    }
+    function selectable(rs) { return rs.map(function (r, i) { return r.id ? i : -1; }).filter(function (i) { return i >= 0; }); }
+    function say2(t, col) { m.msg = up(t); m.msgCol = col || C.green; m.msgT = 1.6; }
+    m.update = function (dt) {
+      m.t += dt; if (m.msgT > 0) m.msgT -= dt;
+      var rs = rows(), sel = selectable(rs);
+      listNav(m, sel.length, dt);
+      var ri = sel[m.sel], row = rs[ri];
+      // scroll by row index
+      if (ri !== undefined) { var s0 = m.scroll; if (ri - 1 < s0) s0 = Math.max(0, ri - 1); if (ri >= s0 + VIS) s0 = ri - VIS + 1; m.scroll = clamp(s0, 0, Math.max(0, rs.length - VIS)); }
+      if (P('confirm') && row) {
+        var r = getRun();
+        if (row.kind === 'explosive') {
+          if (!r) { sfx('error'); return; }
+          if (!(row.n > 0)) { sfx('error'); say2('NONE LEFT. BUY OR CRAFT MORE.', C.red); return; }
+          if (hasG('selectExplosive')) G('selectExplosive', row.id); else { r.selected = row.id; persist(); }
+          sfx('menu_select'); say2(itemName(row.id) + ' READY');
+        } else if (row.id === 'potion') {
+          if (G('usePotion')) say2('GULP. HP RESTORED.'); else { sfx('error'); say2(itemCount('potion') ? 'YOU\'RE FINE. SAVE IT.' : 'NO POTIONS.', C.red); }
+        } else {
+          var d = itemDef(row.id) || {}; sfx('menu_select');
+          ui.readMore({ title: itemName(row.id), titleColor: C.gold, blocks: [{ text: d.desc || 'IT\'S A THING. YOU HAVE IT. CONGRATULATIONS.', color: C.white }] });
+        }
+      } else if ((P('special') || P('select')) && row) {
+        var dd = itemDef(row.id) || {}; sfx('menu_select');
+        ui.readMore({ title: itemName(row.id), titleColor: C.gold, blocks: [{ text: dd.desc || '', color: C.white }] });
+      } else if (backPressed() || P('start')) { sfx('menu_back'); close(m); }
+    };
+    m.draw = function (ctx) {
+      var rs = rows(), sel = selectable(rs), run = getRun() || {}, ri = sel[m.sel];
+      frame(ctx, 'INVENTORY', { footer: bn('confirm') + ':USE / SELECT  ' + bn('special') + ':INFO  ' + bn('back') + ':BACK' });
+      icon(ctx, 'coin', 12, 20); T(run.gold || 0, 22, 21, C.gold);
+      icon(ctx, 'box', 70, 20); T((run.boxes || []).length, 80, 21, C.white);
+      icon(ctx, 'heart', 104, 20); T(run.revivals === undefined ? '-' : run.revivals, 114, 21, C.pink);
+      for (var i = m.scroll; i < Math.min(rs.length, m.scroll + VIS); i++) {
+        var e = rs[i], yy = 33 + (i - m.scroll) * 10;
+        if (e.head) { T(e.head, 12, yy, C.dgray, { shadow: null }); R(12 + tw(e.head) + 4, yy + 3, 136 - tw(e.head) - 4, 1, '#2c3c7c'); continue; }
+        if (e.none) { T('NOTHING YET', 24, yy, C.ddgray, { shadow: null }); continue; }
+        var on = i === ri;
+        if (on) { R(10, yy - 1, 142, 10, '#1c2c5c'); cursor(12, yy); }
+        icon(ctx, itemIcon(e.id), 21, yy - 1);
+        var nmc = e.n > 0 ? (on ? C.white : C.gray) : C.ddgray;
+        T(fitText(itemName(e.id), 96), 32, yy, nmc);
+        T('×' + e.n, 150, yy, e.n > 0 ? C.white : C.dred, { align: 'right' });
+        if (e.kind === 'explosive' && run.selected === e.id) T('●', 3, yy, C.gold, { shadow: null });
+      }
+      scrollArrows(140, 28, 152, m.scroll, VIS, rs.length);
+      var row = rs[ri]; if (!row) return;
+      var px = 158, pw = 152, d = itemDef(row.id) || {};
+      DCW.box(px, 20, pw, 138, { fill: '#101828' });
+      R(px + 6, 26, 20, 20, '#000'); icon(ctx, itemIcon(row.id), px + 8, 28, { scale: 2 });
+      wrap(itemName(row.id), pw - 40).slice(0, 2).forEach(function (t, k) { T(t, px + 32, 27 + k * 10, C.gold); });
+      var kindTxt = row.id === 'potion' ? 'CONSUMABLE' : up(d.kind || row.kind || 'ITEM');
+      T(kindTxt + '  ×' + row.n, px + 6, 52, C.dgray, { shadow: null });
+      var yy2 = 64;
+      if (row.kind === 'explosive') {
+        var st = pStats(), dm = { jug: st.jugDmg, hob: st.hobDmg, dyn: st.dynDmg, smoke: 0 }[row.id];
+        if (dm !== undefined) { T('DAMAGE ' + (dm || 'NONE'), px + 6, yy2, C.white); yy2 += 10; }
+        T(run.selected === row.id ? '● SELECTED' : bn('confirm') + ': SELECT', px + 6, yy2, run.selected === row.id ? C.gold : C.dgray); yy2 += 12;
+      }
+      var desc = d.desc || (row.id === 'potion' ? 'HEALS HALF YOUR HP. CHERRY FLAVOR, ALLEGEDLY.' : '');
+      var dl = wrap(up(desc), pw - 12), room = Math.floor((154 - yy2) / 10);
+      if (dl.length > room) { dl = dl.slice(0, room - 1); dl.push((blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE'); }
+      dl.forEach(function (t, k) { T(t, px + 6, yy2 + k * 10, t.indexOf('READ MORE') >= 0 ? C.white : C.gray); });
+      if (m.msgT > 0) { var mw = tw(m.msg) + 12; DCW.box(160 - mw / 2, 80, mw, 16, { border: m.msgCol }); T(m.msg, 160, 84, m.msgCol, { align: 'center' }); }
     };
     return push(m);
   };
@@ -1628,13 +2260,14 @@
   var HOWTO = [
     { title: 'KEYBOARD', rows: function () {
       var mv = ['left', 'right', 'up', 'down'].map(function (a) { return kbName(a, '?'); }).join(' ');
-      return [['MOVE', mv], ['JUMP / OK', kbBoth('jump')], ['ATTACK / BACK', kbBoth('attack')], ['BOMB', kbBoth('bomb')],
+      return [['MOVE', mv], ['JUMP / OK', kbBoth('jump')], ['PUNCH / BACK', kbBoth('attack')], ['THROW', kbBoth('bomb')],
         ['SPECIAL', kbBoth('special')], ['POTION', kbBoth('potion')], ['PAUSE', 'ENTER / ESC' + (kbName('start', '') ? ' / ' + kbName('start', '') : '')],
         ['MAP', kbBoth('select')]];
     } },
-    { title: 'GAMEPAD', rows: [['MOVE', 'D-PAD / STICK'], ['JUMP / OK', 'A (BOTTOM)'], ['ATTACK', 'X (LEFT)'], ['BOMB / BACK', 'B (RIGHT)'], ['SPECIAL', 'Y (TOP)'], ['POTION', 'BUMPERS / TRIGGERS'], ['PAUSE', 'START'], ['MAP', 'SELECT']] },
-    { title: 'TOUCH', rows: [['MOVE', 'LEFT PAD'], ['JUMP / OK', 'A BUTTON'], ['ATTACK / BACK', 'B BUTTON'], ['BOMB', 'BOMB BUTTON'], ['SPECIAL', 'SPC BUTTON'], ['POTION', 'POT BUTTON'], ['PAUSE', 'START (TOP RIGHT)'], ['MAP', 'MAP (TOP RIGHT)']] },
-    { title: 'MOVES', rows: [['PUNCH COMBO', 'TAP ATTACK'], ['KICK', 'DOWN + ATTACK'], ['STOMP KICK', 'DOWN + ATTACK IN AIR'], ['HEAD BOUNCE', 'LAND ON ENEMIES'], ['DROP DOWN', 'DOWN + JUMP'], ['LADDERS', 'UP / DOWN'], ['PET SPECIAL', 'WHEN METER IS FULL'], ['ENTER DOOR', 'A ON OVERWORLD']] }
+    { title: 'GAMEPAD', rows: [['MOVE', 'D-PAD / STICK'], ['JUMP / OK', 'A (BOTTOM)'], ['PUNCH', 'X (LEFT)'], ['THROW / BACK', 'B (RIGHT)'], ['SPECIAL', 'Y (TOP)'], ['POTION', 'BUMPERS / TRIGGERS'], ['PAUSE', 'START'], ['MAP', 'SELECT']] },
+    { title: 'TOUCH', rows: [['MOVE', 'LEFT PAD'], ['JUMP / OK', 'A BUTTON'], ['PUNCH / BACK', 'B BUTTON'], ['THROW', 'BOMB BUTTON'], ['SPECIAL', 'SPC BUTTON'], ['POTION', 'POT BUTTON'], ['PAUSE', 'START (TOP RIGHT)'], ['MAP', 'MAP (TOP RIGHT)']] },
+    { title: 'MOVES', rows: [['PUNCH COMBO', 'TAP PUNCH'], ['KICK', 'DOWN + PUNCH'], ['STOMP', 'DOWN + PUNCH IN AIR'], ['THROW EXPLOSIVE', 'THROW'], ['NEXT EXPLOSIVE', 'UP + THROW'], ['PANIC (FEAR + MISSILES)', 'SPECIAL'], ['BOOMY BOY', 'DOWN + SPECIAL'], ['MIC DROP', 'UP + SPECIAL']] },
+    { title: 'THE OVER CITY', rows: [['DOORS, NPCS, SIGNS', 'UP'], ['DAY', 'GUARDS. NO CRIMES.'], ['NIGHT', 'NO GUARDS. WORSE MOBS.'], ['HURT A CITIZEN', 'DEATH PENALTY'], ['INNS', 'SLEEP, CRAFT, LEVEL UP'], ['LOOT BOXES', 'OPEN AT AN INN'], ['THE CLOCK', '8 DAYS, THEN COLLAPSE'], ['THE MAP', 'SIGNPOST ROCKS']] }
   ];
   ui.openHowTo = function () {
     var m = { kind: 'howto', page: 0 };
@@ -1652,8 +2285,11 @@
       T('◀ ' + pg.title + ' ▶', 160, 22, C.white, { align: 'center' });
       for (var d = 0; d < HOWTO.length; d++) R(160 - HOWTO.length * 4 + d * 8, 33, 5, 2, d === m.page ? C.gold : C.ddgray);
       var rowsList = typeof pg.rows === 'function' ? pg.rows() : pg.rows;
-      rowsList.forEach(function (r, i) { var yy = 41 + i * 12; T(r[0], 24, yy, C.gold); T(r[1], 296, yy, C.white, { align: 'right' }); R(24 + tw(r[0]) + 4, yy + 6, 296 - tw(r[1]) - 4 - (24 + tw(r[0]) + 4) - 4, 1, '#2c3c7c'); });
-      T(m.page === 0 ? 'REBIND KEYS IN SETTINGS > KEYBOARD CONTROLS' : 'BEAT FLOORS. OPEN BOXES. GET VIEWS. DON\'T DIE.', 160, 140, C.pink, { align: 'center' });
+      rowsList.forEach(function (r, i) {
+        var yy = 41 + i * 12; T(r[0], 20, yy, C.gold); T(r[1], 300, yy, C.white, { align: 'right' });
+        var lx = 20 + tw(r[0]) + 4, rx = 300 - tw(r[1]) - 4; if (rx - lx > 4) R(lx, yy + 6, rx - lx, 1, '#2c3c7c');
+      });
+      T(m.page === 0 ? 'REBIND KEYS IN SETTINGS > KEYBOARD CONTROLS' : '8 DAYS. ONE FLOOR. NO PANTS.', 160, 142, C.pink, { align: 'center' });
     };
     return push(m);
   };
@@ -1662,7 +2298,7 @@
      UPDATE / DRAW (called by engine every frame)
      ================================================================ */
   ui.init = function () {
-    stack.length = 0; toasts.length = 0; toastQ.length = 0; banner = null;
+    stack.length = 0; toasts.length = 0; toastQ.length = 0; banner = null; miniC = {};
   };
   ui.update = function (dt) {
     updateToasts(dt);
@@ -1684,14 +2320,14 @@
   };
 
   /* ================================================================
-     BACKDROPS + VIGNETTES (shared by scenes)
+     BACKDROPS + VIGNETTES (shared by scenes; used when art.js has no backdrop)
      ================================================================ */
   var STARS = null;
-  function stars(ctx, t, drift, n) {
+  function stars(ctx, t, drift, n, yMax) {
     if (!STARS) { var rr = U.rng ? U.rng(1337) : Math.random; STARS = []; for (var i = 0; i < 120; i++) STARS.push({ x: rr() * W, y: rr() * H, s: rr(), p: rr() * 6.28 }); }
-    n = n || 90;
+    n = n || 90; yMax = yMax || H;
     for (var k = 0; k < n; k++) {
-      var st = STARS[k];
+      var st = STARS[k]; if (st.y > yMax) continue;
       var tw2 = Math.sin(t * (1 + st.s * 3) + st.p);
       if (tw2 < -0.6) continue;
       var x = ((st.x - t * drift * (0.3 + st.s)) % W + W) % W;
@@ -1706,7 +2342,6 @@
   function pdisc(ctx, cx, cy, r, col) {
     for (var y = -r; y <= r; y++) { var w = Math.round(Math.sqrt(r * r - y * y)); R(cx - w, cy + y, w * 2, 1, col); }
   }
-  // disc clipped by a bigger disc (continents on a planet)
   function pdiscIn(ctx, cx, cy, r, px, py, pr, col) {
     for (var y = -r; y <= r; y++) {
       var yy = cy + y, dy = yy - py; if (Math.abs(dy) > pr) continue;
@@ -1715,70 +2350,239 @@
       if (b > a) R(Math.round(a), yy, Math.round(b - a), 1, col);
     }
   }
-  function skyline(ctx, y, seed, col, lit, t) {
-    var rr = U.rng ? U.rng(seed) : Math.random, x = -4;
-    while (x < W) {
-      var bw = 12 + Math.floor(rr() * 22), bh = 14 + Math.floor(rr() * 40);
-      R(x, y - bh, bw, bh + 40, col);
-      if (lit) for (var wy = y - bh + 4; wy < y - 3; wy += 6) for (var wx = x + 3; wx < x + bw - 3; wx += 5) if (rr() < 0.35) R(wx, wy, 2, 3, ((wx * 7 + wy * 3 + Math.floor((t || 0) * 0.5)) % 11) < 2 ? C.white : lit);
-      x += bw + Math.floor(rr() * 4);
+  // the fake Over City sky: nebula smears + stars (night) or crimson haze (day)
+  function overSky(ctx, t, night, y1) {
+    y1 = y1 || H;
+    if (night) {
+      bands(ctx, ['#05021a', '#0a0424', '#10062e', '#180838', '#200a40', '#2c0c44', '#3c0c40'], 0, y1);
+      ctx.save(); ctx.globalAlpha = 0.16;
+      [[70, 30, 40, '#d800cc'], [120, 22, 30, '#3cbcfc'], [230, 40, 46, '#f878f8'], [280, 18, 26, '#6888fc'], [180, 50, 34, '#9878f8']].forEach(function (n, i) {
+        pdisc(ctx, n[0] + Math.round(Math.sin(t * 0.1 + i) * 4), n[1], n[2], n[3]);
+      });
+      ctx.restore();
+      stars(ctx, t, 1, 90, y1 - 20);
+    } else {
+      bands(ctx, ['#3c0808', '#581008', '#741408', '#901c08', '#a82808', '#c03810', '#d85818'], 0, y1);
+      pdisc(ctx, 250, Math.round(y1 * 0.42), 20, '#f83800'); pdisc(ctx, 250, Math.round(y1 * 0.42), 15, '#fca044');
     }
   }
-  function saucer(ctx, x, y, beam) {
+  function ruins(ctx, y, seed, col, t) {
+    var rr = U.rng ? U.rng(seed) : Math.random, x = -6;
+    while (x < W) {
+      var bw = 14 + Math.floor(rr() * 24), bh = 18 + Math.floor(rr() * 44);
+      R(x, y - bh, bw, bh + 60, col);
+      for (var k = 0; k < 3; k++) R(x + Math.floor(rr() * bw), y - bh - 2 - Math.floor(rr() * 4), 2 + Math.floor(rr() * 3), 4, col);
+      x += bw + Math.floor(rr() * 6);
+    }
+  }
+  function rooftops(ctx, y, seed, col, lit, t) {
+    var rr = U.rng ? U.rng(seed) : Math.random, x = -8;
+    ctx.fillStyle = col;
+    while (x < W) {
+      var bw = 20 + Math.floor(rr() * 18), bh = 14 + Math.floor(rr() * 18), rh = 8 + Math.floor(rr() * 10);
+      R(x, y - bh, bw, bh + 60, col);
+      ctx.beginPath(); ctx.moveTo(x - 2, y - bh); ctx.lineTo(x + bw / 2, y - bh - rh); ctx.lineTo(x + bw + 2, y - bh); ctx.closePath(); ctx.fill();
+      if (rr() < 0.5) R(x + bw - 7, y - bh - rh + 2, 3, rh, col);
+      if (lit) for (var wy = y - bh + 4; wy < y - 4; wy += 7) for (var wx = x + 4; wx < x + bw - 4; wx += 7) if (rr() < 0.45) R(wx, wy, 2, 3, lit);
+      x += bw + 2 + Math.floor(rr() * 5);
+    }
+  }
+  function bigTop(ctx, cx, y, col, stripe) {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(cx - 44, y); ctx.lineTo(cx - 30, y - 22); ctx.lineTo(cx, y - 40); ctx.lineTo(cx + 30, y - 22); ctx.lineTo(cx + 44, y); ctx.closePath(); ctx.fill();
+    if (stripe) { for (var i = -3; i <= 3; i++) { ctx.fillStyle = stripe; ctx.beginPath(); ctx.moveTo(cx, y - 40); ctx.lineTo(cx + i * 12 - 3, y); ctx.lineTo(cx + i * 12 + 3, y); ctx.closePath(); ctx.fill(); } }
+    R(cx - 1, y - 50, 2, 11, col); R(cx + 1, y - 50, 7, 4, stripe || col);
+  }
+  function slats(ctx, y, t, smoke) {
+    R(0, y, W, H - y, '#3c2414');
+    for (var x = 0; x < W; x += 10) { R(x, y, 9, H - y, '#5c3c24'); R(x, y, 9, 1, '#7c5c3c'); }
+    if (smoke) for (var s = 0; s < 8; s++) {
+      var sx = (s * 43 + 17) % W, ph = (t * 0.4 + s * 0.37) % 1;
+      ctx.globalAlpha = 0.25 * (1 - ph); R(sx + Math.sin(t + s) * 3, y - ph * 40, 3, 3, '#bcbcbc'); ctx.globalAlpha = 1;
+    }
+  }
+  function saucer(ctx, x, y) {
     x = Math.round(x); y = Math.round(y);
-    if (beam) { ctx.globalAlpha = 0.22; ctx.fillStyle = C.yellow; ctx.beginPath(); ctx.moveTo(x - 3, y + 2); ctx.lineTo(x + 3, y + 2); ctx.lineTo(x + 14, y + beam); ctx.lineTo(x - 14, y + beam); ctx.fill(); ctx.globalAlpha = 1; }
     R(x - 8, y, 16, 3, '#000'); R(x - 7, y, 14, 2, C.gray); R(x - 3, y - 3, 6, 3, '#000'); R(x - 2, y - 3, 4, 3, C.blue);
     R(x - 5, y + 1, 1, 1, (Math.floor((DCW.t || 0) * 6) % 2) ? C.red : C.gold); R(x + 4, y + 1, 1, 1, (Math.floor((DCW.t || 0) * 6) % 2) ? C.gold : C.red);
   }
+  // procedural rooms (fallbacks for art backdrops)
+  function drawGuideRoom(ctx, t) {
+    R(0, 0, W, H, '#0c0820');
+    // fake starry ceiling
+    bands(ctx, ['#060420', '#0a0630', '#0e0838'], 0, 44); stars(ctx, t, 0, 60, 40);
+    // golden brick walls
+    for (var y = 44; y < 136; y += 6) for (var x = ((y / 6) % 2) * 8 - 8; x < W; x += 16) { R(x, y, 15, 5, (x * 7 + y) % 5 === 0 ? '#ac7c00' : '#c88c10'); R(x, y, 15, 1, '#f8b800'); }
+    R(0, 44, W, 3, '#5c3c00');
+    // the guide's door at the back center
+    R(140, 70, 40, 66, '#000'); R(142, 72, 36, 64, '#7c3c18'); R(142, 72, 36, 3, '#a85010'); R(172, 102, 3, 3, C.gold);
+    T('GUIDE', 160, 60, '#5c3c00', { align: 'center', shadow: null });
+    // floor + red carpet in perspective
+    R(0, 136, W, 44, '#3c2c10'); for (var fx = 0; fx < W; fx += 20) R(fx, 136, 1, 44, '#2c1c08');
+    ctx.fillStyle = '#a81000'; ctx.beginPath(); ctx.moveTo(144, 136); ctx.lineTo(176, 136); ctx.lineTo(236, H); ctx.lineTo(84, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f8b800'; ctx.fillRect(144, 136, 32, 1);
+    // sconces
+    [60, 260].forEach(function (sx) { R(sx - 2, 80, 4, 10, '#503000'); var fl = Math.sin(t * 9 + sx) > 0; R(sx - 2, 75 - (fl ? 1 : 0), 4, 5, fl ? C.yellow : C.orange); ctx.globalAlpha = 0.12; pdisc(ctx, sx, 78, 16, C.yellow); ctx.globalAlpha = 1; });
+  }
+  var INN_LOOK = {
+    pug: { beam: '#3c2414', plaster: '#7c5c3c', shade: '#6c4c2c', floor: '#5c3c24', floor2: '#4c3020', banner: ['#a81000', '#f8b800', '#0058f8'] },
+    narwhal: { beam: '#1c2434', plaster: '#3c5c6c', shade: '#30505c', floor: '#3c3c4c', floor2: '#2c2c3c', banner: ['#00a844', '#fcfcfc', '#0058f8'] }
+  };
+  function drawInnRoom(ctx, innId, t, ground) {
+    var L = INN_LOOK[innId] || INN_LOOK.pug;
+    R(0, 0, W, ground, L.plaster);
+    for (var y = 30; y < ground; y += 12) R(0, y, W, 1, L.shade);
+    // timber frame
+    R(0, 0, W, 22, L.beam); R(0, 22, W, 3, '#000');
+    for (var bx = 0; bx < W; bx += 64) { R(bx, 25, 6, ground - 25, L.beam); }
+    R(0, 64, W, 4, L.beam); R(0, ground - 40, W, 4, L.beam);
+    ctx.fillStyle = L.beam;
+    for (var dx = 0; dx < W; dx += 128) { ctx.beginPath(); ctx.moveTo(dx + 6, 68); ctx.lineTo(dx + 10, 68); ctx.lineTo(dx + 64, ground - 40); ctx.lineTo(dx + 60, ground - 40); ctx.closePath(); ctx.fill(); }
+    // pennant string (Renaissance fair)
+    for (var px = 2; px < W; px += 12) {
+      var sag = Math.round(Math.sin((px / W) * Math.PI * 3) * 3) + 26;
+      ctx.fillStyle = L.banner[(px / 12 | 0) % 3]; ctx.beginPath(); ctx.moveTo(px, sag); ctx.lineTo(px + 10, sag); ctx.lineTo(px + 5, sag + 9 + (Math.sin(t * 2 + px) > 0.7 ? 1 : 0)); ctx.closePath(); ctx.fill();
+    }
+    // three TV screens (every safe room has them)
+    for (var s = 0; s < 3; s++) {
+      var sx = 122 + s * 26, sy = 34;
+      R(sx - 1, sy - 1, 26, 19, '#000'); R(sx, sy, 24, 17, '#3c3c3c'); R(sx + 2, sy + 2, 20, 13, s === 1 ? '#001c5c' : '#0c0c1c');
+      if (s === 0) { R(sx + 6, sy + 5, 3, 3, C.white); R(sx + 14, sy + 5, 3, 3, C.white); R(sx + 7, sy + 10, 10, 1, C.white); }
+      if (s === 1) { T('LIVE', sx + 12, sy + 3, blink(1.2) ? C.red : C.dred, { align: 'center', shadow: null }); R(sx + 4, sy + 11, Math.round(8 + Math.sin(t) * 6 + 6), 2, C.pink); }
+      if (s === 2) for (var b = 0; b < 4; b++) R(sx + 4 + b * 4, sy + 13 - (3 + ((b * 5 + Math.floor(t * 2)) % 7)), 3, 3 + ((b * 5 + Math.floor(t * 2)) % 7), [C.gold, C.green, C.blue, C.pink][b]);
+    }
+    // wall trophy: a belly-up pug painting / a one-eyed narwhal head
+    if (innId === 'narwhal') {
+      R(54, 72, 28, 14, '#000'); R(55, 73, 26, 12, '#7c9cbc'); R(81, 78, 30, 2, '#fcfcfc'); R(58, 76, 4, 3, '#000'); R(64, 75, 3, 5, '#000');
+      R(50, 70, 36, 2, L.beam);
+    } else {
+      R(52, 72, 32, 24, '#ac7c00'); R(54, 74, 28, 20, '#3c5c3c'); R(58, 84, 20, 8, '#c8a070'); R(61, 81, 6, 4, '#c8a070'); R(64, 82, 2, 1, '#000'); R(70, 88, 6, 3, '#f8b8f8');
+      R(58, 92, 3, 2, '#c8a070'); R(74, 92, 3, 2, '#c8a070');
+    }
+    // floor planks
+    R(0, ground, W, H - ground, L.floor);
+    for (var fy = ground; fy < H; fy += 8) { R(0, fy, W, 1, L.floor2); for (var fx = ((fy / 8) % 2) * 24; fx < W; fx += 48) R(fx, fy, 1, 8, L.floor2); }
+    R(0, ground, W, 1, '#a87850');
+  }
+  function drawClubRoom(ctx, t, hype, ground) {
+    hype = hype || 0;
+    bands(ctx, ['#0c0018', '#140024', '#1c0030', '#24003c'], 0, ground);
+    // Blade Runner window: rainy neon city
+    R(234, 28, 72, 60, '#000'); R(236, 30, 68, 56, '#04102c');
+    for (var b = 0; b < 7; b++) { var hh = 14 + ((b * 13) % 28); R(238 + b * 10, 86 - hh, 8, hh, '#0c1c3c'); if ((b + Math.floor(t)) % 3) R(240 + b * 10, 86 - hh + 3, 2, 2, b % 2 ? C.pink : C.cyan); }
+    for (var rn = 0; rn < 18; rn++) { var ry = (t * 90 + rn * 23) % 56; R(237 + (rn * 17) % 66, 30 + ry, 1, 4, '#3c5c9c'); }
+    R(268, 28, 2, 60, '#000'); R(234, 56, 72, 2, '#000');
+    // Mardi Gras beads + masks
+    for (var bx = 0; bx < 230; bx += 4) { var by = 12 + Math.round(Math.sin(bx * 0.05) * 5 + 5); R(bx, by, 2, 2, ['#881488', '#f8b800', '#00a800'][(bx / 4 | 0) % 3]); }
+    [[30, 40, '#881488', '#f8b800'], [200, 44, '#00a800', '#f878f8']].forEach(function (mk) { R(mk[0], mk[1], 18, 8, mk[2]); R(mk[0] + 3, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 11, mk[1] + 2, 4, 3, '#000'); R(mk[0] + 7, mk[1] - 6, 3, 7, mk[3]); });
+    // Vegas marquee sign with chasing bulbs
+    var sx = 76, sy = 26, sw = 132, sh = 26;
+    R(sx - 2, sy - 2, sw + 4, sh + 4, '#000'); R(sx, sy, sw, sh, '#3c0028');
+    for (var k = 0; k < 22; k++) { var on = (k + Math.floor(t * 8)) % 3 === 0; var lx = sx + 3 + k * 6; R(lx, sy + 1, 2, 2, on ? C.yellow : '#5c3c00'); R(lx, sy + sh - 3, 2, 2, !on ? C.yellow : '#5c3c00'); }
+    var neon = Math.sin(t * 13) > -0.85 ? C.pink : '#5c003c';
+    T('DESPERADO', sx + sw / 2 + 1, sy + 6, C.cyan, { align: 'center', scale: 2, shadow: null });
+    T('DESPERADO', sx + sw / 2, sy + 5, neon, { align: 'center', scale: 2, shadow: null });
+    // disco ball + light specks
+    var dbx = 184, dby = 64;
+    R(dbx, 0, 1, dby - 6, '#5c5c5c'); pdisc(ctx, dbx, dby, 6, '#bcbcbc');
+    for (var q = 0; q < 6; q++) R(dbx - 5 + q * 2, dby - 4 + ((q + Math.floor(t * 6)) % 3) * 3, 1, 1, C.white);
+    for (var sp = 0; sp < 18 + hype * 20; sp++) {
+      var a = t * (0.6 + hype) + sp * 0.9, rr2 = 30 + (sp * 37) % 120;
+      var spx = dbx + Math.cos(a) * rr2 * 1.4, spy = dby + 10 + Math.abs(Math.sin(a * 1.3)) * (ground - dby - 14);
+      R(spx, spy, 2, 1, [C.white, C.pink, C.cyan, C.yellow][sp % 4]);
+    }
+    // floor: carpet + light-up 70s dance floor
+    R(0, ground, W, H - ground, '#2c0c2c');
+    for (var cx = 0; cx < W; cx += 8) R(cx, ground + ((cx / 8) % 2) * 4, 4, 2, '#3c143c');
+    for (var tx = 148; tx < 222; tx += 12) for (var ty = ground; ty < H; ty += 8) {
+      var lit = ((tx / 12 | 0) + (ty / 8 | 0) + Math.floor(t * (3 + hype * 5))) % 4;
+      R(tx, ty, 11, 7, ['#d800cc', '#3cbcfc', '#f8b800', '#58d854'][lit]);
+      R(tx, ty, 11, 1, C.white);
+    }
+    R(0, ground, W, 1, '#881488');
+  }
+  function drawStudio(ctx, t, green) {
+    bands(ctx, green ? ['#0c1c0c', '#102410', '#142c14', '#183418'] : ['#1c0024', '#24002c', '#2c0034', '#34003c'], 0, 140);
+    for (var i = 0; i < 4; i++) { ctx.globalAlpha = 0.1; ctx.fillStyle = C.yellow; ctx.beginPath(); var sx = 160 + Math.sin(t * 0.8 + i * 1.6) * 120; ctx.moveTo(40 + i * 80, 0); ctx.lineTo(sx - 20, 140); ctx.lineTo(sx + 20, 140); ctx.fill(); ctx.globalAlpha = 1; }
+    if (green) { R(30, 60, 70, 40, '#2c2c2c'); R(32, 62, 66, 36, '#5c5c5c'); for (var b = 0; b < 8; b++) { pdisc(ctx, 36 + b * 8, 62, 2, C.yellow); } R(220, 90, 70, 30, '#7c3c18'); R(222, 86, 66, 6, '#a85010'); }
+    else { T('DANGER ZONE', 160, 30, blink(1.5) ? C.red : C.orange, { align: 'center', scale: 2 }); }
+    R(0, 140, W, 40, green ? '#203020' : '#3c1c3c'); R(0, 140, W, 1, C.gray);
+  }
+  // fallback for cinema backgrounds by theme
+  var INTERIORS = { basement: '#1c1410', nest: '#1c0c0c', depot: '#141c24', restroom: '#1c2c2c', temple: '#1c1028', school: '#241c10', office: '#20202c', ymca: '#1c2024', admin: null };
+  function themeBackdrop(ctx, theme, t, night, camX) {
+    theme = theme || 'village';
+    if (theme === 'guide_room') { drawGuideRoom(ctx, t); return; }
+    if (/^inn/.test(theme)) { drawInnRoom(ctx, theme.replace(/^inn_?/, '') || 'pug', t, 150); return; }
+    if (theme === 'club') { drawClubRoom(ctx, t, 0, 150); return; }
+    if (theme === 'studio' || theme === 'greenroom') { drawStudio(ctx, t, theme === 'greenroom'); return; }
+    if (INTERIORS[theme]) {
+      R(0, 0, W, H, INTERIORS[theme]);
+      for (var y = 10; y < 150; y += 10) for (var x = ((y / 10) % 2) * 12 - 12; x < W; x += 24) R(x - (camX || 0) % 24, y, 23, 9, 'rgba(255,255,255,0.04)');
+      R(0, 150, W, 30, '#0c0808'); R(0, 150, W, 1, '#3c3c3c');
+      return;
+    }
+    overSky(ctx, t, night, 150);
+    var ox = -Math.round((camX || 0) * 0.3) % 40;
+    ctx.save(); ctx.translate(ox, 0);
+    if (theme === 'circus') { ruins(ctx, 150, 7, night ? '#140820' : '#2c0c08', t); bigTop(ctx, 170, 150, night ? '#0c0414' : '#1c0404', night ? '#2c0c2c' : '#3c0c08'); }
+    else if (theme === 'village' || theme === 'settlement' || theme === 'admin') rooftops(ctx, 150, theme === 'village' ? 3 : 11, night ? '#0c0618' : '#2c0c08', night ? '#f8d878' : null, t);
+    else ruins(ctx, 150, theme.length * 7 + 1, night ? '#0c0618' : '#2c0c08', t);
+    ctx.restore();
+    slats(ctx, 150, t, true);
+  }
+  ui.themeBackdrop = themeBackdrop;
   var VIG = {
-    earth: function (ctx, t, x, y, w, h) {
-      R(x, y, w, h, '#05030c'); stars(ctx, t, 2);
-      var cx = x + w / 2, cy = y + h / 2 + 4;
-      pdisc(ctx, cx, cy, 36, '#000'); pdisc(ctx, cx, cy, 35, '#0058f8');
-      [[-12, -10, 12], [10, 6, 14], [-4, 18, 8], [18, -16, 7]].forEach(function (c, i) { pdiscIn(ctx, cx + c[0] + Math.round(Math.sin(t * 0.2) * 2), cy + c[1], c[2], cx, cy, 35, i % 2 ? '#00a800' : '#58d854'); });
-      pdiscIn(ctx, cx - 20, cy - 22, 20, cx, cy, 35, 'rgba(255,255,255,0.15)');
-      for (var i = 0; i < 5; i++) { var a = t * 0.6 + i * 1.25; saucer(ctx, cx + Math.cos(a) * 62, cy + Math.sin(a) * 26 - 6, 0); }
+    overcity: function (ctx, t, x, y, w, h) { overSky(ctx, t, false, y + h); ruins(ctx, y + h - 10, 5, '#2c0c08', t); rooftops(ctx, y + h, 9, '#140404', null, t); },
+    night: function (ctx, t, x, y, w, h) { overSky(ctx, t, true, y + h); rooftops(ctx, y + h, 4, '#000', '#f8d878', t); },
+    circus: function (ctx, t, x, y, w, h) { overSky(ctx, t, true, y + h); ruins(ctx, y + h, 7, '#140820', t); bigTop(ctx, x + w / 2, y + h, '#0c0414', '#3c0c2c'); },
+    collapse: function (ctx, t, x, y, w, h) {
+      overSky(ctx, t, false, y + h);
+      for (var i = 0; i < 9; i++) { var fx = x + 12 + i * 34, fall = ((t * 30 + i * 17) % (h + 40)) - 20; R(fx, y + fall, 14 + (i % 3) * 6, 10, '#1c0404'); }
+      ctx.save(); ctx.globalAlpha = 0.5; R(x, y + h - 26 + Math.round(Math.sin(t * 20) * 2), w, 26, '#000'); ctx.restore();
+      for (var c = 0; c < 6; c++) { var cx = x + 20 + c * 50; R(cx, y + h - 26, 2, 26, C.orange); R(cx + 2, y + h - 16, 6, 2, C.orange); }
     },
-    city: function (ctx, t, x, y, w, h) {
-      bands(ctx, ['#0b0420', '#140830', '#200c40', '#2c1048', '#3c1450'], y, y + h);
-      stars(ctx, t, 1, 50);
-      skyline(ctx, y + h - 10, 11, '#1c1030', null, t);
-      [[x + 70, 0], [x + 200, 1.3], [x + 260, 2.2]].forEach(function (s) { saucer(ctx, s[0] + Math.sin(t + s[1]) * 6, y + 14 + s[1] * 3, h - 18); });
-      skyline(ctx, y + h, 23, '#000', '#f8d878', t);
-      for (var d = 0; d < 8; d++) { var dy = (t * 40 + d * 23) % (h - 20); R(x + 40 + d * 33, y + 18 + dy, 2, 2, C.gray); }
-    },
-    carl: function (ctx, t, x, y, w, h) {
-      bands(ctx, ['#000820', '#001030', '#081840', '#102050'], y, y + h - 20);
-      skyline(ctx, y + h - 20, 5, '#081028', '#3c3c00', t);
-      R(x, y + h - 20, w, 20, '#dcdcfc'); R(x, y + h - 20, w, 2, C.white);
-      bigSprite(ctx, 'carl_idle', x + w / 2 - 22, y + h - 8, { scale: 2, skin: 'carl_boxers', frame: Math.floor(t * 2) });
-      bigSprite(ctx, compSprite('donut') + '_idle', x + w / 2 + 26, y + h - 8, { scale: 2, frame: Math.floor(t * 2), flip: true });
-      for (var s = 0; s < 40; s++) { var sx = (s * 37 + Math.sin(t + s) * 6) % w, sy = (t * 14 + s * 29) % h; R(x + sx, y + sy, 1, 1, C.white); }
+    greenroom: function (ctx, t, x, y, w, h) { drawStudio(ctx, t, true); },
+    studio: function (ctx, t, x, y, w, h) { drawStudio(ctx, t, false); },
+    doomsday: function (ctx, t, x, y, w, h) {
+      R(x, y, w, h, '#05030c'); stars(ctx, t, 0.5, 40);
+      var cx = x + w / 2, cy = y + h / 2 + 6, gl = 0.25 + 0.2 * Math.sin(t * 5);
+      ctx.globalAlpha = gl; pdisc(ctx, cx, cy, 36, C.cyan); ctx.globalAlpha = 1;
+      R(cx - 18, cy - 26, 36, 44, '#a4e4fc'); R(cx - 16, cy - 24, 32, 40, '#0c1c2c');
+      ctx.fillStyle = (Math.floor(t * 8) % 2) ? C.cyan : C.white; ctx.beginPath(); ctx.moveTo(cx, cy - 16); ctx.lineTo(cx + 8, cy - 2); ctx.lineTo(cx, cy + 12); ctx.lineTo(cx - 8, cy - 2); ctx.closePath(); ctx.fill();
+      R(cx - 22, cy + 18, 44, 4, '#5c5c5c');
     },
     screen: function (ctx, t, x, y, w, h) {
       R(x, y, w, h, '#100018');
       for (var i = 0; i < 6; i++) { ctx.globalAlpha = 0.08; ctx.fillStyle = i % 2 ? C.purple : C.blue; ctx.beginPath(); var a = Math.sin(t * 0.7 + i) * 0.5; ctx.moveTo(x + w / 2, y - 10); ctx.lineTo(x + w / 2 + Math.sin(a + i) * 200 - 20, y + h); ctx.lineTo(x + w / 2 + Math.sin(a + i) * 200 + 20, y + h); ctx.fill(); ctx.globalAlpha = 1; }
       bigSprite(ctx, 'ai_screen', x + w / 2, y + h - 22 + Math.round(Math.sin(t * 2) * 3), { scale: 3, frame: Math.floor(t * 3) });
       T('● LIVE', x + 8, y + 6, blink(1.2) ? C.red : C.dred);
-      T('VIEWERS ' + fmtNum(1203445 + Math.floor(t * 4321)), x + w - 6, y + 6, C.pink, { align: 'right' });
+      T('VIEWERS ' + fmtNum(372000000 + Math.floor(t * 4321)), x + w - 6, y + 6, C.pink, { align: 'right' });
+    },
+    carl: function (ctx, t, x, y, w, h) {
+      overSky(ctx, t, true, y + h - 20);
+      rooftops(ctx, y + h - 20, 5, '#000', '#3c3c00', t);
+      slats(ctx, y + h - 20, t, true);
+      bigSprite(ctx, actorName('carl', 'idle'), x + w / 2 - 22, y + h - 8, { scale: 2, skin: equipped('skin'), frame: Math.floor(t * 2) });
+      bigSprite(ctx, actorName('donut', 'idle'), x + w / 2 + 26, y + h - 8, { scale: 2, frame: Math.floor(t * 2), flip: true });
     },
     stairs: function (ctx, t, x, y, w, h) {
       R(x, y, w, h, '#0c0c10');
       R(x, y + h - 36, w, 36, '#2c2420'); R(x, y + h - 36, w, 2, '#4c3c30');
-      var cx = x + w / 2 + 40, top = y + h - 30;
+      var cx = x + w / 2 + 40, top2 = y + h - 30;
       var gl = 0.25 + 0.15 * Math.sin(t * 3);
-      ctx.globalAlpha = gl; pdisc(ctx, cx, top + 8, 34, '#58d854'); ctx.globalAlpha = 1;
-      for (var s = 0; s < 5; s++) R(cx - 22 + s * 2, top + s * 5, 44 - s * 4, 5, s % 2 ? '#1c1c1c' : '#2c2c2c');
-      R(cx - 24, top - 2, 48, 2, '#7c7c7c');
+      ctx.globalAlpha = gl; pdisc(ctx, cx, top2 + 8, 34, '#58d854'); ctx.globalAlpha = 1;
+      for (var s = 0; s < 5; s++) R(cx - 22 + s * 2, top2 + s * 5, 44 - s * 4, 5, s % 2 ? '#1c1c1c' : '#2c2c2c');
+      R(cx - 24, top2 - 2, 48, 2, '#7c7c7c');
       var wx = x + 30 + ((t * 18) % 80);
-      spr(ctx, 'carl_run', wx, y + h - 10, { frame: Math.floor(t * 8), skin: equipped('skin') });
-      spr(ctx, compSprite(equipped('companion')) + '_run', wx - 18, y + h - 10, { frame: Math.floor(t * 8) });
-      T('▼', cx, top - 16 + Math.round(Math.sin(t * 4) * 2), C.green, { align: 'center' });
+      spr(ctx, actorName('carl', 'walk'), wx, y + h - 10, { frame: Math.floor(t * 8), skin: equipped('skin') });
+      spr(ctx, actorName(compSprite('mongo'), 'walk'), wx - 18, y + h - 10, { frame: Math.floor(t * 8) });
+      T('▼', cx, top2 - 16 + Math.round(Math.sin(t * 4) * 2), C.green, { align: 'center' });
     },
     crowd: function (ctx, t, x, y, w, h) {
       bands(ctx, ['#1c0010', '#2c0018', '#3c0020'], y, y + h);
       for (var i = 0; i < 5; i++) { ctx.globalAlpha = 0.12; ctx.fillStyle = C.yellow; ctx.beginPath(); var sx = x + w / 2 + Math.sin(t + i * 1.7) * 140; ctx.moveTo(x + 40 + i * 60, y); ctx.lineTo(sx - 18, y + h); ctx.lineTo(sx + 18, y + h); ctx.fill(); ctx.globalAlpha = 1; }
-      bigSprite(ctx, 'carl_victory', x + w / 2, y + h - 30, { scale: 2, skin: equipped('skin'), frame: Math.floor(t * 3) });
+      bigSprite(ctx, hasArt('carl_victory') ? 'carl_victory' : actorName('carl', 'idle'), x + w / 2, y + h - 30, { scale: 2, skin: equipped('skin'), frame: Math.floor(t * 3) });
       for (var c = 0; c < 26; c++) {
         var hx = x + 6 + c * 12, hy = y + h - 12 + Math.round(Math.abs(Math.sin(t * 6 + c)) * -4);
         var hc = ['#58d854', '#3cbcfc', '#f878f8', '#fca044', '#d800cc'][c % 5];
@@ -1787,12 +2591,15 @@
       for (var k = 0; k < 30; k++) { var kx = (k * 53 + t * 20) % w, ky = (t * 30 + k * 17) % h; R(x + kx, y + ky, 2, 2, ['#f83800', '#f8b800', '#58d854', '#3cbcfc'][k % 4]); }
     }
   };
+  VIG.earth = VIG.overcity; VIG.city = VIG.night;
   ui.vignettes = VIG;
-  function drawVignette(ctx, name, t) {
-    var v = VIG[name] || VIG.earth;
+  function drawVignette(ctx, name, t, panelId) {
     DCW.box(6, 6, 308, 112);
     ctx.save(); ctx.beginPath(); ctx.rect(8, 8, 304, 108); ctx.clip();
-    try { v(ctx, t, 8, 8, 304, 108); } catch (e) { console.error(e); }
+    try {
+      R(8, 8, 304, 108, '#000');
+      if (!(panelId && drawPanel(ctx, panelId, 32, 6, t)) && !(hasPanel(name) && !VIG[name] && drawPanel(ctx, name, 32, 6, t))) (VIG[name] || VIG.overcity)(ctx, t, 8, 8, 304, 108);
+    } catch (e) { console.error(e); }
     ctx.restore();
   }
 
@@ -1801,7 +2608,7 @@
      ================================================================ */
   var scenes = ui.scenes = {};
 
-  /* ---------- story pages (intro + ending share this) ---------- */
+  /* ---------- story pages (intro + endings share this) ---------- */
   function storyPager(pages, vigOrder, onDone) {
     var p = { pages: pages, i: 0, shown: 0, blip: 0, t: 0, pt: 0, done: false };
     p.update = function (dt) {
@@ -1822,54 +2629,109 @@
     p.draw = function (ctx) {
       var pg = p.pages[Math.min(p.i, p.pages.length - 1)]; if (!pg) return;
       var vig = pg.vignette || pg.scene || vigOrder[Math.min(p.i, p.pages.length - 1) % vigOrder.length];
-      drawVignette(ctx, vig, p.t);
+      drawVignette(ctx, vig, p.t, pg.panel);
       DCW.box(6, 124, 308, 52);
-      var tx = 14;
-      if (pg.portrait) { R(11, 129, 34, 34, C.white); R(12, 130, 32, 32, '#000'); portrait(ctx, pg.portrait, 12, 130); tx = 52; }
+      var tx = 14, total = pg._lines.join('').length;
+      if (pg.portrait) { faceSlot(ctx, pg.portrait, 12, 130, p.shown < total, p.i); tx = 52; }
       var left = p.shown;
       pg._lines.forEach(function (l, i) { if (left <= 0) return; T(l.slice(0, Math.floor(left)), tx, 130 + i * 10, C.white); left -= l.length; });
-      if (p.shown >= pg._lines.join('').length && blink(2.5)) T('▼', 302, 164, C.gold);
-      // page dots
+      if (p.shown >= total && blink(2.5)) T('▼', 302, 164, C.gold);
       for (var d = 0; d < p.pages.length; d++) R(160 - p.pages.length * 4 + d * 8, 120, 4, 2, d === p.i ? C.gold : C.ddgray);
       T(bn('start') + ':SKIP', 312, 9, C.dgray, { align: 'right', shadow: null });
     };
-    pages.forEach(function (pg) { pg._lines = wrap(String(pg.text || '').toUpperCase(), pg.portrait ? 254 : 292).slice(0, 4); });
+    pages.forEach(function (pg) { pg._lines = wrap(up(pg.text || ''), pg.portrait ? 254 : 292).slice(0, 4); });
     return p;
   }
   function storyPages(key, fb) {
-    var st = D('story'), arr = st && st[key];
+    var st = D('story'), src = st && st[key];
     var out = [];
-    (Array.isArray(arr) && arr.length ? arr : fb).forEach(function (pg) {
+    (Array.isArray(src) && src.length ? src : fb).forEach(function (pg) {
       if (typeof pg === 'string') pg = { text: pg };
       var txt = String(pg.text || '');
-      var por = pg.portrait, vig = pg.vignette || pg.scene;
-      var wl = wrap(txt.toUpperCase(), por ? 254 : 292);
-      for (var i = 0; i < wl.length; i += 4) out.push({ text: wl.slice(i, i + 4).join(' '), portrait: por, vignette: vig });
+      var por = pg.portrait !== undefined ? pg.portrait : (pg.who ? portraitFor(pg.who) : null), vig = pg.vignette || pg.scene || pg.bg;
+      var wl = wrap(up(txt), por ? 254 : 292);
+      for (var i = 0; i < wl.length; i += 4) out.push({ text: wl.slice(i, i + 4).join(' '), portrait: por, vignette: vig, panel: pg.panel });
     });
     return out;
   }
 
-  /* ---------- TITLE ---------- */
+  /* ---------- TITLE (+ book 1 import) ---------- */
+  function canImport() {
+    var s = save();
+    return !!(DCW.legacy && DCW.legacy.book1) && !(s.meta && s.meta.imported) && hasG('importLegacy');
+  }
+  ui.canImport = canImport;
+  function showImport(sum, then) {
+    sum = sum || {};
+    var m = { kind: 'import' };
+    var skins = Array.isArray(sum.skins) ? sum.skins : [];
+    var nSkins = Array.isArray(sum.skins) ? sum.skins.length : (+sum.skins || 0);
+    var boxes = Array.isArray(sum.boxes) ? sum.boxes : [];
+    var ttl = sum.title || (save().meta && save().meta.legacyTitle) || ((D('legacy') || {}).title) || 'BOOK 1 VETERAN';
+    var quip = aiLine('import', 'WELL, WELL. A RETURNING CONTESTANT. THE AUDIENCE REMEMBERS YOU. MOSTLY YOUR FEET.');
+    m.update = function (dt) { m.t += dt; if ((P('confirm') || backPressed() || P('start')) && m.t > 0.4) { sfx('menu_select'); close(m); if (then) then(); } };
+    m.draw = function (ctx) {
+      frame(ctx, 'BOOK 1 SAVE IMPORTED', { footer: bn('confirm') + ': NICE', border: C.gold });
+      var y = 23;
+      T('THESE CAME OVER FROM FLOOR 1 TO 2:', 14, y, C.gray); y += 13;
+      icon(ctx, 'star', 14, y - 1); T('SKINS UNLOCKED: ' + nSkins, 26, y, C.yellow); y += 10;
+      var nm = skins.slice(0, 6).map(skinName);
+      for (var i = 0; i < nm.length; i += 2) { T(fitText(nm[i], 136), 30, y, C.white); if (nm[i + 1]) T(fitText(nm[i + 1], 136), 170, y, C.white); y += 9; }
+      if (skins.length > 6) { T('AND ' + (skins.length - 6) + ' MORE', 30, y, C.dgray); y += 9; }
+      y += 3;
+      icon(ctx, 'eye', 14, y - 1); T('BOOK 1 ACHIEVEMENTS ON RECORD: ' + (sum.achievements || 0), 26, y, C.white); y += 10;
+      icon(ctx, 'star', 14, y - 1); T('BOOK 1 WINS: ' + (sum.wins || 0), 26, y, C.white); y += 12;
+      if (boxes.length) {
+        icon(ctx, 'box', 14, y - 1); T('VETERAN BOXES, IN EVERY NEW CRAWL:', 26, y, C.white); y += 10;
+        var bx2 = 30;
+        boxes.forEach(function (b) { var n2 = up(tierName(b)); if (bx2 + tw(n2) > 306) { bx2 = 30; y += 9; } T(n2, bx2, y, boxColor(b)); bx2 += tw(n2) + 10; });
+        y += 12;
+      }
+      T('TITLE: ' + up(ttl), 14, y, C.pink); y += 10;
+      T('LEVELS AND STATS STAY ON FLOOR 2. RULES ARE RULES.', 14, y, C.dgray, { shadow: null });
+      DCW.box(10, 128, 300, 32, { fill: '#1c0c34' });
+      faceSlot(ctx, 'p_ai', 11, 128, m.t < 1.5, 4);
+      wrap(up(quip), 260).slice(0, 2).forEach(function (l, k) { T(l, 48, 134 + k * 10, C.white); });
+    };
+    return push(m);
+  }
+  ui.showImport = showImport;
+  function doImport(then) {
+    var sum = G('importLegacy');
+    if (!sum) { sfx('error'); ui.toast('NOTHING TO IMPORT. THE BOOK 1 SAVE IS EMPTY OR ALREADY USED.', { icon: 'skull', color: C.red, time: 3.5 }); if (then) then(); return; }
+    sfx('unlock'); sfx('fanfare');
+    showImport(sum, then);
+  }
   scenes.title = {
     enter: function () {
       closeAll();
-      this.t = 0; this.sel = 0; this.cool = 0.25;
+      this.t = 0; this.sel = 0; this.cool = 0.25; this.skipAsk = false;
       music('title');
     },
     items: function () {
-      var hasRun = !!(DCW.save && DCW.save.run);
-      return [
-        hasRun ? { label: 'CONTINUE', action: function () { start('continueRun'); } } : null,
-        { label: 'NEW CRAWL', action: function () {
+      var self = this, hasRun = !!(DCW.save && DCW.save.run), imp = canImport();
+      function start(fn) { sfx('fanfare'); if (tryCall(DCW.game, fn, []) === MISSING) ui.toast('GAME MODULE MISSING', { color: C.red }); }
+      function newCrawl() {
+        var go2 = function () {
           if (DCW.save && DCW.save.run) ui.confirm('START OVER? YOUR CURRENT CRAWL WILL BE LOST.', function () { start('newRun'); });
           else start('newRun');
-        } },
+        };
+        if (canImport() && !self.skipAsk) {
+          ui.menu([
+            { label: 'IMPORT IT FIRST', action: function () { doImport(go2); } },
+            { label: 'NO, START FRESH', action: function () { self.skipAsk = true; go2(); } }
+          ], { title: 'A BOOK 1 SAVE IS SITTING RIGHT THERE. IMPORT IT FIRST?', w: 220, titleColor: C.gold, border: C.gold });
+        } else go2();
+      }
+      return [
+        hasRun ? { label: 'CONTINUE', action: function () { start('continueRun'); } } : null,
+        imp ? { label: 'IMPORT BOOK 1 SAVE', color: C.gold, action: function () { doImport(null); } } : null,
+        { label: 'NEW CRAWL', action: newCrawl },
         { label: 'WARDROBE', action: ui.openWardrobe },
         { label: 'ACHIEVEMENTS', action: ui.openAchievements },
         { label: 'SETTINGS', action: ui.openSettings },
         { label: 'HOW TO PLAY', action: ui.openHowTo }
       ].filter(Boolean);
-      function start(fn) { sfx('fanfare'); if (tryCall(DCW.game, fn, []) === MISSING) ui.toast('GAME MODULE MISSING', { color: C.red }); }
     },
     update: function (dt) {
       this.t += dt; if (this.cool > 0) { this.cool -= dt; return; }
@@ -1880,89 +2742,394 @@
     idle: function (dt) { this.t += dt; },
     draw: function (ctx) {
       var t = this.t || 0;
-      bands(ctx, ['#07021a', '#0b0424', '#12062e', '#1a0838', '#240a40', '#300c46', '#3c1048', '#4c1448'], 0, 172);
-      stars(ctx, t, 3, 100);
-      // alien planet with ring
-      var px = 268, py = 34;
-      pdisc(ctx, px, py, 23, '#000'); pdisc(ctx, px, py, 22, '#881488'); pdiscIn(ctx, px - 8, py - 8, 16, px, py, 22, '#b83cb8'); pdiscIn(ctx, px + 10, py + 6, 6, px, py, 22, '#5c0c5c');
-      R(px - 40, py + 2, 80, 2, '#f8b800'); R(px - 34, py + 4, 68, 1, '#ac7c00');
-      saucer(ctx, 40 + Math.sin(t * 0.7) * 20, 30 + Math.sin(t * 1.3) * 4, 0);
-      skyline(ctx, 168, 99, '#120620', '#5c3c00', t);
-      R(0, 168, W, 12, '#000'); R(0, 168, W, 1, '#3c1048');
+      overSky(ctx, t, true, 150);
+      pdisc(ctx, 52, 132, 26, '#5c0c08'); pdisc(ctx, 52, 132, 20, '#a81000'); // the red sun, sinking
+      ruins(ctx, 150, 21, '#1c0828', t);
+      bigTop(ctx, 268, 150, '#10041c', '#2c0828');
+      rooftops(ctx, 156, 99, '#0a0414', '#ac7c00', t);
+      saucer(ctx, 150 + Math.sin(t * 0.7) * 40, 74 + Math.sin(t * 1.3) * 3);
+      slats(ctx, 162, t, true);
+      R(0, 162, W, 1, '#7c5c3c');
       // logo
       var bob = Math.round(Math.sin(t * 2) * 1);
-      T('DUNGEON CRAWLER', 162, 13, '#a81000', { align: 'center', scale: 2, shadow: null });
-      T('DUNGEON CRAWLER', 160, 11, C.gold, { align: 'center', scale: 2, shadow: '#000' });
+      T('DUNGEON CRAWLER', 162, 10, '#a81000', { align: 'center', scale: 2, shadow: null });
+      T('DUNGEON CRAWLER', 160, 8, C.gold, { align: 'center', scale: 2, shadow: '#000' });
       var word = 'WORLD', wx = 160 - tw(word, 3) / 2;
       for (var i = 0; i < word.length; i++) {
-        var ly = 31 + bob + Math.round(Math.sin(t * 3 + i * 0.8) * 1.5);
+        var ly = 26 + bob + Math.round(Math.sin(t * 3 + i * 0.8) * 1.5);
         T(word.charAt(i), wx + i * 18 + 2, ly + 2, '#a81000', { scale: 3, shadow: null });
         T(word.charAt(i), wx + i * 18, ly, C.white, { scale: 3, shadow: '#000' });
       }
-      var rb = tw('EARTH EDITION') + 20;
-      R(160 - rb / 2 - 6, 62, 6, 9, '#003c8c'); R(160 + rb / 2, 62, 6, 9, '#003c8c');
-      DCW.box(160 - rb / 2, 59, rb, 13, { fill: C.dblue });
-      T('EARTH EDITION', 160, 62, C.white, { align: 'center' });
-      // AI host + Carl & Donut
-      spr(ctx, 'ai_screen', 272, 132 + Math.round(Math.sin(t * 2.2) * 3), { frame: Math.floor(t * 2) });
-      if (Math.floor(t / 4) % 3 === 1) { DCW.box(232, 84, 82, 22, { fill: C.white, border: '#000', border2: '#000' }); T('WE\'RE LIVE,', 273, 87, '#000', { align: 'center', shadow: null }); T('BABY!', 273, 96, C.red, { align: 'center', shadow: null }); }
-      spr(ctx, 'carl_idle', 40, 169, { frame: Math.floor(t * 2), skin: equipped('skin') });
-      spr(ctx, compSprite(equipped('companion')) + '_idle', 62, 169, { frame: Math.floor(t * 2), flip: true });
+      var sub = "BOOK 2: CARL'S DOOMSDAY SCENARIO", rb = tw(sub) + 20;
+      R(160 - rb / 2 - 6, 54, 6, 9, '#5c0000'); R(160 + rb / 2, 54, 6, 9, '#5c0000');
+      DCW.box(160 - rb / 2, 51, rb, 13, { fill: '#a81000' });
+      T(sub, 160, 54, C.white, { align: 'center' });
+      // the AI host + Carl, Donut and Mongo
+      spr(ctx, 'ai_screen', 286, 132 + Math.round(Math.sin(t * 2.2) * 3), { frame: Math.floor(t * 2) });
+      var quips = ['FLOOR THREE, BABY!', 'EIGHT DAYS. NO PRESSURE.', 'STILL NO PANTS!'];
+      if (Math.floor(t / 4) % 3 === 1) bubble(ctx, quips[Math.floor(t / 12) % quips.length], 286, 110, { w: 64 });
+      var fr = Math.floor(t * 2);
+      spr(ctx, actorName(compSprite('mongo'), 'idle'), 22, 166, { frame: fr });
+      spr(ctx, actorName('carl', 'idle'), 46, 166, { frame: fr, skin: equipped('skin') });
+      if (hasArt('donut_shoulder')) spr(ctx, 'donut_shoulder', 46, 146, { frame: fr });
+      else spr(ctx, actorName('donut', 'idle'), 66, 166, { frame: fr, flip: true });
       // menu
-      var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh;
-      DCW.box(104, my, 112, mh);
+      var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh, mw = 136;
+      DCW.box(160 - mw / 2, my, mw, mh);
       var self = this;
       its.forEach(function (it, k) {
         var yy = my + 6 + k * 12;
-        if (k === self.sel) cursor(110, yy);
-        T(it.label, 120, yy, k === self.sel ? C.white : C.gray);
+        if (k === self.sel) cursor(160 - mw / 2 + 6, yy);
+        T(it.label, 160 - mw / 2 + 16, yy, k === self.sel ? (it.color || C.white) : (it.color ? (blink(1.5) ? it.color : C.yellow) : C.gray));
       });
-      T('FAN GAME', 316, 172, '#3c2c5c', { align: 'right', shadow: null });
+      if (canImport()) T('★ BOOK 1 SAVE FOUND', 4, 172, blink(1.2) ? C.gold : C.yellow, { shadow: '#000' });
+      T('FAN GAME', 316, 172, '#5c3c5c', { align: 'right', shadow: null });
     }
   };
 
-  /* ---------- INTRO ---------- */
-  var INTRO_FB = [
-    { text: 'ONE DAY, WITHOUT WARNING, EVERY BUILDING ON EARTH FOLDED INTO THE GROUND LIKE A BAD HAND OF CARDS.' },
-    { text: 'THE GALAXY\'S MOST POPULAR GAME SHOW HAD ARRIVED. THE PLANET WAS NOW A SET.' },
-    { text: 'CARL WAS OUTSIDE AT THE TIME. IN HIS BOXERS. CHASING HIS EX\'S CAT. SO HE SURVIVED.' },
-    { text: 'WELCOME, CRAWLER! DESCEND. FIGHT. LOOT. ENTERTAIN THE AUDIENCE. TRY TO BE ALIVE AT THE END.', portrait: 'p_ai' },
-    { text: 'THE STAIRWELL IS RIGHT THERE. THE CAT IS ALREADY JUDGING YOU. LET\'S GO.' }
-  ];
-  scenes.intro = {
+  /* ---------- CLASS PICK (the game guide's room) ---------- */
+  var CP_FB = {
+    intro: [
+      { who: 'MORDECAI', text: 'WELCOME TO THE THIRD FLOOR. YES, I HAVE HORNS NOW. AND WINGS. AND A TAIL. DO NOT ASK ABOUT THE TAIL.' },
+      { who: 'MORDECAI', text: 'THIS IS WHERE YOU PICK A RACE AND A CLASS. CHOOSE CAREFULLY. YOU LIVE WITH IT UNTIL YOU DIE, WHICH, FOR MOST CRAWLERS, IS TUESDAY.' }
+    ],
+    donutLines: [
+      { who: 'DONUT', text: 'I\'VE ALREADY DECIDED. I\'M STAYING A CAT, OBVIOUSLY. AND MY CLASS IS FORMER CHILD ACTOR. IT SPEAKS TO MY JOURNEY.' },
+      { who: 'MORDECAI', text: 'THAT CLASS IS GARBAGE. IT GIVES YOU A HEADSHOT, A SAD STORY AND A... WAIT. WHAT IS THAT CLAUSE.' },
+      { who: 'SYSTEM AI', text: 'CLASS BENEFIT ACTIVATED! EVERY FORMER CHILD ACTOR NEEDS A MANAGER. MORDECAI HAS BEEN CONTRACTUALLY BOUND TO PRINCESS DONUT. CONGRATULATIONS!' }
+    ],
+    mordecaiLines: [
+      { who: 'MORDECAI', text: 'YOU PLANNED THIS. THE BOTH OF YOU. I AM A GAME GUIDE, NOT A TALENT AGENT FOR A CAT.' },
+      { who: 'DONUT', text: 'TEN PERCENT, MORDECAI. AND YOU GET TO WATCH ME BECOME A STAR. HONESTLY, YOU SHOULD BE THANKING ME.' },
+      { who: 'CARL', text: 'DON\'T LOOK AT ME. I JUST NODDED WHEN SHE SAID NOD.' }
+    ],
+    carlRaces: [
+      { id: 'human', name: 'HUMAN', desc: 'WHAT YOU ARE NOW. BORING, SOFT, AND PROVEN TO DIE TO RATS.', locked: 'YOU\'VE BEEN A HUMAN FOR YEARS AND LOOK WHERE IT GOT YOU. NO PANTS, NO HOUSE, NO. DENIED.' },
+      { id: 'primal', name: 'PRIMAL', desc: 'STILL HUMAN, BUT MORE. YOUR BEST SKILLS CAN TRAIN ALL THE WAY TO LEVEL 20. THE AI CALLS IT THE LATE BLOOMER PACKAGE.' },
+      { id: 'half_orc', name: 'HALF ORC', desc: 'TUSKS, MUSCLE, AND A GENUINE LOVE OF YELLING.', locked: 'THE ORC COUNCIL SAW YOUR FEET AND VOTED NO. UNANIMOUSLY. ONE OF THEM CRIED.' },
+      { id: 'bopca', name: 'BOPCA', desc: 'STOUT, GREEN, SMELLS OF WET MOSS. RUNS SAFE ROOMS FOR A LIVING.', locked: 'REQUIRES SHOWING UP TO WORK. EVERY DAY. FOREVER. WE BOTH KNOW THAT\'S NOT HAPPENING.' },
+      { id: 'skyfowl', name: 'SKYFOWL', desc: 'BIRD PEOPLE. FORMER RULERS OF THE OVER CITY. VERY JUDGMENTAL.', locked: 'YOU CAN\'T FLY. YOU CAN BARELY JUMP. THE BIRDS LAUGHED SO HARD ONE HAD TO SIT DOWN.' },
+      { id: 'incubus', name: 'INCUBUS', desc: 'HANDSOME, HORNED, PROFESSIONALLY SEDUCTIVE.', locked: 'THAT ONE\'S TAKEN. ASK MORDECAI HOW IT\'S GOING. ACTUALLY, DON\'T.' }
+    ],
+    carlClasses: [
+      { id: 'royal_bodyguard', name: 'ROYAL BODYGUARD', desc: 'PROTECT A MEMBER OF ROYALTY AT ALL COSTS.', locked: 'YOU ALREADY HAVE THIS JOB. IT DOESN\'T PAY. SHE KNOWS.' },
+      { id: 'compensated_anarchist', name: 'COMPENSATED ANARCHIST', desc: 'TRAPS, BOMBS, FISTS AND A KNACK FOR THE CAMERA. BLADES HIT 25% WEAKER. YOU DON\'T USE BLADES ANYWAY.' },
+      { id: 'monster_truck_driver', name: 'MONSTER TRUCK DRIVER', desc: 'BIG TRUCK. BIG WHEELS. BIG FEELINGS.', locked: 'SOMEBODY ELSE CALLED DIBS ON THIS ONE. YOU\'LL MEET HER. SHE\'S NICER THAN YOU.' },
+      { id: 'bard', name: 'BARD', desc: 'SING, DANCE, DISTRACT.', locked: 'WE\'VE HEARD YOU SING IN THE SHOWER. THE SHOWER FILED A COMPLAINT.' },
+      { id: 'necromancer', name: 'NECROMANCER', desc: 'RAISE THE DEAD. TALK TO THE DEAD. DATE THE DEAD.', locked: 'THE DEAD HAVE ASKED FOR A RESTRAINING ORDER.' },
+      { id: 'paladin', name: 'PALADIN', desc: 'HOLY WARRIOR. STRICT CODE OF CONDUCT.', locked: 'THE APPLICATION ASKS ABOUT YOUR MORALS. YOU KICKED A GOBLIN IN THE GROIN YESTERDAY. FOR FUN.' }
+    ],
+    collapse: [
+      { who: 'SYSTEM AI', text: 'ATTENTION, CRAWLERS! THE SECOND FLOOR HAS COLLAPSED. ANYONE STILL DOWN THERE IS NOW A FOND MEMORY.' },
+      { who: 'SYSTEM AI', text: 'THE THIRD FLOOR TIMER HAS STARTED. YOU HAVE EIGHT DAYS. PLEASE CONTINUE CHOOSING YOUR CLASS. NO RUSH. KIDDING. RUSH.' }
+    ],
+    outro: [
+      { who: 'MORDECAI', text: 'PRIMAL. COMPENSATED ANARCHIST. GODS HELP US, IT FITS YOU. NOW GET OUT THERE AND DON\'T TOUCH THE GUARDS.' },
+      { who: 'DONUT', text: 'COME ALONG, MORDECAI. A STAR NEVER KEEPS HER PUBLIC WAITING.' }
+    ]
+  };
+  function cpData() { return D('classPick') || {}; }
+  function cpList(kind) {
+    var d = cpData(), l = kind === 'race' ? (d.carlRaces || d.races) : (d.carlClasses || d.classes);
+    if (!Array.isArray(l) || !l.length) l = kind === 'race' ? CP_FB.carlRaces : CP_FB.carlClasses;
+    return l.filter(Boolean).map(function (e, i) { return typeof e === 'string' ? { id: e.toLowerCase().replace(/\W+/g, '_'), name: e } : e; });
+  }
+  function cpShortlist(list) {
+    var marked = list.filter(function (e) { return e.shortlist || e.final; });
+    if (marked.length) return marked.slice(0, 3);
+    if (list.length <= 3) return list.slice();
+    var open = list.filter(function (e) { return !e.locked; }).slice(0, 3), needLocked = 3 - open.length, out = [];
+    list.forEach(function (e) {
+      if (!e.locked) { if (open.indexOf(e) >= 0) out.push(e); }
+      else if (needLocked > 0) { out.push(e); needLocked--; }
+    });
+    return out;
+  }
+  function an(name) { return /^[AEIOU]/.test(up(name)) ? 'AN ' : 'A '; }
+  scenes.classPick = {
+    STEPS: ['intro', 'donut', 'bind', 'mord', 'race', 'class', 'outro', 'done'],
     enter: function (p) {
-      p = p || {};
-      var self = this; this.done = false;
-      music('intro');
-      this.pager = storyPager(storyPages('intro', INTRO_FB), ['city', 'screen', 'carl', 'earth', 'stairs'], function () {
-        if (self.done) return; self.done = true;
-        if (p.onDone) p.onDone(); else tryCall(DCW.game, 'continueRun', []);
-      });
+      closeAll();
+      this.p = p || {}; this.t = 0; this.phase = 'wait'; this.picked = {}; this.flash = 0; this.flashCol = C.white;
+      this.cardShake = 0; this.pt = 0; this.collapsed = false; this.doneFlag = false; this.waitT = 0.6; this.step = -1;
+      music('cutscene');
     },
-    update: function (dt) { if (!this.done) this.pager.update(dt); },
-    idle: function (dt) { this.pager.t += dt; },
-    draw: function (ctx) { R(0, 0, W, H, '#000'); this.pager.draw(ctx); }
+    next: function () {
+      var self = this, d = cpData();
+      this.step++;
+      var s = this.STEPS[this.step];
+      var talk = function (lines) { self.phase = 'talk'; ui.say(lineList(lines), { onDone: function () { self.next(); } }); };
+      if (s === 'intro') talk(d.intro && lineList(d.intro).length ? d.intro : CP_FB.intro);
+      else if (s === 'donut') talk(d.donutLines && lineList(d.donutLines).length ? d.donutLines : CP_FB.donutLines);
+      else if (s === 'bind') { this.phase = 'bind'; this.pt = 0; }
+      else if (s === 'mord') talk(d.mordecaiLines && lineList(d.mordecaiLines).length ? d.mordecaiLines : CP_FB.mordecaiLines);
+      else if (s === 'race' || s === 'class') this.startPick(s);
+      else if (s === 'outro') talk(d.outro && lineList(d.outro).length ? d.outro : CP_FB.outro);
+      else this.finish();
+    },
+    startPick: function (kind) {
+      this.kind = kind; this.list = cpList(kind); this.short = cpShortlist(this.list);
+      this.phase = 'roll'; this.pt = 0; this.tick = 0; this.sel = 0;
+      sfx('menu_select');
+    },
+    collapse: function () {
+      var self = this; this.collapsed = true;
+      if (DCW.shake) DCW.shake(5, 1.4);
+      sfx('explosion'); sfx('boss_roar');
+      this.flash = 1; this.flashCol = C.red;
+      var d = cpData();
+      ui.say(lineList(d.collapse && lineList(d.collapse).length ? d.collapse : CP_FB.collapse), { onDone: function () {
+        ui.announce('FLOOR 2 HAS COLLAPSED', { color: C.red, sub: 'EIGHT DAYS ON THE CLOCK', time: 2.4 });
+        sfx('bell_day');
+        self.phase = 'cards';
+      } });
+    },
+    choose: function () {
+      var self = this, e = this.short[this.sel]; if (!e) return;
+      if (e.locked) {
+        sfx('error'); this.cardShake = 0.45;
+        ui.say([{ who: 'SYSTEM AI', text: e.locked === true ? 'LOCKED. DON\'T TAKE IT PERSONALLY. ACTUALLY, DO.' : e.locked }]);
+        return;
+      }
+      ui.confirm('BECOME ' + an(e.name) + up(e.name) + '? NO REFUNDS.', function () {
+        self.picked[self.kind] = e.id || e.name;
+        sfx('unlock'); sfx('fanfare');
+        self.flash = 1; self.flashCol = C.white;
+        ui.announce(self.kind === 'race' ? 'RACE CHOSEN' : 'CLASS CHOSEN', { sub: up(e.name), color: C.gold, time: 1.8 });
+        self.phase = 'chosen'; self.waitT = 1.9;
+      }, { yes: 'DO IT', no: 'HMM, WAIT' });
+    },
+    finish: function () {
+      if (this.doneFlag) return; this.doneFlag = true;
+      var res = { race: this.picked.race || 'primal', klass: this.picked['class'] || 'compensated_anarchist' };
+      var r = getRun(); if (r) { r.race = res.race; r.klass = res.klass; persist(); }
+      G('pickClass', res.race, res.klass);
+      if (this.p.onDone) this.p.onDone(res); else toTitle();
+    },
+    update: function (dt) {
+      this.t += dt; if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.5); if (this.cardShake > 0) this.cardShake -= dt;
+      if (this.phase === 'wait') { this.waitT -= dt; if (this.waitT <= 0) this.next(); return; }
+      if (this.phase === 'chosen') { this.waitT -= dt; if (this.waitT <= 0) this.next(); return; }
+      if (this.phase === 'bind') {
+        var before = this.pt; this.pt += dt;
+        if (before < 0.5 && this.pt >= 0.5) { sfx('unlock'); this.flash = 0.8; this.flashCol = C.gold; ui.announce('MANAGER BOUND', { sub: 'MORDECAI NOW WORKS FOR PRINCESS DONUT', color: C.gold, time: 2 }); }
+        if (this.pt >= 2.3 || (this.pt > 0.8 && P('confirm'))) this.next();
+        return;
+      }
+      if (this.phase === 'roll') {
+        this.pt += dt; this.tick -= dt;
+        if (this.tick <= 0) { sfx('menu_move', { pitch: 1 + this.pt * 0.3 }); this.tick = 0.05 + this.pt * 0.06; }
+        if (this.pt > 1.8 || (this.pt > 0.35 && P('confirm'))) { this.phase = 'narrow'; this.pt = 0; sfx('menu_select'); }
+        return;
+      }
+      if (this.phase === 'narrow') {
+        this.pt += dt;
+        if (this.pt > 1.1 || (this.pt > 0.3 && P('confirm'))) {
+          this.phase = 'cards'; this.pt = 0;
+          if (this.kind === 'class' && !this.collapsed) { this.phase = 'quake'; this.collapse(); }
+        }
+        return;
+      }
+      if (this.phase === 'cards') {
+        var n = this.short.length;
+        if (rep(this, 'left', dt)) { this.sel = (this.sel + n - 1) % n; sfx('menu_move'); }
+        else if (rep(this, 'right', dt)) { this.sel = (this.sel + 1) % n; sfx('menu_move'); }
+        else if (P('confirm')) { sfx('menu_select'); this.choose(); }
+      }
+    },
+    idle: function (dt) { this.t += dt; if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.5); if (this.cardShake > 0) this.cardShake -= dt; },
+    draw: function (ctx) {
+      var t = this.t, self = this, GY = 150;
+      if (!drawBg(ctx, 'guide_room', 0, 0, { t: t })) drawGuideRoom(ctx, t);
+      var fr = Math.floor(t * 2);
+      // the cast
+      var mx = 254 + (this.phase === 'bind' && this.pt > 0.5 && this.pt < 1.6 ? Math.round(Math.sin(t * 50) * 2) : 0);
+      R(226, GY - 22, 44, 22, '#000'); R(227, GY - 21, 42, 21, '#5c2c10'); R(227, GY - 21, 42, 3, '#a85010'); // podium
+      spr(ctx, actorName('mordecai', 'idle'), mx, GY - 18, { frame: fr, flip: true });
+      spr(ctx, actorName(compSprite('mongo'), 'idle'), 92, GY + 8, { frame: fr });
+      spr(ctx, actorName('carl', 'idle'), 120, GY + 8, { frame: fr, skin: equipped('skin') });
+      spr(ctx, actorName('donut', 'idle'), 146, GY + 8, { frame: fr });
+      if (this.phase === 'bind') {
+        var k = clamp(this.pt / 0.5, 0, 1), x0 = 150, y0 = GY - 4, x1 = 248, y1 = GY - 34;
+        for (var i = 0; i <= 24 * k; i++) {
+          var f = i / 24, cx = x0 + (x1 - x0) * f, cy = y0 + (y1 - y0) * f - Math.sin(f * Math.PI) * 18 + Math.round(Math.sin(t * 12 + i) * 1);
+          R(cx - 1, cy - 1, 3, 3, '#000'); R(cx, cy, 2, 2, (i + Math.floor(t * 10)) % 2 ? C.gold : C.white);
+        }
+        if (this.pt > 0.5) { bubble(ctx, 'WHAT?!', 254, GY - 50, { w: 40 }); }
+      }
+      if (this.phase === 'roll' || this.phase === 'narrow' || this.phase === 'cards' || this.phase === 'quake' || this.phase === 'chosen') {
+        dim(ctx, 0.55);
+        var title = this.kind === 'race' ? 'CHOOSE YOUR RACE' : 'CHOOSE YOUR CLASS';
+        if (this.phase === 'roll' || this.phase === 'narrow') {
+          DCW.box(40, 34, 240, 80, { fill: '#1c0c34', border: C.gold });
+          T(title, 160, 40, C.gold, { align: 'center' });
+          if (this.phase === 'roll') {
+            var nm = up(this.list[Math.floor(this.pt * 14) % this.list.length].name);
+            var big = tw(nm, 2) <= 224;
+            T(nm, 160, big ? 64 : 68, C.white, { align: 'center', scale: big ? 2 : 1 });
+            T('THE AI IS FLIPPING THROUGH ' + this.list.length + ' OPTIONS...', 160, 96, blink(3) ? C.gray : C.dgray, { align: 'center', shadow: null });
+          } else {
+            T('THE AI HAS NARROWED IT', 160, 60, C.white, { align: 'center' });
+            T('DOWN TO THREE.', 160, 72, C.white, { align: 'center' });
+            T('(IT DID NOT ASK YOU.)', 160, 92, C.dgray, { align: 'center', shadow: null });
+          }
+        } else {
+          T(title, 160, 8, C.gold, { align: 'center' });
+          var n = this.short.length, cw = 94, gap = 8, x0c = Math.round(160 - (n * cw + (n - 1) * gap) / 2);
+          this.short.forEach(function (e, i) {
+            var sel = i === self.sel, cx = x0c + i * (cw + gap), cy = 22 - (sel ? 3 : 0);
+            if (sel && self.cardShake > 0) cx += Math.round(Math.sin(t * 60) * 3);
+            DCW.box(cx, cy, cw, 82, { fill: e.locked ? '#1c1018' : '#102010', border: sel ? (blink(4) ? C.white : C.gold) : e.locked ? C.ddgray : C.green });
+            if (e.locked) icon(ctx, 'lock', cx + cw / 2 - 12, cy + 6, { scale: 3 });
+            else { T('★', cx + cw / 2, cy + 8, blink(2) ? C.gold : C.yellow, { align: 'center', scale: 3 }); }
+            wrap(up(e.name), cw - 8).slice(0, 3).forEach(function (l, k) { T(l, cx + cw / 2, cy + 36 + k * 10, e.locked ? C.gray : C.white, { align: 'center' }); });
+            DCW.box(cx + 10, cy + 66, cw - 20, 11, { fill: e.locked ? '#5c0000' : '#005800', border: e.locked ? C.red : C.green });
+            T(e.locked ? 'LOCKED' : 'AVAILABLE', cx + cw / 2, cy + 68, C.white, { align: 'center', shadow: null });
+          });
+          var e2 = this.short[this.sel];
+          DCW.box(10, 110, 300, 48, { fill: '#0f1630' });
+          if (e2) {
+            T(up(e2.name), 18, 115, e2.locked ? C.gray : C.gold);
+            wrap(up(e2.desc || ''), 286).slice(0, 3).forEach(function (l, k) { T(l, 18, 126 + k * 10, C.white); });
+          }
+          if (this.phase === 'cards') T('◀▶: CHOOSE   ' + bn('confirm') + ': PICK', 160, 164, C.gray, { align: 'center' });
+        }
+      } else T("THE GAME GUIDE'S ROOM", 4, 4, C.gold, { shadow: '#000' });
+      if (this.flash > 0) { ctx.globalAlpha = clamp(this.flash, 0, 1) * 0.8; R(0, 0, W, H, this.flashCol); ctx.globalAlpha = 1; }
+    }
   };
 
-  /* ---------- FLOOR CARD ---------- */
-  scenes.floorCard = {
+  /* ---------- CINEMA (letterboxed cutscene player, DESIGN 11.3) ---------- */
+  function cineActor(a) {
+    a = a || {};
+    var o = { sprite: a.sprite || 'carl', x: a.x === undefined ? 160 : a.x, y: a.y === undefined ? 150 : a.y, flip: a.flip, frame: a.frame, anim: a.anim,
+      scale: a.scale || 1, alpha: a.alpha, skin: a.skin, move: null, say: a.say || a.bubble, sayT: a.sayT || 2.5 };
+    if (a.moveTo) o.move = { x0: o.x, y0: o.y, x1: a.moveTo.x === undefined ? o.x : a.moveTo.x, y1: a.moveTo.y === undefined ? o.y : a.moveTo.y, t: Math.max(0.01, a.moveTo.t || 1), d: a.moveTo.delay || 0 };
+    return o;
+  }
+  function cineSprite(a, moving) {
+    if (a.anim === undefined && !moving && hasArt(a.sprite)) return a.sprite;
+    var base = a.sprite.replace(/_(idle|run|walk|talk|act)$/, '');
+    return actorName(base, a.anim || (moving ? 'walk' : 'idle'));
+  }
+  scenes.cinema = {
+    enter: function (p) {
+      closeAll();
+      p = p || {};
+      this.p = p; this.t = 0; this.i = -1; this.done = false; this.actors = []; this.flash = 0; this.flashCol = C.white; this.fadeIn = 0; this.fadeOut = 0;
+      var shots = p.shots;
+      if (!shots && p.id) { var cin = D('cinema'); shots = cin && cin[p.id]; }
+      if (shots && !Array.isArray(shots) && Array.isArray(shots.shots)) shots = shots.shots;
+      this.shots = Array.isArray(shots) ? shots.filter(Boolean) : [];
+      this.nextShot();
+    },
+    nextShot: function () {
+      var self = this;
+      this.i++;
+      if (this.i >= this.shots.length) { this.finish(); return; }
+      var s = this.shots[this.i] || {};
+      this.shot = s; this.st = 0; this.talking = false; this.waitLeft = 0;
+      if (s.actors !== undefined) this.actors = arr(s.actors).map(cineActor);
+      else this.actors.forEach(function (a) { if (a.move) { a.x = a.move.x1; a.y = a.move.y1; a.move = null; } });
+      if (s.music !== undefined) { if (s.music) music(s.music); else tryCall(DCW.audio, 'stopMusic', []); }
+      arr(s.sfx).forEach(function (n) { sfx(n); });
+      if (s.shake && DCW.shake) DCW.shake(+s.shake || 3, s.shakeTime || 0.5);
+      if (s.flash) { this.flash = 1; this.flashCol = s.flash === true ? C.white : s.flash; }
+      this.fadeIn = s.fade ? 1 : 0;
+      var lines = lineList(s.lines);
+      if (lines.length) {
+        this.talking = true;
+        ui.say(lines, { pos: s.pos, onDone: function () { self.talking = false; self.waitLeft = s.wait !== undefined ? +s.wait : 0.25; }, onSkip: function () { self.finish(); } });
+      } else this.waitLeft = s.wait !== undefined ? +s.wait : 2;
+    },
+    finish: function () {
+      if (this.done) return; this.done = true;
+      closeAll();
+      var cb = this.p.onDone;
+      if (cb) { try { cb(); } catch (e) { console.error(e); } } else toTitle();
+    },
+    tickFx: function (dt) {
+      this.t += dt; this.st = (this.st || 0) + dt;
+      if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 3);
+      if (this.fadeIn > 0) this.fadeIn = Math.max(0, this.fadeIn - dt * 2.5);
+      var st = this.st;
+      this.actors.forEach(function (a) {
+        if (!a.move) { a.moving = false; return; }
+        var mv = a.move, k = clamp((st - mv.d) / mv.t, 0, 1);
+        a.moving = k > 0 && k < 1;
+        if (a.moving && a.flip === undefined) a.autoFlip = mv.x1 < mv.x0;
+        a.x = mv.x0 + (mv.x1 - mv.x0) * k; a.y = mv.y0 + (mv.y1 - mv.y0) * k;
+      });
+    },
+    update: function (dt) {
+      if (this.done) return;
+      this.tickFx(dt);
+      if (P('start') && this.p.skippable !== false && this.t > 0.2) { this.finish(); return; }
+      if (!this.talking) {
+        this.waitLeft -= dt;
+        if (P('confirm') && this.st > 0.3) this.waitLeft = 0;
+        if (this.waitLeft <= 0) this.nextShot();
+      }
+    },
+    idle: function (dt) { if (!this.done) this.tickFx(dt); },
+    draw: function (ctx) {
+      var s = this.shot || {}, t = this.t, st = this.st || 0;
+      R(0, 0, W, H, '#000');
+      var bg = s.bg, camX = (s.camX || 0) + (s.pan || 0) * st;
+      if (typeof bg === 'string' && bg.indexOf('panel:') === 0) {
+        var pid = bg.slice(6);
+        if (!drawPanel(ctx, pid, 32, 22, t)) {
+          DCW.box(32, 22, 256, 112, { fill: '#0c0418' });
+          ctx.save(); ctx.beginPath(); ctx.rect(34, 24, 252, 108); ctx.clip();
+          (VIG[pid] || VIG.overcity)(ctx, t, 34, 24, 252, 108);
+          ctx.restore();
+        }
+      } else if (bg) {
+        if (!drawBg(ctx, bg, camX, s.camY || 0, { night: !!s.night, t: t })) themeBackdrop(ctx, bg, t, !!s.night, camX);
+      }
+      // actors
+      var self = this;
+      this.actors.forEach(function (a) {
+        var name = cineSprite(a, a.moving);
+        var fr = a.frame !== undefined ? a.frame : Math.floor(t * (a.moving ? 8 : a.anim === 'talk' ? 6 : 2));
+        var flip = a.flip !== undefined ? !!a.flip : !!a.autoFlip;
+        var skin = a.skin || (/^carl/.test(name) ? equipped('skin') : undefined);
+        if (a.scale > 1) bigSprite(ctx, name, a.x, a.y, { scale: a.scale | 0, frame: fr, flip: flip, skin: skin, alpha: a.alpha });
+        else spr(ctx, name, a.x, a.y, { frame: fr, flip: flip, skin: skin, alpha: a.alpha });
+        if (a.say && st < a.sayT) { var inf = artInfo(name); bubble(ctx, a.say, a.x, a.y - ((inf && inf.h) || 24) * (a.scale || 1) - 2, { w: 100 }); }
+      });
+      if (s.wobble) wobble(ctx, 16, 164, +s.wobble, s.wobbleFreq || 0.12, t);
+      if (this.flash > 0) { ctx.globalAlpha = clamp(this.flash, 0, 1); R(0, 0, W, H, this.flashCol); ctx.globalAlpha = 1; }
+      if (this.fadeIn > 0) { ctx.globalAlpha = clamp(this.fadeIn, 0, 1); R(0, 0, W, H, '#000'); ctx.globalAlpha = 1; }
+      // letterbox
+      R(0, 0, W, 16, '#000'); R(0, 164, W, 16, '#000');
+      if (s.caption) T(up(s.caption), 6, 5, C.gold, { shadow: null });
+      if (this.p.skippable !== false) T(bn('start') + ': SKIP', 314, 5, C.ddgray, { align: 'right', shadow: null });
+      if (!this.talking && this.shots.length && !this.done && st > 0.6 && blink(2)) T('▼', 312, 168, C.dgray, { shadow: null });
+    }
+  };
+
+  /* ---------- CARD (act / day title card; book 1's floor card, kept generic) ---------- */
+  // enter({ head:'ACT', n:2, name:'THE MEDIUM SKYFOWL SETTLEMENT', tagline, intro:[lines], onDone }) ; book 1 {floor} still works
+  scenes.card = {
     enter: function (p) {
       p = p || {};
       this.p = p; this.t = 0; this.said = false; this.done = false;
-      var n = p.floor || (getRun() || {}).floor || 1;
-      this.n = n;
-      this.fd = (typeof p.floor === 'object' && p.floor) || floorDef(n) || { name: 'FLOOR ' + n, tagline: '' };
-      if (typeof p.floor === 'object') this.n = this.fd.n || 1;
+      var fd = typeof p.floor === 'object' ? p.floor : (p.floor ? floorDef(p.floor) : null);
+      this.head = up(p.head || p.title || (fd ? 'FLOOR' : 'ACT'));
+      this.n = p.n !== undefined ? p.n : (p.act !== undefined ? p.act : (fd ? fd.n || 3 : actNum()));
+      this.name = up(p.name || (fd && fd.name) || '');
+      this.tagline = up(p.tagline || (fd && fd.tagline) || '');
+      this.intro = p.intro || (fd && fd.intro) || null;
       this.conf = [];
       for (var i = 0; i < 50; i++) this.conf.push({ x: Math.random() * W, y: -Math.random() * 200, v: 30 + Math.random() * 50, c: [C.red, C.gold, C.green, C.blue, C.pink][i % 5], w: Math.random() * 6 });
       sfx('fanfare');
     },
     next: function () {
       if (this.said) return; this.said = true;
-      var self = this, intro = this.fd.intro;
-      var finish = function () { if (self.done) return; self.done = true; if (self.p.onDone) self.p.onDone(); };
-      if (intro && (!Array.isArray(intro) || intro.length)) ui.say(intro, { onDone: finish });
-      else finish();
+      var self = this, intro = this.intro;
+      var finish = function () { if (self.done) return; self.done = true; if (self.p.onDone) self.p.onDone(); else toTitle(); };
+      if (intro && (!Array.isArray(intro) || intro.length)) ui.say(intro, { onDone: finish }); else finish();
     },
     update: function (dt) {
       this.t += dt;
@@ -1971,14 +3138,12 @@
     },
     idle: function (dt) { this.t += dt; this.conf.forEach(function (c) { c.y += c.v * dt; if (c.y > H) c.y = -4; }); },
     draw: function (ctx) {
-      var t = this.t, fd = this.fd;
+      var t = this.t;
       R(0, 0, W, H, '#0c0418');
-      // spotlights
       for (var i = 0; i < 2; i++) {
         var sx = 160 + Math.sin(t * 1.4 + i * 3) * 110;
         ctx.globalAlpha = 0.13; ctx.fillStyle = C.yellow; ctx.beginPath(); ctx.moveTo(i ? 300 : 20, 0); ctx.lineTo(sx - 30, H); ctx.lineTo(sx + 30, H); ctx.fill(); ctx.globalAlpha = 1;
       }
-      // curtains opening
       var open = clamp(t / 0.6, 0, 1), cw = Math.round(162 * (1 - open * 0.82));
       for (var s = 0; s < 2; s++) {
         var x0 = s ? W - cw : 0;
@@ -1990,22 +3155,45 @@
       this.conf.forEach(function (c) { if (t > 0.4) R(c.x + Math.sin(t * 3 + c.w) * 3, c.y, 2, 3, c.c); });
       if (t > 0.35) {
         var k = clamp((t - 0.35) / 0.3, 0, 1);
-        T('FLOOR', 160 - Math.round((1 - k) * 200), 18, C.white, { align: 'center', scale: 2 });
+        T(this.head, 160 - Math.round((1 - k) * 200), 18, C.white, { align: 'center', scale: 2 });
         var popS = t < 0.9 ? 5 : 4;
-        if (t > 0.6) T(String(this.n), 160, popS === 5 ? 32 : 36, C.gold, { align: 'center', scale: popS });
+        if (t > 0.6 && this.n !== '' && this.n !== null) T(String(this.n), 160, popS === 5 ? 32 : 36, C.gold, { align: 'center', scale: popS });
       }
       if (t > 1.0) {
-        var nm = String(fd.name || '').toUpperCase(), big = tw(nm, 2) <= 300;
+        var nm = this.name, big = tw(nm, 2) <= 300;
         T(nm, 160, big ? 76 : 80, C.white, { align: 'center', scale: big ? 2 : 1, wrap: big ? null : 300 });
-        if (t > 1.4 && fd.tagline) wrap(String(fd.tagline).toUpperCase(), 280).slice(0, 2).forEach(function (l, i) { T(l, 160, 96 + i * 10, C.yellow, { align: 'center' }); });
+        if (t > 1.4 && this.tagline) wrap(this.tagline, 280).slice(0, 2).forEach(function (l, i) { T(l, 160, 96 + i * 10, C.yellow, { align: 'center' }); });
         if (!this.said) T('★ ★ ★', 160, 140, blink(2) ? C.gold : C.yellow, { align: 'center' });
       }
       if (t > 1.6 && !this.said && blink(2)) T(bn('confirm'), 312, 170, C.dgray, { align: 'right', shadow: null });
     }
   };
+  scenes.floorCard = scenes.card; // book 1 name
+
+  /* ---------- INTRO (story pages; game.js uses cinema for book 2, this stays harmless) ---------- */
+  var INTRO_FB = [
+    { text: 'FLOOR TWO IS ABOUT TO FOLD UP LIKE A CHEAP LAWN CHAIR. ANYONE STILL ON IT WILL BE FOLDED TOO.', vignette: 'collapse' },
+    { text: 'CARL AND PRINCESS DONUT MADE THE STAIRS. MONGO MADE THE STAIRS. CARL\'S PANTS DID NOT.', vignette: 'stairs' },
+    { text: 'WELCOME TO THE THIRD FLOOR, CRAWLERS: THE OVER CITY! RUINS, VILLAGES, AND A RED SUN THAT IS DEFINITELY FAKE.', portrait: 'p_ai', vignette: 'overcity' },
+    { text: 'EIGHT DAYS ON THE CLOCK. THE AUDIENCE IS WATCHING. THE CAT IS ALREADY JUDGING YOU.', vignette: 'night' }
+  ];
+  scenes.intro = {
+    enter: function (p) {
+      p = p || {};
+      var self = this; this.done = false;
+      music('intro');
+      this.pager = storyPager(storyPages('intro', INTRO_FB), ['collapse', 'stairs', 'overcity', 'night'], function () {
+        if (self.done) return; self.done = true;
+        if (p.onDone) p.onDone(); else tryCall(DCW.game, 'continueRun', []);
+      });
+    },
+    update: function (dt) { if (!this.done) this.pager.update(dt); },
+    idle: function (dt) { this.pager.t += dt; },
+    draw: function (ctx) { R(0, 0, W, H, '#000'); this.pager.draw(ctx); }
+  };
 
   /* ---------- RESULTS ---------- */
-  function rankOf(r, par) {
+  function rankOf(r) {
     var pts = 0;
     if (!r.damageTaken) pts += 2; else if (r.damageTaken <= 4) pts += 1;
     if ((r.maxCombo || 0) >= 25) pts += 2; else if ((r.maxCombo || 0) >= 10) pts += 1;
@@ -2013,15 +3201,18 @@
     if ((r.kills || 0) >= 15) pts += 1;
     return pts >= 5 ? 'S' : pts >= 3 ? 'A' : pts >= 2 ? 'B' : pts >= 1 ? 'C' : 'D';
   }
+  var RESULT_HEAD = { boss: 'BOSS DEFEATED!', facade: 'BOSS DEFEATED!', survival: 'YOU SURVIVED!', escape: 'YOU ESCAPED!', plant: 'KA-BOOM!', show: "THAT'S A WRAP!", rooms: 'THE BIG TOP FALLS!', chase: 'OUTRAN IT!', climb: 'TOP OF THE WORLD!', drop: 'ROCK BOTTOM!' };
   scenes.results = {
     enter: function (p) {
+      closeAll();
       p = p || {};
       this.p = p; this.r = p.result || {}; this.rw = (p.rewards || []).map(rewardInfo);
       this.t = 0; this.step = 0; this.stepT = 0; this.done = false;
-      var sd = stageDef(this.r.stageId) || {};
-      this.name = sd.name || this.r.stageName || 'STAGE';
-      this.boss = sd.kind === 'boss' || !!this.r.boss;
-      this.quip = aiLine('stageClear', 'THAT WAS ADEQUATE. THE AUDIENCE IS MILDLY ENTERTAINED.');
+      var lv = levelDef(this.r.levelId || this.r.stageId) || {};
+      this.name = up(lv.name || this.r.levelName || this.r.stageName || 'LEVEL');
+      this.boss = !!(lv.boss || this.r.boss);
+      this.head = RESULT_HEAD[lv.kind] || (this.boss ? 'BOSS DEFEATED!' : 'LEVEL CLEAR!');
+      this.quip = aiLine('stageClear', aiLine('levelClear', 'THAT WAS ADEQUATE. THE AUDIENCE IS MILDLY ENTERTAINED.'));
       var r = this.r;
       this.rows = [
         ['KILLS', r.kills || 0, function (v) { return String(Math.round(v)); }],
@@ -2044,7 +3235,7 @@
       }
       if (P('confirm') || P('start')) {
         if (this.step < tot) { this.step = tot; this.stepT = 1; sfx('menu_select'); }
-        else if (!this.done && this.t > 0.6) { this.done = true; sfx('menu_select'); if (this.p.onDone) this.p.onDone(); else tryCall(DCW.game, 'resumeFloor', []); }
+        else if (!this.done && this.t > 0.6) { this.done = true; sfx('menu_select'); if (this.p.onDone) this.p.onDone(); else tryCall(DCW.game, 'continueRun', []); }
       }
     },
     idle: function (dt) { this.t += dt; },
@@ -2052,7 +3243,8 @@
       var t = this.t, self = this;
       bands(ctx, ['#0c0418', '#140828', '#1c0c34', '#240c3c'], 0, H);
       for (var i = 0; i < 3; i++) { ctx.globalAlpha = 0.1; ctx.fillStyle = C.yellow; ctx.beginPath(); var sx = 160 + Math.sin(t + i * 2) * 140; ctx.moveTo(60 + i * 100, 0); ctx.lineTo(sx - 25, H); ctx.lineTo(sx + 25, H); ctx.fill(); ctx.globalAlpha = 1; }
-      T(this.boss ? 'BOSS DEFEATED!' : 'STAGE CLEAR!', 160, 5, blink(2) ? C.gold : C.yellow, { align: 'center', scale: 2 });
+      var hb = tw(this.head, 2) <= 300;
+      T(this.head, 160, 5, blink(2) ? C.gold : C.yellow, { align: 'center', scale: hb ? 2 : 1 });
       T(fitText(this.name, 300), 160, 24, C.white, { align: 'center' });
       DCW.box(8, 36, 150, 96);
       this.rows.forEach(function (r, k) {
@@ -2062,9 +3254,11 @@
         T(r[2](r[1] * frac), 152, yy, k === 2 && !r[1] ? C.green : C.white, { align: 'right' });
       });
       if (this.step > this.rows.length) {
-        T('RANK', 14, 112, C.gray);
+        T('RANK', 14, 110, C.gray);
         var rc = { S: C.gold, A: C.green, B: C.blue, C: C.white, D: C.dgray }[this.rank];
-        T(this.rank, 150, 108, rc, { align: 'right', scale: 2 });
+        T(this.rank, 150, 106, rc, { align: 'right', scale: 2 });
+        var ck = clockInfo();
+        if (ck) { icon(ctx, ck.night ? 'moon' : 'sun', 14, 119); T(ck.label + ' LEFT', 25, 120, ck.hoursLeft <= 24 ? C.red : C.dgray, { shadow: null }); }
       }
       DCW.box(164, 36, 148, 96);
       T('REWARDS', 238, 41, C.gold, { align: 'center' });
@@ -2077,19 +3271,22 @@
       });
       if (this.step >= this.total()) {
         DCW.box(4, 136, 312, 40);
-        R(8, 139, 34, 34, C.white); R(9, 140, 32, 32, '#000'); portrait(ctx, 'p_ai', 9, 140);
-        wrap(String(this.quip).toUpperCase(), 262).slice(0, 3).forEach(function (l, k) { T(l, 47, 141 + k * 10, C.white); });
+        faceSlot(ctx, 'p_ai', 9, 140, this.stepT < 1.3, 2);
+        wrap(up(this.quip), 262).slice(0, 3).forEach(function (l, k) { T(l, 47, 141 + k * 10, C.white); });
         if (blink(2.5)) T('▼', 304, 165, C.gold);
       }
     }
   };
 
-  /* ---------- DEATH ---------- */
+  /* ---------- DEATH (revivals; guard kills are the DEATH PENALTY) ---------- */
   scenes.death = {
     enter: function (p) {
+      closeAll();
       p = p || {};
       this.r = p.result || {}; this.t = 0; this.sel = 0; this.busy = false;
-      this.quip = aiLine('death', 'OH NO. ANYWAY. THE RATINGS FOR THAT WERE INCREDIBLE.');
+      this.guard = this.r.cause === 'guard' || !!this.r.guard;
+      this.quip = this.guard ? aiLine('crime', 'THE VILLAGE GUARD DOES NOT DO PAPERWORK. OR JAIL. OR SECOND CHANCES. WELL, ONE KIND.')
+        : aiLine('death', 'OH NO. ANYWAY. THE RATINGS FOR THAT WERE INCREDIBLE.');
       var run = getRun();
       this.revivals = run && run.revivals > 0 ? run.revivals : 0;
       if (hasG('canRevive')) this.revivals = G('canRevive') ? Math.max(1, this.revivals) : 0;
@@ -2097,18 +3294,15 @@
       sfx('death');
     },
     items: function () {
-      var self = this;
-      var out = [];
-      if (this.revivals > 0) out.push({ label: 'SPONSOR REVIVAL (' + this.revivals + ' LEFT)', color: C.pink, action: function () {
+      var self = this, out = [];
+      if (this.revivals > 0) out.push({ id: 'revive', label: 'USE A REVIVAL (' + this.revivals + ' LEFT)', color: C.pink, action: function () {
         self.busy = true; sfx('heal');
         var ok = G('revive');
         if (!ok) { self.busy = false; ui.toast('THE SPONSORS HUNG UP.', { icon: 'skull', color: C.red }); self.revivals = 0; }
       } });
-      out.push({ label: 'RETURN TO TITLE', action: function () {
+      out.push({ id: 'title', label: this.revivals > 0 ? 'GIVE UP FOR NOW' : 'END THIS CRAWL', action: function () {
         self.busy = true;
-        var run = getRun();
-        var noRevive = !(self.revivals > 0);
-        if (noRevive && run && tryCall(DCW.game, 'endRun', []) !== MISSING) return; // endRun clears the run + goes to title
+        if (!(self.revivals > 0) && getRun() && tryCall(DCW.game, 'endRun', []) !== MISSING) return; // endRun clears the run + goes to title
         toTitle();
       } });
       return out;
@@ -2119,8 +3313,8 @@
       var its = this.items();
       listNav(this, its.length, dt);
       if (P('confirm')) {
-        var it = its[this.sel];
-        if (it.label === 'RETURN TO TITLE' && this.revivals > 0) { var self = this; ui.confirm('GIVE UP FOR NOW? YOUR CRAWL IS SAVED.', function () { self.busy = true; toTitle(); }); return; }
+        var it = its[this.sel], self = this;
+        if (it.id === 'title' && this.revivals > 0) { ui.confirm('GIVE UP FOR NOW? YOUR CRAWL IS SAVED.', function () { self.busy = true; toTitle(); }); return; }
         sfx('menu_select'); it.action();
       }
     },
@@ -2129,200 +3323,480 @@
       var t = this.t, self = this;
       bands(ctx, ['#000000', '#100000', '#200000', '#300404', '#3c0808'], 0, H);
       for (var i = 0; i < 30; i++) { var ax = (i * 41) % W, ay = (t * (8 + i % 5) + i * 23) % H; R(ax, ay, 1, 2, '#5c1010'); }
-      var msg = 'YOU HAVE DIED', mw = tw(msg, 2), mx = 160 - mw / 2;
+      var msg = this.guard ? 'DEATH PENALTY' : 'YOU HAVE DIED', mw = tw(msg, 2), mx = 160 - mw / 2;
       for (var k = 0; k < msg.length; k++) {
         var lt = clamp((t - k * 0.06) / 0.3, 0, 1);
         if (lt <= 0) continue;
-        var ly = Math.round(-20 + (24 - -20) * (1 - Math.pow(1 - lt, 2)));
+        var ly = Math.round(-20 + (20 - -20) * (1 - Math.pow(1 - lt, 2)));
         T(msg.charAt(k), mx + k * 12, ly, '#d82800', { scale: 2 });
       }
       var run = getRun() || {};
       ctx.globalAlpha = 0.35; R(120, 84, 80, 4, '#000'); ctx.globalAlpha = 1;
       bigSprite(ctx, 'carl_dead', 160, 86, { scale: 2, skin: equipped('skin') });
+      if (this.guard) spr(ctx, firstArt(['guard_attack', 'guard_walk', 'guard_idle']) || 'guard_walk', 204, 88, { flip: true, frame: Math.floor(t * 2) });
       if (t > 0.8) {
-        T(fitText('CAUSE: ' + String(this.r.cause || 'MISADVENTURE').toUpperCase(), 300), 160, 48, C.gray, { align: 'center' });
+        var cause = this.guard ? 'BY ORDER OF THE VILLAGE GUARD. NO JAIL. NO TRIAL.' : 'CAUSE: ' + up(this.r.cause || 'MISADVENTURE');
+        T(fitText(cause, 300), 160, 42, this.guard ? C.gold : C.gray, { align: 'center' });
         DCW.box(4, 92, 312, 38);
-        R(8, 95, 34, 32, '#000'); portrait(ctx, 'p_ai', 9, 95);
-        wrap(String(this.quip).toUpperCase(), 262).slice(0, 3).forEach(function (l, i) { T(l, 47, 97 + i * 10, C.white); });
+        faceSlot(ctx, 'p_ai', 9, 95, t < 2.4, 5);
+        wrap(up(this.quip), 262).slice(0, 3).forEach(function (l, i) { T(l, 47, 97 + i * 10, C.white); });
       }
       if (t > 1.6) {
         var its = this.items();
-        if (!(this.revivals > 0)) T('NO SPONSORS LEFT. THIS CRAWL IS OVER.', 160, 136, C.red, { align: 'center' });
-        var y0 = this.revivals > 0 ? 140 : 152;
+        if (!(this.revivals > 0)) T('NO REVIVALS LEFT. THIS CRAWL IS OVER.', 160, 136, C.red, { align: 'center' });
+        else T('REVIVING COSTS 2 HOURS AND A QUARTER OF YOUR GOLD.', 160, 134, C.dgray, { align: 'center', shadow: null });
+        var y0 = this.revivals > 0 ? 145 : 150;
         its.forEach(function (it, i) {
-          var yy = y0 + i * 12, w = tw(it.label);
+          var yy = y0 + i * 11, w = tw(it.label);
           if (i === self.sel) cursor(150 - w / 2, yy);
           T(it.label, 160 - w / 2 + 6, yy, i === self.sel ? (it.color || C.white) : C.dgray);
         });
-        T('VIEWS ' + fmtNum(run.views || 0) + '  LV ' + (run.level || 1) + '  FLOOR ' + (run.floor || 1), 160, 172, C.ddgray, { align: 'center', shadow: null });
+        var ck = clockInfo();
+        T('VIEWS ' + fmtNum(run.views || 0) + '  LV ' + (run.level || 13) + (ck ? '  DAY ' + ck.day : ''), 160, 172, C.ddgray, { align: 'center', shadow: null });
       }
     }
   };
 
-  /* ---------- SAFE ROOM ---------- */
+  /* ---------- shared walk-around room logic (inn + club) ---------- */
   var GROUND = 150;
-  scenes.safeRoom = {
-    enter: function () {
-      this.t = 0; this.x = 270; this.face = -1; this.moving = false;
-      this.cx = 290; this.cface = -1; this.cmoving = false;
-      this.pet = 0; this.hearts = []; this.near = null; this.leaving = false;
+  function roomWalk(sc, dt, speedMul) {
+    var ax = (Dn('right') ? 1 : 0) - (Dn('left') ? 1 : 0);
+    sc.moving = ax !== 0 && !(sc.pet > 0) && !(sc.dance > 0);
+    if (sc.moving) { sc.face = ax; sc.x = clamp(sc.x + ax * 70 * (speedMul || 1) * dt, 12, 306); }
+    // Donut follows on the floor (she's off duty)
+    var tx = sc.x - sc.face * 20, d = tx - sc.cx;
+    sc.cmoving = Math.abs(d) > 2;
+    if (sc.cmoving) { sc.cface = d > 0 ? 1 : -1; sc.cx += clamp(d, -80 * dt, 80 * dt); } else sc.cface = sc.x > sc.cx ? 1 : -1;
+    // Mongo wanders and sniffs things
+    sc.mT -= dt;
+    if (sc.mT <= 0) { sc.mT = 1.5 + Math.random() * 2.5; sc.mTarget = 20 + Math.random() * 280; }
+    var md = sc.mTarget - sc.mx; sc.mmoving = Math.abs(md) > 3;
+    if (sc.mmoving) { sc.mface = md > 0 ? 1 : -1; sc.mx += clamp(md, -60 * dt, 60 * dt); }
+    var near = null;
+    sc.objs.forEach(function (o) { if (Math.abs(o.x - sc.x) < (o.r || 14) && (!near || Math.abs(o.x - sc.x) < Math.abs(near.x - sc.x))) near = o; });
+    sc.near = near;
+    if (sc.pet > 0) sc.pet -= dt;
+    sc.hearts.forEach(function (h) { h.y -= 20 * dt; h.life -= dt; });
+    sc.hearts = sc.hearts.filter(function (h) { return h.life > 0; });
+  }
+  function roomPet(sc) {
+    if (P('down') && !sc.moving && Math.abs(sc.cx - sc.x) < 26 && !(sc.pet > 0) && partyList().indexOf('donut') >= 0) {
+      sc.pet = 1.0; sfx('heal', { pitch: 1.5 });
+      for (var i = 0; i < 4; i++) sc.hearts.push({ x: sc.cx - 9 + i * 5, y: GROUND - 20 - i * 4, life: 0.9 + i * 0.15 });
+      G('track', 'pet_donut');
+      return true;
+    }
+    return false;
+  }
+  function roomCast(ctx, sc, t) {
+    var pl = partyList();
+    if (pl.indexOf('mongo') >= 0) {
+      var mb = compSprite('mongo');
+      spr(ctx, actorName(mb, sc.mmoving || sc.dance > 0 ? 'walk' : 'idle'), sc.mx, GROUND - (sc.dance > 0 && blink(4) ? 3 : 0), { frame: Math.floor(t * (sc.mmoving ? 8 : 2)), flip: sc.mface < 0 });
+    }
+    if (pl.indexOf('katia') >= 0) spr(ctx, actorName('katia', 'idle'), sc.kx || 236, GROUND, { frame: Math.floor(t * 2), flip: sc.x < (sc.kx || 236) });
+    if (pl.indexOf('donut') >= 0 || !pl.length) {
+      var cs = actorName('donut', sc.cmoving ? 'walk' : 'idle');
+      if (sc.pet > 0 && hasArt('donut_act')) cs = 'donut_act';
+      spr(ctx, cs, sc.cx, GROUND, { frame: Math.floor(t * (sc.cmoving ? 8 : 2)), flip: sc.cface < 0 });
+    }
+    var cn;
+    if (sc.dance > 0) cn = firstArt(Math.floor(t * 4) % 2 ? ['carl_victory', 'carl_idle'] : ['carl_punch', 'carl_kick', 'carl_idle']) || 'carl_idle';
+    else cn = actorName('carl', sc.moving ? 'walk' : 'idle');
+    spr(ctx, cn, sc.x, GROUND, { frame: Math.floor(t * (sc.moving ? 10 : sc.dance > 0 ? 4 : 2)), flip: sc.dance > 0 ? Math.floor(t * 2) % 2 === 0 : sc.face < 0, skin: equipped('skin') });
+    sc.hearts.forEach(function (h) { T('♥', h.x, h.y, (Math.floor(h.life * 8) % 2) ? C.red : '#fc7460'); });
+    if (sc.pet > 0.2) bubble(ctx, 'PURR', sc.cx, GROUND - 14, { w: 40 });
+  }
+  function roomPrompt(ctx, sc, t) {
+    if (ui.blocking() || sc.leaving) return;
+    if (sc.near) {
+      var o = sc.near, by = GROUND - (o.h || 34) + Math.round(Math.sin(t * 5) * 1.5);
+      var lw = tw(o.label) + 8;
+      var lx = clamp(o.x - lw / 2, 4, W - 4 - lw);
+      DCW.box(lx, by - 12, lw, 12, { fill: '#000' });
+      T(o.label, lx + 4, by - 10, C.gold);
+      T('▼', o.x, by + 1, C.white, { align: 'center' });
+      DCW.box(60, 164, 200, 14, { fill: '#000' });
+      T(bn('confirm') + ': ' + o.verb, 160, 167, C.white, { align: 'center' });
+    } else T('◀ ▶ WALK   ' + bn('down') + ' PET   ' + bn('start') + ' MENU', 160, 168, C.gray, { align: 'center', shadow: '#000' });
+  }
+  function roomInit(sc, x) {
+    sc.t = 0; sc.x = x; sc.face = -1; sc.moving = false;
+    sc.cx = x + 20; sc.cface = -1; sc.cmoving = false;
+    sc.mx = 200; sc.mTarget = 200; sc.mT = 1; sc.mface = -1; sc.mmoving = false; sc.kx = 236;
+    sc.pet = 0; sc.hearts = []; sc.near = null; sc.leaving = false; sc.dance = 0;
+  }
+  // fade-to-black sleep with the clock jumping forward
+  function sleepAnim(innId, until, keeperName) {
+    var m = { kind: 'sleep', res: null, called: false, ck0: clockInfo() };
+    m.update = function (dt) {
+      m.t += dt;
+      if (!m.called && m.t >= 0.6) {
+        m.called = true;
+        m.res = G('rest', innId, until);
+        if (!m.res || typeof m.res !== 'object') m.res = { ok: false, msg: 'THE BEDS ARE BROKEN. COME BACK LATER.' };
+        if (!m.res.ok) m.t = Math.max(m.t, 2.2);
+        m.ck1 = clockInfo();
+      }
+      if (m.t >= 2.8 || (m.called && m.t > 1.3 && m.t < 2.2 && P('confirm'))) {
+        if (m.t < 2.2) { m.t = 2.2; return; }
+        close(m);
+        if (m.res) {
+          if (m.res.ok) ui.toast(m.res.msg || 'RESTED', { icon: until === 'night' ? 'moon' : 'sun', color: C.green, time: 3 });
+          else ui.say([{ who: keeperName, text: m.res.msg || 'NOPE.' }]);
+        }
+      }
+    };
+    m.draw = function (ctx) {
+      var a = m.t < 0.6 ? m.t / 0.6 : m.t > 2.2 ? clamp((2.8 - m.t) / 0.6, 0, 1) : 1;
+      ctx.globalAlpha = a; R(0, 0, W, H, '#000'); ctx.globalAlpha = 1;
+      if (a >= 1 && m.res && m.res.ok) {
+        for (var i = 0; i < 3; i++) { var zt = (m.t * 0.8 + i * 0.33) % 1; T('Z', 150 + i * 8 + zt * 10, 70 - zt * 20, C.white, { scale: 1 + (i === 2 ? 1 : 0) }); }
+        var ck = m.ck1 || clockInfo();
+        if (ck) {
+          T('DAY ' + ck.day + '  ' + hourText(ck), 160, 96, ck.night ? C.nblue : C.orange, { align: 'center', scale: 2 });
+          T(ck.label + ' UNTIL COLLAPSE', 160, 116, ck.hoursLeft <= 24 ? C.red : C.gray, { align: 'center' });
+        }
+        T(until === 'night' ? 'YOU WAIT FOR DARK.' : 'YOU SLEEP LIKE THE DEAD. WHICH IS NEW.', 160, 132, C.dgray, { align: 'center', shadow: null });
+      }
+    };
+    sfx(until === 'night' ? 'drunk_hiccup' : 'heal');
+    return push(m);
+  }
+
+  /* ---------- INN (safe room: a Renaissance-fair pub) ---------- */
+  var KEEPER_LINES = {
+    gordo: ['WELCOME TO THE BELLY-RUBBED PUG! BEDS UPSTAIRS, ALE DOWN HERE, SMELL EVERYWHERE.', 'WIPE YOUR FEET. HM. NO SHOES. WIPE WHATEVER THOSE ARE.', 'THE PUG IN THE PAINTING WAS A VERY GOOD BOY. NOBODY KNOWS WHY HE\'S ALWAYS ON HIS BACK.'],
+    fitz: ['ONE-EYED NARWHAL. BEDS ARE TWENTY. THE NARWHAL ON THE WALL SEES EVERYTHING. HALF OF EVERYTHING.', 'NO FIGHTING INDOORS. THE GUARDS DON\'T COME IN HERE, BUT MY COOK DOES.', 'HAD A SKYFOWL IN LAST WEEK. STILL FINDING FEATHERS IN THE STEW.']
+  };
+  var MORD_HELLO = ['I CAN\'T FIGHT, I CAN\'T LEAVE THIS ROOM, AND I CAN\'T DRINK FAST ENOUGH. WHAT DO YOU NEED?', 'YOU\'RE ALIVE. GOOD. I HAD MONEY ON IT. NOT MUCH, BUT SOME.', 'SIT. DRINK. TELL ME WHAT YOU BROKE TODAY.'];
+  var MORD_TIPS = ['THE GUARDS ARE LEVEL 75 AND THEY DO NOT DO JAIL. HIT A CITIZEN IN DAYLIGHT AND YOU\'RE A STAIN.', 'NIGHT IS WHEN THE ALLEYS GET INTERESTING. INTERESTING MEANS LETHAL.', 'FIRE IS YOUR FRIEND. MOLD LIONS THAT BURN STAY DEAD.', 'BRING ME MOONSHINE AND I\'LL TURN IT INTO A JUG O\'BOOM. ALCHEMY. ALSO, DRINKING.', 'SPEND YOUR STAT POINTS HERE. THE DUNGEON DOESN\'T ACCEPT IOUS.'];
+  scenes.inn = {
+    enter: function (p) {
+      closeAll();
+      p = p || {};
+      var run = getRun(), inns = D('inns') || {};
+      this.innId = p.innId || (run && run.inInn) || 'pug';
+      var dflt = this.innId === 'narwhal' ? { name: 'THE ONE-EYED NARWHAL', price: 20, keeper: 'fitz' } : { name: 'THE BELLY-RUBBED PUG', price: 10, keeper: 'gordo' };
+      this.inn = inns[this.innId] || dflt;
+      this.keeper = this.inn.keeper || dflt.keeper;
+      this.keeperName = up(this.inn.keeperName || this.keeper.replace(/_/g, ' '));
+      roomInit(this, 270);
       this.objs = [
-        { id: 'shop', x: 44, label: 'SHOP', verb: 'SHOP' },
-        { id: 'mordecai', x: 112, label: 'MORDECAI', verb: 'TALK' },
-        { id: 'boxes', x: 174, label: 'LOOT BOXES', verb: 'OPEN' },
-        { id: 'wardrobe', x: 228, label: 'WARDROBE', verb: 'CHANGE' },
-        { id: 'door', x: 296, label: 'EXIT', verb: 'LEAVE' }
+        { id: 'keeper', x: 40, label: this.keeperName, verb: 'ROOMS', h: 46 },
+        { id: 'mordecai', x: 104, label: 'MORDECAI', verb: 'TALK', h: 44 },
+        { id: 'boxes', x: 160, label: 'LOOT BOXES', verb: 'OPEN', h: 30 },
+        { id: 'wardrobe', x: 214, label: 'WARDROBE', verb: 'CHANGE', h: 42 },
+        { id: 'board', x: 256, label: 'TROPHY BOARD', verb: 'READ', h: 56 },
+        { id: 'door', x: 298, label: 'EXIT', verb: 'LEAVE', h: 44 }
       ];
-      music('safe');
+      this.tele = 0; this.telePlayed = false;
+      this.greet = pick(lineList(this.inn.lines || this.inn.hello)) || pick(KEEPER_LINES[this.keeper]) || 'WELCOME. BEDS ARE UPSTAIRS. DON\'T STEAL THE MUGS.';
+      this.greetT = 3.4;
+      music(this.inn.music || 'inn');
+    },
+    price: function () {
+      var p = G('innPrice', this.innId);
+      if (typeof p === 'number') return p;
+      return Math.round((this.inn.price || 10) * (1 + (actNum() - 1) * 0.4));
+    },
+    keeperLine: function () { return pick(lineList(this.inn.lines)) || pick(KEEPER_LINES[this.keeper]) || 'NEED A BED?'; },
+    sleep: function (until) { sleepAnim(this.innId, until, this.keeperName); },
+    keeperMenu: function () {
+      var self = this, ck = clockInfo(), price = this.price(), run = getRun() || {};
+      ui.menu([
+        { label: 'SLEEP UNTIL MORNING', right: price + 'G', icon: 'bed', disabled: (run.gold || 0) < price, why: 'NOT ENOUGH GOLD. ' + price + ' A NIGHT. NO CREDIT.', hint: 'FULL HEAL. WAKE AT 07:00.', action: function () { self.sleep('morning'); } },
+        { label: 'WAIT FOR NIGHT', right: 'FREE', icon: 'moon', disabled: !!(ck && ck.night), why: 'IT IS ALREADY NIGHT. THE URCHINS ARE OUT.', hint: 'SKIP TO 19:00. NO HEAL.', action: function () { self.sleep('night'); } },
+        { label: 'CHAT', icon: 'eye', action: function () { ui.say([{ who: self.keeperName, text: self.keeperLine() }]); } },
+        { label: 'NEVERMIND' }
+      ], { title: up(this.inn.name), titleColor: C.gold, w: 210 });
+    },
+    craftMenu: function () {
+      var rec = D('recipes') || {}, ids = Object.keys(rec);
+      if (!ids.length) { ui.say([{ who: 'MORDECAI', text: 'I\'D CRAFT YOU SOMETHING, BUT NOBODY GAVE ME ANY RECIPES. OR GLASSWARE.' }]); return; }
+      function need(rc) { var n = rc.needs || {}, parts = Object.keys(n).map(function (k) { return n[k] + ' ' + itemName(k); }); if (rc.gold) parts.push(rc.gold + ' GOLD'); return parts.join(' + ') || 'NOTHING'; }
+      function gives(rc) { var g = rc.gives || {}; return Object.keys(g).map(function (k) { return g[k] + ' ' + itemName(k); }).join(' + ') || '?'; }
+      function can(rc) { var n = rc.needs || {}, run = getRun() || {}; for (var k in n) if (itemCount(k) < n[k]) return false; return !(rc.gold && (run.gold || 0) < rc.gold); }
+      var items = ids.map(function (id) {
+        var rc = rec[id] || {}, g = Object.keys(rc.gives || {})[0];
+        return { label: function () { return up(rc.name || id); }, icon: g ? itemIcon(g) : 'gear', right: function () { return can(rc) ? 'READY' : ''; }, keep: true,
+          hint: need(rc) + ' → ' + gives(rc), why: 'NEEDS ' + need(rc),
+          action: function () {
+            if (!can(rc)) { sfx('error'); ui.toast('NEEDS ' + need(rc), { icon: 'skull', color: C.red }); return; }
+            var res = G('craft', id) || { ok: false, msg: 'MORDECAI IS TOO DRUNK TO CRAFT RIGHT NOW.' };
+            ui.toast(res.msg || (res.ok ? 'CRAFTED' : 'FAILED'), { icon: res.ok && g ? itemIcon(g) : 'skull', color: res.ok ? C.green : C.red });
+          } };
+      });
+      items.push({ label: 'DONE' });
+      ui.menu(items, { title: 'ALCHEMY WITH MORDECAI', titleColor: C.green, w: 236 });
+    },
+    mordMenu: function () {
+      var self = this, run = getRun() || {};
+      var tips = lineList(D('mordecai'));
+      if (!tips.length && D('mordecai') && D('mordecai').tips) tips = lineList(D('mordecai').tips);
+      var tip = function () { var tt = pick(tips) || pick(MORD_TIPS); ui.say(typeof tt === 'object' ? [tt] : [{ who: 'MORDECAI', text: tt }]); };
+      var obj = function () { var o = objectiveInfo(); ui.say([{ who: 'MORDECAI', text: o ? 'HERE\'S THE JOB: ' + up(o.text) + '. TRY NOT TO DIE DOING IT.' : 'NOTHING URGENT. WHICH MEANS SOMETHING TERRIBLE IS ABOUT TO HAPPEN.' }]); };
+      ui.menu([
+        { label: 'ASK FOR A TIP', action: tip },
+        { label: 'WHAT NOW?', action: obj },
+        { label: 'CRAFT', action: function () { self.craftMenu(); }, hint: 'MOONSHINE GOES IN. EXPLOSIONS COME OUT.' },
+        { label: run.statPoints > 0 ? 'TRAIN (' + run.statPoints + ' POINT' + (run.statPoints > 1 ? 'S' : '') + ')' : 'TRAIN', disabled: !(run.statPoints > 0), why: 'NO STAT POINTS. GO LEVEL UP.', action: function () { ui.openCharacter(); } },
+        { label: 'NEVERMIND' }
+      ], { title: 'MORDECAI, LEVEL 50 INCUBUS', titleColor: C.green });
+    },
+    innMenu: function () {
+      var self = this, ck = clockInfo(), price = this.price(), run = getRun() || {}, nb = (run.boxes || []).length;
+      ui.menu([
+        { label: 'SLEEP UNTIL MORNING', right: price + 'G', disabled: (run.gold || 0) < price, why: 'NOT ENOUGH GOLD. ' + price + ' A NIGHT.', action: function () { self.sleep('morning'); } },
+        { label: 'WAIT FOR NIGHT', right: 'FREE', disabled: !!(ck && ck.night), why: 'IT IS ALREADY NIGHT.', action: function () { self.sleep('night'); } },
+        { label: 'TALK TO MORDECAI', action: function () { self.mordMenu(); } },
+        { label: 'CRAFT', action: function () { self.craftMenu(); } },
+        { label: 'LOOT BOXES', right: nb ? String(nb) : '', action: ui.openBoxes },
+        { label: 'CHARACTER', right: run.statPoints > 0 ? '+' + run.statPoints : '', action: ui.openCharacter },
+        { label: 'WARDROBE', action: ui.openWardrobe },
+        { label: 'ACHIEVEMENTS', action: ui.openAchievements },
+        { label: 'LEAVE', color: C.orange, action: function () { self.leave(); } },
+        { label: 'MORE...', action: function () { ui.openPause({ canFlee: false }); } }
+      ], { title: up(this.inn.name), titleColor: C.gold, w: 196 });
+    },
+    leave: function () {
+      var self = this;
+      ui.confirm('LEAVE ' + up(this.inn.name) + '?', function () {
+        self.leaving = true; sfx('door');
+        if (tryCall(DCW.game, 'leaveInn', []) === MISSING && tryCall(DCW.game, 'leaveSafeRoom', []) === MISSING) { self.leaving = false; ui.toast('NOWHERE TO GO', { color: C.red }); }
+      });
     },
     interact: function (o) {
-      var self = this;
-      if (o.id === 'shop') { sfx('menu_select'); ui.openShop(); }
-      else if (o.id === 'boxes') { sfx('menu_select'); ui.openBoxes(); }
-      else if (o.id === 'wardrobe') { sfx('menu_select'); ui.openWardrobe(); }
+      sfx('menu_select');
+      if (o.id === 'keeper') this.keeperMenu();
       else if (o.id === 'mordecai') {
-        sfx('menu_select');
-        var run = getRun() || {}, mf = mordForm();
-        var fl = (D('floors') || [])[(run.floor || 1) - 1] || {};
-        var rumorPool = (fl.hints || []).slice();
-        var tip = function () {
-          var useRumor = rumorPool.length && Math.random() < 0.7;
-          if (useRumor) { ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(rumorPool) }]); return; }
-          ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: pick(D('mordecai')) || 'KEEP YOUR HEAD DOWN AND YOUR FISTS UP. AND FEED THE CAT.' }]); };
-        var openMenu = function () { ui.menu([
-          { label: 'ASK FOR A TIP', action: tip },
-          { label: (run.statPoints > 0 ? 'TRAIN (' + run.statPoints + ' STAT POINT' + (run.statPoints > 1 ? 'S' : '') + ')' : 'TRAIN'), disabled: !(run.statPoints > 0), why: 'NO STAT POINTS. GO LEVEL UP.', action: function () { ui.openCharacter(); } },
-          { label: 'REST (FULL HEAL)', disabled: !!run.restedHere, why: 'YOU ALREADY RESTED THIS VISIT.', action: function () {
-            var r = getRun(); if (r) r.restedHere = true;
-            if (hasG('heal')) G('heal', 9999); else if (r) r.hp = pStats().maxHp || r.hp;
-            persist(); sfx('heal');
-            ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: 'SLEEP. I\'LL WATCH THE DOOR. NOBODY GETS IN HERE ANYWAY. MOSTLY.' }]);
-            ui.toast('FULLY HEALED', { icon: 'heart', color: C.green });
-          } },
-          { label: 'NEVERMIND', action: function () {} }
-        ], { title: mf.name ? 'MORDECAI THE ' + mf.name : 'MORDECAI', titleColor: C.green }); };
-        run.mordecaiMet = run.mordecaiMet || {};
-        if (mf.line && !run.mordecaiMet[mf.n]) {
-          run.mordecaiMet[mf.n] = true; persist();
-          ui.say([{ who: 'MORDECAI', portrait: mf.portrait, text: mf.line }], { onDone: openMenu });
-        } else openMenu();
-      } else if (o.id === 'door') {
-        sfx('menu_select');
-        ui.confirm('LEAVE THE SAFE ROOM?', function () {
-          self.leaving = true; sfx('door');
-          if (tryCall(DCW.game, 'leaveSafeRoom', []) === MISSING) { self.leaving = false; ui.toast('NOWHERE TO GO', { color: C.red }); }
-        });
+        var self = this, run = getRun();
+        if (run && !this.mordSaid) { this.mordSaid = true; ui.say([{ who: 'MORDECAI', text: pick(MORD_HELLO) }], { onDone: function () { self.mordMenu(); } }); }
+        else this.mordMenu();
       }
+      else if (o.id === 'boxes') ui.openBoxes();
+      else if (o.id === 'wardrobe') ui.openWardrobe();
+      else if (o.id === 'board') ui.openAchievements();
+      else if (o.id === 'door') this.leave();
     },
     update: function (dt) {
-      this.t += dt;
+      this.t += dt; this.greetT -= dt;
+      if (!this.telePlayed && this.t > 0.25) { this.telePlayed = true; sfx('teleport'); }
       if (this.leaving) return;
       tryCall(DCW.game, 'tick', [dt]);
-      var ax = (Dn('right') ? 1 : 0) - (Dn('left') ? 1 : 0);
-      this.moving = ax !== 0 && this.pet <= 0;
-      if (this.moving) { this.face = ax; this.x = clamp(this.x + ax * 70 * dt, 12, 306); }
-      // companion follows
-      var tx = this.x - this.face * 20, d = tx - this.cx;
-      this.cmoving = Math.abs(d) > 2;
-      if (this.cmoving) { this.cface = d > 0 ? 1 : -1; this.cx += clamp(d, -80 * dt, 80 * dt); }
-      else this.cface = this.x > this.cx ? 1 : -1;
-      // nearest interactable
-      var self = this; this.near = null;
-      this.objs.forEach(function (o) { if (Math.abs(o.x - self.x) < 14) self.near = o; });
-      if (this.pet > 0) this.pet -= dt;
-      this.hearts.forEach(function (h) { h.y -= 20 * dt; h.life -= dt; });
-      this.hearts = this.hearts.filter(function (h) { return h.life > 0; });
-      if (P('start')) { ui.openPause({ canFlee: false }); return; }
+      roomWalk(this, dt);
+      if (P('start')) { sfx('pause'); this.innMenu(); return; }
       if (P('select')) { ui.openMap(); return; }
-      if (P('down') && !this.moving && Math.abs(this.cx - this.x) < 26 && this.pet <= 0) {
-        this.pet = 1.0; sfx('heal', { pitch: 1.5 });
-        for (var i = 0; i < 4; i++) this.hearts.push({ x: this.cx - 9 + i * 5, y: GROUND - 20 - i * 4, life: 0.9 + i * 0.15 });
-        var comp = equipped('companion');
-        G('track', comp === 'donut' ? 'pet_donut' : 'pet_' + comp);
-        return;
-      }
+      if (roomPet(this)) return;
       if ((P('confirm') || P('up')) && this.near) this.interact(this.near);
     },
-    idle: function (dt) { this.t += dt; },
+    idle: function (dt) { this.t += dt; this.greetT -= dt; },
     draw: function (ctx) {
-      var t = this.t, self = this;
-      var bgOk = false;
-      if (DCW.art && typeof DCW.art.background === 'function') { try { DCW.art.background(ctx, 'safe', 0, 0); bgOk = true; } catch (e) { bgOk = false; } }
-      if (!bgOk) {
-        bands(ctx, ['#2c1c14', '#38241a', '#442c1c', '#4c3020'], 0, GROUND);
-        for (var wx = 0; wx < W; wx += 32) R(wx, 0, 1, GROUND, '#24160e');
-        R(0, 30, W, 3, '#5c3c24');
-      }
-      // floor
-      var tileOk = !!(DCW.art && typeof DCW.art.tile === 'function');
-      for (var fx = 0; fx < W; fx += 16) for (var fy = GROUND; fy < H; fy += 16) {
-        var drawn = false;
-        if (tileOk) { try { DCW.art.tile(ctx, 'safe', '#', fx, fy, { up: fy > GROUND, down: true, left: true, right: true, t: t, tx: fx / 16, ty: fy / 16 }); drawn = true; } catch (e) { drawn = false; } }
-        if (!drawn) { R(fx, fy, 16, 16, '#5c3c24'); R(fx, fy, 16, 1, fy === GROUND ? '#a87850' : '#4c3020'); R(fx + 15, fy, 1, 16, '#3c2414'); }
-      }
-      // AI screen hovering
-      spr(ctx, 'ai_screen', 160, 46 + Math.round(Math.sin(t * 2) * 3), { frame: Math.floor(t * 2) });
-      if (!bgOk) T('SAFE ROOM', 160, 58, C.dgray, { align: 'center', shadow: null });
-      // shop: bopca behind counter
-      spr(ctx, 'bopca', 44, GROUND - 12, { frame: Math.floor(t * 2) });
-      R(26, GROUND - 16, 38, 16, '#000'); R(27, GROUND - 15, 36, 15, '#7c4c24'); R(27, GROUND - 15, 36, 2, '#c87838');
-      icon(ctx, 'coin', 31, GROUND - 11); icon(ctx, 'potion', 41, GROUND - 11); icon(ctx, 'bomb', 51, GROUND - 11);
-      // mordecai
-      spr(ctx, mordForm().sprite, 112, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 112 });
-      // loot box pile
+      var t = this.t, self = this, id = this.innId;
+      if (!drawBg(ctx, this.inn.theme || ('inn_' + id), 0, 0, { t: t, night: !!(clockInfo() || {}).night })) drawInnRoom(ctx, id, t, GROUND);
+      var L = INN_LOOK[id] || INN_LOOK.pug;
+      // bar: kegs, keeper, counter
+      for (var k = 0; k < 3; k++) { var kx = 18 + k * 17; R(kx, 104, 15, 16, '#000'); R(kx + 1, 105, 13, 14, '#7c4c24'); R(kx + 1, 108, 13, 1, '#3c2414'); R(kx + 1, 115, 13, 1, '#3c2414'); R(kx + 6, 111, 3, 3, '#bcbcbc'); }
+      R(14, 120, 58, 3, L.beam);
+      spr(ctx, actorName(this.keeper, 'idle'), 40, GROUND - 8, { frame: Math.floor(t * 2) });
+      R(12, GROUND - 18, 60, 18, '#000'); R(13, GROUND - 17, 58, 17, '#7c4c24'); R(13, GROUND - 17, 58, 3, '#a87850');
+      R(20, GROUND - 22, 5, 5, '#f8d878'); R(21, GROUND - 23, 3, 1, C.white); R(56, GROUND - 22, 5, 5, '#f8d878');
+      // Mordecai (teleports in with a puff) + his table
+      var tk = clamp((t - 0.25) / 0.5, 0, 1);
+      if (tk >= 0.5) spr(ctx, actorName('mordecai', 'idle'), 104, GROUND, { frame: Math.floor(t * 1.5), flip: this.x < 104 });
+      if (tk > 0 && tk < 1) for (var pf = 0; pf < 10; pf++) { var pa = pf * 0.63 + t * 3, pr = 4 + tk * 16; ctx.globalAlpha = 1 - tk; R(104 + Math.cos(pa) * pr - 2, GROUND - 16 + Math.sin(pa) * pr * 0.8 - 2, 5, 5, pf % 2 ? '#d800cc' : '#bcbcbc'); ctx.globalAlpha = 1; }
+      R(116, GROUND - 14, 22, 4, '#000'); R(117, GROUND - 13, 20, 3, '#a85010'); R(125, GROUND - 10, 4, 10, '#5c3c24'); R(121, GROUND - 19, 4, 5, '#f8d878'); R(130, GROUND - 18, 3, 4, '#5c5c5c');
+      // loot box pile under the TVs
       var run = getRun() || {}, bx = run.boxes || [];
-      if (!bx.length) spr(ctx, 'box_bronze', 174, GROUND, { alpha: 0.3 });
-      bx.slice(0, 3).forEach(function (b, i) { spr(ctx, 'box_' + b.tier, 168 + (i % 2) * 12, GROUND - Math.floor(i / 2) * 13 - (i === 2 ? 0 : 0), { frame: i === 0 ? Math.floor(t * 4) : 0 }); });
-      if (bx.length) { DCW.box(182, GROUND - 32, tw(bx.length) + 8, 11, { fill: C.red }); T(bx.length, 186, GROUND - 30, C.white); }
-      // wardrobe (procedural)
-      R(214, GROUND - 40, 28, 40, '#000'); R(215, GROUND - 39, 26, 39, '#7c3c18'); R(215, GROUND - 39, 26, 3, '#a85010');
-      R(217, GROUND - 34, 10, 32, '#5c2c10'); R(229, GROUND - 34, 10, 32, '#5c2c10'); R(226, GROUND - 20, 1, 3, C.gold); R(229, GROUND - 20, 1, 3, C.gold);
-      R(219, GROUND - 31, 5, 10, '#a4e4fc'); R(220, GROUND - 30, 1, 4, C.white);
+      if (!bx.length) spr(ctx, 'box_bronze', 160, GROUND, { alpha: 0.3 });
+      bx.slice(0, 3).forEach(function (b, i) { spr(ctx, 'box_' + b.tier, 154 + (i % 2) * 12, GROUND - Math.floor(i / 2) * 13, { frame: i === 0 ? Math.floor(t * 4) : 0 }); });
+      if (bx.length) { DCW.box(168, GROUND - 32, tw(bx.length) + 8, 11, { fill: C.red }); T(bx.length, 172, GROUND - 30, C.white); }
+      // wardrobe: a folding dressing screen, Renaissance-fair style
+      for (var sp = 0; sp < 3; sp++) { var sx = 200 + sp * 10; R(sx, GROUND - 38 + (sp === 1 ? 0 : 2), 10, 38 - (sp === 1 ? 0 : 2), '#000'); R(sx + 1, GROUND - 37 + (sp === 1 ? 0 : 2), 8, 36 - (sp === 1 ? 0 : 2), sp === 1 ? '#881488' : '#5c0c5c'); R(sx + 3, GROUND - 30, 4, 4, '#f8b800'); }
+      R(208, GROUND - 42, 3, 6, '#7c3c18'); R(205, GROUND - 44, 9, 2, '#fcfcfc');
+      // trophy board
+      R(240, 92, 32, 26, '#000'); R(241, 93, 30, 24, '#a85010'); R(243, 95, 26, 20, '#c88c50');
+      [[245, 97, C.white], [254, 96, C.yellow], [262, 99, C.white], [247, 106, '#f8b8f8'], [258, 107, C.white]].forEach(function (pp) { R(pp[0], pp[1], 7, 7, pp[2]); R(pp[0] + 3, pp[1], 1, 1, C.red); });
+      R(252, GROUND - 12, 8, 4, C.gold); R(254, GROUND - 8, 4, 8, C.gold); R(250, GROUND - 16, 12, 4, C.gold);
       // door
-      spr(ctx, 'door', 296, GROUND, {});
-      // companion + carl
-      var comp = compSprite(equipped('companion'));
-      var cs = this.cmoving ? comp + '_run' : comp + '_idle';
-      if (this.pet > 0 && hasArt(comp + '_act')) cs = comp + '_act';
-      spr(ctx, cs, this.cx, GROUND, { frame: Math.floor(t * (this.cmoving ? 8 : 2)), flip: this.cface < 0 });
-      spr(ctx, this.moving ? 'carl_run' : 'carl_idle', this.x, GROUND, { frame: Math.floor(t * (this.moving ? 10 : 2)), flip: this.face < 0, skin: equipped('skin') });
-      this.hearts.forEach(function (h) { T('♥', h.x, h.y, (Math.floor(h.life * 8) % 2) ? C.red : '#fc7460'); });
-      if (this.pet > 0.2) { var pw2 = tw('PURR'); DCW.box(this.cx - pw2 / 2 - 4, GROUND - 46, pw2 + 8, 12, { fill: C.white, border: '#000' }); T('PURR', this.cx, GROUND - 44, '#000', { align: 'center', shadow: null }); }
-      // prompt
-      if (this.near && !ui.blocking()) {
-        var o = this.near, by = GROUND - (o.id === 'door' ? 44 : o.id === 'mordecai' ? 40 : 34) + Math.round(Math.sin(t * 5) * 1.5);
-        var lw = tw(o.label) + 8;
-        var lx = clamp(o.x - lw / 2, 4, W - 4 - lw);
-        DCW.box(lx, by - 12, lw, 12, { fill: '#000' });
-        T(o.label, lx + 4, by - 10, C.gold);
-        T('▼', o.x, by + 1, C.white, { align: 'center' });
-        DCW.box(60, 164, 200, 14, { fill: '#000' });
-        T(bn('confirm') + ': ' + o.verb, 160, 167, C.white, { align: 'center' });
-      } else if (!ui.blocking()) {
-        T('◀ ▶ WALK   ' + bn('down') + ' PET   ' + bn('start') + ' MENU', 160, 168, C.dgray, { align: 'center', shadow: '#000' });
+      spr(ctx, firstArt(['door_inn', 'door_wood', 'door']) || 'door', 298, GROUND, {});
+      roomCast(ctx, this, t);
+      if (this.greetT > 0) bubble(ctx, this.greet, 40, GROUND - 34, { w: 120 });
+      ui.drawHUD(ctx, ui.hudFromRun({ party: true }));
+      T(fitText(up(this.inn.name), 200), 4, 16, C.gold, { shadow: '#000' });
+      roomPrompt(ctx, this, t);
+    }
+  };
+  scenes.safeRoom = scenes.inn; // book 1 name
+
+  /* ---------- THE DESPERADO CLUB ---------- */
+  var CLUB_FB = {
+    door: ['I\'M CLARABELLE. NO FIGHTING, NO BITING, AND KEEP THE DINOSAUR ON A LEASH.', 'I EAT PEOPLE WHO START FIGHTS. IT\'S IN MY CONTRACT. AND MY DIET.', 'YOU\'RE NOT ON THE LIST. NOBODY IS ON THE LIST. THERE IS NO LIST. GO IN.'],
+    quint: ['YOU NEED SOMETHING. I HAVE SOMETHING. LET\'S NOT MAKE THIS WEIRD.'],
+    dance: [
+      [{ who: 'DONUT', text: 'CARL. STOP. PEOPLE ARE FILMING. ACTUALLY EVERYONE IS ALWAYS FILMING. CARRY ON, I SUPPOSE.' }],
+      [{ who: 'SYSTEM AI', text: 'VIEWERS IN FOURTEEN STAR SYSTEMS ARE REPORTING SECONDHAND EMBARRASSMENT. RATINGS ARE UP.' }],
+      [{ who: 'DONUT', text: 'IT\'S LIKE WATCHING A BEAR GET ELECTROCUTED. BUT FESTIVE.' }, { who: 'CARL', text: 'THAT\'S THE NICEST THING YOU\'VE EVER SAID TO ME.' }]
+    ],
+    bar: [
+      [{ who: 'DONUT', text: 'A DIRTY SHIRLEY, PLEASE. EXTRA CHERRIES. I\'M FAMOUS.' }, { who: 'CARL', text: 'BEER. WHATEVER\'S COLD AND NOT MOVING.' }],
+      [{ who: 'CARL', text: 'THE BARTENDER IS WATCHING MONGO LIKE HE\'S A WALKING HEALTH CODE VIOLATION.' }, { who: 'DONUT', text: 'HE IS, CARL. HE\'S ADORABLE, BUT HE IS.' }]
+    ]
+  };
+  scenes.club = {
+    enter: function (p) {
+      closeAll();
+      p = p || {};
+      var run = getRun();
+      this.clubId = p.clubId || (run && run.inClub) || 'desperado';
+      this.club = (D('clubs') || {})[this.clubId] || {};
+      this.name = up(this.club.name || 'THE DESPERADO CLUB');
+      this.shopId = this.club.shop || 'quint';
+      roomInit(this, 40);
+      this.face = 1; this.cx = 24;
+      this.objs = [
+        { id: 'door', x: 18, label: 'EXIT', verb: 'LEAVE', h: 44 },
+        { id: 'bouncer', x: 52, label: 'CLARABELLE', verb: 'TALK', h: 50 },
+        { id: 'quint', x: 112, label: "QUINT'S PHARMACY", verb: 'SHOP', h: 48 },
+        { id: 'dance', x: 185, r: 30, label: 'DANCE FLOOR', verb: 'DANCE', h: 34 },
+        { id: 'bar', x: 266, label: 'THE BAR', verb: 'ORDER', h: 38 }
+      ];
+      this.greet = pick(lineList(this.club.lines && this.club.lines.door)) || pick(CLUB_FB.door);
+      this.greetT = 3.4; this.hype = 0; this.danced = false;
+      music(this.club.music || 'club');
+    },
+    lines: function (key) { var l = this.club.lines && this.club.lines[key]; return lineList(l).length ? lineList(l) : CLUB_FB[key]; },
+    leave: function () {
+      var self = this;
+      self.leaving = true; sfx('door');
+      if (tryCall(DCW.game, 'leaveClub', []) === MISSING) { self.leaving = false; ui.toast('THE DOOR IS STUCK. CLARABELLE IS LEANING ON IT.', { color: C.red }); }
+    },
+    startDance: function () {
+      this.dance = 2.6; this.hype = 1; sfx('fanfare');
+      if (!this.danced) { this.danced = true; G('track', 'dance'); }
+    },
+    clubMenu: function () {
+      var self = this;
+      ui.menu([
+        { label: "QUINT'S PHARMACY", action: function () { self.interact(self.objs[2]); } },
+        { label: 'DANCE', action: function () { self.startDance(); } },
+        { label: 'TALK TO CLARABELLE', action: function () { self.interact(self.objs[1]); } },
+        { label: 'THE BAR', action: function () { self.interact(self.objs[4]); } },
+        { label: 'LEAVE', color: C.orange, action: function () { self.leave(); } },
+        { label: 'MORE...', action: function () { ui.openPause({ canFlee: false }); } }
+      ], { title: this.name, titleColor: C.pink, border: C.pink, w: 180 });
+    },
+    interact: function (o) {
+      sfx('menu_select');
+      var self = this;
+      if (o.id === 'door') this.leave();
+      else if (o.id === 'bouncer') ui.say(lineList(this.lines('door')).map(function (l) { return typeof l === 'string' ? { who: 'CLARABELLE', text: l } : l; }).slice(0, 2));
+      else if (o.id === 'quint') {
+        var q = pick(this.lines('quint'));
+        ui.openShop(this.shopId, { greet: typeof q === 'string' ? q : q && q.text });
+      } else if (o.id === 'dance') this.startDance();
+      else if (o.id === 'bar') { var b = pick(this.lines('bar')); ui.say(Array.isArray(b) ? b : [typeof b === 'string' ? { who: 'DONUT', text: b } : b]); }
+    },
+    update: function (dt) {
+      this.t += dt; this.greetT -= dt;
+      if (this.leaving) return;
+      tryCall(DCW.game, 'tick', [dt]);
+      if (this.dance > 0) {
+        this.dance -= dt;
+        if (this.dance <= 0) { this.hype = 0; var dl = pick(this.lines('dance')); ui.say(Array.isArray(dl) ? dl : [typeof dl === 'string' ? { who: 'DONUT', text: dl } : dl]); }
       }
-      ui.drawHUD(ctx, ui.hudFromRun({ stageName: 'SAFE ROOM' }));
+      roomWalk(this, dt);
+      if (this.dance > 0) return;
+      if (P('start')) { sfx('pause'); this.clubMenu(); return; }
+      if (P('select')) { ui.openMap(); return; }
+      if (roomPet(this)) return;
+      if ((P('confirm') || P('up')) && this.near) this.interact(this.near);
+    },
+    idle: function (dt) { this.t += dt; this.greetT -= dt; },
+    draw: function (ctx) {
+      var t = this.t;
+      if (!drawBg(ctx, this.club.theme || 'club', 0, 0, { t: t })) drawClubRoom(ctx, t, this.hype, GROUND);
+      // door + velvet rope
+      spr(ctx, firstArt(['door_club', 'door_pub', 'door']) || 'door', 18, GROUND, {});
+      [66, 84].forEach(function (px) { R(px, GROUND - 14, 3, 14, '#ac7c00'); R(px - 1, GROUND - 16, 5, 3, C.gold); });
+      R(68, GROUND - 12, 17, 2, '#a81000'); R(72, GROUND - 11, 9, 2, '#a81000');
+      spr(ctx, actorName('clarabelle', 'idle'), 50, GROUND, { frame: Math.floor(t * 1.5) });
+      // Quint's pharmacy counter
+      R(90, 92, 46, 24, '#000'); R(91, 93, 44, 22, '#1c1c2c');
+      for (var sh = 0; sh < 2; sh++) for (var bt = 0; bt < 6; bt++) { var bc = ['#58d854', '#d800cc', '#3cbcfc', '#f8b800'][(bt + sh) % 4]; R(94 + bt * 7, 96 + sh * 10, 4, 7, '#000'); R(95 + bt * 7, 97 + sh * 10, 2, 5, bc); }
+      R(106, 80, 14, 10, '#000'); R(107, 81, 12, 8, '#00a800'); R(111, 82, 4, 6, C.white); R(109, 84, 8, 2, C.white);
+      spr(ctx, actorName('quint', 'idle'), 112, GROUND - 8, { frame: Math.floor(t * 2) });
+      R(92, GROUND - 18, 42, 18, '#000'); R(93, GROUND - 17, 40, 17, '#3c3c4c'); R(93, GROUND - 17, 40, 2, '#7c7c9c');
+      // the bar
+      R(240, GROUND - 20, 60, 20, '#000'); R(241, GROUND - 19, 58, 19, '#5c1c3c'); R(241, GROUND - 19, 58, 3, '#d800cc');
+      for (var g2 = 0; g2 < 4; g2++) { R(246 + g2 * 14, GROUND - 26, 4, 6, ['#f8d878', '#f83800', '#58d854', '#3cbcfc'][g2]); }
+      [250, 270, 290].forEach(function (sx) { R(sx - 4, GROUND - 10, 9, 2, '#bcbcbc'); R(sx, GROUND - 8, 1, 8, '#7c7c7c'); });
+      roomCast(ctx, this, t);
+      if (this.greetT > 0) bubble(ctx, this.greet, 52, GROUND - 40, { w: 120 });
+      ui.drawHUD(ctx, ui.hudFromRun({ party: true }));
+      T(this.name, 4, 16, C.pink, { shadow: '#000' });
+      roomPrompt(ctx, this, t);
     }
   };
 
-  /* ---------- ENDING ---------- */
-  var ENDING_FB = [
-    { text: 'THE LAST BOSS FELL. THE STUDIO LIGHTS FLICKERED. SOMEWHERE, A PRODUCER WEPT INTO A BUCKET OF SNACKS.' },
-    { text: 'THE AUDIENCE ROARED. BILLIONS OF VIEWERS ACROSS A THOUSAND WORLDS CHANTED ONE NAME. MOSTLY CARL. SOMETIMES DONUT.', portrait: 'p_ai' },
-    { text: 'THE DUNGEON GOES DEEPER, OF COURSE. IT ALWAYS DOES. BUT FOR TONIGHT, CARL AND DONUT HAVE WON.' }
-  ];
-  var CREDITS_FB = ['DUNGEON CRAWLER WORLD', 'EARTH EDITION', '', 'A PERSONAL FAN GAME', 'NOT FOR SALE. NOT OFFICIAL.', '', 'STARRING', 'CARL', 'PRINCESS DONUT', '', 'HOSTED BY', 'THE SYSTEM AI', '', 'THANKS FOR PLAYING!'];
+  /* ---------- ENDINGS (win | early | collapse) + CREDITS ---------- */
+  var ENDING_FB = {
+    win: [
+      { text: 'THE GUARD DEPOT WENT UP LIKE THE FOURTH OF JULY. THE BLAST SWALLOWED THE WORST OF THE GLASS. MOSTLY.', vignette: 'doomsday' },
+      { text: 'THE EASTERN STAIRWELL SPAT THEM OUT IN ODETTE\'S GREEN ROOM: SINGED, LOUD, AND STILL ALIVE.', vignette: 'greenroom' },
+      { text: 'CARL\'S DOOMSDAY SCENARIO IS STILL IN HIS INVENTORY. IT IS STILL GOING TO EXPLODE. SOMEDAY.', portrait: 'p_ai', vignette: 'screen' },
+      { text: 'FLOOR FOUR IS WAITING. IT ALWAYS IS. BUT TONIGHT, THE OVER CITY IS A CRATER WITH CARL\'S NAME ON IT.', vignette: 'stairs' }
+    ],
+    early: [
+      { text: 'CARL TOOK THE STAIRS IN THE CIRCUS PARK. THE OVER CITY SHRANK ABOVE HIM LIKE A BAD DREAM.', vignette: 'stairs' },
+      { text: 'THE SETTLEMENT. THE KRASUE. THE GLASS. ALL OF IT HAPPENED TO SOMEBODY ELSE.', vignette: 'overcity' },
+      { text: 'ACHIEVEMENT UNLOCKED: EARLY BIRD GETS TO SQUIRM. YOU MISSED THE BEST PART. WE HAD FIREWORKS PLANNED.', portrait: 'p_ai', vignette: 'screen' }
+    ],
+    collapse: [
+      { text: 'THE CLOCK HIT ZERO. THE THIRD FLOOR FOLDED IN ON ITSELF, RUINS, VILLAGES, CIRCUS AND ALL.', vignette: 'collapse' },
+      { text: 'SOMEWHERE ABOVE, THE AUDIENCE SIGHED, CHANGED THE CHANNEL AND ORDERED SNACKS.', vignette: 'night' },
+      { text: 'TIME MANAGEMENT, CRAWLER. IT\'S A SKILL. YOU DIDN\'T HAVE IT.', portrait: 'p_ai', vignette: 'screen' }
+    ]
+  };
+  var ENDING_KEYS = { win: ['ending', 'winEnding'], early: ['earlyEnding'], collapse: ['collapseEnding'] };
+  var ENDING_VIG = { win: ['doomsday', 'greenroom', 'screen', 'stairs'], early: ['stairs', 'overcity', 'screen'], collapse: ['collapse', 'night', 'screen'] };
+  var CREDITS_FB = ['DUNGEON CRAWLER WORLD', "BOOK 2: CARL'S DOOMSDAY SCENARIO", '', 'A PERSONAL FAN GAME', 'BASED ON THE DUNGEON CRAWLER CARL NOVELS', 'NOT FOR SALE. NOT OFFICIAL.', '', 'STARRING', 'CARL', 'PRINCESS DONUT', 'MONGO', 'KATIA GRIM', '', 'MANAGED BY', 'MORDECAI, LEVEL 50 INCUBUS', '', 'HOSTED BY', 'THE SYSTEM AI', '', 'NO PANTS WERE HARMED', 'IN THE MAKING OF THIS FLOOR', '', 'THANKS FOR PLAYING!'];
+  var CREDIT_HEADS = /^(STARRING|HOSTED BY|MANAGED BY|MUSIC|ART|CODE|WRITTEN BY|THANKS|BASED ON|WITH|SPECIAL THANKS|PRODUCED BY|DIRECTED BY|CAST)/;
   scenes.ending = {
-    enter: function () {
+    enter: function (p) {
+      closeAll();
+      p = p || {};
       var self = this;
-      this.t = 0; this.phase = 'story'; this.ct = 0; this.done = false;
-      music('ending');
-      this.pager = storyPager(storyPages('ending', ENDING_FB), ['crowd', 'screen', 'carl', 'earth'], function () { self.phase = 'credits'; self.ct = 0; });
-      var st = D('story'), cr = st && st.credits;
-      this.credits = (Array.isArray(cr) && cr.length ? cr : CREDITS_FB).map(function (l) { return String(l).toUpperCase(); });
+      this.kind = ENDING_KEYS[p.kind] ? p.kind : 'win';
+      this.t = 0; this.ct = 0; this.done = false;
+      this.phase = this.kind === 'collapse' ? 'card' : 'story';
+      music(this.kind === 'win' ? 'ending' : this.kind === 'early' ? 'sad' : 'gameover');
+      if (this.kind === 'collapse') { if (DCW.shake) DCW.shake(4, 1.6); sfx('explosion'); }
+      var pages = null;
+      ENDING_KEYS[this.kind].forEach(function (k) { if (!pages) { var st = D('story'); if (st && Array.isArray(st[k]) && st[k].length) pages = storyPages(k, []); } });
+      if (!pages || !pages.length) pages = storyPages('__none__', ENDING_FB[this.kind]);
+      this.pager = storyPager(pages, ENDING_VIG[this.kind], function () {
+        if (self.kind === 'collapse') { self.phase = 'stats'; self.ct = 0; sfx('menu_select'); }
+        else { self.phase = 'credits'; self.ct = 0; music('credits'); }
+      });
+      var st2 = D('story'), cr = st2 && st2.credits;
+      this.credits = (Array.isArray(cr) && cr.length ? cr : CREDITS_FB).map(function (l) {
+        if (l && typeof l === 'object') return { text: up(l.text), color: l.color, head: !!l.head, big: !!l.big };
+        var s2 = up(l); return { text: s2, head: CREDIT_HEADS.test(s2) };
+      });
+    },
+    finish: function () {
+      if (this.done) return; this.done = true; sfx('menu_select');
+      var fn = this.kind === 'win' ? 'quitToTitle' : 'endRun';
+      if (tryCall(DCW.game, fn, []) === MISSING && tryCall(DCW.game, 'quitToTitle', []) === MISSING) DCW.fade(function () { DCW.setScene(scenes.title, {}); });
     },
     update: function (dt) {
       this.t += dt;
+      if (this.phase === 'card') {
+        this.ct += dt;
+        if (this.ct > 3.2 || ((P('confirm') || P('start')) && this.ct > 0.8)) { this.phase = 'story'; this.ct = 0; sfx('menu_select'); }
+        return;
+      }
       if (this.phase === 'story') { this.pager.update(dt); return; }
       if (this.phase === 'credits') {
         this.ct += dt * (Dn('confirm') || Dn('jump') ? 5 : 1);
@@ -2330,49 +3804,63 @@
         return;
       }
       this.ct += dt;
-      if ((P('confirm') || P('start')) && this.ct > 0.8 && !this.done) {
-        this.done = true; sfx('menu_select');
-        if (tryCall(DCW.game, 'quitToTitle', []) === MISSING) DCW.fade(function () { DCW.setScene(scenes.title, {}); });
-      }
+      if ((P('confirm') || P('start')) && this.ct > 0.8) this.finish();
     },
     idle: function (dt) { this.t += dt; },
     draw: function (ctx) {
       var t = this.t;
+      if (this.phase === 'card') {
+        bands(ctx, ['#000000', '#140000', '#280404', '#3c0808'], 0, H);
+        VIG.collapse(ctx, t, 0, 30, W, 120);
+        var k = clamp(this.ct / 0.5, 0, 1);
+        T('THE FLOOR HAS', 160, 40 - Math.round((1 - k) * 60), C.white, { align: 'center', scale: 2 });
+        T('COLLAPSED', 160, 60 - Math.round((1 - k) * 60), C.red, { align: 'center', scale: 3 });
+        if (this.ct > 1.2) T('GAME OVER', 160, 140, blink(2) ? C.red : C.dred, { align: 'center', scale: 2 });
+        return;
+      }
       if (this.phase === 'story') { R(0, 0, W, H, '#000'); this.pager.draw(ctx); return; }
       R(0, 0, W, H, '#05030c'); stars(ctx, t, 6, 110);
       if (this.phase === 'credits') {
         var y0 = H + 10 - this.ct * 18;
         this.credits.forEach(function (l, i) {
-          var yy = y0 + i * 14; if (yy < -10 || yy > H) return;
-          var hdr = i === 0 || /^(STARRING|HOSTED BY|MUSIC|ART|CODE|THANKS)/.test(l);
-          T(l, 160, yy, i === 0 ? C.gold : hdr ? C.pink : C.white, { align: 'center', scale: i === 0 ? 2 : 1 });
+          var yy = y0 + i * 14; if (yy < -20 || yy > H) return;
+          var first = i === 0, big = first || l.big;
+          var fits = tw(l.text, 2) <= 300;
+          T(l.text, 160, yy, l.color || (first ? C.gold : l.head ? C.pink : C.white), { align: 'center', scale: big && fits ? 2 : 1 });
         });
-        spr(ctx, 'carl_run', 30 + ((t * 40) % 300), 176, { frame: Math.floor(t * 10), skin: equipped('skin') });
-        spr(ctx, compSprite(equipped('companion')) + '_run', 10 + ((t * 40) % 300), 176, { frame: Math.floor(t * 10) });
+        var rx = (t * 40) % 360 - 20;
+        spr(ctx, actorName(compSprite('mongo'), 'walk'), rx - 22, 176, { frame: Math.floor(t * 10) });
+        spr(ctx, actorName('carl', 'walk'), rx, 176, { frame: Math.floor(t * 10), skin: equipped('skin') });
+        if (hasArt('donut_shoulder')) spr(ctx, 'donut_shoulder', rx, 156, { frame: Math.floor(t * 4) });
+        else spr(ctx, actorName('donut', 'walk'), rx + 18, 176, { frame: Math.floor(t * 10) });
+        T(bn('start') + ': SKIP', 314, 4, C.ddgray, { align: 'right', shadow: null });
         return;
       }
-      // stats summary
       var run = getRun() || {}, meta = (DCW.save && DCW.save.meta) || {};
-      var achs = D('achievements') || {}, an = Object.keys(meta.achievements || {}).length;
-      frame(ctx, 'FINAL STATS', { dim: false, footer: bn('confirm') + ': BACK TO TITLE' });
+      var achs = D('achievements') || {}, an2 = Object.keys(meta.achievements || {}).length, ck = clockInfo();
+      var head = this.kind === 'win' ? 'FINAL STATS' : this.kind === 'early' ? 'YOU LEFT EARLY' : 'GAME OVER';
+      frame(ctx, head, { dim: false, footer: bn('confirm') + ': BACK TO TITLE', titleColor: this.kind === 'collapse' ? C.red : C.gold });
       var rows = [
-        ['FLOORS CONQUERED', String(Math.max(meta.bestFloor || 0, run.floor || 0))],
         ['LEVEL', String(run.level || '-')],
         ['VIEWERS', fmtNum(run.views || 0)],
-        ['FAN TITLE', titleFor(run.views || 0)],
+        ['FAN TITLE', up(titleFor(run.views || 0))],
         ['KILLS', String(run.kills || 0)],
-        ['TOTAL TIME', fmtTime((run.totalTime || 0) + (run.floorTime || 0))],
+        ['TIME LEFT ON THE FLOOR', ck ? ck.label : '-'],
+        ['PLAY TIME', fmtTime(run.totalTime || 0)],
         ['DEATHS (ALL TIME)', String(meta.deaths || 0)],
-        ['ACHIEVEMENTS', an + '/' + Object.keys(achs).length],
-        ['WINS', String(meta.wins || 1)]
+        ['ACHIEVEMENTS', an2 + '/' + Object.keys(achs).length],
+        ['WINS', String(meta.wins || 0)]
       ];
-      rows.forEach(function (r, i) { var yy = 26 + i * 13; T(r[0], 20, yy, C.gray); T(fitText(r[1], 200), 300, yy, i === 3 ? C.pink : C.white, { align: 'right' }); });
+      rows.forEach(function (r, i) { var yy = 26 + i * 13; T(r[0], 20, yy, C.gray); T(fitText(r[1], 150), 300, yy, i === 2 ? C.pink : C.white, { align: 'right' }); });
       spr(ctx, 'ai_screen', 286, 160 + Math.round(Math.sin(t * 2) * 2), { frame: Math.floor(t * 2) });
     }
   };
+  scenes.gameover = { enter: function (p) { var q = p || {}; DCW.setScene(scenes.ending, { kind: q.kind || 'collapse' }); } };
 
-  /* ---------------- exports for overworld.js and friends ---------------- */
-  ui._h = { tryCall: tryCall, G: G, hasG: hasG, sfx: sfx, music: music, D: D, getRun: getRun, floorDef: floorDef, stageDef: stageDef,
-    spr: spr, bigSprite: bigSprite, portrait: portrait, icon: icon, hasArt: hasArt, artInfo: artInfo, T: T, tw: tw, fitText: fitText, wrap: wrap,
-    blink: blink, equipped: equipped, compSprite: compSprite, pStats: pStats, bn: bn, persist: persist, aiLine: aiLine, clamp: clamp, MISSING: MISSING, C: C };
+  /* ---------------- helpers for other modules (stage, rooms, show) ---------------- */
+  ui._h = { tryCall: tryCall, G: G, hasG: hasG, sfx: sfx, music: music, D: D, getRun: getRun, floorDef: floorDef, stageDef: stageDef, levelDef: levelDef, areaDef: areaDef,
+    spr: spr, bigSprite: bigSprite, portrait: portrait, faceSlot: faceSlot, faceFrame: faceFrame, icon: icon, itemIcon: itemIcon, itemName: itemName, itemCount: itemCount,
+    hasArt: hasArt, artInfo: artInfo, actorName: actorName, T: T, tw: tw, fitText: fitText, wrap: wrap, blink: blink, bubble: bubble, cursor: cursor,
+    equipped: equipped, compSprite: compSprite, pStats: pStats, bn: bn, persist: persist, aiLine: aiLine, clamp: clamp, clock: clockInfo, objective: objectiveInfo,
+    party: partyList, wobble: wobble, drawBg: drawBg, drawPanel: drawPanel, themeBackdrop: themeBackdrop, MISSING: MISSING, C: C };
 })();
