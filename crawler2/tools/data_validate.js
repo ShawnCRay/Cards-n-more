@@ -59,7 +59,7 @@ const OBJ_SPRITES = ('door_inn door_shop door_pub door_club door_wood door_schoo
   'signpost signpost_on charge charge_spot decoy_mongo detonator krasue_body trash barricade barricade_broken guard_statue tent_pole ' +
   'scratch_ticket custard ring_junk fire darkness_orb lock crate chest door door_open door_locked checkpoint sign cage cage_broken lever').split(' ');
 const ACTOR_SPRITES = new Set([].concat(
-  'carl_idle carl_run carl_jump carl_fall carl_punch carl_kick carl_airkick carl_throw carl_hurt carl_dead carl_climb carl_victory carl_launch carl_plant'.split(' '),
+  'carl_idle carl_run carl_jump carl_fall carl_punch carl_kick carl_airkick carl_throw carl_hurt carl_dead carl_climb carl_victory carl_launch carl_plant carl_charmed carl_crouch'.split(' '),
   'carl_back_idle carl_back_run carl_back_throw carl_back_jump carl_back_hurt'.split(' '),
   'donut_shoulder donut_cast donut_idle donut_run donut_down'.split(' '),
   'mongo_idle mongo_run mongo_act mongo_big_idle mongo_big_run mongo_big_act mongo_clock_run mongo_jump mongo_hurt'.split(' '),
