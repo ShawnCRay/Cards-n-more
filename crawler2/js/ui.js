@@ -2906,7 +2906,7 @@
       if (this.phase === 'chosen') { this.waitT -= dt; if (this.waitT <= 0) this.next(); return; }
       if (this.phase === 'bind') {
         var before = this.pt; this.pt += dt;
-        if (before < 0.5 && this.pt >= 0.5) { sfx('unlock'); this.flash = 0.8; this.flashCol = C.gold; ui.announce('MANAGER BOUND', { sub: 'MORDECAI NOW WORKS FOR PRINCESS DONUT', color: C.gold, time: 2 }); }
+        if (before < 0.5 && this.pt >= 0.5) { sfx('unlock'); this.flash = 0.8; this.flashCol = C.gold; ui.announce('MANAGER BOUND', { sub: 'MORDECAI NOW WORKS FOR PRINCESS DONUT', color: C.gold, time: 2, y: 26 }); }
         if (this.pt >= 2.3 || (this.pt > 0.8 && P('confirm'))) this.next();
         return;
       }
@@ -2941,6 +2941,10 @@
         if (rep(this, 'left', dt)) { this.sel = (this.sel + n - 1) % n; sfx('menu_move'); }
         else if (rep(this, 'right', dt)) { this.sel = (this.sel + 1) % n; sfx('menu_move'); }
         else if (P('confirm')) { sfx('menu_select'); this.choose(); }
+        else if ((P('special') || P('select')) && this.short[this.sel] && !this.short[this.sel].scroll) {
+          var ce = this.short[this.sel]; sfx('menu_select');
+          ui.readMore({ title: up(ce.name), titleColor: ce.locked ? C.gray : C.gold, blocks: [{ text: ce.desc || '' }] });
+        }
       }
     },
     idle: function (dt) { this.t += dt; if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.5); if (this.cardShake > 0) this.cardShake -= dt; },
@@ -3008,7 +3012,9 @@
             var desc = e2.scroll ? 'THE AI RECOMMENDS THESE THREE. THE LIST HAS A LOT MORE. YOU COULD KEEP SCROLLING. THE AI WOULD RATHER YOU DIDN\'T.' : (e2.desc || '');
             T(up(e2.name), 18, 115, e2.scroll ? C.blue : e2.locked ? C.gray : C.gold);
             if (e2.recommended) T('AI RECOMMENDED', 302, 115, C.purple, { align: 'right', shadow: null });
-            wrap(up(desc), 286).slice(0, 3).forEach(function (l, k) { T(l, 18, 126 + k * 10, C.white); });
+            var dls = wrap(up(desc), 286);
+            if (dls.length > 3) { dls = dls.slice(0, 2); dls.push((blink(2) ? '▼ ' : '  ') + bn('special') + ': READ MORE'); }
+            dls.forEach(function (l, k) { T(l, 18, 126 + k * 10, l.indexOf('READ MORE') >= 0 ? C.gold : C.white); });
           }
           if (this.phase === 'cards') T('◀▶: CHOOSE   ' + bn('confirm') + ': PICK', 160, 164, C.gray, { align: 'center' });
         }

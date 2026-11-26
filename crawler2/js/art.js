@@ -743,7 +743,7 @@
         if (r() < 0.5) P(g, x + 1, 2 + ((r() * 3) | 0), c.d);
       }
       R(g, 0, 5, 16, 1, c.d); R(g, 0, 6, 16, 1, c.x);
-      P(g, 1, 3, '#fcfcfc' === c.l ? c.m : c.d);
+      P(g, 1, 3, c.d);
       return 6;
     },
     wet: function (g, c, r) {
@@ -2732,7 +2732,7 @@
       function zAt(x) { var d = side < 0 ? x / fx0 : (w - x) / (w - fx1); return 1 / (1 - d * (1 - fw / w)); }
       for (var x = x0; x < x1; x++) {
         var d = side < 0 ? x / fx0 : (w - x) / (w - fx1); // 0 = near edge, 1 = far
-        var top = Math.round(lerp(0, fy0, d)), bot = Math.round(lerp(h, fy1, d)), z = zAt(x), zn = zAt(x + side * -1 < x0 ? x : x + 1);
+        var top = Math.round(lerp(0, fy0, d)), bot = Math.round(lerp(h, fy1, d)), z = zAt(x), zn = zAt(x + 1);
         R(g, x, top, 1, bot - top, '#a07424');
         for (var k = 0; k <= N; k++) P(g, x, Math.round(top + (bot - top) * k / N), '#5c3c10');
         for (k = 0; k < N; k++) {
