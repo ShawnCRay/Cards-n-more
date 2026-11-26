@@ -1769,6 +1769,36 @@
     return g;
   }
   def('odette_idle', withK(ODE_PAL), build([odette(0), odette(1)]));
+  // Mid-turn, in profile (facing right; flip for left): the breastplate sticks out about as far as
+  // her interview desk is long. Her body sits in the middle of a symmetric frame so the bottom-centre
+  // anchor doesn't move her when this frame swaps in. Frame 1 is the wobble.
+  function odetteTurn(f) {
+    var W = 150, m = 75, g = blank(W, 39), k;
+    for (k = 0; k < 3; k++) { // crab legs from the side
+      var lx = m - 8 + k * 7, up = (k + f) % 2;
+      line(g, lx, 30, lx - 2, 34 - up, 'c', 2); line(g, lx - 2, 34 - up, lx - 3, 38, 'C', 2);
+    }
+    oval(g, m, 29, 11, 5, 'c'); oval(g, m, 28, 8, 3, 'C');
+    line(g, m + 10, 28, m + 14, 24, 'c', 2); oval(g, m + 14, 21, 2.5, 2.5, 'c');
+    oval(g, m, 21, 5, 5, 's'); rect(g, m - 5, 24, 10, 2, 'k'); // torso and belt
+    line(g, m - 3, 14, m - 7, 21, 's', 2); px(g, m - 7, 22, 'n'); // the arm swinging back
+    // the breastplate, sideways: one enormous gold dome running ~60px out in front of her
+    var by = 17 + f, x0 = m + 3, x1 = m + 62, cx0 = (x0 + x1) / 2;
+    oval(g, cx0, by, (x1 - x0) / 2, 5.5, 'b');
+    oval(g, cx0 + 1, by + 2, (x1 - x0) / 2 - 2, 3, 'B');
+    oval(g, cx0, by - 1, (x1 - x0) / 2 - 3, 3, 'b');
+    line(g, x0 + 4, by - 4, x1 - 10, by - 4, 'h'); px(g, x1 - 3, by - 1, 'h');
+    line(g, x0 + 2, by, x1 - 2, by + f, 'k'); // the seam where the two domes meet
+    px(g, x1, by, 'r');
+    // neck and the mantis helmet in profile, eye forward, antennae streaming back
+    rect(g, m - 1, 10, 4, 3, 's');
+    tri(g, m - 6, 1, m + 5, 1, m + 1, 11, 'k');
+    oval(g, m + 3, 3, 2.5, 2, 'e'); px(g, m + 3, 2, 'E');
+    rect(g, m, 8, 4, 2, 's'); line(g, m + 2, 9, m + 3, 9, 'r');
+    line(g, m - 3, 1, m - 10, 0 + f, 'A'); line(g, m, 1, m - 7, 0, 'A');
+    return g;
+  }
+  def('odette_turn', withK(ODE_PAL), build([odetteTurn(0), odetteTurn(1)]));
 
   // ---- LEXIS: willowy production assistant, blonde hair in a tight bun, simple black dress, clipboard ----
   var LEX_PAL = { s: C.n2, S: C.n1, h: C.y3, H: C.y2, d: C.K, D: C.g3, c: C.y1, w: C.W, x: C.K };

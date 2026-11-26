@@ -1865,6 +1865,8 @@
 
   /* ---- actor helpers (feet on the panel floor; x 0-320) ---- */
   function A(sprite, x, flip) { return { sprite: sprite, x: x, flip: !!flip, frame: 0 }; }
+  // Odette paces the stage; at each end she swings round and the breastplate overshoots everything
+  function ODP(x0, x1) { return { sprite: 'odette_idle', x: x0, frame: undefined, pace: { x0: x0, x1: x1, speed: 28, hold: 0.8, turn: 'odette_turn' } }; }
   var CD = [A('carl_idle', 118), A('donut_idle', 140)];
 
   /* ================= SAFE ROOMS ================= */
@@ -2195,10 +2197,11 @@
         say('LEXIS', 'p_lexis', "HI. LEXIS. ASSOCIATE PRODUCER. YOU'RE ON IN FOUR MINUTES. DON'T TOUCH ANYTHING. DON'T STEAL ANYTHING. I SAW YOU LOOKING AT THE CHAIRS."),
         carl("WE'RE ON TV? WHO WATCHES THIS?"),
         say('LEXIS', 'p_lexis', "EVERYONE. DUNGEON CRAWLER AFTER HOURS IS THE BIGGEST PRIVATE SHOW IN THE GALAXY. THE HOST USED TO BE A CRAWLER. SHE SURVIVED. THINK ABOUT THAT.")] },
-      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 104), A('donut_idle', 128), A('odette_idle', 214, true)], lines: [
+      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 104), A('donut_idle', 128), ODP(206, 250)], lines: [
         say('ODETTE', 'p_odette', "DARLINGS! WELCOME! THE BOY WITH NO PANTS AND HIS PRINCESS! THE AUDIENCE IS DYING TO MEET YOU. SOME OF THEM LITERALLY."),
         smug("THANK YOU. THANK YOU. YES, I AM A CHAMPION. YES, THE CROWN IS REAL. NO, YOU MAY NOT TOUCH IT."),
-        nar("THE CROWD ROARS. DONUT HAS THEM EATING OUT OF HER PAWS IN NINETY SECONDS. CARL SITS ON THE COUCH AND TRIES TO LOOK LIKE FURNITURE.")] },
+        nar("THE CROWD ROARS. DONUT HAS THEM EATING OUT OF HER PAWS IN NINETY SECONDS. CARL SITS ON THE COUCH AND TRIES TO LOOK LIKE FURNITURE."),
+        nar("EVERY TIME ODETTE TURNS AROUND, THE FRONT ROW LEANS BACK. THE BREASTPLATE STICKS OUT AS FAR AS HER DESK. NOBODY SAYS A WORD.")] },
       { bg: 'studio', actors: [A('carl_idle', 104), A('donut_idle', 128), A('odette_idle', 214, true)], lines: [
         say('ODETTE', 'p_odette', "OFF THE AIR NOW. LISTEN. ON THE THIRD FLOOR YOU PICK A RACE AND A CLASS. DON'T RUSH IT. DON'T PICK WHAT THE MENU WANTS YOU TO PICK."),
         say('ODETTE', 'p_odette', "AND THE LOOT? NOT AS RANDOM AS THEY SAY. THE AI HANDS OUT WHATEVER MAKES GOOD TELEVISION. REMEMBER THAT WHEN SOMETHING TOO GOOD FALLS IN YOUR LAP."),
@@ -2316,7 +2319,7 @@
       { bg: 'stairwell', fx: 'flash', actors: [A('carl_idle', 110), A('donut_idle', 136), A('mongo_idle', 160)], lines: [
         ai("THE ROYAL COURT OF PRINCESS DONUT DESCENDS TO THE THIRD FLOOR! NEXT TIME: RACES! CLASSES! SO MUCH MORE DYING! STAY TUNED, CRAWLERS!"),
         carl("COME ON. ALL OF YOU. STAIRS.")] },
-      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 96), A('donut_idle', 120), A('mongo_idle', 144), A('odette_idle', 222, true)], lines: [
+      { bg: 'studio', fx: 'confetti', actors: [A('carl_idle', 96), A('donut_idle', 120), A('mongo_idle', 144), ODP(214, 250)], lines: [
         say('ODETTE', 'p_odette', "DARLINGS, YOU'RE BACK! AND YOU BROUGHT A DINOSAUR! THE AUDIENCE WANTS TO KNOW: WHAT DO YOU THINK OF PORK BOY?"),
         carl("NO COMMENT."),
         donut("MONGO HAS A COMMENT. MONGO, NO. SPIT HER OUT.")] },

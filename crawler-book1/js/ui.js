@@ -1997,6 +1997,18 @@
         var fr = a.frame !== undefined ? a.frame : (frames > 1 ? Math.floor(t * (a.fps || 2)) % Math.min(frames, a.frames || 2) : 0);
         var x = (a.x !== undefined ? a.x : 160) + (a.vx || 0) * pt;
         var o = { frame: fr, flip: !!a.flip };
+        // pace: { x0, x1, speed, hold, turn } walks back and forth across the stage; at each end the
+        // actor swings round to the outside in the `turn` sprite for `hold` seconds (Odette's gag)
+        var pc = a.pace;
+        if (pc) {
+          var span = Math.max(1, pc.x1 - pc.x0), walk = span / (pc.speed || 30), hold = pc.hold || 0.7, cyc = 2 * (walk + hold);
+          var ct = pt % cyc;
+          if (ct < walk) x = pc.x0 + span * ct / walk;
+          else if (ct < walk + hold) { x = pc.x1; if (pc.turn) { name = pc.turn; o.flip = false; } }
+          else if (ct < 2 * walk + hold) x = pc.x1 - span * (ct - walk - hold) / walk;
+          else { x = pc.x0; if (pc.turn) { name = pc.turn; o.flip = true; } }
+          if (name === pc.turn) o.frame = Math.floor(t * 6) % 2;
+        }
         if (/^carl_/.test(name)) o.skin = a.skin || equipped('skin');
         spr(ctx, name, Math.round(x), CUT.floor - (a.y || 0), o);
       });
