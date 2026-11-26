@@ -2247,17 +2247,50 @@
         say('ELLE', 'p_elle', "CARL, HONEY, WHEN WE GET OUT OF HERE, YOU AND I ARE GOING DANCING. I'LL LEAD. YOU'LL CRY. IT'LL BE BEAUTIFUL."),
         carl("IT'S A DATE, ELLE."),
         smug("HE IS SPOKEN FOR, MADAM. HE BELONGS TO ME.")] },
-      { bg: 'cinder', actors: [A('jack_idle', 200), A('yolanda_idle', 120)], lines: [
-        nar("AND THEN JACK, WHO HAS NEVER ONCE IN HIS LONG LIFE DONE WHAT HE WAS TOLD, SHUFFLES OVER TO THE HALLWAY WALL, UNZIPS, AND PISSES ON IT."),
-        say('YOLANDA', 'p_yolanda', "JACK! JACK, NO!"),
-        ai("OH, JACK. OH, BUDDY.")] },
-      { bg: 'cinder', fx: 'shake', actors: [A('yolanda_idle', 120), A('rage_elemental_idle', 236, true)], lines: [
-        nar("THE AIR TEARS OPEN. A STORM OF BLACK AND PURPLE SMOKE. A BADGER SKULL WITH GOAT HORNS AND FIRE FOR EYES. SIX OBSIDIAN CLAWS."),
-        ai("SOMEBODY PEED IN THE HALLWAY! YOU WERE ALL WARNED! THIS IS SO EXCITING! PLEASE WELCOME A LEVEL 93 RAGE ELEMENTAL!")] },
+      // Jack wanders off: he walks to the wall while everyone talks
+      { bg: 'cinder', actors: [A('carl_idle', 96), A('donut_idle', 118), A('yolanda_idle', 150), { sprite: 'jack_idle', x: 176, vx: 22, x1: 250 }], lines: [
+        nar("JACK HAS BEEN QUIET FOR AN HOUR. THAT SHOULD HAVE BEEN THE FIRST CLUE. HE PEELS OFF FROM THE CARAVAN AND SHUFFLES STRAIGHT FOR THE WALL."),
+        carl("JACK? BUDDY? THE STAIRS ARE THAT WAY."),
+        say('JACK', 'p_jack', "I'VE BEEN HOLDING IT SINCE THE GOBLINS. NOBODY TELLS ME WHERE TO PISS. NOT MY DAUGHTER, NOT THE NURSES, AND NOT SOME ALIEN GAME SHOW."),
+        ai("FRIENDLY REMINDER, CRAWLERS! URINATING IN THE HALLWAYS IS STRICTLY PROHIBITED ON THIS FLOOR! SO STRICTLY. YOU HAVE NO IDEA HOW STRICTLY.")] },
+      // the scramble: Donut's missile goes wide, Yolanda's bolt parts his hair
+      { bg: 'cinder', fx: 'shake', actors: [A('carl_idle', 96), A('donut_idle', 118), A('yolanda_attack', 150), A('jack_idle', 250),
+          { sprite: 'missile', x: 128, y: 14, vx: 260, x1: 238, delay: 0.3, life: 0.45 },
+          { sprite: 'explosion', x: 240, y: 10, delay: 0.72, life: 0.45 },
+          { sprite: 'xbolt', x: 160, y: 24, vx: 320, x1: 254, delay: 1.3 }], lines: [
+        donut("CARL. CARL! HE'S UNZIPPING! HE IS UNZIPPING IN FRONT OF A PRINCESS!"),
+        nar("DONUT PANICS AND FIRES A MAGIC MISSILE AT A NINETY-YEAR-OLD MAN. IT GOES WIDE AND BLOWS A FIST-SIZED HOLE IN THE CINDERBLOCK."),
+        say('YOLANDA', 'p_yolanda', "JACK! YOU PUT THAT THING AWAY OR I SWEAR TO GOD I WILL PUT THIS NEXT ONE IN YOUR EAR!"),
+        nar("SHE MEANS IT. THE BOLT PARTS WHAT IS LEFT OF HIS HAIR AND SINKS INTO THE WALL AN INCH ABOVE HIS HEAD. JACK DOES NOT EVEN FLINCH.")] },
+      // too late
+      { bg: 'cinder', actors: [A('carl_idle', 96), A('donut_idle', 118), A('yolanda_idle', 150), A('jack_idle', 250), { sprite: 'pee_stream', x: 264, y: 4 }], lines: [
+        nar("TOO LATE. A LONG, PROUD, DEEPLY YELLOW ARC HITS THE WALL. IT GOES ON FOR A GENUINELY UNREASONABLE AMOUNT OF TIME."),
+        say('JACK', 'p_jack', "AHHHHH. NINETY-ONE YEARS OLD AND STILL GOT THE PRESSURE OF A FIRE HOSE."),
+        donut("I HAVE NEVER BEEN SO DISGUSTED IN MY ENTIRE LIFE, CARL. AND I HAVE SEEN YOUR BATHROOM."),
+        ai("OH, JACK. OH, BUDDY. YOU ABSOLUTE LEGEND. EVERYBODY SAY GOODBYE TO JACK!")] },
+      // the elemental tears in
+      { bg: 'cinder', fx: ['shake', 'flash'], actors: [A('carl_idle', 96), A('donut_idle', 118), A('yolanda_idle', 150), A('rage_elemental_idle', 236, true)], lines: [
+        nar("THE AIR TEARS OPEN WHERE JACK WAS STANDING. A CYCLONE OF BLACK AND PURPLE SMOKE, A HORNED SKULL BURNING IN THE MIDDLE OF IT, AND FAR TOO MANY CLAWS."),
+        ai("PLEASE WELCOME, ALL THE WAY FROM WHEREVER WE KEEP THEM, A LEVEL 93 RAGE ELEMENTAL! THIS IS SO EXCITING! PEE ACTIVATED!"),
+        carl("RUN! EVERYBODY, RUN!")] },
+      // Yolanda's stand
+      { bg: 'cinder', fx: 'shake', actors: [A('yolanda_attack', 168), A('rage_elemental_idle', 236, true),
+          { sprite: 'xbolt', x: 178, y: 26, vx: 340, x1: 222, delay: 0.2, life: 0.2 },
+          { sprite: 'xbolt', x: 178, y: 30, vx: 340, x1: 222, delay: 0.7, life: 0.2 },
+          { sprite: 'xbolt', x: 178, y: 22, vx: 340, x1: 222, delay: 1.2, life: 0.2 }], lines: [
+        say('YOLANDA', 'p_yolanda', "RANDALL, GET BEHIND ME! GO! GO!"),
+        nar("YOLANDA PLANTS HER FEET AND PUTS BOLT AFTER BOLT INTO A LEVEL 93 MONSTER. THEY DO NOTHING. SHE KEEPS SHOOTING ANYWAY."),
+        nar("IT BUYS RANDALL FOUR SECONDS. IT COSTS YOLANDA EVERYTHING.")] },
       { bg: 'cinder', fx: 'flash', actors: [A('rage_elemental_idle', 236, true)], lines: [
-        nar("YOLANDA STEPS BETWEEN THE CLAWS AND A RESIDENT NAMED RANDALL. SHE BUYS HIM FOUR SECONDS. IT COSTS HER EVERYTHING."),
-        say('IMANI', 'p_imani', "INSIDE! EVERYONE INTO THE SAFE ROOM! GO, GO, GO!"),
-        nar("THEN THE ELEMENTAL CASTS REVERSE GRAVITY, AND THE WHOLE HALLWAY FALLS UP. CARL GRABS ELLE'S CHAIR BY ONE WHEEL AND DOES NOT LET GO.")] },
+        say('IMANI', 'p_imani', "INSIDE! EVERYONE INTO THE SAFE ROOM! GO, GO, GO!")] },
+      // reverse gravity: everyone falls up
+      { bg: 'cinder', fx: 'shake', actors: [
+          { sprite: 'carl_idle', x: 112, vy: 24, ymax: 54 }, { sprite: 'donut_idle', x: 134, vy: 30, ymax: 62 },
+          { sprite: 'elle_idle', x: 160, vy: 18, ymax: 46 }, { sprite: 'imani_idle', x: 190, vy: 26, ymax: 58, flip: true },
+          A('rage_elemental_idle', 250, true)], lines: [
+        nar("THEN THE ELEMENTAL CASTS REVERSE GRAVITY, AND THE WHOLE HALLWAY FALLS UP. RESIDENTS, WALKERS, A CAT. CARL GRABS ELLE'S CHAIR BY ONE WHEEL AND DOES NOT LET GO."),
+        say('ELLE', 'p_elle', "CARL, HONEY! THIS IS NOT THE KIND OF DANCING I HAD IN MIND!"),
+        donut("CARL! I AM ON THE CEILING, CARL! YOU KNOW HOW I FEEL ABOUT CEILINGS!")] },
       { bg: 'safe_shelter', actors: [A('carl_idle', 110), A('donut_idle', 132), A('imani_idle', 220, true)], lines: [
         donut("CARL. YOLANDA SAVED ME THE GOOD CUSHION LAST NIGHT. SHE WAS NICE TO ME, CARL. PEOPLE AREN'T ALWAYS NICE TO ME."),
         carl("I KNOW, DONUT. I KNOW."),

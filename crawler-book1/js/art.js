@@ -2105,6 +2105,29 @@
     if (f === 0) { ring(g, 5, 5, 3, Q.b4); P(g, 3, 3, Q.W); P(g, 4, 3, Q.W); P(g, 3, 4, Q.W); }
     else { for (var x = -4; x <= 4; x++) { var hh = Math.round(3 * Math.sqrt(1 - (x * x) / 20.25)); P(g, 5 + x, 5 - hh, Q.b4); P(g, 5 + x, 5 + hh, Q.b4); } P(g, 3, 3, Q.W); P(g, 4, 3, Q.W); }
   }, { outline: Q.b3 });
+  // a crossbow bolt (Yolanda's): shaft, iron tip, fletching
+  pix('xbolt', { s: Q.y1, t: Q.g1, f: Q.r1 }, [[
+    'ff........',
+    '.fssssssst',
+    'ff........']], false);
+  // Jack's contribution to the floor-2 hallway: a long yellow arc, two frames of splash
+  pix('pee_stream', { y: Q.y2, Y: Q.y3, d: Q.y1 }, [[
+    'yy..............',
+    '..yyY...........',
+    '.....yyY........',
+    '........yyy.....',
+    '...........yy...',
+    '.............y..',
+    '..............yd',
+    '.............d.Y'], [
+    'yY..............',
+    '..yyy...........',
+    '.....yYy........',
+    '........yyy.....',
+    '...........yY...',
+    '.............y..',
+    '..............yY',
+    '..............d.']], false);
   pix('bolt', { y: Q.y3, w: Q.W, o: Q.n2 }, [[
     '..............',
     '.......yy.....',

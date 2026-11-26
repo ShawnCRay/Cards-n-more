@@ -1995,7 +1995,13 @@
       pn.actors.forEach(function (a) {
         var name = a.sprite, inf = artInfo(name), frames = inf ? (inf.frames || 1) : 2;
         var fr = a.frame !== undefined ? a.frame : (frames > 1 ? Math.floor(t * (a.fps || 2)) % Math.min(frames, a.frames || 2) : 0);
-        var x = (a.x !== undefined ? a.x : 160) + (a.vx || 0) * pt;
+        // timing extras: delay (appears after), life (gone after), x1 (stops there: a bolt in a wall),
+        // vy/ymax (floats up: reverse gravity)
+        var at = pt - (a.delay || 0);
+        if (at < 0 || (a.life && at > a.life)) return;
+        var x = (a.x !== undefined ? a.x : 160) + (a.vx || 0) * at;
+        if (a.x1 !== undefined) x = (a.vx || 0) >= 0 ? Math.min(x, a.x1) : Math.max(x, a.x1);
+        var yo = (a.y || 0) + (a.vy || 0) * at; if (a.ymax !== undefined) yo = Math.min(yo, a.ymax);
         var o = { frame: fr, flip: !!a.flip };
         // pace: { x0, x1, speed, hold, turn } walks back and forth across the stage; at each end the
         // actor swings round to the outside in the `turn` sprite for `hold` seconds (Odette's gag)
@@ -2010,7 +2016,7 @@
           if (name === pc.turn) o.frame = Math.floor(t * 6) % 2;
         }
         if (/^carl_/.test(name)) o.skin = a.skin || equipped('skin');
-        spr(ctx, name, Math.round(x), CUT.floor - (a.y || 0), o);
+        spr(ctx, name, Math.round(x), CUT.floor - Math.round(yo), o);
       });
       if (has('snow')) fxSnow(ctx, t);
       if (has('confetti')) fxConfetti(ctx, t);

@@ -1656,7 +1656,8 @@
     if (fire) flash(g, x + 4, y);
     return g;
   }
-  npc('yolanda', YOL_PAL, pistol(YOL, 13, 12, 20), { f1: pistol(breathe(YOL, 14), 13, 13, 20), attack: pistol(setPx(YOL, [[11, 12], [12, 11], [13, 10]], 's'), 14, 9, 20, true), cx: 7 });
+  // Yolanda carries a crossbow (she puts one past Jack's head on floor 2)
+  npc('yolanda', YOL_PAL, crossbow(YOL, 11, 13, 20), { f1: crossbow(breathe(YOL, 14), 11, 14, 20), attack: crossbow(YOL, 12, 11, 20, true), cx: 7 });
   // agatha: tiny, ancient, wrapped in scarves, red-checkered trapper hat askew, unsettling smile,
   //         a bubbling potion
   var AG_PAL = { s: C.n2, S: C.n1, r: C.o1, R: C.W, a: C.p1, A: C.l1, B: C.y2, x: C.K, w: C.W, p: C.G2, P: C.l3, g: C.g1 };
