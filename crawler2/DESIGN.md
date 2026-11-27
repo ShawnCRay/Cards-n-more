@@ -792,6 +792,13 @@ Section 0 already says adult. The first pass came out PG-13 anyway. This pass fi
 - **Readable playfield** (Book One rule): every background darker than, or a different hue from,
   anything the player stands on or fights. Check every theme, day and night, with its mobs on
   screen. Darken the wall, not the sprite.
+- **Signet steps up (owner's call).** Her charm gives Carl an erection in the book, so she has to
+  read as a topless woman at a glance: bare breasts with nipples on her sprite and in a close-up
+  framed horns-to-waist, tattoos crawling over her skin, the thong the only thing she wears. Plain
+  NES pixel art, no genitals, no sexual acts. Carl's reaction stays the comic tent in his
+  heart-print BigBoi boxers (clothed). The charm scene's writing matches: she knows what she's
+  doing, Carl swears and fights his own body on galactic TV, the AI is filthy about it, Donut is
+  appalled, and he breaks his own finger to snap out of it.
 - 8x8 icons for every gear id (Book One's set plus the new Floor 3 gear), `blood_splat` (3
   variants, ~16x4, NES reds), `blood` (2x2 droplet).
 

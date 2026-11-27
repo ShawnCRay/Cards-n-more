@@ -222,7 +222,8 @@ function checkGive(where, g) {
   else if (g.gold !== undefined) { if (!(g.gold > 0)) err(where + ': gold'); }
   else if (g.box !== undefined) { if (!TIERS.includes(g.box)) err(where + ': box tier ' + g.box); }
   else if (g.skin !== undefined) { if (!SKINS.includes(g.skin)) err(where + ': skin ' + g.skin); }
-  else err(where + ': give needs item|potion|gold|box|skin');
+  else if (g.gear !== undefined) { if (!(D.gear || {})[g.gear]) err(where + ': unknown gear ' + g.gear); }
+  else err(where + ': give needs item|potion|gold|box|skin|gear');
 }
 const SHOP_IDS = 'lucky pustule quint edge_dancer talon'.split(' ');
 for (const id of SHOP_IDS) if (!(D.shops || {})[id]) err('shop missing: ' + id);
