@@ -51,7 +51,8 @@ function check(ok, msg, extra) { if (ok) passes++; else fails++; console.log((ok
   check(r.gear.length >= 11 && r.list.length === r.gear.length, 'fresh crawl: Book One end-of-book gear set', r.list);
   check(r.xpNeed === 25, 'XP curve stays Book Two (25 to level 14)', r.xpNeed);
   const exp = 2 + (7 - 3) + 6;
-  check(r.st.dmg >= exp && r.st.hob === Math.round(r.st.dmg * 1.6) && r.st.dyn === Math.round(r.st.dmg * 3.2), 'punch = Book One formula (+gear), explosives keep their ratio', r.st);
+  const RT = await ev(() => DCW.game.ratios);
+  check(r.st.dmg >= exp && r.st.hob === Math.round(r.st.dmg * RT.hob) && r.st.dyn === Math.round(r.st.dmg * RT.dyn) && r.st.hob > r.st.dmg * 3, 'punch = Book One formula (+gear), explosives keep their punch', r.st);
   r = await ev(() => {
     const G = DCW.game, run = G.run, hp0 = G.playerStats().maxHp;
     DCW.data.gear = DCW.data.gear || {};
@@ -85,7 +86,8 @@ function check(ok, msg, extra) { if (ok) passes++; else fails++; console.log((ok
     const run = DCW.game.run;
     return { sum: !!sum, level: run.level, lvBase: run.lvBase, stats: run.stats, points: run.statPoints, bonusHp: run.bonus.hp, gold: run.gold, potions: run.potions, hob: run.items.hob, views: run.views, kills: run.kills, gear: Object.keys(run.gear), name: run.name, boxes: run.boxes.length };
   });
-  check(r.level === 6 && r.lvBase === 5 && r.stats.str === 5 && r.points === 2 && r.bonusHp === 3 && r.gold === 222 && r.potions === 4 && r.hob >= 5 && r.views === 7000 && r.kills === 300 && r.name === 'CARL', 'carry: Book One snapshot as it is', r);
+  // level 6 catches up to Floor 3's 13: +7 levels, +8 points (level 10 gives 2) on top of the 2 carried
+  check(r.level === 13 && r.lvBase === 12 && r.stats.str === 5 && r.points === 10 && r.bonusHp === 3 && r.gold === 222 && r.potions === 4 && r.hob >= 5 && r.views === 7000 && r.kills === 300 && r.name === 'CARL', 'carry: Book One snapshot as it is, caught up to level 13 with the points to spend', r);
   check(r.gear.length === 2 && r.gear.indexOf('war_gauntlet') >= 0, 'carry: the snapshot gear comes along', r.gear);
   r = await ev(() => {
     localStorage.removeItem('dcw2_save_v1'); DCW.resetSave();
@@ -187,7 +189,7 @@ function check(ok, msg, extra) { if (ok) passes++; else fails++; console.log((ok
   for (let i = 0; i < 4; i++) { await ev(() => DCW.stepFrames(1)); }
   await shot('boss_arrow_a'); await ev(() => DCW.stepFrames(8)); await shot('boss_arrow_b');
   r = await ev(() => {
-    const S = T.S(); S.special = 1; DCW.pressKey('special', 2); DCW.stepFrames(30); T.close();
+    const S = T.S(); T.close(); S.special = 1; DCW.pressKey('special', 2); DCW.stepFrames(30); T.close();
     const a1 = LOG.announce.filter(t => /PANIC/.test(t)).length;
     S.special = 1; DCW.pressKey('special', 2); DCW.stepFrames(2);
     const a2 = LOG.announce.filter(t => /PANIC/.test(t)).length, pop = S.nums.some(n => /PANIC/.test(n.text));

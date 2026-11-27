@@ -3019,38 +3019,43 @@
     nip: '#6888fc', nipD: '#6844fc', lip: '#e40058', lipD: '#a80020', lipL: '#f8a4c0', eye: '#00fcfc', hornL: '#f0d0b0', horn: '#ac7c00',
     hair: '#000000', hairM: '#0000bc', hairL: '#4428bc', red: '#a80020', redL: '#e40058', ink: '#0000bc', inkG: '#00a844', inkR: '#a80020', bg: '#004058' };
   // f: 'e' ellipsoid {c:[x,y,z], r:[rx,ry,rz]}, 'c' capsule {a:[x,y], b:[x,y], z, r0, r1}; tag for creases
+  var SIG_NECK = -3; // the body sits this far up the model (a shorter neck under a fuller head)
   function sigPrims(full) {
-    var P_ = [
-      { f: 'e', n: 'head', c: [-1, 17.5, 2], r: [11.2, 17.5, 11], tag: 'jaw', lit: 0.14, clip: function (x, y) { var d = y - 21; return d < 0 || Math.abs(x + 1) < 11.2 - 0.35 * d - 0.025 * d * d; } },
-      { f: 'e', n: 'nose', c: [-1.5, 22.5, 11.4], r: [1.3, 3.4, 1.6], lit: 0.1 },
-      { f: 'c', n: 'neck', a: [0, 30], b: [1, 47], z: 0, r0: 4.4, r1: 5.4 },
-      { f: 'c', n: 'trapL', a: [-2, 45], b: [-23, 52], z: -1, r0: 5, r1: 5.6 },
-      { f: 'c', n: 'trapR', a: [3, 45], b: [22, 51], z: -1.5, r0: 5, r1: 5.2 },
+    var head = [
+      { f: 'e', n: 'head', c: [-1, 18.5, 2], r: [12.2, 18, 11.5], tag: 'jaw', lit: 0.14, clip: function (x, y) { var d = y - 22; return d < 0 || Math.abs(x + 1) < 12.2 - 0.25 * d - 0.022 * d * d; } },
+      { f: 'e', n: 'nose', c: [-1.5, 23.5, 12], r: [1.3, 3.4, 1.6], lit: 0.1 }
+    ];
+    var body = [
+      { f: 'c', n: 'neck', a: [0, 33], b: [1, 47], z: 0, r0: 5.2, r1: 6.2 },
+      { f: 'c', n: 'trapL', a: [-2, 45], b: [-23, 52], z: -1, r0: 5.2, r1: 5.6 },
+      { f: 'c', n: 'trapR', a: [3, 45], b: [22, 51], z: -1.5, r0: 5.2, r1: 5.2 },
       { f: 'e', n: 'delL', c: [-25, 57, 0], r: [6.8, 8, 6.8], tag: 'arm' },
       { f: 'e', n: 'delR', c: [23, 56, -1], r: [6.2, 7.6, 6.2], tag: 'arm' },
-      { f: 'c', n: 'armL', a: [-26.5, 58], b: [-29, 100], z: 0, r0: 5.4, r1: 4.2, tag: 'arm' },
-      { f: 'c', n: 'foreL', a: [-29, 100], b: [-27, full ? 136 : 150], z: 1, r0: 4.1, r1: 3.1, tag: 'arm' },
-      { f: 'c', n: 'armR', a: [24, 58], b: [34, 90], z: -2, r0: 5, r1: 4.1, tag: 'arm' },
-      { f: 'c', n: 'foreR', a: [34, 90], b: [20, 107], z: 1, r0: 4, r1: 3.3, tag: 'arm' },
-      { f: 'e', n: 'handR', c: [19, 108, 3], r: [4.2, 3.6, 3.2], tag: 'arm' },
+      // near arm hangs relaxed with a slight bend; far arm akimbo, elbow out, hand on her hip
+      { f: 'c', n: 'armL', a: [-26.5, 58], b: [-30.5, 88], z: 0, r0: 5.3, r1: 4.3, tag: 'arm' },
+      { f: 'c', n: 'foreL', a: [-30.5, 88], b: [-27, full ? 122 : 132], z: 1, r0: 4.1, r1: 3.1, tag: 'arm' },
+      { f: 'c', n: 'armR', a: [24, 57], b: [37, 80], z: -2, r0: 5, r1: 4.2, tag: 'arm' },
+      { f: 'c', n: 'foreR', a: [37, 80], b: [22, 96], z: 1, r0: 4.1, r1: 3.3, tag: 'arm' },
+      { f: 'e', n: 'handR', c: [20.5, 97, 3], r: [4.4, 3.6, 3.2], tag: 'arm' },
       { f: 'e', n: 'torso', c: [0, 74, 0], r: [19.5, 30, 13] },
       { f: 'e', n: 'abdomen', c: [0, 100, 1], r: [15, 15, 11] },
-      { f: 'e', n: 'hips', c: [0, 121, 0], r: [20.5, 19, 13] },
+      { f: 'e', n: 'hips', c: [full ? -1.5 : 0, 121, 0], r: [20.5, 19, 13] },
       { f: 'e', n: 'breastL', c: [-10, 69.5, 8.4], r: [8.4, 8, 7.4], tag: 'breast' },
       { f: 'e', n: 'breastR', c: [10.5, 69.5, 7.8], r: [8, 8, 7.2], tag: 'breast' }
     ];
-    if (full) P_.push(
-      { f: 'e', n: 'handL', c: [-27, 138, 2], r: [3.6, 4.6, 3], tag: 'arm' },
-      { f: 'c', n: 'thighL', a: [-9.5, 122], b: [-7.5, 172], z: 1, r0: 11.5, r1: 6.6, tag: 'leg' },
-      { f: 'c', n: 'shinL', a: [-7.5, 172], b: [-7, 238], z: 1.5, r0: 6.2, r1: 3.4, tag: 'leg' },
-      { f: 'e', n: 'calfL', c: [-8.5, 190, 1], r: [6.8, 13, 6], tag: 'leg' },
-      { f: 'e', n: 'footL', c: [-9.5, 241, 3], r: [6, 3, 4], tag: 'leg' },
-      { f: 'c', n: 'thighR', a: [9.5, 122], b: [9.5, 172], z: -1, r0: 11, r1: 6.4, tag: 'leg' },
-      { f: 'c', n: 'shinR', a: [9.5, 172], b: [10.5, 238], z: -1, r0: 6, r1: 3.3, tag: 'leg' },
-      { f: 'e', n: 'calfR', c: [10.5, 190, -1], r: [6.4, 13, 6], tag: 'leg' },
-      { f: 'e', n: 'footR', c: [12.5, 241, 1], r: [6, 3, 4], tag: 'leg' }
+    if (full) body.push( // weight on her near leg, the other knee eased and its heel up: a hip-shifted stance
+      { f: 'e', n: 'handL', c: [-26.5, 125, 2], r: [3.4, 4.4, 3], tag: 'arm' },
+      { f: 'c', n: 'thighL', a: [-9, 121], b: [-5.5, 173], z: 1, r0: 11.5, r1: 6.6, tag: 'leg' },
+      { f: 'c', n: 'shinL', a: [-5.5, 173], b: [-3, 238], z: 1.5, r0: 6.2, r1: 3.4, tag: 'leg' },
+      { f: 'e', n: 'calfL', c: [-5, 190, 1], r: [6.6, 13, 6], tag: 'leg' },
+      { f: 'e', n: 'footL', c: [-4.5, 241.5, 3], r: [6, 3, 4], tag: 'leg' },
+      { f: 'c', n: 'thighR', a: [9.5, 121], b: [13, 170], z: -1, r0: 11, r1: 6.4, tag: 'leg' },
+      { f: 'c', n: 'shinR', a: [13, 170], b: [15, 233], z: -1, r0: 6, r1: 3.3, tag: 'leg' },
+      { f: 'e', n: 'calfR', c: [14, 187, -1], r: [6.2, 12.5, 6], tag: 'leg' },
+      { f: 'e', n: 'footR', c: [16.5, 237, 1], r: [5, 2.6, 3.5], tag: 'leg' }
     );
-    return P_;
+    body.forEach(function (p) { if (p.c) p.c[1] += SIG_NECK; if (p.a) { p.a[1] += SIG_NECK; p.b[1] += SIG_NECK; } });
+    return head.concat(body);
   }
   var SIG_LIGHT = (function () { var l = [-0.42, -0.5, 0.76], m = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]); return [l[0] / m, l[1] / m, l[2] / m]; })();
   // render the body into g; returns {w, h, skin: Uint8Array, prim: Int8Array}
@@ -3114,40 +3119,42 @@
     }
   }
   function sigLine(g, pts, c, ox, oy, s) { for (var i = 1; i < pts.length; i++) line(g, Math.round(ox + pts[i - 1][0] * s), Math.round(oy + pts[i - 1][1] * s), Math.round(ox + pts[i][0] * s), Math.round(oy + pts[i][1] * s), c); }
+  // the head was drawn for a 23x35 head; the fuller 24x36 one maps its hair, ears and horns through this
+  function hd(pts) { return pts.map(function (p) { return [(p[0] + 1) * 1.08 - 1, p[1] * 1.03 + 0.5]; }); }
   // hair behind the body: a mass around the head, falling down her back to below the shoulder blades
   function sigHairBack(g, ox, oy, s, full) {
     var bot = full ? 112 : 104;
-    sigPoly(g, [[-1, -1], [-11, 1], [-16, 9], [-17, 22], [-18, 38], [-21, 50], [-23, bot - 8], [-17, bot], [0, bot - 4], [17, bot], [22, bot - 10], [21, 48], [17, 36], [15, 20], [13, 7], [8, 0]], SGC.hair, ox, oy, s);
-    sigLine(g, [[-15, 24], [-19, 52], [-20, bot - 10]], SGC.hairM, ox, oy, s);
-    sigLine(g, [[15, 24], [19, 50], [19, bot - 12]], SGC.hairM, ox, oy, s);
+    sigPoly(g, hd([[-1, -1], [-11, 1], [-16, 9], [-17, 22], [-18, 38], [-21, 50], [-23, bot - 8], [-17, bot], [0, bot - 4], [17, bot], [22, bot - 10], [21, 48], [17, 36], [15, 20], [13, 7], [8, 0]]), SGC.hair, ox, oy, s);
+    sigLine(g, hd([[-15, 24], [-19, 52], [-20, bot - 10]]), SGC.hairM, ox, oy, s);
+    sigLine(g, hd([[15, 24], [19, 50], [19, bot - 12]]), SGC.hairM, ox, oy, s);
   }
   // hair in front: the crown with a side-swept fringe, locks framing the face, one long lock over her far shoulder
   function sigHairFront(g, ox, oy, s) {
-    sigPoly(g, [[-14.5, 21], [-15.5, 9], [-10.5, 0], [-1, -2.8], [9, -0.8], [14.5, 8], [14.5, 21], [11.6, 15], [8.5, 11], [3, 9.8], [-1, 11], [-4, 10.2], [-9, 11.5], [-11.8, 15], [-12.4, 21]], SGC.hair, ox, oy, s);
-    sigPoly(g, [[-1, 9], [-7, 10.5], [-11, 14.5], [-12, 19], [-9.5, 13.5], [-5, 11.5]], SGC.hair, ox, oy, s); // a side-swept fringe
-    sigPoly(g, [[-13.5, 12], [-11, 20], [-11.5, 30], [-10, 37], [-14, 44], [-15.5, 34], [-14.5, 22]], SGC.hair, ox, oy, s);                 // near lock, to the jaw
-    sigPoly(g, [[12.5, 12], [10.6, 20], [10.6, 31], [12, 40], [16, 47], [21, 54], [25.5, 66], [27, 80], [25, 90], [28.5, 88], [31, 76], [30, 62], [25, 50], [17.5, 40], [15, 30], [14.5, 18]], SGC.hair, ox, oy, s); // far lock, over the shoulder
+    sigPoly(g, hd([[-14.5, 21], [-15.5, 9], [-10.5, 0], [-1, -2.8], [9, -0.8], [14.5, 8], [14.5, 21], [11.6, 15], [8.5, 11], [3, 9.8], [-1, 11], [-4, 10.2], [-9, 11.5], [-11.8, 15], [-12.4, 21]]), SGC.hair, ox, oy, s);
+    sigPoly(g, hd([[-1, 9], [-7, 10.5], [-11, 14.5], [-12, 19], [-9.5, 13.5], [-5, 11.5]]), SGC.hair, ox, oy, s); // a side-swept fringe
+    sigPoly(g, hd([[-13.5, 12], [-11, 20], [-11.5, 30], [-10, 37], [-14, 44], [-15.5, 34], [-14.5, 22]]), SGC.hair, ox, oy, s);                 // near lock, to the jaw
+    sigPoly(g, hd([[12.5, 12], [10.6, 20], [10.6, 31], [12, 39], [16, 44], [21, 49], [24, 56], [23, 64], [26.5, 63], [28, 55], [25, 46], [17.5, 39], [15, 30], [14.5, 18]]), SGC.hair, ox, oy, s); // far lock, over the shoulder
     // shine: a navy sheen across the crown, strands down the locks
-    sigLine(g, [[-11, 5], [-5, 0.6], [2, 0.4], [8, 2.6]], SGC.hairL, ox, oy, s);
-    sigLine(g, [[-10, 8], [-4, 4], [2, 4], [6, 6]], SGC.hairM, ox, oy, s);
-    sigLine(g, [[-2, 10], [-7, 11.5], [-10.5, 15]], SGC.hairM, ox, oy, s);
-    sigLine(g, [[-13, 14], [-13, 24], [-13.5, 36]], SGC.hairM, ox, oy, s);
-    sigLine(g, [[13, 20], [14, 32], [19, 44], [25.5, 56], [28, 70], [27.5, 84]], SGC.hairM, ox, oy, s);
-    sigLine(g, [[14.5, 26], [17, 38], [23, 48]], SGC.hairL, ox, oy, s);
+    sigLine(g, hd([[-11, 5], [-5, 0.6], [2, 0.4], [8, 2.6]]), SGC.hairL, ox, oy, s);
+    sigLine(g, hd([[-10, 8], [-4, 4], [2, 4], [6, 6]]), SGC.hairM, ox, oy, s);
+    sigLine(g, hd([[-2, 10], [-7, 11.5], [-10.5, 15]]), SGC.hairM, ox, oy, s);
+    sigLine(g, hd([[-13, 14], [-13, 24], [-13.5, 36]]), SGC.hairM, ox, oy, s);
+    sigLine(g, hd([[13, 20], [14, 32], [19, 42], [24, 50], [25.5, 60]]), SGC.hairM, ox, oy, s);
+    sigLine(g, hd([[14.5, 26], [17, 36], [22, 44]]), SGC.hairL, ox, oy, s);
   }
   // long elf ears sweeping up and back through the hair, small horns at the hairline
   function sigEarsHorns(g, ox, oy, s) {
     var E1 = [[-11, 18], [-11.4, 25], [-13.4, 24.4], [-16.5, 18.5], [-20, 9.5], [-15, 15.5]], E2 = [[10.3, 18], [10.6, 25], [12.6, 24], [15.5, 18.5], [18.5, 9.5], [13.8, 15.5]];
     sigPoly(g, E1, SGC.M, ox, oy, s); sigPoly(g, E2, SGC.S, ox, oy, s);
-    sigLine(g, [[-11.5, 18], [-15, 15.5], [-20, 9.5]], SGC.L, ox, oy, s);
-    sigLine(g, [[-12.5, 23], [-14.8, 19.5], [-17.5, 13.5]], SGC.S, ox, oy, s);
-    sigLine(g, [[11, 18], [13.8, 15.5], [18.5, 9.5]], SGC.M, ox, oy, s);
-    sigLine(g, [[12, 23], [14.2, 19.5], [16.5, 13.5]], SGC.D, ox, oy, s);
+    sigLine(g, hd([[-11.5, 18], [-15, 15.5], [-20, 9.5]]), SGC.L, ox, oy, s);
+    sigLine(g, hd([[-12.5, 23], [-14.8, 19.5], [-17.5, 13.5]]), SGC.S, ox, oy, s);
+    sigLine(g, hd([[11, 18], [13.8, 15.5], [18.5, 9.5]]), SGC.M, ox, oy, s);
+    sigLine(g, hd([[12, 23], [14.2, 19.5], [16.5, 13.5]]), SGC.D, ox, oy, s);
     // horns: short, curling up and back
-    sigPoly(g, [[-8, 4.5], [-5.5, 4], [-7, -1], [-9.5, -4.5], [-10.5, -3.5], [-9.5, 0]], SGC.hornL, ox, oy, s);
-    sigPoly(g, [[4.5, 4], [7, 4.5], [8.5, 0], [9.5, -3.5], [8.5, -4.5], [6, -1]], SGC.hornL, ox, oy, s);
-    sigLine(g, [[-6, 3.6], [-7.6, -0.5], [-9.6, -3.4]], SGC.horn, ox, oy, s);
-    sigLine(g, [[6.8, 4], [8, 0], [9, -3]], SGC.horn, ox, oy, s);
+    sigPoly(g, hd([[-8, 4.5], [-5.5, 4], [-7, -1], [-9.5, -4.5], [-10.5, -3.5], [-9.5, 0]]), SGC.hornL, ox, oy, s);
+    sigPoly(g, hd([[4.5, 4], [7, 4.5], [8.5, 0], [9.5, -3.5], [8.5, -4.5], [6, -1]]), SGC.hornL, ox, oy, s);
+    sigLine(g, hd([[-6, 3.6], [-7.6, -0.5], [-9.6, -3.4]]), SGC.horn, ox, oy, s);
+    sigLine(g, hd([[6.8, 4], [8, 0], [9, -3]]), SGC.horn, ox, oy, s);
   }
   // pixel stamp: rows of chars -> colours (map), at model point (x, y) scaled 1:1 (close-up only)
   function sigStamp(g, x, y, rows_, map) { for (var j = 0; j < rows_.length; j++) for (var i = 0; i < rows_[j].length; i++) { var c = map[rows_[j].charAt(i)]; if (c) P(g, x + i, y + j, c); } }
@@ -3156,22 +3163,25 @@
     var X = function (x) { return ox + x; }, Y = function (y) { return oy + y; };
     var mp = { k: SGC.K, w: SGC.W, c: SGC.eye, C: SGC.W, S: SGC.S, D: SGC.D, M: SGC.M, L: SGC.L, n: SGC.nip };
     // brows
-    sigStamp(g, X(-12), Y(13), ['...kkkk..', '.kk....kk', 'k........'], mp);
-    sigStamp(g, X(1), Y(13), ['..kkkk...', 'kk....kk.', '........k'], mp);
+    sigStamp(g, X(-14), Y(12), ['....kkkk..', '..kk....kk', '.k........'], mp);
+    sigStamp(g, X(1), Y(12), ['..kkkk....', 'kk....kk..', '........k.'], mp);
     // eyes (near eye: outer corner on the left; far eye mirrored)
-    sigStamp(g, X(-12), Y(17), ['..kkkkk..', 'kkwcCcwwk', '.wwcccww.', '..wwcww..', '...LLL...'], mp);
-    sigStamp(g, X(1), Y(17), ['..kkkkk..', 'kwwcCcwkk', '.wwcccww.', '..wwcww..', '...SSS...'], mp);
+    sigStamp(g, X(-14), Y(16), ['k..kkkkk..', '.kkwcCcwkk', '..wccccww.', '..wwcccww.', '...wwcww..', '....LLL...'], mp);
+    sigStamp(g, X(1), Y(16), ['..kkkkk..k', 'kkwcCcwkk.', '.wwccccw..', '.wwcccww..', '..wwcww...', '...SSS....'], mp);
     // nose: a shadow down the far side, a lit tip, two nostrils
-    sigStamp(g, X(-2), Y(21), ['..S', '..S', '.LS', 'S.D'], mp);
+    sigStamp(g, X(-2), Y(22), ['..S', '..S', '.LS', 'S.D'], mp);
     // lips: deep red upper lip with a cupid's bow, fuller magenta lower lip, corners turned up, one fang
-    sigStamp(g, X(-5), Y(27), ['...r.r...', 'R.rrrrr.R', '.RRRRRRR.', '..mlmmw..', '...mmm...'], { r: SGC.lipD, R: SGC.lipD, m: SGC.lip, l: SGC.lipL, w: SGC.W });
+    sigStamp(g, X(-5), Y(28), ['...r.r...', 'R.rrrrr.R', '.RRRRRRR.', '..mlmmw..', '...mmm...'], { r: SGC.lipD, R: SGC.lipD, m: SGC.lip, l: SGC.lipL, w: SGC.W });
     // a cool blush high on the cheeks, and the chin's shadow
-    P(g, X(-9), Y(24), SGC.nip); P(g, X(-8), Y(24), SGC.nip); P(g, X(5), Y(24), SGC.nip);
+    P(g, X(-10), Y(25), SGC.nip); P(g, X(-9), Y(25), SGC.nip); P(g, X(6), Y(25), SGC.nip);
   }
   function sigFaceSmall(g, ox, oy, s) { // the full-body shot: the same face, pixel-sized
-    function at(x, y, c) { P(g, Math.round(ox + x * s), Math.round(oy + y * s), c); }
-    at(-8, 20, SGC.eye); at(4.5, 20, SGC.eye); at(-10.5, 17.5, SGC.K); at(7, 17.5, SGC.K);
-    at(-1, 30, SGC.lip); at(1.5, 30, SGC.lipD);
+    var ex = [Math.round(ox - 9 * s), Math.round(ox + 5 * s)], ey = Math.round(oy + 19.5 * s), my = Math.round(oy + 29.5 * s), mx = Math.round(ox - 1 * s);
+    R(g, ex[0] - 1, ey - 1, 3, 1, SGC.K); P(g, ex[0] - 2, ey - 2, SGC.K); R(g, ex[0] - 1, ey, 2, 1, SGC.eye); P(g, ex[0] + 1, ey, SGC.W);
+    R(g, ex[1] - 1, ey - 1, 3, 1, SGC.K); P(g, ex[1] + 2, ey - 2, SGC.K); R(g, ex[1], ey, 2, 1, SGC.eye); P(g, ex[1] - 1, ey, SGC.W);
+    R(g, ex[0] - 1, ey - 3, 3, 1, SGC.K); R(g, ex[1] - 1, ey - 3, 3, 1, SGC.K);
+    R(g, mx - 1, my, 3, 1, SGC.lipD); P(g, mx, my + 1, SGC.lip); P(g, mx + 1, my + 1, SGC.W);
+    P(g, Math.round(ox - 2 * s), Math.round(oy + 25 * s), SGC.S);
   }
   // collarbones, ribs, navel, nipples
   function sigBodyMarks(g, ox, oy, s) {
@@ -3227,7 +3237,7 @@
     var big = s > 0.8, th = big ? 2 : 1, i, p;
     function dot(q, c, w, h) { tg.fillStyle = c; tg.fillRect(q[0], q[1], w || th, h || th); }
     // a sea serpent swimming a figure-eight around both breasts: a solid ink body, red fins, a white eye
-    for (i = 34; i >= 0; i -= big ? 1 : 3) {
+    for (i = 34; i >= 0; i -= big ? 1 : 2) {
       var a = t * 0.55 - i * 0.075, lx = Math.sin(a), ly = Math.sin(a) * Math.cos(a);
       p = T(lx * 23, 70 + ly * 24);
       dot(p, i === 0 && !big ? SGC.inkR : SGC.ink, i === 0 && big ? 3 : th, i === 0 && big ? 3 : th);
@@ -3249,7 +3259,7 @@
     var hy = (t * 5) % 46;
     for (i = 0; i < 28; i++) {
       var dy = 54 + ((hy - i * 1.2) % 46 + 46) % 46, dx = -27.5 + Math.sin(dy / 4.2) * 2.6;
-      if (!big && i % 3) continue;
+      if (!big && i % 2) continue;
       p = T(dx, dy); dot(p, i % 4 === 2 ? SGC.inkG : SGC.ink);
       if (big && i % 5 === 4) dot([p[0] - 1, p[1]], SGC.ink, 1, 1);
     }
@@ -3260,35 +3270,35 @@
   // a full figure render, cached per panel in st.misc: [tattoo mask, tattoo buffer canvas, {ox, oy, s}]
   function sigDraw(g, st, W, H, ox, oy, s, full) {
     sigBackdrop(g, W, H, full ? 29 : 13, ox, oy + (full ? 40 : 30) * s, full ? 60 : 70);
-    var fig_ = mkCanvas(W, H), fg_ = g2(fig_);
+    var fig_ = mkCanvas(W, H), fg_ = g2(fig_), oyB = oy + SIG_NECK * s;
     sigHairBack(g, ox, oy, s, full);
     var body = sigBody(fg_, W, H, ox, oy, s, sigPrims(full));
     g.drawImage(fig_, 0, 0);
-    sigBodyMarks(g, ox, oy, s);
-    sigThong(g, ox, oy, s, full);
+    sigBodyMarks(g, ox, oyB, s);
+    sigThong(g, ox, oyB, s, full);
     sigHairFront(g, ox, oy, s);
     sigEarsHorns(g, ox, oy, s);
     if (s > 0.8) sigFace(g, ox, oy); else sigFaceSmall(g, ox, oy, s);
-    st.misc.push(sigTattooMask(body, ox, oy, s, 38), mkCanvas(W, H), { ox: ox, oy: oy, s: s });
+    st.misc.push(sigTattooMask(body, ox, oyB, s, 40), mkCanvas(W, H), { ox: ox, oy: oy, oyB: oyB, s: s });
   }
   function sigAnim(ctx, t, st) {
     var mask = st.misc[0], buf = st.misc[1], o = st.misc[2], tg = g2(buf);
     tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, buf.width, buf.height);
-    sigTattoos(tg, t, o.ox, o.oy, o.s);
+    sigTattoos(tg, t, o.ox, o.oyB, o.s);
     tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mask, 0, 0); tg.globalCompositeOperation = 'source-over';
     ctx.drawImage(buf, 0, 0);
     // her eyes glow while the charm works: the irises flare white, sparks at the outer corners
     var on = Math.sin(t * 3) > 0.2, X = Math.round(o.ox), Y = Math.round(o.oy);
     if (o.s > 0.8) {
-      if (on) { P(ctx, X - 8, Y + 19, SGC.W); P(ctx, X + 5, Y + 19, SGC.W); P(ctx, X - 13, Y + 17, SGC.eye); P(ctx, X - 14, Y + 16, SGC.eye); P(ctx, X + 10, Y + 17, SGC.eye); P(ctx, X + 11, Y + 16, SGC.eye); }
-    } else if (on) { P(ctx, Math.round(o.ox - 8 * o.s), Math.round(o.oy + 20 * o.s), SGC.W); P(ctx, Math.round(o.ox + 3 * o.s), Math.round(o.oy + 20 * o.s), SGC.W); }
+      if (on) { P(ctx, X - 9, Y + 19, SGC.W); P(ctx, X + 4, Y + 19, SGC.W); P(ctx, X - 15, Y + 15, SGC.eye); P(ctx, X - 16, Y + 14, SGC.eye); P(ctx, X + 11, Y + 15, SGC.eye); P(ctx, X + 12, Y + 14, SGC.eye); }
+    } else if (on) { P(ctx, Math.round(o.ox - 9 * o.s) - 1, Math.round(o.oy + 19.5 * o.s), SGC.W); P(ctx, Math.round(o.ox + 5 * o.s) + 1, Math.round(o.oy + 19.5 * o.s), SGC.W); }
   }
   PN.signet_tattoos = { // waist-up close-up: horns to the thong's waistband
-    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 124, 5, 1, false); },
+    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 124, 8, 1, false); },
     anim: sigAnim
   };
   PN.signet_full = { // full figure, horns to feet, one hand on her hip
-    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 128, 6, 0.4, true); },
+    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 128, 6, 0.43, true); },
     anim: sigAnim
   };
   /* 4b. carl_tent: crash zoom on Carl's boxers under Signet's charm. Fabric only: the BigBoi boxers
@@ -4614,6 +4624,37 @@
   icon('quest', ['.kkkkkk.', 'kYYYYYok', '.kYrYok.', '.kYrYk..', '.kYYYk..', '.kYrYok.', 'kYYYYYok', '.kkkkkk.']);
   icon('eye', ['........', '..kkkk..', '.kwwwwk.', 'kwwekwwk', 'kwekkwwk', '.kwwwwk.', '..kkkk..', '........']);
 
+  /* ---- gear icons 8x8: gear_<id> for every D.gear id (DESIGN 16.5). Book One's set ported as it was
+     (same item, same icon across the series), plus Floor 3's pickups. icon(ctx, 'gear_<id>', x, y). ---- */
+  var GIP = { k: K, r: '#e40058', R: '#f85898', w: WH, d: '#a80020', y: '#f8b800', Y: '#f8d878', o: '#ac7c00', g: '#7c7c7c', G: '#bcbcbc', b: '#787878',
+    B: '#0058f8', L: '#3cbcfc', c: '#e45c10', C: '#fca044', p: '#f878f8', P: '#f8b8f8', n: '#881400', e: '#0078f8', f: '#f83800', t: '#fce0a8',
+    v: '#00a844', V: '#006800', q: '#4428bc', Q: '#9878f8', s: '#f0d0b0', S: '#f87858', u: '#503000' };
+  function gicon(id, rs) { def('icon_gear_' + id, { w: 8, h: 8, pal: GIP, frames: [rs] }); }
+  var GEAR_ICONS = {
+    trollskin_shirt: ['.kk..kk.', 'kgvkkvgk', 'kvgvvgvk', '.kgvgvk.', '.kvggvk.', '.kgvvgk.', '.kvgvgk.', '.kkkkkk.'],
+    nightgaunt_cloak: ['..kkkk..', '.kqQqqk.', '.kkkkqk.', '.kqQqqk.', 'kqqQqqqk', 'kqqQqqqk', 'kqqQqqqk', 'kkkkkkkk'],
+    toad_cudgel: ['.....kk.', '....kVvk', '...kvVvk', '...kvvk.', '..kck...', '.kCk....', 'kCk.....', 'kk......'],
+    toe_ring: ['...kk...', '..krrk..', '.kkRkkk.', 'kyYkkyyk', 'kYk..kyk', 'kyk..kok', '.kyyook.', '..kkkk..'],
+    war_gauntlet: ['.k.k.k..', 'kGkGkGk.', 'kGkGkGkk', 'kGGGGGwk', 'kGgGGgk.', '.kGGGk..', '.kgggk..', '.kkkkk..'],
+    bigboi_boxers: ['kkkkkkkk', 'kqyqyqyk', 'kyyyyyyk', 'kyQyyQyk', 'kyyykyyk', 'kyyk.kyk', 'kqqk.kqk', 'kkk...kk'],
+    pedicure_kit: ['.kkk....', '.ksk....', '.ksk....', '.kssk...', '.kSsskkk', '.kSssssk', '.kSswsws', '..kkkkkk'],
+    crown_sepsis: ['........', 'k.k..k.k', 'kykkkyk.', 'kyYyyYyk', 'kyrQqyrk', 'kyyyyyyk', 'kooooook', 'kkkkkkkk'],
+    talisman_butterfly: ['.y....y.', '..y..y..', 'PPkyykPP', 'PpPyyPpP', 'PPPyyPPP', '.PpyypP.', '.PPkkPP.', '..k..k..'],
+    fae_crupper: ['..kkkk..', '..kppk..', '.kpPppk.', '.kppPpk.', 'kpPppPpk', 'kppPpppk', 'kPkPkPkk', 'kk.k.k..'],
+    fur_brush: ['.kkkkk..', 'kwGwGwk.', 'kGwGwGk.', 'kkkkkkk.', '..kck...', '..kck...', '..kCk...', '..kkk...'],
+    // Floor 3
+    nica_rings: ['.kkk....', 'kwGgk...', 'kG.gk...', 'kGgkkkk.', '.kkkwGgk', '...kG.gk', '...kGggk', '....kkk.'],   // two silver rings
+    grace_anklet: ['.kkkkkk.', 'kyoyoyok', 'ko....yk', 'kyoyoyok', '.kkkkkk.', '...kPk..', '..kPpPk.', '...kpk..'], // gold chain, pink charm
+    spiked_kneepads: ['..k.k.k.', '.kGkGkGk', '.kgkgkgk', 'kgbgbgbk', 'kbgbgbgk', 'kgbbbbgk', '.kgbbgk.', '..kkkk..'], // studded pad, iron spikes
+    freeballing: ['kkkkkkkk', 'kCttttCk', '.ktrtrk.', '.ktrrrk.', '.kttrtk.', '.ktttCk.', 'kCttttCk', 'kkkkkkkk'],      // upgrade scroll with a heart seal
+    xistera: ['.....kk.', '....kCCk', '...kCcCk', '..kCcCk.', '.kCcCk..', 'kuCck...', 'kuuk....', '.kk.....'],          // the curved jai alai basket
+    fang_caps: ['kkkkkkk.', 'kRRRRRk.', 'kwwkwwk.', 'kwwkwwk.', 'kYykYyk.', '.kyk.kyk', '..k...k.', '........'],      // fangs with gold caps
+    kimaris: ['kkkkkkkk', 'kLwLLLLk', 'kBBqBBLk', 'kBqqBuLk', 'kBuuuuLk', 'kBuBBuLk', 'kooooook', 'kkkkkkkk']           // a demon duke on a horse in a glass case
+  };
+  for (var gid in GEAR_ICONS) gicon(gid, GEAR_ICONS[gid]);
+  gicon('str_rings', GEAR_ICONS.nica_rings); // an early name for Nica's rings
+  art.gearIcons = Object.keys(GEAR_ICONS);
+
 
   /* =====================================================================
      BOOK 2: street doors, plant-and-detonate kit, stage objects,
@@ -4813,21 +4854,41 @@
     R(g, 15, 14, 3, 1, '#3c3c3c'); P(g, 17, 13, '#3c3c3c');
     if (f) { P(g, 1, 4, '#f8d878'); P(g, 16, 3, '#f8d878'); P(g, 2, 2, '#fcfcfc'); }
   });
-  // a Krasue's body: limp, headless, slumped where it was left. Bare-chested, sarong, blood.
+  // a Krasue's body: the headless woman's body left behind while the head hunts, nude as in the book,
+  // drawn plainly: slumped sitting on the floor, back against the wall, one knee up, arms limp, a torn
+  // neck stump trailing a ribbon of gut where the head pulled free, blood running down into a pool.
   proc('krasue_body', 32, 22, 2, function (g, f) {
-    var s = '#c89878', sd = '#9c6c50', bl = '#8c0c18', bL = '#c82030';
-    blob(g, 16, 20, 14, 2, '#5c0810'); // blood pool
-    // legs stretched out to the right, sarong over the hips
-    R(g, 14, 15, 14, 3, s); R(g, 14, 17, 14, 1, sd); R(g, 27, 13, 2, 5, s); R(g, 28, 12, 2, 2, s);
-    R(g, 8, 13, 10, 6, '#5c2c6c'); R(g, 8, 13, 10, 1, '#7c4c8c'); P(g, 11, 15, '#c8a040'); P(g, 14, 16, '#c8a040'); P(g, 10, 17, '#c8a040');
-    // torso leaning back against nothing, arms limp
-    R(g, 7, 4, 6, 10, s); R(g, 7, 4, 1, 10, sd); R(g, 12, 6, 1, 8, sd); P(g, 10, 7, sd); P(g, 9, 8, sd);
-    R(g, 4, 6, 2, 8, s); R(g, 3, 13, 2, 2, s); R(g, 13, 7, 2, 7, s); R(g, 14, 13, 2, 2, sd);
-    // the neck stump: torn, wet, trailing
-    R(g, 8, 2, 4, 2, bl); R(g, 9, 1, 2, 1, bL); P(g, 8, 4, bl); P(g, 11, 5, bl); R(g, 9, 4, 1, 3, bL);
-    line(g, 10, 1, 13 + f, -1, '#a85050');
-    if (f) { P(g, 7, 9, bl); P(g, 7, 10, bl); P(g, 12, 11, bl); } else { P(g, 8, 6, bl); P(g, 12, 8, bl); }
+    var sk = '#f0d0b0', sh = '#f87858', bl = '#a80020', bD = '#881400', bL = '#e40058', gut = '#f85898';
+    blob(g, 17, 20, 13, 1, bD); R(g, 9, 20, 13, 1, bl); P(g, 26, 19, bl);                                   // blood pool
+    // far arm behind her, limp to the floor
+    R(g, 3, 8, 2, 8, sh); R(g, 2, 15, 3, 2, sh);
+    // far leg flat on the floor, toes up
+    R(g, 13, 16, 14, 2, sh); R(g, 13, 16, 14, 1, sk); R(g, 26, 13, 2, 4, sk); P(g, 27, 13, sh);
+    // hips and torso leaning back, a narrow waist, small breasts in profile with a shaded underside
+    blob(g, 10, 16, 5, 2, sk); R(g, 6, 17, 8, 1, sh);
+    for (var y = 6; y <= 15; y++) { var xl = 5 + Math.round((y - 6) * 0.2), xr = 12 + Math.round((y - 6) * 0.12) - (y === 12 || y === 13 ? 1 : 0); R(g, xl, y, xr - xl + 1, 1, sk); P(g, xl, y, sh); }
+    R(g, 4, 5, 9, 2, sk); P(g, 4, 6, sh);                                                                    // shoulders
+    R(g, 13, 8, 1, 3, sk); P(g, 14, 9, sk); R(g, 12, 11, 2, 1, sh); P(g, 14, 10, sh);                       // breast, underside
+    P(g, 10, 9, sh); P(g, 11, 10, sh);                                                                       // the near one, in shade
+    // near arm hanging over the raised knee, hand palm-up on the floor
+    R(g, 11, 6, 2, 6, sk); P(g, 12, 7, sh); line(g, 12, 12, 15, 16, sk); line(g, 13, 12, 16, 16, sh); R(g, 15, 17, 3, 1, sk); P(g, 18, 17 - f, sk);
+    // near leg: knee drawn up, the shin back down to a bare foot
+    line(g, 12, 15, 20, 10, sk); line(g, 12, 14, 20, 9, sk); line(g, 13, 16, 21, 11, sh);
+    line(g, 21, 10, 24, 17, sk); line(g, 20, 10, 23, 17, sk); line(g, 22, 11, 25, 17, sh); R(g, 23, 17, 4, 2, sk); P(g, 26, 18, sh);
+    // the neck stump: torn and wet, a ribbon of gut trailing up where the head tore free
+    R(g, 7, 3, 4, 2, bl); R(g, 8, 2, 2, 1, bL); P(g, 7, 4, bD); P(g, 10, 4, bD);
+    if (f) { P(g, 9, 1, gut); P(g, 10, 0, gut); P(g, 11, 0, bl); } else { P(g, 9, 1, gut); P(g, 8, 0, gut); P(g, 7, 0, bl); }
+    // blood running down her chest and side
+    P(g, 9, 5, bl); P(g, 9, 6 + f, bl); P(g, 8, 7 + f, bl); P(g, 6, 9 + f, bl); P(g, 6, 12, bl); P(g, 7, 14 + f, bl);
   });
+  // gore (DESIGN 16.2/16.5): a floor splat decal left under a kill (3 frames used as variants; stage.js
+  // anchors it bottom-centre 2px into the floor so the puddle lies on the tile top), and a 2x2 droplet
+  var GORE = { n: '#881400', r: '#a81000', R: '#d82800', h: '#f83800', d: '#a80020' };
+  def('blood_splat', { w: 16, h: 4, pal: GORE, frames: [
+    ['.....n....n.....', '..n.nrn..nRn..n.', '.nrrRRrrrrRhrrn.', 'nrrdrrrrrrrrdrrn'],
+    ['..n.......n..n..', '...nrn.nnRrn....', 'nnrrRhrrrRRrrnn.', '.nrrrrdrrrrrrrn.'],
+    ['.......nn.......', '.n..nnrRrn...n..', '.nrrrRhrrrrrRrn.', 'nnrrdrrrrrrdrrnn']] });
+  def('blood', { w: 2, h: 2, pal: GORE, frames: [['Rr', 'rn']] });
   // trash pile (urchins love it)
   proc('trash', 22, 13, 1, function (g) {
     blob(g, 11, 9, 9, 4, '#3c3c30'); blob(g, 7, 7, 5, 4, '#4c4c3c'); blob(g, 15, 6, 5, 4, '#2c2c34'); P(g, 6, 5, '#6c6c5c'); P(g, 15, 3, '#4c4c5c');

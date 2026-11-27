@@ -97,6 +97,16 @@
   function music(track) { if (track !== undefined) call(DCW.audio, 'music', track); }
   function track(ev, n) { call(G(), 'track', ev, n); }
   function toast(text, opts) { call(UI(), 'toast', text, opts || {}); }
+  // Book One's running gag: the System AI has a thing for Carl's bare feet. Now and then a stomp
+  // gets a line (never as Mongo, at most one every 40 s, never during a boss intro).
+  function feetQuip() {
+    var P = S.player, feet = ((D() || {}).ai || {}).carlFeet;
+    if (!feet || !feet.length || (P && P.mongo)) return;
+    if (S.feetT && S.t - S.feetT < 40) return;
+    if (!U.chance(S.feetT ? 0.3 : 0.6)) return;
+    S.feetT = S.t;
+    toast(U.pick(feet), { title: 'SYSTEM AI', icon: 'eye', color: '#f878f8', time: 4 });
+  }
   function announce(text, opts) { call(UI(), 'announce', text, opts || {}); }
   function say(lines, opts) {
     if (!lines || (Array.isArray(lines) && !lines.length)) return false;
@@ -1590,7 +1600,7 @@
       if (hits) {
         P.vy = -K.airkickBounce; P.vx = -P.face * 50; P.state = 'normal'; P.airJumps = st.extraJump ? 1 : 0;
         P.jumping = false; P.inv = Math.max(P.inv, 0.12);
-        sfx('stomp'); track('stomp'); DCW.freeze(r.crit ? 5 : 4); DCW.shake(2, 0.1);
+        sfx('stomp'); track('stomp'); feetQuip(); DCW.freeze(r.crit ? 5 : 4); DCW.shake(2, 0.1);
         if (st.freeballing && !P.mongo) numText(cx(P), P.y - 10, 'FREEBALLING!', '#f8d878');
       }
     }
@@ -2371,7 +2381,7 @@
       P.vy = -(I.down('jump') ? K.stompBounceHeld : K.stompBounce); P.jumping = I.down('jump'); P.onGround = false;
       P.airJumps = st.extraJump ? 1 : 0; P.inv = Math.max(P.inv, 0.08);
       P.y = e.y - P.h - 1;
-      sfx('stomp'); track('stomp'); DCW.freeze(r.crit ? 5 : 3);
+      sfx('stomp'); track('stomp'); feetQuip(); DCW.freeze(r.crit ? 5 : 3);
       return;
     }
     if (P.state === 'airkick' || harmless) return;
@@ -2971,7 +2981,9 @@
     if (!t) return;
     if (typeof t === 'number') t = { below: t };
     else if (typeof t !== 'object') t = {};
-    if (bossLeft(B) >= num(t.below, 0.25)) return;   // a share of the whole fight (all bars), not of one bar
+    // drops as the last bar starts (multi-bar bosses), or once the whole fight is under `below`
+    var lastBar = B.phases.length > 1 && B.phase >= B.phases.length - 1;
+    if (!lastBar && bossLeft(B) >= num(t.below, 0.25)) return;
     B.ticketDropped = true;
     var P = S.player;
     var x = U.clamp(cx(P) + (cx(B) > cx(P) ? -44 : 44), S.arena.x0 + 2 * TS, S.arena.x1 - 2 * TS);
@@ -2993,6 +3005,8 @@
       var sp = bossSpeed(B);
       B.phases = [{ below: 1, speed: Math.max(12, sp * 0.4), pattern: ['walk:2.5', 'idle:2'] }];
       B.phase = 0; B.pIdx = 0; B.pendingPhase = -1; B.move = null; B.dmg = 1;
+      // she was dying anyway: the custard leaves her a short bar so the mercy kill is quick
+      B.hp = Math.min(B.hp, Math.max(1, Math.round(B.maxHp * 0.2)));
       var lines = o.lines || B.def.curedLines;
       if (lines && lines.length) say(lines);
     }
@@ -3011,8 +3025,10 @@
       numText(cx(B), B.y - 12, 'FULL HEALTH!', '#f83800', 2);
       var ph = B.phases[B.phase] || {};
       announce(ph.name || ('PHASE ' + (B.phase + 1)), { color: '#f83800', time: 1.2, sub: ph.sub || (B.phase === B.phases.length - 1 ? 'LAST BAR' : '') });
-      if (ph.lines && ph.lines.length) say(ph.lines);
+      var phl = ph.lines || (ph.line ? [ph.line] : null);
+      if (phl && phl.length) say(phl);
       track('boss_phase');
+      checkTicket(B);
       return;
     }
     var pat = (B.phases[B.phase] && B.phases[B.phase].pattern) || ['idle:1'];

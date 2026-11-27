@@ -16,6 +16,7 @@
   var E = sky(40, 1)[0];
 
   DCW.data = {
+    balance: { mobHp: 4 },   // like the real game: mobs outlast a single punch
     meta: { startArea: 'village', startHours: 192, startHour: 9 },
     areas: {
       village: {
