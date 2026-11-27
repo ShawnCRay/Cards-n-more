@@ -400,7 +400,7 @@
     pollPad();
     BUTTONS.forEach(function (b) {
       prev[b] = cur[b];
-      cur[b] = kb[b] > 0 || kbHit[b] || touch[b] || pad[b];
+      cur[b] = kb[b] > 0 || kbHit[b] || touch[b] || pad[b] || !!(DCW.testHold && DCW.testHold[b]);
       kbHit[b] = false;
       if (carry[b] && freezeFrames === 0) { cur[b] = true; prev[b] = false; carry[b] = false; }
     });
@@ -492,7 +492,7 @@
       equipped: { skin: 'carl_f3' },
       run: null,
       meta: { achievements: {}, counters: {}, runs: 0, wins: 0, deaths: 0, boxesOpened: 0, seenIntro: false, imported: false },
-      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto', easy: false }
+      settings: { music: 0.55, sfx: 0.8, shake: true, crt: true, touch: 'auto', easy: false, gore: true }
     };
   }
   function merge(base, over) {
@@ -596,6 +596,7 @@
   }
   // Headless test hook: advance the simulation n frames synchronously.
   DCW.stepFrames = function (n) { for (var i = 0; i < n; i++) step(); render(); };
+  DCW.testHold = null; // test helper: { right: 1, jump: 1 } holds those logical buttons until cleared
   DCW.pressKey = function (btn, frames) { // test helper: hold a logical button for N frames
     kb[btn]++; kbHit[btn] = true; DCW.stepFrames(frames || 1); kb[btn] = Math.max(0, kb[btn] - 1);
   };

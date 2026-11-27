@@ -23,7 +23,7 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 const SIDE_THEMES = 'village ruins circus basement settlement alley admin office nest ymca school depot escape restroom temple'.split(' ');
 const BACKDROPS = 'inn_pug inn_narwhal club studio greenroom guide_room'.split(' ');
 const LEVEL_THEMES = SIDE_THEMES.concat(['bigtop', 'studio']);
-const PANELS = ('guide_room arrival circus_night signet_tattoos carl_tent heather_skates bigtop_vine grimaldi_peace settlement_view desperado ' +
+const PANELS = ('guide_room arrival circus_night signet_tattoos signet_full carl_tent heather_skates bigtop_vine grimaldi_peace settlement_view desperado ' +
   'danger_zone trailer_blast quill_desk featherfall remex glass_case doomsday bursts stairwell greenroom').split(' ');
 const AREA_IDS = 'village ruins_w circus_park ruins_e settlement admin east_stairs'.split(' ');
 const LEVEL_IDS = ('a1_lemurs a1_bodies a1_collapse a1_lions a1_solo a1_heather a1_bigtop a1_barricade a2_dispenser a2_mongo a2_alley ' +
@@ -222,7 +222,8 @@ function checkGive(where, g) {
   else if (g.gold !== undefined) { if (!(g.gold > 0)) err(where + ': gold'); }
   else if (g.box !== undefined) { if (!TIERS.includes(g.box)) err(where + ': box tier ' + g.box); }
   else if (g.skin !== undefined) { if (!SKINS.includes(g.skin)) err(where + ': skin ' + g.skin); }
-  else err(where + ': give needs item|potion|gold|box|skin');
+  else if (g.gear !== undefined) { if (!(D.gear || {})[g.gear]) err(where + ': unknown gear ' + g.gear); }
+  else err(where + ': give needs item|potion|gold|box|skin|gear');
 }
 const SHOP_IDS = 'lucky pustule quint edge_dancer talon'.split(' ');
 for (const id of SHOP_IDS) if (!(D.shops || {})[id]) err('shop missing: ' + id);

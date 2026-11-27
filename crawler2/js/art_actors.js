@@ -1646,35 +1646,67 @@
     px(g, 15, 5, 'S'); px(g, 7, 6, 'S');
   });
 
-  // Tsarina Signet: half Naiad / half High Elf. Attractive and humanoid: faintly glowing blue skin, long dark
-  // teal hair, pointed ears, small horns, glowing eyes, red lips, an hourglass figure with a full (not cartoonish)
-  // bust. Topless with only a thong, as in the book. Old-school tattoos (indigo line work, green scales, red oni
-  // accents) cover her body, never her face, and crawl a pixel between frames.
-  var SIGP = { s: '#a4e4fc', S: '#3cbcfc', B: '#0078f8', h: '#003048', H: '#008888', e: '#00fcfc', w: '#fcfcfc', m: '#e40058',
-    f: '#fce0a8', o: '#a80020', n: '#0000bc', d: '#00a844', x: '#6844fc', q: '#f83800', y: '#f8b800' };
+  // Tsarina Signet: half Naiad / half High Elf, an adult woman. Blue skin in four NES blues (light, mid,
+  // shade, a deeper crease under the breasts), long navy-black hair down her back, long elf ears sweeping
+  // back, small ivory horns, glowing cyan eyes, red lips with a fang. Topless with only a red thong, as in
+  // the book: a slender figure with bare breasts drawn as two rounded shapes, a darker underside line and a
+  // nipple pixel each, plainly, not posed. Old-school tattoos (navy ink, red oni, green dragon scales) cover
+  // her arms, ribs, hips and legs (never her face or nipples) and crawl a pixel between frames.
+  // 22x30, feet anchored bottom-centre like the other NPCs.
+  var SIGP = { L: '#a4e4fc', M: '#3cbcfc', S: '#0078f8', U: '#0058f8', h: '#000000', H: '#0000bc', e: '#00fcfc', w: '#fcfcfc',
+    m: '#e40058', f: '#f0d0b0', F: '#ac7c00', o: '#a80020', O: '#e40058', n: '#6844fc', i: '#0000bc', r: '#a80020', g: '#00a844', y: '#f8b800', Y: '#fcfcfc', x: '#000000' };
   var SIG_IDLE = [
-    '........hhhh........', '.......hhhhhhf......', '......hhhssssf......', '....s.hhssssss......',
-    '.....shhswesswe.....', '......hhsssssS......', '......hhhssmms......', '......hhhhSss.......',
-    '.....hhhhhss........', '....hhhhssssss......', '....hhhssnssssss....', '....hhssnssSsssss...',
-    '....hhssnsSSSssBs...', '....hhhsSSqssSSs....', '....hh.ssqsssss.....', '.....hs..sdsss.ss...',
-    '....ss...sdss...s...', '....s...sssssss.....', '.......sssssssss....', '.......sooooooos....',
-    '........sssooosss...', '........snssossS....', '........snssdsss....', '........ssns.sss....',
-    '.........sns.sns....', '.........dss..ss....', '.........ss...Ss....', '........fss...ssf...'];
+    '......................',
+    '.........f...f........',
+    '........fF..Ff........',
+    '.......hhhhhhhh.......',
+    '..L...hhhhHhhhhh......',
+    '...LM.hhhHhLLLLh......',
+    '....LMhhhhLxLLxL......',
+    '.....MhhhhLeLLeL......',
+    '......hhhhLLLLLLM.....',
+    '......hhhhSLLmmL......',
+    '......hHhhhSLLw.......',
+    '.....hhhhhhSM.........',
+    '.....hhhhLLLLLLM......',
+    '.....hhhLLLLLLLLM.....',
+    '.....hhLMLLLLLLLLS....',
+    '.....hHLMLLLMSLLLMS...',
+    '.....hhLMSLnMSMLnMS...',
+    '.....hhLMSMMSLSMMS....',
+    '......hLM.SUULLUUS....',
+    '......hLM..SLLLLS.....',
+    '......hLM.SLLLLLLS....',
+    '.......MMoOOOOOOOo....',
+    '.........SLLLooLLLS...',
+    '.........SLLLoLLLLS...',
+    '.........SLLL.LLLS....',
+    '.........SLLS.LLLS....',
+    '.........SLLS.SLLS....',
+    '.........SLS..SLLS....',
+    '.........SLS...SLS....',
+    '........MLLS..MLLS....'];
+  // tattoos: navy ink, red oni marks and green dragon scales that crawl a pixel between frames
+  function sigInk(rows, f) {
+    var g = rows.map(function (r) { return r.split(''); });
+    function put(x, y, c) { if (g[y] && 'LMS'.indexOf(g[y][x]) >= 0) g[y][x] = c; }
+    var pts = f ? [[7, 14, 'i'], [8, 16, 'g'], [7, 18, 'i'], [8, 20, 'r'], [11, 18, 'i'], [12, 19, 'i'], [16, 19, 'i'], [17, 20, 'r'], [10, 22, 'i'], [11, 24, 'g'], [17, 23, 'i'], [16, 25, 'r'], [10, 13, 'i'], [15, 13, 'i'], [11, 26, 'i']]
+                 : [[8, 15, 'i'], [7, 17, 'g'], [8, 19, 'i'], [7, 20, 'r'], [12, 18, 'i'], [13, 19, 'i'], [15, 20, 'i'], [16, 18, 'r'], [11, 22, 'i'], [10, 24, 'g'], [16, 23, 'i'], [17, 25, 'r'], [11, 13, 'i'], [14, 12, 'i'], [10, 26, 'i']];
+    pts.forEach(function (p) { put(p[0], p[1], p[2]); });
+    return g.map(function (r) { return r.join(''); });
+  }
+  function pad(r) { return (r + '......................').slice(0, 22); }
   var SIG_BLINK = SIG_IDLE.slice();
-  SIG_BLINK[4] = '.....shhsSSssSS.....';
-  SIG_BLINK[10] = '....hhhsssnsssss....'; SIG_BLINK[11] = '....hhsssnsSsssss...'; SIG_BLINK[12] = '....hhsssnSSSssBs...';
-  SIG_BLINK[21] = '........ssnsossS....'; SIG_BLINK[22] = '........sdnssdss....'; SIG_BLINK[23] = '........sssn.sss....';
-  var SIG_RUN = SIG_IDLE.slice(0, 21).concat(['.......snssdssS.....', '......snss..sss.....', '.....sns.....sss....',
-    '....sns.......ss....', '...dss.........ss...', '...ss..........Ss...', '..fs............sf..']);
-  var SIG_RUN2 = SIG_IDLE.slice(0, 21).concat(['........snsdsss.....', '........sns.sss.....', '.......sns..sss.....',
-    '.......sns..ss......', '......dss...ss......', '......ss....Ss......', '.....fs.....ssf.....']);
+  SIG_BLINK[7] = '.....MhhhhLxLLxL......';
+  var SIG_RUN = SIG_IDLE.slice(0, 22).concat(['.........SLLLooLLLS...', '........SLLLoLLLLS....', '.......SLLL...LLLLS....', '......SLLS.....SLLS...', '.....SLLS.......SLLS..', '....SLLS.........SLS..', '...SLS...........SLS..', '..MLLS..........MLLS..'].map(pad));
+  var SIG_RUN2 = SIG_IDLE.slice(0, 22).concat(['.........SLLLooLLLS...', '.........SLLoLLLLS....', '.........SLLLLLLS.....', '.........SLLSLLS......', '........SLLS.SLS......', '........SLS..SLS......', '.......SLS...SLS......', '......MLLS..MLLS......'].map(pad));
   var SIG_ACT = SIG_IDLE.slice();
-  SIG_ACT[9] = '....hhhhssssss..yy..'; SIG_ACT[10] = '....hhhssnssssssyyy.'; SIG_ACT[11] = '....hhssnssSssssBsy.';
-  SIG_ACT[15] = '.....hs..sdsss......'; SIG_ACT[16] = '....ss...sdss.......';
-  function sigFrame(rows) { return K.outlined(rows.map(function (r) { return r.split(''); })); }
-  K.def('signet', K.withK(SIGP), [sigFrame(SIG_IDLE), sigFrame(SIG_BLINK)]);
-  K.def('signet_run', K.withK(SIGP), [sigFrame(SIG_RUN), sigFrame(SIG_RUN2)]);
-  K.def('signet_act', K.withK(SIGP), [sigFrame(SIG_ACT)]);
+  SIG_ACT[9] = '......hhhhSLLmmL...Yy.'; SIG_ACT[10] = '......hHhhhSLLw...yYy.'; SIG_ACT[11] = '.....hhhhhhSM....MLy..';
+  SIG_ACT[12] = '.....hhhhLLLLLLMMLS...'; SIG_ACT[13] = '.....hhhLLLLLLLLMS....';
+  function sigFrame(rows, f) { return K.outlined(sigInk(rows, f || 0).map(function (r) { return r.split(''); })); }
+  K.def('signet', K.withK(SIGP), [sigFrame(SIG_IDLE, 0), sigFrame(SIG_BLINK, 1)]);
+  K.def('signet_run', K.withK(SIGP), [sigFrame(SIG_RUN, 0), sigFrame(SIG_RUN2, 1)]);
+  K.def('signet_act', K.withK(SIGP), [sigFrame(SIG_ACT, 1)]);
   alias('signet_idle', 'signet');
 
   // Grimaldi as the Pestiferous Vine: a pale green bush with the old dwarf's face in it
@@ -2528,28 +2560,52 @@
     rect(g, 17, 13, 2, 3, 'S'); px(g, 19, 15, 'S'); px(g, 19, 16, 'S'); px(g, 20, 16, 'S');                 // crooked nose
     M(g, f, 13, 20, 5, 'm');
   });
-  portrait('p_signet', { s: '#a4e4fc', S: '#3cbcfc', B: '#0078f8', h: '#003048', H: '#008888', e: '#00fcfc', m: '#e40058',
-    f: '#fce0a8', n: '#0000bc', d: '#00a844', q: '#f83800' }, BG_FOE, function (g, f) {
-    // long hair falling behind the shoulders
-    rect(g, 6, 3, 20, 11, 'h'); rect(g, 4, 9, 6, 19, 'h'); rect(g, 22, 9, 6, 19, 'h'); px(g, 6, 27, 'H'); px(g, 25, 26, 'H'); px(g, 8, 8, 'H');
-    // shoulders and the top of her chest, bare
-    oval(g, 16, 31, 13, 6, 's'); rect(g, 13, 21, 6, 6, 's');
-    line(g, 9, 27, 14, 26, 'S'); line(g, 18, 26, 23, 27, 'S');                                              // collarbones
-    rect(g, 16, 29, 1, 3, 'S'); px(g, 15, 31, 'S'); px(g, 17, 31, 'S');                                    // cleavage
-    // tattoos on the shoulders only: an indigo serpent and a red oni eye
-    line(g, 4, 30, 8, 27, 'n'); px(g, 6, 29, 'd'); px(g, 5, 31, 'd'); line(g, 24, 27, 28, 30, 'n'); px(g, 26, 28, 'q'); px(g, 27, 30, 'n');
-    // face
-    oval(g, 16, 14, 7, 9, 's');
-    tri(g, 10, 12, 6, 8, 10, 15, 's'); tri(g, 22, 12, 26, 8, 22, 15, 's');                                 // pointed elf ears
-    rect(g, 9, 4, 14, 4, 'h'); px(g, 10, 8, 'h'); px(g, 22, 8, 'h'); rect(g, 15, 5, 3, 2, 'H');            // hairline, part shine
-    rect(g, 12, 2, 2, 3, 'f'); rect(g, 19, 2, 2, 3, 'f');                                                   // small horns
-    line(g, 11, 11, 14, 10, 'h'); line(g, 18, 10, 21, 11, 'h');                                             // brows
-    E(g, f, 11, 13, 4, 2, 'e', 's'); E(g, f, 18, 13, 4, 2, 'e', 's');
-    if (f !== 2) { rect(g, 11, 12, 4, 1, 'K'); rect(g, 18, 12, 4, 1, 'K'); px(g, 10, 12, 'K'); px(g, 22, 12, 'K'); }   // lashes
-    px(g, 16, 16, 'S'); px(g, 15, 17, 'S');                                                                 // nose
-    if (f === 1) { rect(g, 14, 19, 5, 3, 'K'); rect(g, 14, 19, 5, 1, 'm'); rect(g, 15, 21, 3, 1, 'm'); px(g, 15, 20, 'w'); px(g, 17, 20, 'w'); }
-    else { rect(g, 14, 19, 5, 1, 'm'); rect(g, 15, 20, 3, 1, 'm'); px(g, 13, 19, 'S'); }                   // full red lips
-    px(g, 12, 17, 'B'); px(g, 20, 17, 'B');                                                                 // a cool blush
+  // Signet's dialog portrait: the same woman as her sprite and the close-up panel. Head and bare
+  // shoulders: blue skin in NES blues (light, mid, shade, deep under the jaw), navy-black hair falling
+  // past her shoulders, long elf ears sweeping up and back, small ivory horns, glowing cyan almond eyes,
+  // red lips with a fang. The frame stops at the top of her chest; tattoos on the shoulders shift a pixel.
+  portrait('p_signet', { s: '#a4e4fc', S: '#3cbcfc', B: '#0078f8', U: '#0058f8', h: '#0000bc', H: '#000000', j: '#4428bc', e: '#00fcfc',
+    m: '#e40058', M: '#a80020', l: '#f8a4c0', f: '#f0d0b0', F: '#ac7c00', n: '#0000bc', d: '#00a844', q: '#a80020', b: '#6888fc', Q: '#004058' }, BG_FOE, function (g, f) {
+    // long hair behind the head and down past the shoulders
+    oval(g, 16, 12, 11, 11, 'h'); rect(g, 5, 12, 6, 20, 'h'); rect(g, 21, 12, 7, 20, 'h');
+    line(g, 6, 14, 6, 31, 'H'); line(g, 9, 18, 9, 31, 'H'); line(g, 26, 15, 27, 31, 'H'); line(g, 23, 19, 24, 31, 'H'); px(g, 7, 22, 'j'); px(g, 25, 24, 'j');
+    // bare shoulders, the top of her chest
+    oval(g, 16, 33, 14, 7, 's'); rect(g, 24, 27, 6, 5, 'S'); rect(g, 28, 28, 2, 4, 'B');
+    rect(g, 14, 19, 5, 8, 's'); rect(g, 17, 19, 2, 8, 'S'); rect(g, 14, 21, 5, 1, 'U'); rect(g, 15, 22, 3, 1, 'B');   // neck, shade under the jaw
+    line(g, 7, 28, 13, 27, 'S'); line(g, 19, 27, 25, 28, 'B'); px(g, 14, 27, 's'); px(g, 18, 27, 's');               // collarbones
+    px(g, 16, 30, 'B'); px(g, 16, 31, 'B'); line(g, 12, 31, 15, 30, 'S'); line(g, 17, 30, 20, 31, 'S');               // the start of her cleavage
+    // tattoos on the shoulders: a navy serpent with green scales, a red oni eye (they shift a pixel each frame)
+    var k = f % 2;
+    line(g, 3, 31 - k, 8, 28 - k, 'n'); px(g, 5, 30 - k, 'd'); px(g, 7, 29 - k, 'd'); line(g, 24 + k, 28, 28 + k, 31, 'n'); px(g, 26 + k, 29, 'q'); px(g, 27 + k, 30, 'n');
+    // face: a soft oval narrowing to the chin, lit from the left
+    oval(g, 16, 13, 7.5, 8.5, 's'); rect(g, 14, 21, 4, 1, 's');
+    rect(g, 21, 10, 2, 7, 'S'); px(g, 20, 17, 'S'); px(g, 19, 19, 'S'); px(g, 18, 20, 'S'); px(g, 17, 21, 'S'); px(g, 23, 13, 'S');
+    // long elf ears sweeping up and back through the hair
+    tri(g, 9, 11, 4, 5, 9, 16, 'S'); line(g, 9, 11, 4, 5, 's'); line(g, 8, 14, 6, 9, 'B');
+    tri(g, 23, 11, 28, 5, 23, 16, 'B'); line(g, 23, 11, 28, 5, 'S'); line(g, 24, 14, 26, 9, 'U');
+    // hair in front: crown, a side-swept fringe, locks framing the face
+    oval(g, 16, 5, 9, 4, 'h'); rect(g, 8, 5, 3, 13, 'h'); rect(g, 22, 5, 3, 12, 'h');
+    tri(g, 9, 6, 17, 5, 9, 12, 'h'); line(g, 11, 3, 18, 2, 'j'); line(g, 10, 6, 15, 4, 'H'); line(g, 19, 4, 23, 7, 'H'); line(g, 9, 9, 9, 16, 'H'); line(g, 23, 9, 23, 15, 'H');
+    // small horns curling up and back
+    rect(g, 11, 1, 2, 2, 'f'); px(g, 10, 0, 'f'); px(g, 12, 2, 'F'); rect(g, 19, 1, 2, 2, 'f'); px(g, 21, 0, 'f'); px(g, 19, 2, 'F');
+    // arched brows, almond eyes with dark lashes and a cyan glow
+    px(g, 11, 10, 'K'); line(g, 12, 9, 14, 9, 'K'); line(g, 18, 9, 20, 9, 'K'); px(g, 21, 10, 'K');
+    E(g, f, 11, 12, 4, 2, 'e', 's', 'l'); E(g, f, 18, 12, 4, 2, 'e', 'S');
+    if (f !== 2) { rect(g, 11, 11, 4, 1, 'K'); rect(g, 18, 11, 4, 1, 'K'); px(g, 10, 11, 'K'); px(g, 22, 11, 'K'); }
+    // a small straight nose, a cool blush, full red lips with a knowing curl and one fang
+    px(g, 17, 14, 'S'); px(g, 17, 15, 'S'); px(g, 16, 16, 'B'); px(g, 12, 16, 'b'); px(g, 20, 16, 'b');
+    if (f === 1) { rect(g, 14, 18, 5, 3, 'K'); rect(g, 14, 18, 5, 1, 'M'); rect(g, 15, 20, 3, 1, 'm'); px(g, 15, 19, 'w'); px(g, 17, 19, 'w'); }
+    else { px(g, 14, 18, 'M'); px(g, 15, 18, 'm'); px(g, 16, 18, 'M'); px(g, 17, 18, 'M'); px(g, 18, 17, 'M'); px(g, 15, 19, 'l'); px(g, 16, 19, 'm'); px(g, 17, 19, 'w'); }
+    // her own backdrop (the close-up's teal halo), so the black hair reads: outline first, then the dither
+    var o = g.map(function (r) { return r.slice(); });
+    function tr(c) { return c === '.' || c === ' ' || c === undefined || c === null; }
+    for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) {
+      if (!tr(g[y][x])) continue;
+      var edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (d) { var r = g[y + d[1]]; return r && !tr(r[x + d[0]]); });
+      var dh = Math.sqrt((x - 16) * (x - 16) + (y - 12) * (y - 12));
+      o[y][x] = edge ? 'K' : ((dh < 14 ? (x + y) % 2 === 0 : (x + y) % 4 === 0 && y % 2 === 0) ? 'Q' : 'K');
+    }
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) g[y][x] = o[y][x];
   });
 
   // ---- circus ----

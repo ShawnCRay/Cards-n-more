@@ -57,10 +57,21 @@
   function stats() {
     var s = gcall('playerStats');
     if (s && typeof s === 'object') return s;
-    var r = run(), L = Math.max(1, (r.level || 13) - 12);
-    return { maxHp: 16 + (L - 1) * 2, dmg: 3 + Math.floor((L - 1) / 2), crit: 0.05, speedMul: 1, def: 0,
-      hobDmg: 10 + L * 2, dynDmg: 22 + L * 3, jugDmg: 8 + L * 2, missileDmg: 3 + Math.floor((L - 1) / 2), biteDmg: 2 + L };
+    // standalone fallback: Book One's formulas continued (game.js owns the real ones)
+    var r = run(), lv = Math.max(1, r.level || 13), st = r.stats || { str: 7, con: 6 };
+    var dmg = Math.max(1, 2 + ((st.str || 7) - 3) + Math.floor((lv - 1) / 2));
+    return { maxHp: 10 + ((st.con || 6) - 3) * 2 + (lv - 1), dmg: dmg, crit: 0.05, speedMul: 1, def: 0,
+      hobDmg: Math.round(dmg * 1.6), dynDmg: Math.round(dmg * 3.2), jugDmg: Math.round(dmg * 1.3), fireDmg: Math.max(1, Math.round(dmg * 0.15)),
+      missileDmg: dmg, biteDmg: dmg };
   }
+  // D.balance multipliers (DESIGN 16.1), the same ones stage.js applies: mobs here are the stage's mobs
+  function bal(key) {
+    var v = DCW.stage && typeof DCW.stage.bal === 'function' ? DCW.stage.bal(key) : gcall('bal', key);
+    if (typeof v === 'number' && isFinite(v) && v > 0) return v;
+    var b = D().balance, x = b && b[key];
+    return (typeof x === 'number' && isFinite(x) && x > 0) ? x : 1;
+  }
+  function bossDmg(n) { return Math.max(1, Math.round(n * bal('bossDmg'))); }
   function itemCount(id) {
     var c = gcall('itemCount', id);
     if (typeof c === 'number') return c;
@@ -394,6 +405,9 @@
     for (k in base) o[k] = base[k];
     for (k in d) if (d[k] !== undefined && d[k] !== null) o[k] = d[k];
     o.id = id; o.sprite = d.sprite || id;
+    o.hp = Math.max(1, Math.round(num(o.hp, 12) * bal('mobHp')));
+    if (num(o.dmg, 0) > 0) o.dmg = Math.max(1, Math.round(o.dmg * bal('mobDmg')));
+    if (typeof o.xp === 'number') o.xp = Math.round(o.xp * bal('mobXp'));
     o.mode = AI_OF[o.ai] || (ENEMY_DEF[id] ? AI_OF[ENEMY_DEF[id].ai] : 'walker') || 'walker';
     if (ENEMY_DEF[id]) o.mode = AI_OF[ENEMY_DEF[id].ai]; // the room behaviour follows the circus role
     o.hw = num(base.hw, 9);
@@ -451,6 +465,9 @@
     var intro = S.lv && S.lv.intro, cin = D().cinema || {};
     if (Array.isArray(intro) && intro.length) S.introPending = intro;
     else if (typeof intro === 'string' && !cin[intro]) S.introPending = [intro];
+    // back from a plot-armor save (DESIGN 16.2): the System AI's complaint replaces the intro
+    var plot = gcall('takePlotArmor');
+    if (plot && plot.length) S.introPending = plot;
     nextRoom();
   }
   function exit() { if (S) S.exited = true; }
@@ -463,7 +480,8 @@
       var tg = rm.target || {};
       S.room = rm;
       S.style = STYLES[Math.min(S.ri, 2)];
-      S.target = { kind: tg.kind || 'pole', hp: num(tg.hp, 60), maxHp: num(tg.hp, 60), flash: 0, shake: 0, broken: false, stage: 0 };
+      var thp = Math.max(1, Math.round(num(tg.hp, 60) * bal('mobHp')));   // the pole is balanced in punches, like a mob
+      S.target = { kind: tg.kind || 'pole', hp: thp, maxHp: thp, flash: 0, shake: 0, broken: false, stage: 0 };
       S.phase = 'intro'; S.pt = 0; S.spawnT = 1.8;
       ucall('announce', rm.name || ('RING ' + (S.ri + 1)), { sub: S.ri === 0 ? hintLine() : 'BREAK THE TENT POLE', color: '#f8d878', time: 2.2 });
       sfx('calliope_stab');
@@ -546,6 +564,7 @@
     if (S.introPending && S.t > 0.6) { var il = S.introPending; S.introPending = null; ucall('say', il); return; }
     if (S.pendingSay) { var ps = S.pendingSay; S.pendingSay = null; ucall('say', ps); return; }
     if (P('start') && !S.done && !S.carl.dead && ufn('openPause')) { ucall('openPause', { canFlee: true }); return; }
+    if (P('select') && !S.done && !S.carl.dead && ufn('onSelect')) { ucall('onSelect'); return; }   // SELECT: gear
     if (S.done) { tickFx(dt); return; }
 
     updCarl(dt);
@@ -658,8 +677,10 @@
     S.special = 0;
     S.fearT = 2.5;
     sfx('fear');
-    flash('#d8b8f8', 0.15);
-    ucall('announce', 'PANIC!', { sub: 'FEAR + MAGIC MISSILE', color: '#d8b8f8', time: 1.2 });
+    // the name card once per crawl (run.specialsSeen, shared with stage.js), then a pop over Carl
+    var rr = run(); rr.specialsSeen = rr.specialsSeen || {};
+    if (!rr.specialsSeen['PANIC!']) { rr.specialsSeen['PANIC!'] = true; ucall('announce', 'PANIC!', { sub: 'FEAR + MAGIC MISSILE', color: '#d8b8f8', time: 1.2 }); }
+    else pop(xOf(S.carl.X, 1), 120, 'PANIC!', '#f8d878');
     S.enemies.forEach(function (e) { if (!e.def.fearImmune) e.stun = 2.5; });
     if (S.donut) {
       var tg = S.enemies.filter(function (e) { return !e.dead && !e.dying; });
@@ -1035,7 +1056,7 @@
       f.t -= dt; f.tick -= dt;
       if (f.tick <= 0) {
         f.tick = 0.25;
-        S.enemies.forEach(function (e) { if (!e.dead && !e.dying && e.h < 10 && Math.abs(e.X - f.X) < f.hw && Math.abs(e.z - f.z) * DEPTH_PX < 22) hitEnemy(e, 1, { kind: 'fire', fire: true }); });
+        S.enemies.forEach(function (e) { if (!e.dead && !e.dying && e.h < 10 && Math.abs(e.X - f.X) < f.hw && Math.abs(e.z - f.z) * DEPTH_PX < 22) hitEnemy(e, Math.max(1, Math.round(num(stats().fireDmg, 1))), { kind: 'fire', fire: true }); });
       }
       S.heaps.forEach(function (hp) { if (!hp.burned && Math.abs(hp.X - f.X) < f.hw && Math.abs(hp.z - f.z) * DEPTH_PX < 30) { hp.burned = true; var p = enemyScreen({ X: hp.X, z: hp.z, h: 4 }); pop(p.x, p.y - 8, 'BURNED!', '#f8b800'); addFx('smoke', hp.X, hp.z, 6, 0.5, 1); track('mold_burned'); } });
     });
@@ -1093,9 +1114,9 @@
     if (F.attackT <= 0) {
       F.attackT = F.rate * angry * rand(0.8, 1.15);
       var r = Math.random();
-      if (r < 0.55) S.tend.push({ kind: 'lane', X: clamp(C.X + rand(-20, 20), -140, 140), st: 'warn', t: 0, k: 0, hit: false, dmg: 3 });
-      else S.tend.push({ kind: 'sweep', side: Math.random() < 0.5 ? -1 : 1, low: Math.random() < 0.55, st: 'warn', t: 0, x: 0, hit: false, dmg: 3 });
-      if (F.poison > 0.5 && Math.random() < 0.35) S.tend.push({ kind: 'lane', X: clamp(-C.X * 0.6 + rand(-40, 40), -140, 140), st: 'warn', t: -0.3, k: 0, hit: false, dmg: 3 });
+      if (r < 0.55) S.tend.push({ kind: 'lane', X: clamp(C.X + rand(-20, 20), -140, 140), st: 'warn', t: 0, k: 0, hit: false, dmg: bossDmg(3) });
+      else S.tend.push({ kind: 'sweep', side: Math.random() < 0.5 ? -1 : 1, low: Math.random() < 0.55, st: 'warn', t: 0, x: 0, hit: false, dmg: bossDmg(3) });
+      if (F.poison > 0.5 && Math.random() < 0.35) S.tend.push({ kind: 'lane', X: clamp(-C.X * 0.6 + rand(-40, 40), -140, 140), st: 'warn', t: -0.3, k: 0, hit: false, dmg: bossDmg(3) });
     }
     // worms crawl out of the sawdust
     F.wormT -= dt;
@@ -1111,7 +1132,7 @@
     if (A) {
       A.lineT -= dt; if (A.lineShow > 0) A.lineShow -= dt;
       if (A.lineT <= 0) { A.lineT = rand(5, 8); A.line = pick(APOLLON_LINES); A.lineShow = 2.6; }
-      if (A.throwT > 0) { A.throwT -= dt; if (A.throwT <= 0) S.eproj.push({ kind: 'cone', X0: A.X + 10, z0: A.z, h0: 30, X1: C.X, t: 0, T: 1.1, dmg: 2, src: 'APOLLON THE MIGHTY', sprite: 'cone' }); }
+      if (A.throwT > 0) { A.throwT -= dt; if (A.throwT <= 0) S.eproj.push({ kind: 'cone', X0: A.X + 10, z0: A.z, h0: 30, X1: C.X, t: 0, T: 1.1, dmg: bossDmg(2), src: 'APOLLON THE MIGHTY', sprite: 'cone' }); }
     }
     if (F.poison >= 1) {
       S.phase = 'vineDie'; S.pt = 0;
