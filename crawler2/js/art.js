@@ -3006,60 +3006,289 @@
       for (var s = 0; s < 2; s++) { var ang = Math.sin(t * 0.6 + s * 2) * 0.5, bx = s ? 196 : 48; ctx.globalAlpha = 0.07; ctx.fillStyle = '#d8d0f8'; ctx.beginPath(); ctx.moveTo(bx, 90); ctx.lineTo(bx + Math.sin(ang - 0.1) * 140, -10); ctx.lineTo(bx + Math.sin(ang + 0.1) * 140, -10); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
     }
   };
-  /* 4. signet_tattoos: Tsarina Signet, the ink moving on her skin */
-  PN.signet_tattoos = {
-    draw: function (g, st) {
-      bands(g, PW_, 0, PH_, ['#020c14', '#04121c', '#061824', '#08202c', '#0a2430']);
-      noiseCloud(g, 0, 0, PW_, PH_, 13, ['#0c2c38', '#123c48'], function (x, y) { return 0.55 + 0.35 * Math.sin(x / 19 + y / 13); }, 0.7);
-      var skin = '#a4e4fc', sk2 = '#3cbcfc', skL = '#d8f8fc', hair = '#06121c', hairL = '#0c3c48';
-      // long dark hair falling behind her shoulders
-      blob(g, 128, 34, 27, 28, hair); R(g, 97, 34, 18, 78, hair); R(g, 141, 34, 18, 78, hair);
-      line(g, 102, 46, 104, 110, hairL); line(g, 153, 46, 151, 110, hairL); line(g, 109, 24, 111, 66, hairL);
-      // neck, shoulders and chest: the skin the tattoos swim on (the face stays clear)
-      var mask = mkCanvas(PW_, PH_), mg = g2(mask);
-      [g, mg].forEach(function (q) {
-        blob(q, 128, 104, 54, 36, skin); R(q, 121, 50, 14, 22, skin);                            // tapering shoulders
-        blob(q, 112, 101, 17, 15, skin); blob(q, 144, 101, 17, 15, skin);
-      });
-      st.misc.push(mask);
-      // give the chest its form: shade along the inner curves, a highlight on top
-      blob(g, 112, 103, 17, 14, sk2); blob(g, 112, 100, 16, 13, skin); blob(g, 106, 92, 5, 3, skL);
-      blob(g, 144, 103, 17, 14, sk2); blob(g, 144, 100, 16, 13, skin); blob(g, 138, 92, 5, 3, skL);
-      R(g, 127, 86, 2, 26, sk2);                                                                // cleavage
-      line(g, 104, 72, 121, 69, sk2); line(g, 135, 69, 152, 72, sk2);                       // collarbones
-      R(g, 121, 50, 2, 16, sk2);
-      // the face
-      blob(g, 128, 33, 16, 20, skin); blob(g, 121, 28, 5, 6, skL);
-      line(g, 113, 33, 101, 23, skin); line(g, 113, 34, 101, 24, skin); line(g, 113, 35, 103, 26, skin);   // pointed ears
-      line(g, 143, 33, 155, 23, skin); line(g, 143, 34, 155, 24, skin); line(g, 143, 35, 153, 26, skin);
-      blob(g, 128, 16, 17, 8, hair); R(g, 111, 16, 6, 22, hair); R(g, 139, 16, 6, 22, hair);               // hairline, side locks
-      line(g, 120, 11, 116, 2, '#e8e0c8'); line(g, 121, 11, 117, 2, '#c8c0a8'); line(g, 135, 11, 139, 2, '#e8e0c8'); line(g, 136, 11, 140, 2, '#c8c0a8');
-      line(g, 116, 26, 125, 25, hair); line(g, 131, 25, 140, 26, hair);                                     // brows
-      R(g, 117, 29, 9, 4, '#fcfcfc'); R(g, 120, 29, 5, 4, '#00e8e8'); R(g, 122, 30, 2, 2, '#004058');       // almond eyes
-      R(g, 131, 29, 9, 4, '#fcfcfc'); R(g, 132, 29, 5, 4, '#00e8e8'); R(g, 134, 30, 2, 2, '#004058');
-      R(g, 116, 28, 11, 1, '#020608'); R(g, 130, 28, 11, 1, '#020608'); P(g, 115, 27, '#020608'); P(g, 141, 27, '#020608');
-      st.lamps.push([120, 29], [132, 29]);
-      R(g, 127, 36, 2, 6, sk2);                                                                              // nose
-      R(g, 122, 45, 12, 2, '#e40058'); R(g, 123, 47, 10, 2, '#a80020'); P(g, 124, 45, '#f8a4c0');           // full red lips
-    },
-    anim: function (ctx, t, st) {
-      // tattoos: sharks, a dragon, an oni mask, a sea serpent, swimming over the skin
-      var mask = st.misc[0], tmp = PN.signet_tattoos._tmp || (PN.signet_tattoos._tmp = mkCanvas(PW_, PH_)), tg = g2(tmp);
-      tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, PW_, PH_);
-      var ink = '#0c2430', red = '#7c1c2c', wh = '#e8fcfc';
-      function shark(x, y, d) { x = Math.round(x); R(tg, x, y, 12, 4, ink); R(tg, x + 2, y + 4, 8, 1, ink); tri(tg, x + (d > 0 ? 5 : 7), y - 4, 4, 4, ink); if (d > 0) { R(tg, x - 4, y - 1, 4, 2, ink); R(tg, x - 4, y + 3, 4, 2, ink); P(tg, x + 9, y + 1, wh); R(tg, x + 8, y + 3, 3, 1, wh); } else { R(tg, x + 12, y - 1, 4, 2, ink); R(tg, x + 12, y + 3, 4, 2, ink); P(tg, x + 2, y + 1, wh); R(tg, x + 1, y + 3, 3, 1, wh); } }
-      shark(((t * 14) % 170) + 44, 97, 1); shark(250 - ((t * 11 + 60) % 190), 104, -1);
-      for (var i = 0; i < 18; i++) { var a = t * 1.1 - i * 0.16, dx = 128 + Math.cos(a) * 50, dy = 101 + Math.sin(a * 2) * 6; tg.fillStyle = i === 0 ? red : ink; tg.fillRect(Math.round(dx), Math.round(dy), i === 0 ? 5 : 4, i === 0 ? 4 : 3); if (i === 0) { tg.fillStyle = wh; tg.fillRect(Math.round(dx) + 3, Math.round(dy) + 1, 1, 1); } if (i % 3 === 1) { tg.fillStyle = red; tg.fillRect(Math.round(dx) + 1, Math.round(dy) - 1, 2, 1); } }
-      var ox = Math.round(86 + ((t * 9) % 90)), oy = 92;
-      R(tg, ox, oy, 9, 8, red); R(tg, ox + 1, oy + 2, 2, 2, wh); R(tg, ox + 6, oy + 2, 2, 2, wh); R(tg, ox + 2, oy + 6, 5, 1, wh); P(tg, ox, oy - 2, red); P(tg, ox + 8, oy - 2, red); P(tg, ox, oy - 1, red); P(tg, ox + 8, oy - 1, red);
-      for (i = 0; i < 9; i++) { var py = 70 + ((t * 8 + i * 4) % 34); tg.fillStyle = ink; tg.fillRect(i & 1 ? 123 : 131, Math.round(py), 2, 2); }
-      tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mask, 0, 0); tg.globalCompositeOperation = 'source-over';
-      ctx.drawImage(tmp, 0, 0);
-      // the frame's bottom edge just catches the start of her areolae, a deeper violet-blue than her skin
-      [112, 144].forEach(function (ax) { R(ctx, ax - 3, 108, 7, 1, '#6888fc'); R(ctx, ax - 5, 109, 11, 1, '#6888fc'); R(ctx, ax - 6, 110, 13, 2, '#5c6cf0'); });
-      var gl = 0.6 + Math.sin(t * 3) * 0.4;
-      for (i = 0; i < st.lamps.length; i++) { var e = st.lamps[i]; ctx.fillStyle = '#e8fcfc'; ctx.fillRect(e[0], e[1], 5, 2); ctx.globalAlpha = 0.25 * gl; ctx.fillStyle = '#58f8f8'; ctx.fillRect(e[0] - 3, e[1] - 2, 11, 6); ctx.globalAlpha = 1; }
+  /* 4. signet_tattoos + signet_full: Tsarina Signet, half Naiad, half High Elf, topless in a red thong
+     as in the book, the ink of her tattoos (sea serpents, an oni, sharks, a dragon) crawling over her
+     blue skin. Drawn plainly as an adult woman at NES scale, not posed.
+     Her body is a tiny z-buffer of ellipsoids and tapered capsules in model space (1 unit = 1 px in
+     the close-up, crown at y 0, her centre line at x 0, the near side of the 3/4 turn is -x), lit
+     from the upper left and quantised to four NES blues with a narrow ordered dither, so the form
+     reads as a body: cheekbones, shoulders and breasts catch the light, the underside of the
+     breasts, the jaw and the waist fall into shade. Face, hair, ears, horns and thong are drawn on
+     top by hand; tattoos crawl in anim(), masked to the skin away from the face and the nipples. */
+  var SGC = { K: '#000000', D2: '#0000bc', D: '#0058f8', S: '#0078f8', M: '#3cbcfc', L: '#a4e4fc', W: '#fcfcfc',
+    nip: '#6888fc', nipD: '#6844fc', lip: '#e40058', lipD: '#a80020', lipL: '#f8a4c0', eye: '#00fcfc', hornL: '#f0d0b0', horn: '#ac7c00',
+    hair: '#000000', hairM: '#0000bc', hairL: '#4428bc', red: '#a80020', redL: '#e40058', ink: '#0000bc', inkG: '#00a844', inkR: '#a80020', bg: '#004058' };
+  // f: 'e' ellipsoid {c:[x,y,z], r:[rx,ry,rz]}, 'c' capsule {a:[x,y], b:[x,y], z, r0, r1}; tag for creases
+  function sigPrims(full) {
+    var P_ = [
+      { f: 'e', n: 'head', c: [-1, 17.5, 2], r: [11.2, 17.5, 11], tag: 'jaw', lit: 0.14, clip: function (x, y) { var d = y - 21; return d < 0 || Math.abs(x + 1) < 11.2 - 0.35 * d - 0.025 * d * d; } },
+      { f: 'e', n: 'nose', c: [-1.5, 22.5, 11.4], r: [1.3, 3.4, 1.6], lit: 0.1 },
+      { f: 'c', n: 'neck', a: [0, 30], b: [1, 47], z: 0, r0: 4.4, r1: 5.4 },
+      { f: 'c', n: 'trapL', a: [-2, 45], b: [-23, 52], z: -1, r0: 5, r1: 5.6 },
+      { f: 'c', n: 'trapR', a: [3, 45], b: [22, 51], z: -1.5, r0: 5, r1: 5.2 },
+      { f: 'e', n: 'delL', c: [-25, 57, 0], r: [6.8, 8, 6.8], tag: 'arm' },
+      { f: 'e', n: 'delR', c: [23, 56, -1], r: [6.2, 7.6, 6.2], tag: 'arm' },
+      { f: 'c', n: 'armL', a: [-26.5, 58], b: [-29, 100], z: 0, r0: 5.4, r1: 4.2, tag: 'arm' },
+      { f: 'c', n: 'foreL', a: [-29, 100], b: [-27, full ? 136 : 150], z: 1, r0: 4.1, r1: 3.1, tag: 'arm' },
+      { f: 'c', n: 'armR', a: [24, 58], b: [34, 90], z: -2, r0: 5, r1: 4.1, tag: 'arm' },
+      { f: 'c', n: 'foreR', a: [34, 90], b: [20, 107], z: 1, r0: 4, r1: 3.3, tag: 'arm' },
+      { f: 'e', n: 'handR', c: [19, 108, 3], r: [4.2, 3.6, 3.2], tag: 'arm' },
+      { f: 'e', n: 'torso', c: [0, 74, 0], r: [19.5, 30, 13] },
+      { f: 'e', n: 'abdomen', c: [0, 100, 1], r: [15, 15, 11] },
+      { f: 'e', n: 'hips', c: [0, 121, 0], r: [20.5, 19, 13] },
+      { f: 'e', n: 'breastL', c: [-10, 69.5, 8.4], r: [8.4, 8, 7.4], tag: 'breast' },
+      { f: 'e', n: 'breastR', c: [10.5, 69.5, 7.8], r: [8, 8, 7.2], tag: 'breast' }
+    ];
+    if (full) P_.push(
+      { f: 'e', n: 'handL', c: [-27, 138, 2], r: [3.6, 4.6, 3], tag: 'arm' },
+      { f: 'c', n: 'thighL', a: [-9, 120], b: [-8, 176], z: 1, r0: 10, r1: 6.4, tag: 'leg' },
+      { f: 'c', n: 'shinL', a: [-8, 176], b: [-7.5, 250], z: 1.5, r0: 6, r1: 3.4, tag: 'leg' },
+      { f: 'e', n: 'footL', c: [-10, 254, 3], r: [6, 3, 4], tag: 'leg' },
+      { f: 'c', n: 'thighR', a: [9, 120], b: [10, 176], z: -1, r0: 9.6, r1: 6.2, tag: 'leg' },
+      { f: 'c', n: 'shinR', a: [10, 176], b: [11, 250], z: -1, r0: 5.8, r1: 3.3, tag: 'leg' },
+      { f: 'e', n: 'footR', c: [13, 254, 1], r: [6, 3, 4], tag: 'leg' }
+    );
+    return P_;
+  }
+  var SIG_LIGHT = (function () { var l = [-0.42, -0.5, 0.76], m = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]); return [l[0] / m, l[1] / m, l[2] / m]; })();
+  // render the body into g; returns {w, h, skin: Uint8Array, prim: Int8Array}
+  function sigBody(g, W, H, ox, oy, s, prims) {
+    var n = W * H, Z = new Float32Array(n), id = new Int8Array(n), Nx = new Float32Array(n), Ny = new Float32Array(n), Nz = new Float32Array(n);
+    for (var i = 0; i < n; i++) { Z[i] = -1e9; id[i] = -1; }
+    for (var py = 0; py < H; py++) for (var px_ = 0; px_ < W; px_++) {
+      var mx = (px_ + 0.5 - ox) / s, my = (py + 0.5 - oy) / s, o = py * W + px_;
+      for (var k = 0; k < prims.length; k++) {
+        var p = prims[k], z, nx, ny, nz;
+        if (p.f === 'e') {
+          var dx = (mx - p.c[0]) / p.r[0], dy = (my - p.c[1]) / p.r[1], d = 1 - dx * dx - dy * dy;
+          if (d <= 0 || (p.clip && !p.clip(mx, my))) continue;
+          var dz = Math.sqrt(d); z = p.c[2] + p.r[2] * dz;
+          nx = dx / p.r[0]; ny = dy / p.r[1]; nz = dz / p.r[2];
+        } else {
+          var ax = p.a[0], ay = p.a[1], bx = p.b[0] - ax, by = p.b[1] - ay, L2 = bx * bx + by * by;
+          var tt = Math.max(0, Math.min(1, ((mx - ax) * bx + (my - ay) * by) / L2)), qx = ax + bx * tt, qy = ay + by * tt, rr = p.r0 + (p.r1 - p.r0) * tt;
+          var ex = mx - qx, ey = my - qy, d2 = rr * rr - ex * ex - ey * ey;
+          if (d2 <= 0) continue;
+          var hz = Math.sqrt(d2); z = p.z + hz; nx = ex; ny = ey; nz = hz;
+        }
+        if (z > Z[o]) { var m = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; Z[o] = z; id[o] = k; Nx[o] = nx / m; Ny[o] = ny / m; Nz[o] = nz / m; }
+      }
     }
+    var img = g.getImageData(0, 0, W, H), dd = img.data, tones = [SGC.D, SGC.S, SGC.M, SGC.L].map(parseColor), deep = parseColor(SGC.D2), K0 = parseColor(SGC.K);
+    function put(o, c) { dd[o * 4] = c[0]; dd[o * 4 + 1] = c[1]; dd[o * 4 + 2] = c[2]; dd[o * 4 + 3] = 255; }
+    function tag(o) { return id[o] < 0 ? '' : (prims[id[o]].tag || ''); }
+    for (py = 0; py < H; py++) for (px_ = 0; px_ < W; px_++) {
+      o = py * W + px_;
+      if (id[o] < 0) { // 1px black outline around the figure
+        if ((px_ > 0 && id[o - 1] >= 0) || (px_ < W - 1 && id[o + 1] >= 0) || (py > 0 && id[o - W] >= 0) || (py < H - 1 && id[o + W] >= 0)) put(o, K0);
+        continue;
+      }
+      var v = Nx[o] * SIG_LIGHT[0] + Ny[o] * SIG_LIGHT[1] + Nz[o] * SIG_LIGHT[2] + (prims[id[o]].lit || 0);
+      var u = (v + 0.12) / 0.92 * 3 + (BAYER[((py & 3) << 2) | (px_ & 3)] / 16 - 0.5) * 0.4;
+      var ti = Math.max(0, Math.min(3, Math.floor(u)));
+      // creases: the farther surface right under a breast or the jaw, and beside an arm, falls into deep shade
+      var me = id[o], tg = tag(o), crease = false;
+      if (py > 0 && id[o - W] !== me && id[o - W] >= 0 && (tag(o - W) === 'breast' || tag(o - W) === 'jaw') && Z[o - W] > Z[o] - 1.5) crease = true;
+      if (!crease && tg !== 'arm' && tg !== 'leg') for (var sx = -1; sx <= 1; sx += 2) { var q = o + sx; if (px_ + sx >= 0 && px_ + sx < W && id[q] >= 0 && id[q] !== me && (tag(q) === 'arm' || tag(q) === 'leg') && Z[q] > Z[o] + 1) crease = true; }
+      if (!crease && tg === 'leg' && py > 0) { var q2 = o - 1, q3 = o + 1; if ((id[q2] >= 0 && tag(q2) === 'leg' && id[q2] !== me && Z[q2] > Z[o] + 1) || (id[q3] >= 0 && tag(q3) === 'leg' && id[q3] !== me && Z[q3] > Z[o] + 1)) crease = true; }
+      put(o, crease ? deep : tones[ti]);
+    }
+    g.putImageData(img, 0, 0);
+    var skin = new Uint8Array(n); for (i = 0; i < n; i++) skin[i] = id[i] >= 0 ? 1 : 0;
+    return { w: W, h: H, skin: skin, prim: id, prims: prims, Z: Z };
+  }
+  // fill a polygon given in model space
+  function sigPoly(g, pts, c, ox, oy, s) {
+    g.fillStyle = c;
+    var ys = pts.map(function (p) { return oy + p[1] * s; }), y0 = Math.floor(Math.min.apply(null, ys)), y1 = Math.ceil(Math.max.apply(null, ys));
+    for (var y = y0; y <= y1; y++) {
+      var yc = y + 0.5, xs = [];
+      for (var i = 0; i < pts.length; i++) {
+        var a = pts[i], b = pts[(i + 1) % pts.length], ay = oy + a[1] * s, by = oy + b[1] * s;
+        if ((ay <= yc && by > yc) || (by <= yc && ay > yc)) xs.push(ox + (a[0] + (yc - ay) / (by - ay) * (b[0] - a[0])) * s);
+      }
+      xs.sort(function (p, q) { return p - q; });
+      for (i = 0; i + 1 < xs.length; i += 2) { var xa = Math.round(xs[i]), xb = Math.round(xs[i + 1]); if (xb > xa) g.fillRect(xa, y, xb - xa, 1); }
+    }
+  }
+  function sigLine(g, pts, c, ox, oy, s) { for (var i = 1; i < pts.length; i++) line(g, Math.round(ox + pts[i - 1][0] * s), Math.round(oy + pts[i - 1][1] * s), Math.round(ox + pts[i][0] * s), Math.round(oy + pts[i][1] * s), c); }
+  // hair behind the body: a mass around the head, falling down her back to below the shoulder blades
+  function sigHairBack(g, ox, oy, s, full) {
+    var bot = full ? 112 : 104;
+    sigPoly(g, [[-1, -1], [-11, 1], [-16, 9], [-17, 22], [-18, 38], [-21, 50], [-23, bot - 8], [-17, bot], [0, bot - 4], [17, bot], [22, bot - 10], [21, 48], [17, 36], [15, 20], [13, 7], [8, 0]], SGC.hair, ox, oy, s);
+    sigLine(g, [[-15, 24], [-19, 52], [-20, bot - 10]], SGC.hairM, ox, oy, s);
+    sigLine(g, [[15, 24], [19, 50], [19, bot - 12]], SGC.hairM, ox, oy, s);
+  }
+  // hair in front: the crown with a side-swept fringe, locks framing the face, one long lock over her far shoulder
+  function sigHairFront(g, ox, oy, s) {
+    sigPoly(g, [[-14.5, 21], [-15.5, 9], [-10.5, 0], [-1, -2.8], [9, -0.8], [14.5, 8], [14.5, 21], [11.6, 15], [8.5, 11], [3, 9.8], [-1, 11], [-4, 10.2], [-9, 11.5], [-11.8, 15], [-12.4, 21]], SGC.hair, ox, oy, s);
+    sigPoly(g, [[-1, 9], [-7, 10.5], [-11, 14.5], [-12, 19], [-9.5, 13.5], [-5, 11.5]], SGC.hair, ox, oy, s); // a side-swept fringe
+    sigPoly(g, [[-13.5, 12], [-11, 20], [-11.5, 30], [-10, 37], [-14, 44], [-15.5, 34], [-14.5, 22]], SGC.hair, ox, oy, s);                 // near lock, to the jaw
+    sigPoly(g, [[12.5, 12], [10.6, 20], [10.6, 31], [12, 40], [16, 47], [21, 54], [25.5, 66], [27, 80], [25, 90], [28.5, 88], [31, 76], [30, 62], [25, 50], [17.5, 40], [15, 30], [14.5, 18]], SGC.hair, ox, oy, s); // far lock, over the shoulder
+    // shine: a navy sheen across the crown, strands down the locks
+    sigLine(g, [[-11, 5], [-5, 0.6], [2, 0.4], [8, 2.6]], SGC.hairL, ox, oy, s);
+    sigLine(g, [[-10, 8], [-4, 4], [2, 4], [6, 6]], SGC.hairM, ox, oy, s);
+    sigLine(g, [[-2, 10], [-7, 11.5], [-10.5, 15]], SGC.hairM, ox, oy, s);
+    sigLine(g, [[-13, 14], [-13, 24], [-13.5, 36]], SGC.hairM, ox, oy, s);
+    sigLine(g, [[13, 20], [14, 32], [19, 44], [25.5, 56], [28, 70], [27.5, 84]], SGC.hairM, ox, oy, s);
+    sigLine(g, [[14.5, 26], [17, 38], [23, 48]], SGC.hairL, ox, oy, s);
+  }
+  // long elf ears sweeping up and back through the hair, small horns at the hairline
+  function sigEarsHorns(g, ox, oy, s) {
+    var E1 = [[-11, 18], [-11.4, 25], [-13.4, 24.4], [-16.5, 18.5], [-20, 9.5], [-15, 15.5]], E2 = [[10.3, 18], [10.6, 25], [12.6, 24], [15.5, 18.5], [18.5, 9.5], [13.8, 15.5]];
+    sigPoly(g, E1, SGC.M, ox, oy, s); sigPoly(g, E2, SGC.S, ox, oy, s);
+    sigLine(g, [[-11.5, 18], [-15, 15.5], [-20, 9.5]], SGC.L, ox, oy, s);
+    sigLine(g, [[-12.5, 23], [-14.8, 19.5], [-17.5, 13.5]], SGC.S, ox, oy, s);
+    sigLine(g, [[11, 18], [13.8, 15.5], [18.5, 9.5]], SGC.M, ox, oy, s);
+    sigLine(g, [[12, 23], [14.2, 19.5], [16.5, 13.5]], SGC.D, ox, oy, s);
+    // horns: short, curling up and back
+    sigPoly(g, [[-8, 4.5], [-5.5, 4], [-7, -1], [-9.5, -4.5], [-10.5, -3.5], [-9.5, 0]], SGC.hornL, ox, oy, s);
+    sigPoly(g, [[4.5, 4], [7, 4.5], [8.5, 0], [9.5, -3.5], [8.5, -4.5], [6, -1]], SGC.hornL, ox, oy, s);
+    sigLine(g, [[-6, 3.6], [-7.6, -0.5], [-9.6, -3.4]], SGC.horn, ox, oy, s);
+    sigLine(g, [[6.8, 4], [8, 0], [9, -3]], SGC.horn, ox, oy, s);
+  }
+  // pixel stamp: rows of chars -> colours (map), at model point (x, y) scaled 1:1 (close-up only)
+  function sigStamp(g, x, y, rows_, map) { for (var j = 0; j < rows_.length; j++) for (var i = 0; i < rows_[j].length; i++) { var c = map[rows_[j].charAt(i)]; if (c) P(g, x + i, y + j, c); } }
+  // the close-up face: almond eyes with lashes, arched brows, a small straight nose, full lips, a knowing smile and a fang
+  function sigFace(g, ox, oy) {
+    var X = function (x) { return ox + x; }, Y = function (y) { return oy + y; };
+    var mp = { k: SGC.K, w: SGC.W, c: SGC.eye, C: SGC.W, S: SGC.S, D: SGC.D, M: SGC.M, L: SGC.L, n: SGC.nip };
+    // brows
+    sigStamp(g, X(-12), Y(13), ['...kkkk..', '.kk....kk', 'k........'], mp);
+    sigStamp(g, X(1), Y(13), ['..kkkk...', 'kk....kk.', '........k'], mp);
+    // eyes (near eye: outer corner on the left; far eye mirrored)
+    sigStamp(g, X(-12), Y(17), ['..kkkkk..', 'kkwcCcwwk', '.wwcccww.', '..wwcww..', '...LLL...'], mp);
+    sigStamp(g, X(1), Y(17), ['..kkkkk..', 'kwwcCcwkk', '.wwcccww.', '..wwcww..', '...SSS...'], mp);
+    // nose: a shadow down the far side, a lit tip, two nostrils
+    sigStamp(g, X(-2), Y(21), ['..S', '..S', '.LS', 'S.D'], mp);
+    // lips: deep red upper lip with a cupid's bow, fuller magenta lower lip, corners turned up, one fang
+    sigStamp(g, X(-5), Y(27), ['...r.r...', 'R.rrrrr.R', '.RRRRRRR.', '..mlmmw..', '...mmm...'], { r: SGC.lipD, R: SGC.lipD, m: SGC.lip, l: SGC.lipL, w: SGC.W });
+    // a cool blush high on the cheeks, and the chin's shadow
+    P(g, X(-9), Y(24), SGC.nip); P(g, X(-8), Y(24), SGC.nip); P(g, X(5), Y(24), SGC.nip);
+  }
+  function sigFaceSmall(g, ox, oy, s) { // the full-body shot: the same face, pixel-sized
+    function at(x, y, c) { P(g, Math.round(ox + x * s), Math.round(oy + y * s), c); }
+    at(-8, 20, SGC.eye); at(-5.5, 20, SGC.eye); at(3, 20, SGC.eye); at(5.5, 20, SGC.eye);
+    at(-8, 17.5, SGC.K); at(-5.5, 17.5, SGC.K); at(3, 17.5, SGC.K); at(5.5, 17.5, SGC.K);
+    at(-1, 30, SGC.lip); at(-3.5, 30, SGC.lip); at(1.5, 30, SGC.lipD);
+  }
+  // collarbones, ribs, navel, nipples
+  function sigBodyMarks(g, ox, oy, s) {
+    sigLine(g, [[-3, 47.5], [-11, 49.5], [-20, 50.5]], SGC.L, ox, oy, s);
+    sigLine(g, [[-4, 48.5], [-11, 50.5], [-19, 51.5]], SGC.S, ox, oy, s);
+    sigLine(g, [[4, 47.5], [11, 49.5], [19, 50]], SGC.M, ox, oy, s);
+    sigLine(g, [[4, 48.5], [11, 50.5], [18, 51]], SGC.D, ox, oy, s);
+    // ribs on the near side, just under the breast
+    sigLine(g, [[-17.5, 81], [-14, 82.5]], SGC.S, ox, oy, s); sigLine(g, [[-17.5, 85], [-14, 86.5]], SGC.S, ox, oy, s); sigLine(g, [[-16.5, 89], [-13.5, 90]], SGC.S, ox, oy, s);
+    sigLine(g, [[13.5, 82.5], [16.5, 81]], SGC.D, ox, oy, s); sigLine(g, [[13.5, 86.5], [16.5, 85]], SGC.D, ox, oy, s);
+    sigLine(g, [[0.4, 92], [0.4, 94]], SGC.D, ox, oy, s); // navel
+    var nps = [[-11, 71.5], [11.5, 71.5]];
+    nps.forEach(function (p, i) {
+      var x = Math.round(ox + p[0] * s), y = Math.round(oy + p[1] * s);
+      if (s > 0.8) { R(g, x - 1, y - 1, 3, 3, SGC.nip); P(g, x - 1, y - 1, i ? SGC.M : SGC.L); P(g, x, y, SGC.nipD); P(g, x + 1, y + 1, SGC.S); }
+      else P(g, x, y, SGC.nipD);
+    });
+  }
+  // the thong: a red waistband riding high on the hips, dipping to a V (front panel only in the full shot)
+  function sigThong(g, ox, oy, s, full) {
+    sigLine(g, [[-20, 101], [-10, 104.5], [0, 108], [10, 104.5], [20, 101]], SGC.redL, ox, oy, s);
+    sigLine(g, [[-20, 102], [-10, 105.5], [0, 109], [10, 105.5], [20, 102]], SGC.red, ox, oy, s);
+    if (full) sigPoly(g, [[-6, 106], [6, 106], [1.5, 121], [-1.5, 121]], SGC.red, ox, oy, s);
+  }
+  // NES backdrop: black under a dithered dark-teal cloud
+  function sigBackdrop(g, w, h, seed, hx, hy, hr) {
+    R(g, 0, 0, w, h, SGC.K);
+    var n1 = vnoise(seed), n2 = vnoise(seed + 5);
+    g.fillStyle = SGC.bg;
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      var f = 0.62 * n1(x / 34, y / 22) + 0.38 * n2(x / 13, y / 9), dh = Math.sqrt((x - hx) * (x - hx) + (y - hy) * (y - hy) * 1.6) / hr;
+      var lvl = Math.max(0, Math.min(12, Math.round((f - 0.3) * 18 + Math.max(0, 1 - dh) * 7)));
+      if (BAYER[((y & 3) << 2) | (x & 3)] < lvl) g.fillRect(x, y, 1, 1);
+    }
+  }
+  // tattoo layer: ink creatures crawling, masked to the skin (no face, no nipples)
+  function sigTattooMask(body, ox, oy, s, faceY) {
+    var W = body.w, H = body.h, cv = mkCanvas(W, H), g = g2(cv), img = g.createImageData(W, H), d = img.data;
+    var nps = [[-11, 71.5], [11.5, 71.5]].map(function (p) { return [ox + p[0] * s, oy + p[1] * s]; }), nr = Math.max(1.6, 4 * s);
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var o = y * W + x; if (!body.skin[o]) continue;
+      var pn = body.prims[body.prim[o]].n;
+      if (pn === 'head' || pn === 'nose' || (pn === 'neck' && y < oy + faceY * s)) continue;
+      var clear = false; for (var k = 0; k < 2; k++) { var dx = x + 0.5 - nps[k][0], dy = y + 0.5 - nps[k][1]; if (dx * dx + dy * dy < nr * nr) clear = true; }
+      if (clear) continue;
+      d[o * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return cv;
+  }
+  function sigTattoos(tg, t, ox, oy, s) {
+    function T(x, y) { return [Math.round(ox + x * s), Math.round(oy + y * s)]; }
+    var big = s > 0.8, th = big ? 2 : 1, i, p;
+    function dot(q, c, w, h) { tg.fillStyle = c; tg.fillRect(q[0], q[1], w || th, h || th); }
+    // a sea serpent swimming a figure-eight around both breasts: a solid ink body, red fins, a white eye
+    for (i = 34; i >= 0; i--) {
+      var a = t * 0.55 - i * 0.075, lx = Math.sin(a), ly = Math.sin(a) * Math.cos(a);
+      p = T(lx * 23, 70 + ly * 24);
+      dot(p, SGC.ink, i === 0 ? 3 : th, i === 0 ? 3 : th);
+      if (big && i % 6 === 3) dot([p[0], p[1] - 1], SGC.inkR, 1, 1);
+      if (big && i === 0) dot([p[0] + 1, p[1] + 1], SGC.W, 1, 1);
+    }
+    // a shark cruising across her stomach, white belly and teeth
+    var sx = ((t * 6) % 40) - 20, sp = T(sx, 86);
+    if (big) {
+      R(tg, sp[0] - 5, sp[1], 11, 3, SGC.ink); R(tg, sp[0] - 3, sp[1] + 3, 7, 1, SGC.ink); R(tg, sp[0] - 1, sp[1] - 2, 2, 2, SGC.ink); P(tg, sp[0] - 1, sp[1] - 3, SGC.ink);
+      R(tg, sp[0] - 8, sp[1] - 1, 3, 1, SGC.ink); R(tg, sp[0] - 8, sp[1] + 3, 3, 1, SGC.ink); P(tg, sp[0] - 6, sp[1] + 1, SGC.ink); P(tg, sp[0] - 7, sp[1] + 2, SGC.ink);
+      P(tg, sp[0] + 3, sp[1] + 1, SGC.W); R(tg, sp[0] + 2, sp[1] + 2, 3, 1, SGC.W);
+    } else R(tg, sp[0] - 1, sp[1], 3, 1, SGC.ink);
+    // an oni mask drifting down her far arm: red face, white eyes, black grin, horns
+    var op = T(28 + Math.sin(t * 0.7) * 1.5, 60 + ((t * 3) % 22));
+    if (big) { R(tg, op[0] - 3, op[1], 7, 6, SGC.inkR); R(tg, op[0] - 2, op[1] + 2, 2, 1, SGC.W); R(tg, op[0] + 1, op[1] + 2, 2, 1, SGC.W); R(tg, op[0] - 2, op[1] + 4, 5, 1, SGC.K); P(tg, op[0] - 1, op[1] + 4, SGC.W); P(tg, op[0] + 1, op[1] + 4, SGC.W); P(tg, op[0] - 3, op[1] - 1, SGC.inkR); P(tg, op[0] + 3, op[1] - 1, SGC.inkR); P(tg, op[0] - 4, op[1] - 2, SGC.inkR); P(tg, op[0] + 4, op[1] - 2, SGC.inkR); }
+    else P(tg, op[0], op[1], SGC.inkR);
+    // a dragon coiling down her near arm from the shoulder: ink body, green scales, a red flame tongue
+    var hy = 52 + ((t * 5) % 40);
+    for (i = 0; i < 30; i++) {
+      var dy = hy - i * 1.1, dx = -27.5 + Math.sin(dy / 4.2 + t * 0.6) * 2.6;
+      if (dy < 50) break;
+      p = T(dx, dy); dot(p, i % 4 === 2 ? SGC.inkG : SGC.ink);
+      if (big && i % 5 === 4) dot([p[0] - 1, p[1]], SGC.ink, 1, 1);
+    }
+    p = T(-27.5 + Math.sin(hy / 4.2 + t * 0.6) * 2.6, hy + 1.5); if (big) { dot(p, SGC.ink, 3, 2); dot([p[0] + 1, p[1] + 2], SGC.inkR, 1, 2); }
+    // waves along her ribs on the far side
+    for (i = 0; i < 4; i++) { var w = T(13 + ((t * 2 + i * 3) % 6), 80 + i * 4); if (big) { R(tg, w[0], w[1], 3, 1, SGC.ink); P(tg, w[0] + 1, w[1] - 1, SGC.ink); } }
+  }
+  // a full figure render, cached per panel in st.misc: [tattoo mask, tattoo buffer canvas, {ox, oy, s}]
+  function sigDraw(g, st, W, H, ox, oy, s, full) {
+    sigBackdrop(g, W, H, full ? 29 : 13, ox, oy + (full ? 40 : 30) * s, full ? 60 : 70);
+    var fig_ = mkCanvas(W, H), fg_ = g2(fig_);
+    sigHairBack(g, ox, oy, s, full);
+    var body = sigBody(fg_, W, H, ox, oy, s, sigPrims(full));
+    g.drawImage(fig_, 0, 0);
+    sigBodyMarks(g, ox, oy, s);
+    sigThong(g, ox, oy, s, full);
+    sigHairFront(g, ox, oy, s);
+    sigEarsHorns(g, ox, oy, s);
+    if (s > 0.8) sigFace(g, ox, oy); else sigFaceSmall(g, ox, oy, s);
+    st.misc.push(sigTattooMask(body, ox, oy, s, 38), mkCanvas(W, H), { ox: ox, oy: oy, s: s });
+  }
+  function sigAnim(ctx, t, st) {
+    var mask = st.misc[0], buf = st.misc[1], o = st.misc[2], tg = g2(buf);
+    tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, buf.width, buf.height);
+    sigTattoos(tg, t, o.ox, o.oy, o.s);
+    tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mask, 0, 0); tg.globalCompositeOperation = 'source-over';
+    ctx.drawImage(buf, 0, 0);
+    // her eyes glow while the charm works: the irises flare white, sparks at the outer corners
+    var on = Math.sin(t * 3) > 0.2, X = Math.round(o.ox), Y = Math.round(o.oy);
+    if (o.s > 0.8) {
+      if (on) { P(ctx, X - 8, Y + 19, SGC.W); P(ctx, X + 5, Y + 19, SGC.W); P(ctx, X - 13, Y + 17, SGC.eye); P(ctx, X - 14, Y + 16, SGC.eye); P(ctx, X + 10, Y + 17, SGC.eye); P(ctx, X + 11, Y + 16, SGC.eye); }
+    } else if (on) { P(ctx, Math.round(o.ox - 8 * o.s), Math.round(o.oy + 20 * o.s), SGC.W); P(ctx, Math.round(o.ox + 3 * o.s), Math.round(o.oy + 20 * o.s), SGC.W); }
+  }
+  PN.signet_tattoos = { // waist-up close-up: horns to the thong's waistband
+    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 124, 5, 1, false); },
+    anim: sigAnim
+  };
+  PN.signet_full = { // full figure, horns to feet, one hand on her hip
+    draw: function (g, st) { sigDraw(g, st, PW_, PH_, 128, 6, 0.4, true); },
+    anim: sigAnim
   };
   /* 4b. carl_tent: crash zoom on Carl's boxers under Signet's charm. Fabric only: the BigBoi boxers
      tent out sideways in a long pointed peak that bobs, anime speed lines behind. */

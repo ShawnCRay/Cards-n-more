@@ -46,7 +46,8 @@
     kickDur: 0.36, airkickVX: 160, airkickVY: 250, airkickBounce: 275,
     hurtDur: 0.3, iframes: 1.1, pitDamage: 3, pitIframes: 1.6,
     comboWindow: 2,
-    camLook: 38, camLookSpeed: 110, camLerp: 9,
+    // calm camera (Book One): look-ahead builds only after running one way for a moment, dead zone soaks small steps
+    camLook: 32, camLookSpeed: 60, camLookDelay: 0.35, camDead: 20, camDeadArena: 56, camLerp: 9, camLookY: 24, camDeadY: 12,
     throwVX: 125, throwVY: -175, throwGrav: 620, selfDmg: 2,
     hobFuse: 1.15, dynFuse: 1.6, xisteraVX: 300,
     hobR: 20, dynR: 40, jugR: 30,
@@ -165,15 +166,16 @@
 
   /* ---------------- stats (cached per frame; escape bursts modify them) ---------------- */
   var statCache = null, statFrame = -1, statOwner = null;
+  // standalone fallback only (game.js owns the real formulas: Book One's, continued)
   function fallbackStats() {
-    var r = getRun(), st = r.stats || { str: 5, con: 4, dex: 4, int: 4 }, b = r.bonus || {};
-    var L = Math.max(1, (r.level || 13) - 12), fb = flag('freeballing');
-    var dmg = Math.max(1, 3 + (st.str - 5) + Math.floor((L - 1) / 2));
-    return { maxHp: Math.max(8, 16 + (st.con - 4) * 2 + (L - 1) * 2 + (b.hp || 0)), dmg: dmg, kickDmg: Math.round(dmg * 1.5) * (fb ? 2 : 1),
-      crit: 0.05 + (st.dex - 4) * 0.02, speedMul: 1 + (st.dex - 4) * 0.03, def: 0,
-      hobDmg: 10 + L * 2, dynDmg: 22 + L * 3, jugDmg: 8 + L * 2,
-      missileDmg: 3 + Math.floor(st.int / 2) + Math.floor((L - 1) / 2), biteDmg: Math.round((2 + L) * (flag('mongo_big') ? 1.8 : 1)),
-      goldMul: 1, viewMul: 1, extraJump: false, skinPerk: null,
+    var r = getRun(), st = r.stats || { str: 7, con: 6, dex: 5, int: 6 }, b = r.bonus || {};
+    var lv = Math.max(1, r.level || 13), fb = flag('freeballing');
+    var dmg = Math.max(1, 2 + (st.str - 3) + Math.floor((lv - 1) / 2));
+    return { maxHp: Math.max(8, 10 + (st.con - 3) * 2 + (lv - 1) + (b.hp || 0)), dmg: dmg, kickDmg: Math.round(dmg * 1.5) * (fb ? 2 : 1),
+      crit: 0.04 + (st.dex - 3) * 0.02, speedMul: 1 + (st.dex - 3) * 0.03, def: 0,
+      hobDmg: Math.round(dmg * 1.6), dynDmg: Math.round(dmg * 3.2), jugDmg: Math.round(dmg * 1.3), fireDmg: Math.max(1, Math.round(dmg * 0.15)),
+      missileDmg: dmg, biteDmg: Math.round(dmg * (flag('mongo_big') ? 1.8 : 1)),
+      goldMul: 1, viewMul: 1, extraJump: false, skinPerk: null, stompMul: 1, regen: 0, stun: 0, missileCd: 0, specialMul: 1,
       freeballing: fb, xistera: flag('xistera'), fangCaps: flag('fang_caps'), mongoBig: flag('mongo_big'), party: null };
   }
   function stats() {
@@ -181,13 +183,14 @@
     var s = call(G(), 'playerStats') || fallbackStats();
     var o = {}, k;
     for (k in s) if (Object.prototype.hasOwnProperty.call(s, k)) o[k] = s[k];
-    var L = Math.max(1, (getRun().level || 13) - 12);
-    if (o.hobDmg === undefined) o.hobDmg = 10 + L * 2;
-    if (o.dynDmg === undefined) o.dynDmg = 22 + L * 3;
-    if (o.jugDmg === undefined) o.jugDmg = 8 + L * 2;
-    if (o.missileDmg === undefined) o.missileDmg = 3 + Math.floor(L / 2) + 2;
-    if (o.biteDmg === undefined) o.biteDmg = 2 + L;
-    if (o.kickDmg === undefined) o.kickDmg = Math.round(num(o.dmg, 3) * 1.5);
+    var pd = Math.max(1, num(o.dmg, 3));
+    if (o.hobDmg === undefined) o.hobDmg = Math.round(pd * 1.6);
+    if (o.dynDmg === undefined) o.dynDmg = Math.round(pd * 3.2);
+    if (o.jugDmg === undefined) o.jugDmg = Math.round(pd * 1.3);
+    if (o.fireDmg === undefined) o.fireDmg = Math.max(1, Math.round(pd * 0.15));
+    if (o.missileDmg === undefined) o.missileDmg = pd;
+    if (o.biteDmg === undefined) o.biteDmg = pd;
+    if (o.kickDmg === undefined) o.kickDmg = Math.round(pd * 1.5);
     if (S) {
       if (S.maxHpMul && S.maxHpMul !== 1) o.maxHp = Math.max(1, Math.round(o.maxHp * S.maxHpMul));
       if (S.defZero) o.def = 0;
@@ -715,8 +718,9 @@
     if (S.combo === 25) { track('combo25'); quip('bigCombo', 1); announce(S.combo + ' HIT COMBO!', { color: '#f8d878', time: 1.4 }); }
     if (S.specialLockT > 0) return;
     var st = stats();
-    S.special = Math.min(1, S.special + (dmg || 1) / Math.max(1, num(st.dmg, 3) * 22));
+    S.special = Math.min(1, S.special + (dmg || 1) / Math.max(1, num(st.dmg, 3) * 22) * specialMul());
   }
+  function specialMul() { var v = num(stats().specialMul, 1); return v <= 0 ? 1 : v < 1 ? 1 + v : v; }
   function comboMul() { return 1 + Math.min(S.combo, 60) * 0.05; }
   function quip(pool, chance) {
     if (S.quipT > 0 || Math.random() > (chance || 1)) return;
@@ -755,6 +759,10 @@
     var n = Math.max(1, Math.round(dmg - armor));
     e.hp -= n;
     e.flash = e.elite ? 0.16 : 0.1; e.lastHit = S.t; e.lastKind = opts.kind;
+    // gear perk: melee hits can stun
+    if ((opts.kind === 'punch' || opts.kind === 'kick' || opts.kind === 'stomp') && e.hp > 0 && !e.isBody && Math.random() < num(stats().stun, 0)) {
+      e.stun = Math.max(e.stun || 0, 1.2); numText(cx(e), e.y - 10, 'STUN', '#3cbcfc');
+    }
     var dir = opts.dir || (cx(e) < cx(S.player) ? -1 : 1);
     var kb = num(e.def.kb, 1) * (opts.kb === undefined ? 80 : opts.kb);
     var anchored = e.ai === 'turret' || e.ai === 'spawner' || e.ai === 'launcher' || e.ai === 'kbody' || e.perched;
@@ -777,6 +785,86 @@
     numText(cx(e), e.y - 10, 'SHRIEK!', '#f878f8');
     if (!S.krasueHinted) { S.krasueHinted = true; toast('THE HEAD WILL BE BACK. FIND THE BODY.', { title: 'KRASUE', icon: 'skull', color: '#f878f8', time: 3.5 }); }
   }
+  // the System AI describes each kind of mob the first time you kill one (once per crawl, like the
+  // book's AI descriptions). Never in the middle of a boss fight: those stay unmet until later.
+  function mobIntro(e) {
+    var id = e.isBody ? 'krasue' : e.id, d = e.isBody ? enemyDef('krasue') : (e.def || {});
+    if (!d.flavor || e.citizen || e.ai === 'guard') return;
+    if (S.locked || (S.boss && S.boss.active && !S.boss.dead && !S.boss.dying)) return;
+    var run = getRun();
+    run.mobsMet = run.mobsMet || {};
+    if (run.mobsMet[id]) return;
+    run.mobsMet[id] = true;
+    (S.mobIntroQ = S.mobIntroQ || []).push({ who: 'SYSTEM AI', portrait: 'p_ai', text: String(d.name || id).toUpperCase() + '! ' + d.flavor });
+    S.mobIntroT = Math.max(S.mobIntroT || 0, 0.7);
+  }
+
+  /* ---------------- gore (DESIGN 16.2): the book is gory ----------------
+     kills burst red pixels (+ gibs in the mob's color) and leave a blood_splat decal on the floor for
+     ~20 s (cap 24, oldest goes first). Stomps, explosions and bosses burst bigger. Ghost-class mobs
+     (magicOnly) leave smoke and urchins leave straw. settings.gore === false turns blood off. */
+  var BLOOD = ['#d82800', '#a81000', '#f83800', '#881400'], STRAW = ['#d8b048', '#ac7c00', '#f8d878'], ECTO = ['#bcbcbc', '#7c7c7c', '#fcfcfc'];
+  function goreOn() { var st = DCW.save && DCW.save.settings; return !(st && st.gore === false); }
+  function gore(x, y, opts) {
+    opts = opts || {};
+    var kind = opts.kind || 'blood';
+    if (kind === 'blood' && !goreOn()) return;
+    var big = !!opts.big, n = opts.n || (big ? 26 : 14), pal = kind === 'straw' ? STRAW : kind === 'smoke' ? ECTO : BLOOD;
+    var spd = opts.small ? 70 : big ? 180 : 130;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = spd * (0.35 + Math.random() * 0.8);
+      part({ kind: 'px', x: x + U.rand(-3, 3), y: y + U.rand(-3, 3), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (opts.small ? 30 : 70), grav: kind === 'smoke' ? 40 : 560,
+        life: (opts.small ? 0.3 : 0.45) + Math.random() * 0.45, color: pal[i % pal.length], size: Math.random() < (big ? 0.45 : 0.25) ? 2 : 1 });
+    }
+    if (kind === 'smoke') smoke(x, y, big ? 6 : 3);
+    if (opts.gibs && kind === 'blood') {
+      for (var g = 0; g < (big ? 8 : 4); g++) part({ kind: 'px', x: x, y: y, vx: U.rand(-110, 110), vy: -U.rand(90, 220), grav: 600, life: 0.6 + Math.random() * 0.4, color: opts.gibs, size: 2 });
+    }
+  }
+  // the floor right under (x, fromY), or null over a pit
+  function floorBelow(x, fromY, maxTiles) {
+    var tx = Math.floor(x / TS), ty0 = Math.max(0, Math.floor(fromY / TS));
+    for (var ty = ty0; ty < Math.min(S.L.h, ty0 + (maxTiles || 8)); ty++) {
+      var t = tileAt(tx, ty);
+      if (isSolidT(t) || t === T_ONEWAY) return (ty > 0 && isSolidT(tileAt(tx, ty - 1))) ? null : ty * TS;
+    }
+    return null;
+  }
+  function splat(x, fromY, big) {
+    if (!goreOn() || !S.splats) return;
+    var gy = floorBelow(x, fromY - 4, 10);
+    if (gy === null) return;
+    S.splats.push({ x: Math.round(x), y: gy, v: U.randi(0, 2), t: big ? 24 : 20, big: !!big, flip: Math.random() < 0.5 });
+    if (big) S.splats.push({ x: Math.round(x + U.rand(-14, 14)), y: gy, v: U.randi(0, 2), t: 22, big: false, flip: Math.random() < 0.5 });
+    while (S.splats.length > 24) S.splats.shift();
+  }
+  function killGore(e, kind) {
+    var big = kind === 'stomp' || kind === 'bomb' || kind === 'boomy' || kind === 'pit' || e.elite;
+    if (e.magicOnly) { gore(cx(e), cy(e), { kind: 'smoke', big: big }); return; }
+    if (e.ai === 'urchin') { gore(cx(e), cy(e), { kind: 'straw', big: big }); return; }
+    gore(cx(e), cy(e), { big: big, gibs: e.color });
+    splat(cx(e), e.y + e.h, big);
+  }
+  function updSplats(dt) {
+    if (!S.splats) return;
+    for (var i = S.splats.length - 1; i >= 0; i--) { var sp = S.splats[i]; sp.t -= dt; if (sp.t <= 0) S.splats.splice(i, 1); }
+  }
+  function drawSplats(ctx, camX, camY) {
+    if (!S.splats || !S.splats.length) return;
+    var art = hasArt('blood_splat');
+    for (var i = 0; i < S.splats.length; i++) {
+      var sp = S.splats[i], x = sp.x - camX, y = sp.y - camY;
+      if (x < -24 || x > W + 24 || y < -8 || y > H + 8) continue;
+      if (sp.t < 2 && Math.floor(sp.t * 8) % 2) continue;
+      // the floor stays solid: the splat only covers its top pixels (S.L may have lost the tile)
+      if (!isSolidT(tileAt(Math.floor(sp.x / TS), Math.floor(sp.y / TS))) && tileAt(Math.floor(sp.x / TS), Math.floor(sp.y / TS)) !== T_ONEWAY) continue;
+      if (art) { spr(ctx, 'blood_splat', x, y + 2, sp.v, sp.flip, null); continue; }
+      var w = sp.big ? 14 : 9, rx = Math.round(x - w / 2), ry = Math.round(y);
+      ctx.fillStyle = '#881400'; ctx.fillRect(rx, ry - 1, w, 2);
+      ctx.fillStyle = '#a81000'; ctx.fillRect(rx + 1, ry, w - 2, 1);
+      ctx.fillStyle = '#d82800'; ctx.fillRect(rx + 2 + sp.v, ry - 1, 2, 1); if (sp.big) ctx.fillRect(rx + 8, ry - 2, 2, 1);
+    }
+  }
   function bodyXp() { var bd = (D().enemies || {}).krasue_body; return num(bd && bd.xp, num(enemyDef('krasue').xp, 8)); }
   function killEnemy(e, opts) {
     opts = opts || {};
@@ -789,15 +877,18 @@
       sfx('enemy_die', { pitch: 0.8 }); smoke(cx(e), cy(e), 3);
       debris(cx(e), cy(e), 10, '#58d854', 100); debris(cx(e), cy(e), 6, '#f878f8', 90);
       numText(cx(e), e.y - 12, 'IT TWITCHES...', '#58d854');
+      mobIntro(e);
       if (!S.regrowHinted) { S.regrowHinted = true; toast('MOLD LIONS GROW BACK. BURN THE PILE.', { title: 'REGROW', icon: 'jug', color: '#58d854', time: 3.5 }); }
       return;
     }
     sfx('enemy_die');
     smoke(cx(e), cy(e), e.elite ? 6 : 3);
-    if (e.citizen) { debris(cx(e), cy(e), 12, '#d82800', 110); return; }
+    if (e.citizen) { debris(cx(e), cy(e), 12, '#d82800', 110); killGore(e, opts.kind); return; }
     S.kills++; run.kills = (run.kills || 0) + 1;
+    mobIntro(e);
     fxSprite('explosion', cx(e), e.y + e.h + 4, 0.3, { color: '#f8b800', size: 12, scale: e.elite ? 2 : 1 });
-    debris(cx(e), cy(e), 8, e.magicOnly ? '#bcbcbc' : '#fcfcfc', 110);
+    if (goreOn() || e.magicOnly || e.ai === 'urchin') killGore(e, opts.kind);
+    else debris(cx(e), cy(e), 8, '#fcfcfc', 110);
     var loot = !e.isAdd && !e.noLoot;
     if (e.ai === 'krasue' && e.body) loot = false; // heads tied to a body pay out through the body
     if (e.isBody) {
@@ -816,7 +907,7 @@
       var got = addViews(Math.max(1, Math.round(base * comboMul())));
       numText(cx(e), e.y - 12, '+' + got + ' VIEWS', '#f878f8');
     }
-    if (S.specialLockT <= 0) S.special = Math.min(1, S.special + 0.04);
+    if (S.specialLockT <= 0) S.special = Math.min(1, S.special + 0.04 * specialMul());
     track('kill'); track('kill:' + e.id);
     if (opts.kind === 'bomb' || opts.kind === 'boomy') track('bomb_kill');
     if (opts.kind === 'fire') track('fire_kill');
@@ -934,6 +1025,7 @@
     announce('KEY ITEM', { color: '#f8d878', time: 1.6, sub: itemName(o.id) });
     say([{ who: 'SYSTEM AI', portrait: 'p_ai', text: 'KEY ITEM GET: ' + itemName(o.id) + '. ' + (q.desc || '') }]);
   }
+  function stompDmg(st) { st = st || stats(); var m = num(st.stompMul, 1); return Math.max(1, Math.round(num(st.kickDmg, 3) * (m <= 0 ? 1 : m))); }
   function rollCrit(dmg) {
     var c = Math.random() < num(stats().crit, 0.05);
     return { dmg: c ? dmg * 2 : dmg, crit: c };
@@ -983,9 +1075,9 @@
       for (var ty = y0; ty <= y1; ty++) for (var tx = x0; tx <= x1; tx++) if (tileAt(tx, ty) === T_CRATE && circHit(x, y, radius, { x: tx * TS, y: ty * TS, w: TS, h: TS })) breakCrate(tx, ty);
       var k = S.kills - killsBefore;
       if (k >= 3) { track('multi_bomb'); numText(x, y - 20, k + 'X BOMB KILL!', '#f8d878', 1); }
-      if (!opts.noSelf && circHit(x, y, radius, S.player) && S.player.state !== 'dead') hurtPlayer(K.selfDmg, x, { raw: true, cause: 'OWN BOMB' });
+      if (!opts.noSelf && circHit(x, y, radius, S.player) && S.player.state !== 'dead') hurtPlayer(worldDmg(K.selfDmg), x, { raw: true, cause: 'OWN BOMB', gripe: 'bomb' });
     } else {
-      if (circHit(x, y, radius, S.player)) hurtPlayer(dmg, x, { cause: opts.cause || 'EXPLOSION' });
+      if (circHit(x, y, radius, S.player)) hurtPlayer(dmg, x, { cause: opts.cause || 'EXPLOSION', gripe: 'bomb', mob: opts.mob });
     }
     stunPartyNear(x, y, radius);
   }
@@ -1001,13 +1093,13 @@
       f.life -= dt; f.t += dt; f.tick -= dt;
       if (f.tick <= 0) {
         f.tick = K.fireTick;
-        var box = { x: f.x0, y: f.y - 20, w: f.x1 - f.x0, h: 22 }, j;
+        var box = { x: f.x0, y: f.y - 20, w: f.x1 - f.x0, h: 22 }, j, fd = Math.max(1, Math.round(num(stats().fireDmg, 1)));
         for (j = 0; j < S.enemies.length; j++) {
           var e = S.enemies[j];
-          if (!e.dead && e.active && e.state !== 'gone' && !e.citizen && overlap(box, e)) damageActor(e, 1, { kind: 'fire', kb: 0, noCombo: true });
+          if (!e.dead && e.active && e.state !== 'gone' && !e.citizen && overlap(box, e)) damageActor(e, fd, { kind: 'fire', kb: 0, noCombo: true });
         }
         var B = S.boss;
-        if (bossHittable(B) && !B.facade && overlap(box, B)) damageActor(B, 1, { kind: 'fire', noCombo: true, hitX: cx(B) });
+        if (bossHittable(B) && !B.facade && overlap(box, B)) damageActor(B, fd, { kind: 'fire', noCombo: true, hitX: cx(B) });
         for (j = S.regrows.length - 1; j >= 0; j--) {
           var rg = S.regrows[j];
           if (rg.x > f.x0 - 6 && rg.x < f.x1 + 6 && Math.abs(rg.y - f.y) < 24) {
@@ -1082,6 +1174,50 @@
     S.lights = L;
   }
 
+  /* ---------------- Donut's gripes (DESIGN 16.2, Book One's running gag) ----------------
+     D.donutGripes maps a mob id (or one '_' part of it) or a damage kind to a line. When one hurts
+     the player Donut says it in a pink toast: each once per crawl (run.gripes), one per 20 s, and
+     only while she is in the party and awake. */
+  var CAUSE_GRIPE = { 'SPIKES': 'spikes', 'HAZARD': 'wet', 'OWN BOMB': 'bomb', 'EXPLOSION': 'bomb', 'STORED MAGIC': 'bomb', 'FIRE': 'fire', 'PSIONIC': 'psionic', 'FELL': 'fall', 'FELL IN A PIT': 'fall' };
+  var GRIPES = {
+    fire: 'FIRE? CARL. YOU KNOW HOW I FEEL ABOUT FIRE.',
+    spikes: 'SPIKES? CARL. YOU KNOW HOW I FEEL ABOUT SPIKES.',
+    bomb: 'EXPLOSIONS? CARL. YOU KNOW HOW I FEEL ABOUT EXPLOSIONS. ESPECIALLY YOURS.',
+    wet: 'WATER? CARL. YOU KNOW HOW I FEEL ABOUT WATER.',
+    fall: 'FALLING? CARL. YOU KNOW HOW I FEEL ABOUT FALLING.',
+    dark: 'THE DARK? CARL. YOU KNOW HOW I FEEL ABOUT THE DARK.',
+    psionic: 'BRAIN SQUIDS? CARL. YOU KNOW HOW I FEEL ABOUT BRAIN SQUIDS.',
+    clown: 'CLOWNS? CARL. YOU KNOW HOW I FEEL ABOUT CLOWNS.',
+    lemur: 'LEMURS? CARL. YOU KNOW HOW I FEEL ABOUT LEMURS.'
+  };
+  function gripeKey(g, key) {
+    if (!key) return null;
+    if (g[key]) return key;
+    var parts = String(key).split('_');
+    for (var i = 0; i < parts.length; i++) if (g[parts[i]]) return parts[i];
+    return null;
+  }
+  function donutGripe(keys) {
+    if (!S || S.swap || !S.party || !S.party.donut || S.gripeT > 0) return false;
+    var g = D().donutGripes;
+    if (!g || typeof g !== 'object') g = GRIPES;
+    var run = getRun();
+    run.gripes = run.gripes || {};
+    for (var i = 0; i < keys.length; i++) {
+      var k = gripeKey(g, keys[i]);
+      if (!k || run.gripes[k]) continue;
+      var line = g[k];
+      if (typeof line !== 'string') line = line && line.text;
+      if (!line) continue;
+      run.gripes[k] = true; S.gripeT = 20;
+      toast(line, { title: 'DONUT', icon: 'star', color: '#f878f8', time: 3.8 });
+      if (S.party.donut) S.party.donut.castT = Math.max(S.party.donut.castT || 0, 0.4);
+      track('gripe');
+      return true;
+    }
+    return false;
+  }
+
   /* ---------------- player damage ---------------- */
   function hurtPlayer(dmg, srcX, opts) {
     opts = opts || {};
@@ -1114,7 +1250,9 @@
     S.combo = 0; S.comboT = 0;
     var mx = stats().maxHp;
     if (run.hp > 0 && run.hp <= mx * 0.25 && !S.lowHpQuipped) { S.lowHpQuipped = true; S.quipT = 0; quip('lowHp', 1); }
+    gore(cx(P), cy(P), { n: 4, small: true });
     if (run.hp <= 0) killPlayer(opts.cause || 'DAMAGE');
+    else donutGripe([opts.mob, opts.gripe, CAUSE_GRIPE[opts.cause], isDarkAt(cx(P), cy(P)) ? 'dark' : null]);
     return true;
   }
   function applyDamage(n) {
@@ -1126,6 +1264,7 @@
   function killPlayer(cause) {
     var P = S.player;
     if (P.state === 'dead') return;
+    if (!S.god) { var r0 = getRun(); r0.hp = 0; }   // every death waits on the death screen (game.js may plot-armor it)
     setCrouch(P, false);
     P.state = 'dead'; P.st = 0; P.vx = 0; P.vy = -230; P.cause = cause;
     S.combo = 0;
@@ -1213,7 +1352,7 @@
       case 'dyn': explode(x, y, K.dynR, num(st.dynDmg, 25), true, 'bomb'); break;
       case 'smoke': addCloud(x, y - 8); break;
       case 'mic': explode(x, y, 56, Math.round(num(st.jugDmg, 10) * 2.5), true, 'bomb', { noSelf: true }); addFire(x, y, 96); flash('#f8b800', 0.2); DCW.shake(6, 0.5); break;
-      case 'stray': explode(x, y, 26, 4, false, 'bomb', { cause: 'STORED MAGIC' }); break;
+      case 'stray': explode(x, y, 26, worldDmg(4), false, 'bomb', { cause: 'STORED MAGIC' }); break;
     }
   }
   function updXProj(p, i, dt) {
@@ -1257,9 +1396,20 @@
     S.special = 0;
     panic(P);
   }
+  // the big name card plays the first time each special is used in a crawl (run.specialsSeen); after
+  // that the name just pops over Carl. No full-screen white flash (Book One).
   function specialFx(name, sub) {
-    announce(name, { color: '#f8d878', time: 1.6, sub: sub || '' });
-    flash('#fcfcfc', 0.22); DCW.shake(3, 0.3); DCW.freeze(6);
+    var run = getRun(), P = S.player;
+    run.specialsSeen = run.specialsSeen || {};
+    if (!run.specialsSeen[name]) {
+      run.specialsSeen[name] = true;
+      announce(name, { color: '#f8d878', time: 1.6, sub: sub || '' });
+      DCW.shake(3, 0.3); DCW.freeze(6);
+    } else {
+      var half = (DCW.textWidth ? DCW.textWidth(name) : name.length * 6) / 2 + 4;
+      numText(U.clamp(cx(P), S.cam.x + half, S.cam.x + W - half), P.y - 14, name, '#f8d878');
+      DCW.shake(2, 0.2); DCW.freeze(4);
+    }
   }
   function panic(P) {
     specialFx('PANIC!', S.party.donut && !S.noMagic ? 'FEAR + MAGIC MISSILE' : 'FEAR');
@@ -1433,7 +1583,7 @@
       P.st += dt;
       P.vx = P.face * K.airkickVX; P.vy = K.airkickVY;
       var ab = { x: P.face > 0 ? P.x + 2 : P.x - 6, y: P.y + P.h - 10, w: P.w + 4, h: 14 };
-      var r = rollCrit(P.mongo ? num(st.biteDmg, 6) : st.kickDmg);
+      var r = rollCrit(P.mongo ? num(st.biteDmg, 6) : stompDmg(st));
       var hits = hitBox(ab, r.dmg, { kind: P.mongo ? 'bite' : 'stomp', kb: 140, dir: P.face, crit: r.crit, hitList: P.hitList });
       if (hits) {
         P.vy = -K.airkickBounce; P.vx = -P.face * 50; P.state = 'normal'; P.airJumps = st.extraJump ? 1 : 0;
@@ -1583,10 +1733,10 @@
       if (t === T_SPIKE && P.y + P.h > ty * TS + 6) spike = true;
       else if (t === T_LIQUID && P.y + P.h > ty * TS + 4) liquid = true;
     }
-    if (spike && P.inv <= 0) { if (hurtPlayer(2, undefined, { kby: -280, cause: 'SPIKES' })) { P.vx *= 0.3; } else if (S.god) P.vy = Math.min(P.vy, -200); }
+    if (spike && P.inv <= 0) { if (hurtPlayer(worldDmg(2), undefined, { kby: -280, cause: 'SPIKES', gripe: 'spikes' })) { P.vx *= 0.3; } else if (S.god) P.vy = Math.min(P.vy, -200); }
     if (liquid) {
       P.liqT -= dt;
-      if (P.liqT <= 0) { P.liqT = 0.5; if (hurtPlayer(1, undefined, { knock: false, cause: 'HAZARD' })) { sfx('splash'); } P.inv = Math.min(P.inv, 0.45); }
+      if (P.liqT <= 0) { P.liqT = 0.5; if (hurtPlayer(worldDmg(1), undefined, { knock: false, cause: 'HAZARD', gripe: 'wet' })) { sfx('splash'); } P.inv = Math.min(P.inv, 0.45); }
       P.vx *= 0.92;
       if (P.vy > 70) P.vy = 70;
     } else P.liqT = 0;
@@ -1603,6 +1753,7 @@
       if (o.kind === 'ticket' && !o.taken && overlap(P, o)) { grabTicket(o); continue; }
       if (o.kind === 'checkpoint' && !o.on && overlap(P, o)) {
         o.on = true; S.checkpoint = { x: cx(o), y: o.y + o.h }; S.lastSafe = S.checkpoint;
+        if (S.mode === 'level') { run.checkpoint = { level: S.id, x: S.checkpoint.x, y: S.checkpoint.y }; call(DCW, 'persist'); }   // a revival starts here
         sfx('checkpoint'); fxSprite('sparkle', cx(o), o.y + 6, 0.4, { color: '#58f898', size: 10 });
         numText(cx(o), o.y - 8, 'CHECKPOINT', '#58f898');
       }
@@ -1630,17 +1781,23 @@
     }
     return false;
   }
+  // NES rules (Book One): a pit is death, on every mode. The way back is plot armor or a revival,
+  // which return Carl to the last checkpoint flag. God mode keeps the old drop-back respawn.
   function pitFall() {
     var P = S.player, run = getRun();
-    if (P.state === 'pit' || P.state === 'dead') return;
+    if (P.state === 'pit' || P.state === 'dead' || P.state === 'victory') return;
     track('fall');
     sfx('hurt');
     setCrouch(P, false);
-    if (!S.god) { applyDamage(K.pitDamage); S.damageTaken += K.pitDamage; }
     S.combo = 0;
-    if (run.hp <= 0) { P.y = Math.min(P.y, S.L.pxH - 4); killPlayer('FELL'); return; }
+    if (!S.god) {
+      run.hp = 0; S.damageTaken += 1;
+      P.y = Math.min(P.y, S.L.pxH - 4);
+      if (S.kind === 'climb') P.y = Math.min(P.y, S.cam.y + H - 4);
+      killPlayer('FELL IN A PIT');
+      return;
+    }
     P.state = 'pit'; P.st = 0.55; P.vx = 0; P.vy = 0;
-    numText(cx(P), S.cam.y + H - 20, '-' + K.pitDamage, '#f83800');
   }
   function respawnFromPit() {
     var P = S.player, sp = S.lastSafe || S.checkpoint || S.start;
@@ -1657,7 +1814,7 @@
   }
 
   /* ---------------- interactions ---------------- */
-  var INTERACT = { sign: 1, door: 1, sdoor: 1, npc: 1, signpost: 1, charge: 1, decoySpot: 1 };
+  var INTERACT = { sign: 1, door: 1, sdoor: 1, npc: 1, signpost: 1, charge: 1, decoySpot: 1, cage: 1, lever: 1 };
   function interactAt(P) {
     for (var i = 0; i < S.objects.length; i++) {
       var o = S.objects[i];
@@ -1666,6 +1823,7 @@
       if (o.kind === 'npc' && !o.visible) continue;
       if (o.kind === 'charge' && o.planted) continue;
       if (o.kind === 'decoySpot' && o.used) continue;
+      if ((o.kind === 'cage' && o.broken) || (o.kind === 'lever' && o.on)) continue;
       if (P.x < o.x + o.w + 2 && P.x + P.w > o.x - 2 && P.y < o.y + o.h && P.y + P.h > o.y - 4) return o;
     }
     return null;
@@ -1680,6 +1838,8 @@
       case 'signpost': readSignpost(o); return false;
       case 'charge': if (P.onGround) { P.state = 'plant'; P.st = 0; P.plantObj = o; P.vx = 0; o.prog = 0; sfx('fuse'); return true; } return false;
       case 'decoySpot': o.used = true; dropDecoy(o); return false;
+      case 'cage': hitCage(o); P.throwT = 0.15; return false;
+      case 'lever': pullLever(o); return false;
     }
     return false;
   }
@@ -1848,7 +2008,7 @@
     C.cd -= dt;
     if (C.cd <= 0) {
       var e = nearestEnemy(cx(P), cy(P), K.missileRange, true);
-      if (e) { fireMissile(C.x + 5, C.y, e, Math.max(1, Math.round(num(stats().missileDmg, 4))), P.face); C.castT = 0.3; C.cd = K.missileEvery; }
+      if (e) { fireMissile(C.x + 5, C.y, e, Math.max(1, Math.round(num(stats().missileDmg, 4))), P.face); C.castT = 0.3; C.cd = Math.max(0.6, K.missileEvery - num(stats().missileCd, 0)); }
       else C.cd = 0.25;
     }
   }
@@ -2042,8 +2202,50 @@
     if (S && S.edefs && S.edefs[id]) return S.edefs[id];
     var data = D(), d = (data.enemies || {})[id] || BUILTIN[id];
     if (!d) d = { name: String(id).toUpperCase().replace(/_/g, ' '), hp: 4, dmg: 1, speed: 30, w: 12, h: 12, ai: 'walker', xp: 2, gold: [0, 2], sprite: id };
+    d = balanceEnemy(id, d);
     if (S) { S.edefs = S.edefs || {}; S.edefs[id] = d; }
     return d;
+  }
+
+  /* ---------------- BALANCE (DESIGN 16.1): the one place D.balance is applied ----------------
+     mobs + elites + their shots + world hazards: D.enemyFor(id, act) then x mobHp / mobDmg / mobXp
+     bosses (and the chase pursuer): x bossHp / bossDmg at setup. */
+  function bal(key) {
+    var v = call(G(), 'bal', key);
+    if (typeof v === 'number' && isFinite(v) && v > 0) return v;
+    var b = D().balance, x = b && b[key];
+    return (typeof x === 'number' && isFinite(x) && x > 0) ? x : 1;
+  }
+  function levelAct() {
+    var a = S && S.def && S.mode === 'level' ? num(S.def.act, 0) : 0;
+    if (!a) a = num(call(G(), 'act'), 0) || num(getRun().act, 1);
+    return Math.max(1, a);
+  }
+  function balanceEnemy(id, base) {
+    var data = D(), d = base, actMul = 1;
+    if (typeof data.enemyFor === 'function' && (data.enemies || {})[id]) {
+      try { var sc = data.enemyFor(id, levelAct()); if (sc && typeof sc === 'object') d = sc; } catch (e) { d = base; }
+      if (d !== base && num(base.dmg, 0) > 0) actMul = num(d.dmg, 1) / num(base.dmg, 1);
+    }
+    var o = {}, k;
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k)) o[k] = d[k];
+    if (o.citizen || o.invulnerable || o.ai === 'guard' || o.ai === 'citizen') { o.shotMul = 1; return o; }
+    var mh = bal('mobHp'), md = bal('mobDmg'), mx = bal('mobXp');
+    o.hp = Math.max(1, Math.round(num(o.hp, 3) * mh));
+    if (num(o.dmg, 0) > 0) o.dmg = Math.max(1, Math.round(o.dmg * md));
+    if (typeof o.xp === 'number') o.xp = Math.round(o.xp * mx);
+    if (typeof o.bodyHp === 'number') o.bodyHp = Math.max(1, Math.round(o.bodyHp * mh));
+    o.shotMul = actMul * md;   // its projectiles scale like its bite
+    return o;
+  }
+  // a hit that isn't a boss's: an enemy shot without a shooter, spikes, liquid, rubble, stray magic
+  function worldDmg(n) { return n > 0 ? Math.max(1, Math.round(n * bal('mobDmg'))) : n; }
+  function balanceBoss(B) {
+    var hm = bal('bossHp'), dm = bal('bossDmg');
+    B.maxHp = B.hp = Math.max(1, Math.round(B.maxHp * hm));
+    B.dmg = Math.max(1, Math.round(num(B.dmg, 2) * dm));
+    B.dmgMul = dm;
+    return B;
   }
   function makeEnemy(id, fx, fy, elite, flyerSlot) {
     var d = enemyDef(id);
@@ -2058,12 +2260,13 @@
     var e = {
       id: id, def: d, ai: ai, elite: !!elite, x: fx - w / 2, y: flying ? fy - TS / 2 - h / 2 : fy - h, w: w, h: h, vx: 0, vy: 0,
       hp: hp, maxHp: hp, face: Math.random() < 0.5 ? -1 : 1, flying: flying, baseSpeed: num(d.speed, 30), speed: num(d.speed, 30),
-      baseDmg: num(d.dmg, 1) + (elite ? 1 : 0), dmg: num(d.dmg, 1) + (elite ? 1 : 0),
+      baseDmg: num(d.dmg, 1) + (elite ? Math.max(1, Math.round(num(d.dmg, 1) * 0.25)) : 0), dmg: 0,
       aggro: num(d.aggro, 96), st: 0, timer: 0.5 + Math.random(), state: 'patrol', flash: 0, stun: 0, hurtT: 0, active: false,
       onGround: false, baseY: 0, t: Math.random() * 6, kids: 0, sprite: d.sprite || id, objSprite: d.objSprite || null, color: AI_COLORS[ai] || '#ac7c00', tele: 0,
       hostile: !neutral && !citizen && ai !== 'kbody', citizen: citizen, magicOnly: !!d.magicOnly, fearImmune: !!d.fearImmune,
       darkMul: num(d.darkMul, 0), regrow: !!d.regrow, isBody: ai === 'kbody', lostT: 0, invuln: ai === 'guard' || !!d.invulnerable
     };
+    e.dmg = e.baseDmg;
     e.baseY = e.y;
     if (flyerSlot && !flying) e.y = fy - h;
     if (ai === 'urchin') S.hasUrchins = true;
@@ -2086,7 +2289,17 @@
     var pd = projDef(id);
     var speed = num(opts.speed, num(pd.speed, 130)), grav = num(pd.gravity, 0);
     var w = num(pd.w, 6), h = num(pd.h, 6);
-    var p = { id: id, sprite: pd.sprite || id, x: x - w / 2, y: y - h / 2, w: w, h: h, vx: 0, vy: 0, grav: grav, life: num(pd.life, 3), dmg: num(opts.dmg, num(pd.dmg, 1)), t: 0, ghost: !!opts.ghost, charm: opts.charm || 0, color: opts.color };
+    // shots remember their shooter (the death screen and Donut's gripes name it)
+    var src = opts.src || S.shooter || null;
+    var dmg = opts.dmg;
+    if (dmg === undefined) {
+      dmg = num(pd.dmg, 1);
+      if (src && src.isBoss) dmg = Math.max(1, Math.round(dmg * num(src.dmgMul, 1)));
+      else if (src && src.def && src.def.shotMul !== undefined) dmg = dmg > 0 ? Math.max(1, Math.round(dmg * src.def.shotMul)) : dmg;
+      else dmg = worldDmg(dmg);
+    }
+    var p = { id: id, sprite: pd.sprite || id, x: x - w / 2, y: y - h / 2, w: w, h: h, vx: 0, vy: 0, grav: grav, life: num(pd.life, 3), dmg: dmg, t: 0, ghost: !!opts.ghost, charm: opts.charm || 0, color: opts.color,
+      srcId: src ? src.id : null, srcName: src ? ((src.def && src.def.name) || src.name || null) : (opts.cause || null) };
     if (opts.lob) {
       var g = grav > 0 ? grav : 420; p.grav = g;
       var T = U.clamp(Math.abs(tx - x) / 110, 0.55, 1.3);
@@ -2137,7 +2350,9 @@
         if (e.flying) { e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= 0.9; e.vy *= 0.9; }
         else { e.vx = U.approach(e.vx, 0, 500 * dt); e.vy = Math.min(e.vy + K.gravity * dt, K.fallMax); moveBody(e, dt, false); }
       } else {
+        S.shooter = e;
         (AI[e.ai] || AI.walker)(e, dt, dx, dy, adx, near, vis);
+        S.shooter = null;
       }
       if (e.y > S.L.pxH + 32) { if (e.lastHit !== undefined && S.t - e.lastHit < 2) killEnemy(e, { kind: 'pit' }); e.dead = true; continue; }
       if (e.flying) e.y = U.clamp(e.y, -8, S.L.pxH - e.h - 4);
@@ -2149,7 +2364,7 @@
     var P = S.player;
     if (e.citizen) return; // walk through the crowd; only deliberate hits are crimes
     if (P.vy > 20 && P.prevBottom <= e.y + Math.max(7, P.vy / 60 + 4) && P.state !== 'airkick') {
-      var st = stats(), r = rollCrit(P.mongo ? num(st.biteDmg, 6) : st.kickDmg);
+      var st = stats(), r = rollCrit(P.mongo ? num(st.biteDmg, 6) : stompDmg(st));
       damageActor(e, r.dmg, { kind: P.mongo ? 'bite' : 'stomp', kb: 40, crit: r.crit, dir: P.face });
       P.vy = -(I.down('jump') ? K.stompBounceHeld : K.stompBounce); P.jumping = I.down('jump'); P.onGround = false;
       P.airJumps = st.extraJump ? 1 : 0; P.inv = Math.max(P.inv, 0.08);
@@ -2159,7 +2374,7 @@
     }
     if (P.state === 'airkick' || harmless) return;
     var guard = e.ai === 'guard';
-    hurtPlayer(guard ? 999 : e.dmg, cx(e), { cause: guard ? 'guard' : (e.def.name || e.id), raw: guard });
+    hurtPlayer(guard ? 999 : e.dmg, cx(e), { cause: guard ? 'guard' : (e.def.name || e.id), raw: guard, mob: e.id, gripe: e.inDark ? 'dark' : null });
     if (e.ai === 'krasue' || e.ai === 'swarm') e.atkCd = 1.3;
   }
   function patrol(e, dt, speed) {
@@ -2586,7 +2801,13 @@
   function updCorpses(dt) { for (var i = S.corpses.length - 1; i >= 0; i--) { var c = S.corpses[i]; c.t -= dt; if (c.t <= 0 || c.gone) S.corpses.splice(i, 1); } }
 
   /* ---------------- hazards (waves, beams, spikes, rings, stabs, sweeps) ---------------- */
-  function addHaz(h) { h.t = 0; h.tele = h.tele || 0; S.haz.push(h); return h; }
+  function addHaz(h) {
+    h.t = 0; h.tele = h.tele || 0;
+    var src = S.shooter;
+    if (src && h.mob === undefined) { h.mob = src.id; if (!h.cause) h.cause = (src.def && src.def.name) || src.id; }
+    if (h.kind === 'ring' && !h.gripe) h.gripe = 'psionic';
+    S.haz.push(h); return h;
+  }
   function updHaz(dt) {
     var P = S.player;
     for (var i = S.haz.length - 1; i >= 0; i--) {
@@ -2596,7 +2817,7 @@
       if (!h.fired) { h.fired = true; if (h.onFire) h.onFire(h); }
       if (h.kind === 'ring') {
         h.r += h.speed * dt;
-        if (!h.hit && P.state !== 'dead') { var d = dist(cx(P), cy(P), h.cx, h.cy); if (Math.abs(d - h.r) < 8) { h.hit = true; hurtPlayer(h.dmg, h.cx, { cause: h.cause || 'PSIONIC' }); } }
+        if (!h.hit && P.state !== 'dead') { var d = dist(cx(P), cy(P), h.cx, h.cy); if (Math.abs(d - h.r) < 8) { h.hit = true; hurtPlayer(h.dmg, h.cx, { cause: h.cause || 'PSIONIC', mob: h.mob, gripe: h.gripe }); } }
         if (h.r >= h.rmax) S.haz.splice(i, 1);
         continue;
       }
@@ -2608,7 +2829,7 @@
         if (S.arena && S.locked && (h.x + h.w < S.arena.x0 || h.x > S.arena.x1)) h.life = 0;
       }
       if (h.t - h.tele > h.life) { S.haz.splice(i, 1); continue; }
-      if (!h.harmless && overlap(h, P) && P.state !== 'dead') hurtPlayer(h.dmg, cx(h), { cause: h.cause || 'BOSS', raw: !!h.lethal });
+      if (!h.harmless && overlap(h, P) && P.state !== 'dead') hurtPlayer(h.dmg, cx(h), { cause: h.cause || 'BOSS', raw: !!h.lethal, mob: h.mob, gripe: h.gripe });
       if (h.stunsMongo && S.party.mongo && overlap(h, S.party.mongo)) stunMongo(S.party.mongo, cx(h));
     }
   }
@@ -2627,7 +2848,7 @@
         dead = true;
         if (p.charm) {
           if (!(P.inv > 0)) { P.charmT = p.charm; numText(cx(P), P.y - 8, 'CHARMED!', '#f878f8'); sfx('missile', { pitch: 0.6 }); track('charmed'); }
-        } else { hurtPlayer(p.dmg, cx(p), { cause: 'PROJECTILE' }); hitSpark(cx(p), cy(p)); }
+        } else { hurtPlayer(p.dmg, cx(p), { cause: p.srcName || 'PROJECTILE', mob: p.srcId }); hitSpark(cx(p), cy(p)); }
       }
       if (!dead && M && M.heldT <= 0 && overlap(p, M)) { dead = true; stunMongo(M, cx(p)); }
       if (dead) S.eproj.splice(i, 1);
@@ -2724,14 +2945,23 @@
     else hitSpark(hx, hy, opts.crit);
     numText(hx + U.rand(-6, 6), (opts.hitY !== undefined ? hy - 10 : B.y - 2), n, opts.crit ? '#f8d878' : (opts.kind === 'boomy' ? '#f8b800' : '#fcfcfc'), opts.crit || (opts.kind === 'boomy' && B.facade) ? 2 : 1);
     if (!opts.noCombo) registerHit(n);
-    var frac = B.hp / B.maxHp;
-    for (var i = B.phases.length - 1; i > B.phase; i--) {
-      if (frac < num(B.phases[i].below, 0)) { if (B.pendingPhase < i) B.pendingPhase = i; break; }
+    if (opts.kind !== 'fire' && (!B.facade || opts.hitY !== undefined)) gore(hx, hy, { n: opts.crit || opts.kind === 'bomb' || opts.kind === 'boomy' ? 10 : 5, small: true });
+    // every phase is its own full health bar (Book One): when one empties and another phase is left,
+    // the boss goes straight into it at full health; only the last bar kills it
+    if (B.hp <= 0) {
+      if (B.phase < B.phases.length - 1) {
+        B.hp = 1;
+        if (B.pendingPhase <= B.phase) B.pendingPhase = B.phase + 1;
+        if (!(B.move && B.move.name === 'phase')) nextMove(B);
+        return false;
+      }
+      B.hp = 0; bossDie(B); return true;
     }
-    if (B.hp > 0) checkTicket(B);
-    if (B.hp <= 0) { B.hp = 0; bossDie(B); return true; }
+    checkTicket(B);
     return false;
   }
+  // how much of the whole fight is left (all bars), 0..1
+  function bossLeft(B) { var n = Math.max(1, B.phases.length); return U.clamp((n - 1 - B.phase + B.hp / B.maxHp) / n, 0, 1); }
   // Heather: at 25% a Fireball-or-Custard scratch ticket drops. Grab it: custard.
   function checkTicket(B) {
     if (B.ticketDropped || B.cured || !S.arena) return;
@@ -2739,7 +2969,7 @@
     if (!t) return;
     if (typeof t === 'number') t = { below: t };
     else if (typeof t !== 'object') t = {};
-    if (B.hp / B.maxHp >= num(t.below, 0.25)) return;
+    if (bossLeft(B) >= num(t.below, 0.25)) return;   // a share of the whole fight (all bars), not of one bar
     B.ticketDropped = true;
     var P = S.player;
     var x = U.clamp(cx(P) + (cx(B) > cx(P) ? -44 : 44), S.arena.x0 + 2 * TS, S.arena.x1 - 2 * TS);
@@ -2772,10 +3002,15 @@
   function nextMove(B) {
     if (B.pendingPhase > B.phase) {
       B.phase = B.pendingPhase; B.pIdx = 0;
+      B.hp = B.maxHp;                               // back to a full bar
       B.move = { name: 'phase', t: 0, sub: 0, st: 0, invuln: true };
       closeParts(B);
-      sfx('boss_roar'); DCW.shake(4, 0.6); flash('#f83800', 0.12);
-      announce('PHASE ' + (B.phase + 1), { color: '#f83800', time: 1 });
+      sfx('boss_roar'); sfx('heal'); DCW.shake(4, 0.6); flash('#f83800', 0.12);
+      numText(cx(B), B.y - 12, 'FULL HEALTH!', '#f83800', 2);
+      var ph = B.phases[B.phase] || {};
+      announce(ph.name || ('PHASE ' + (B.phase + 1)), { color: '#f83800', time: 1.2, sub: ph.sub || (B.phase === B.phases.length - 1 ? 'LAST BAR' : '') });
+      if (ph.lines && ph.lines.length) say(ph.lines);
+      track('boss_phase');
       return;
     }
     var pat = (B.phases[B.phase] && B.phases[B.phase].pattern) || ['idle:1'];
@@ -2812,7 +3047,9 @@
     if (!m) { nextMove(B); m = B.move; }
     m.t += dt;
     var fn = (B.facade && FACADE[m.name]) || MOVES[m.name] || MOVES.idle;
+    S.shooter = B;
     var done = fn(B, m, dt, P);
+    S.shooter = null;
     if (!B.flying && !m.noGrav) {
       B.vy = Math.min(B.vy + K.gravity * dt, 420);
       var wasG = B.onGround;
@@ -2836,7 +3073,7 @@
     if (S.party.mongo && overlap(S.party.mongo, hb)) stunMongo(S.party.mongo, cx(B));
     if (!overlap(P, hb)) return;
     if (P.vy > 20 && P.prevBottom <= B.y + 8 && P.state !== 'airkick') {
-      var st = stats(), r = rollCrit(P.mongo ? num(st.biteDmg, 6) : st.kickDmg);
+      var st = stats(), r = rollCrit(P.mongo ? num(st.biteDmg, 6) : stompDmg(st));
       damageBoss(B, r.dmg, { crit: r.crit, kind: 'stomp', hitX: cx(P) });
       P.vy = -(I.down('jump') ? K.stompBounceHeld : K.stompBounce); P.jumping = I.down('jump');
       P.vx = (cx(P) < cx(B) ? -1 : 1) * 70; P.y = B.y - P.h - 1; P.inv = Math.max(P.inv, 0.15);
@@ -2844,7 +3081,7 @@
       return;
     }
     if (P.state === 'airkick') return;
-    hurtPlayer(B.dmg, cx(B), { cause: B.def.name || 'BOSS' });
+    hurtPlayer(B.dmg, cx(B), { cause: B.def.name || 'BOSS', mob: B.id });
   }
   function lockArena(B) {
     S.locked = true;
@@ -2877,6 +3114,7 @@
     B.dying = true; B.dt = 0; B.move = null; B.vx = 0;
     if (B.facade) { closeParts(B); B.alpha = 1; B.y = B.homeY; }
     sfx('boss_die'); DCW.freeze(18); DCW.shake(5, 1.6); flash('#fcfcfc', 0.25);
+    gore(cx(B), cy(B), { big: true, n: 40, gibs: '#a81000' });
     S.eproj.length = 0; S.haz.length = 0; S.hooks.length = 0;
     for (var i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && e.isAdd) { e.dead = true; smoke(cx(e), cy(e), 3); } }
     var M = S.party.mongo; if (M && M.heldT > 0) M.heldT = 0.01;
@@ -2892,13 +3130,15 @@
       B.boomT = 0.11;
       fxSprite('explosion', B.x + Math.random() * B.w, B.y + Math.random() * B.h + 10, 0.4, { color: '#f8b800', size: 14, scale: Math.random() < 0.3 ? 2 : 1, front: true });
       debris(B.x + Math.random() * B.w, B.y + Math.random() * B.h, 4, '#f8b800', 140);
-      if (Math.floor(B.dt * 4) !== B.lastBoomS) { B.lastBoomS = Math.floor(B.dt * 4); sfx('explosion', { vol: 0.6 }); }
+      if (Math.floor(B.dt * 4) !== B.lastBoomS) { B.lastBoomS = Math.floor(B.dt * 4); sfx('explosion', { vol: 0.6 }); gore(B.x + Math.random() * B.w, B.y + Math.random() * B.h, { n: 12 }); }
     }
     if (B.dt >= 2.2 && !B.gone) {
       B.gone = true;
       flash('#fcfcfc', 0.3); DCW.shake(6, 0.5); DCW.freeze(8);
       for (var i = 0; i < 4; i++) fxSprite('explosion', cx(B) + U.rand(-16, 16), cy(B) + U.rand(-10, 20), 0.5, { scale: 2, size: 24, color: '#fcfcfc', front: true });
       smoke(cx(B), cy(B), 10);
+      gore(cx(B), cy(B), { big: true, n: 48, gibs: '#881400' });
+      for (var sk = -1; sk <= 1; sk++) splat(cx(B) + sk * B.w * 0.3, B.y + B.h, true);
       var d = B.def;
       call(G(), 'addXP', Math.round(num(d.xp, 50)));
       var g = d.gold || [20, 40];
@@ -3507,7 +3747,7 @@
     var c = S.def.chase || {};
     var bid = c.pursuer || S.def.boss;
     var bd = bossDef(bid);
-    S.chase = { speed: num(c.speed, 62), bossId: bid, catchDmg: num(c.catchDmg, 4), lungeT: 2.5, lunge: 0, ls: 'idle', arrived: false, sprite: bd.sprite || bid, name: bd.name || 'IT', t: 0 };
+    S.chase = { speed: num(c.speed, 62), bossId: bid, catchDmg: Math.max(1, Math.round(num(c.catchDmg, 4) * bal('bossDmg'))), lungeT: 2.5, lunge: 0, ls: 'idle', arrived: false, sprite: bd.sprite || bid, name: bd.name || 'IT', t: 0 };
     if (S.boss) S.boss.hidden = true;
   }
   function chaseRect() { var C = S.chase; return { x: S.cam.x - 44, y: S.cam.y - 20, w: 48 + C.lunge, h: H + 40 }; }
@@ -3526,7 +3766,7 @@
     if (C.ls === 'out') { C.lunge = Math.min(60, C.lunge + 220 * dt); if (C.lunge >= 60) C.ls = 'back'; }
     else if (C.ls === 'back') { C.lunge = Math.max(0, C.lunge - 80 * dt); if (C.lunge <= 0) { C.ls = 'idle'; C.lungeT = U.rand(1.6, 3.0); } }
     if (P.state !== 'dead' && P.state !== 'pit' && P.state !== 'victory' && overlap(P, chaseRect())) {
-      if (hurtPlayer(C.catchDmg, S.cam.x - 200, { cause: C.name, kby: -290 })) { P.vx = 250; track('caught'); }
+      if (hurtPlayer(C.catchDmg, S.cam.x - 200, { cause: C.name, kby: -290, mob: C.bossId })) { P.vx = 250; track('caught'); }
       else { var r = chaseRect(); P.x = Math.max(P.x, r.x + r.w + 1); }
     }
   }
@@ -3689,7 +3929,7 @@
           if (useItem(id, 1)) {
             var ex = cx(P) + U.rand(-26, 26), ey = cy(P) + U.rand(-8, 8);
             numText(cx(P), P.y - 12, itemName(id) + ' WENT OFF!', '#f83800');
-            explode(ex, ey, 26, 3, false, 'bomb', { cause: 'STORED MAGIC' });
+            explode(ex, ey, 26, worldDmg(3), false, 'bomb', { cause: 'STORED MAGIC' });
           }
         }
       }
@@ -3781,24 +4021,44 @@
       c.y = maxY < 0 ? maxY : U.clamp(c.y, 0, maxY);
       return;
     }
-    if (P.state !== 'pit' && P.state !== 'dead') {
-      c.look = snap ? P.face * K.camLook : U.approach(c.look, P.face * K.camLook, K.camLookSpeed * dt);
-      var tx = cx(P) + c.look - W / 2;
-      var B = S.boss;
-      if (S.locked && B && !B.gone && !B.facade) {
-        tx = tx * 0.6 + (cx(B) - W / 2) * 0.4;
-        tx = U.clamp(tx, cx(P) - W + 56, cx(P) - 56);
-      }
-      var py = P.y + P.h / 2, ty = c.y;
-      if (S.kind === 'drop') { if (py - c.y < 56) ty = py - 56; else if (py - c.y > 96) ty = py - 96; }
-      else if (py - c.y < 64) ty = py - 64; else if (py - c.y > 118) ty = py - 118;
-      if (snap && S.vertical) ty = py - (S.kind === 'drop' ? 70 : 110);
-      if (S.kind === 'climb' && !snap) ty = Math.min(ty, c.y);
-      if (snap) { c.x = tx; c.y = ty; }
-      else { c.x += (tx - c.x) * Math.min(1, K.camLerp * dt); c.y += (ty - c.y) * Math.min(1, 7 * dt); }
-    }
     if (S.locked && S.arena) { minX = S.arena.x0; maxX = S.arena.x1 - W; if (maxX < minX) minX = maxX = (S.arena.x0 + S.arena.x1 - W) / 2; }
     if (maxX < minX) maxX = minX = (L.pxW - W) / 2;
+    if (P.state !== 'pit' && P.state !== 'dead') {
+      // Calm camera (Book One): the screen only moves when Carl travels. Look-ahead builds after he
+      // has run one way for a moment (turning round to swing or standing still leaves it alone), a
+      // dead zone soaks up small steps, and locked arenas never chase the boss (an arrow at the
+      // screen edge shows where it is). The follow target is clamped before easing.
+      var running = Math.abs(P.vx) > 50 && (P.vx > 0 ? 1 : -1) === P.face;
+      c.runT = running ? num(c.runT, 0) + dt : 0;
+      var wantLook = c.look;
+      if (S.locked) { if (running) wantLook = 0; }
+      else if (c.runT > K.camLookDelay) wantLook = P.face * K.camLook;
+      c.look = snap ? (S.locked ? 0 : P.face * K.camLook) : U.approach(c.look, wantLook, K.camLookSpeed * dt);
+      var want = cx(P) + c.look - W / 2, DZ = S.locked ? K.camDeadArena : K.camDead;
+      var tx = snap || c.tx === undefined ? want : c.tx;
+      if (want > tx + DZ) tx = want - DZ; else if (want < tx - DZ) tx = want + DZ;
+      c.tx = tx = U.clamp(tx, minX, maxX);
+      var py = P.y + P.h / 2, ty = c.ty === undefined || snap ? c.y : c.ty;
+      if (S.vertical) {
+        // the same calm on Y: a look-ahead that builds only after climbing or falling one way for a
+        // moment, inside a band that soaks up jumps
+        var vdir = P.state === 'climb' ? (P.vy < -10 ? -1 : P.vy > 10 ? 1 : 0) : (P.vy > 160 ? 1 : 0);
+        c.vT = vdir && vdir === c.vDir ? num(c.vT, 0) + dt : 0; c.vDir = vdir;
+        var wantLY = c.vT > K.camLookDelay ? vdir * K.camLookY : (P.onGround || P.state === 'climb' ? 0 : num(c.lookY, 0));
+        c.lookY = snap ? 0 : U.approach(num(c.lookY, 0), wantLY, K.camLookSpeed * dt);
+        var top = S.kind === 'drop' ? 56 : 64, bot = S.kind === 'drop' ? 96 : 118, fy = py + c.lookY;
+        if (snap) ty = py - (S.kind === 'drop' ? 70 : 110);
+        else if (fy - ty < top) ty = fy - top; else if (fy - ty > bot) ty = fy - bot;
+        if (S.kind === 'climb' && !snap) ty = Math.min(ty, c.y);   // a climb never scrolls back down
+      } else {
+        if (py - ty < 64) ty = py - 64; else if (py - ty > 118) ty = py - 118;
+      }
+      c.ty = ty = (L.pxH - H) < 0 ? L.pxH - H : U.clamp(ty, 0, L.pxH - H);
+      if (snap) { c.x = tx; c.y = ty; }
+      else { c.x += (tx - c.x) * Math.min(1, K.camLerp * dt); c.y += (ty - c.y) * Math.min(1, 7 * dt); }
+      if (Math.abs(c.x - tx) < 0.05) c.x = tx;
+      if (Math.abs(c.y - ty) < 0.05) c.y = ty;
+    }
     if (snap) c.x = U.clamp(c.x, minX, maxX);
     else {
       if (c.x < minX) c.x = S.locked ? U.approach(c.x, minX, 380 * dt) : minX;
@@ -3826,8 +4086,20 @@
     S.player = makePlayer(S.start.x, S.start.y);
     if (S.start.face) S.player.face = S.start.face;
     S.lastSafe = { x: S.start.x, y: S.start.y };
+    // back in a level after dying: start at the last checkpoint flag (the layout is seeded per run, so
+    // it is the same flag in the same place); flags before it count as touched
+    var cp = run.checkpoint;
+    if (S.mode === 'level' && cp && cp.level === S.id && typeof cp.x === 'number' && typeof cp.y === 'number' && S.kind !== 'survival') {
+      S.player.x = cp.x - S.player.w / 2; S.player.y = cp.y - S.player.h;
+      S.checkpoint = { x: cp.x, y: cp.y }; S.lastSafe = S.checkpoint; S.fromCheckpoint = true;
+      S.objects.forEach(function (o) {
+        if (o.kind !== 'checkpoint') return;
+        var feet = o.y + o.h;
+        if (S.kind === 'climb' ? feet >= cp.y - 1 : S.kind === 'drop' ? feet <= cp.y + 1 : cx(o) <= cp.x + 1) o.on = true;
+      });
+    }
     setupParty();
-    if (S.isBoss) S.boss = makeBoss();
+    if (S.isBoss) S.boss = balanceBoss(makeBoss());
     if (S.mode === 'level') {
       if (S.kind === 'chase' || S.def.chase) setupChase();
       if (S.kind === 'survival' || S.def.survival) setupSurvival();
@@ -3837,14 +4109,18 @@
     var mx = stats().maxHp;
     if (!(run.hp > 0)) run.hp = mx;
     if (run.hp > mx) run.hp = mx;
+    // back from a plot-armor save: the System AI has something to say about it (and no name banner)
+    var plot = has(G(), 'takePlotArmor') ? call(G(), 'takePlotArmor') : null;
+    if (plot && plot.length) S.introPending = plot;
+    S.regenT = 0; S.gripeT = 0; S.mobIntroQ = []; S.mobIntroT = 0; S.splats = [];
     if (has(ART(), 'prepare')) call(ART(), 'prepare', S.theme);
     updCamera(0, true);
     if (S.mode === 'street') {
       music((S.night && S.def.musicNight) || S.def.music);
-      announce(S.def.name || 'THE OVER CITY', { time: 1.4, sub: clock().label || '' });
+      if (!plot) announce(S.def.name || 'THE OVER CITY', { time: 1.4, sub: clock().label || '' });
     } else {
       if (S.def.music) music(S.def.music);
-      announce(S.def.name || 'LEVEL', { time: 1.6, sub: S.swap ? 'YOU ARE MONGO' : S.solo ? 'ALONE' : '' });
+      if (!plot) announce(S.def.name || 'LEVEL', { time: 1.6, sub: S.swap ? 'YOU ARE MONGO' : S.solo ? 'ALONE' : S.fromCheckpoint ? 'CHECKPOINT' : '' });
     }
   }
   function exit() { if (S) S.exited = true; }
@@ -3856,12 +4132,33 @@
     if (S.flashT > 0) S.flashT -= dt;
     if (S.darkT > 0) S.darkT -= dt;
     if (S.specialLockT > 0) S.specialLockT -= dt;
+    if (S.gripeT > 0) S.gripeT -= dt;
     call(G(), 'tick', dt);
     if (S.introPending && S.t > 0.5) { var line = S.introPending; S.introPending = null; say(line); }
-    if (I.pressed('start') && !S.done && P.state !== 'dead' && P.state !== 'pit' && !S.leaving) {
+    else if (S.mobIntroQ && S.mobIntroQ.length && !S.locked) {
+      // the System AI introduces a mob the first time one dies (queued; never on top of other dialog)
+      S.mobIntroT -= dt;
+      if (S.mobIntroT <= 0 && P.state !== 'dead' && !S.done && !(has(UI(), 'blocking') && call(UI(), 'blocking'))) say(S.mobIntroQ.splice(0, S.mobIntroQ.length));
+    }
+    var alive = !S.done && P.state !== 'dead' && P.state !== 'pit' && !S.leaving;
+    if (I.pressed('start') && alive) {
       if (has(UI(), 'openPause')) { call(UI(), 'openPause', { canFlee: S.mode === 'level' }); return; }
     }
-    if (I.pressed('select') && !S.done && has(UI(), 'openMap')) { call(UI(), 'openMap'); return; }
+    // SELECT: gear in levels (map on the streets, or when the UI has no gear screen yet)
+    if (I.pressed('select') && alive) {
+      if (S.mode === 'level' && has(UI(), 'openGear')) { call(UI(), 'openGear'); return; }
+      if (has(UI(), 'openMap')) { call(UI(), 'openMap'); return; }
+    }
+    // gear perk: regen hp every 8 s
+    var regen = num(stats().regen, 0);
+    if (regen > 0 && alive && !S.swap) {
+      S.regenT = (S.regenT || 0) + dt;
+      if (S.regenT >= 8) {
+        S.regenT = 0;
+        var rr = getRun(), mxh = stats().maxHp;
+        if (rr.hp > 0 && rr.hp < mxh) { if (has(G(), 'heal')) call(G(), 'heal', regen); else rr.hp = Math.min(mxh, rr.hp + regen); numText(cx(P), P.y - 6, '+' + regen, '#58f898'); }
+      }
+    }
     if (S.done && S.endT >= 0) {
       if (S.pendingDefeat) { var dl = S.pendingDefeat; S.pendingDefeat = null; say(dl); }
       S.endT -= dt;
@@ -3887,10 +4184,11 @@
     updOrbs(dt);
     updRegrows(dt);
     updCorpses(dt);
+    updSplats(dt);
     updPickups(dt);
     updParts(dt);
     if (S.comboT > 0) { S.comboT -= dt; if (S.comboT <= 0) S.combo = 0; }
-    if (!S.done && !S.swap && S.specialLockT <= 0) S.special = Math.min(1, S.special + K.specialPassive * dt);
+    if (!S.done && !S.swap && S.specialLockT <= 0) S.special = Math.min(1, S.special + K.specialPassive * dt * specialMul());
     computeLights();
     updCamera(dt, false);
   }
@@ -3953,6 +4251,7 @@
     else { ctx.fillStyle = S.night ? '#080818' : '#301810'; ctx.fillRect(0, 0, W, H); }
     if (S.boss && S.boss.facade && !S.boss.gone) drawFacade(ctx, S.boss, camX, camY);
     drawTiles(ctx, camX, camY);
+    drawSplats(ctx, camX, camY);
     for (i = 0; i < S.objects.length; i++) drawObject(ctx, S.objects[i], camX, camY);
     for (i = 0; i < S.platforms.length; i++) {
       var pl = S.platforms[i];
@@ -3965,6 +4264,7 @@
     for (i = 0; i < S.pickups.length; i++) drawPickup(ctx, S.pickups[i], camX, camY);
     for (i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && onScreen(e, 24)) drawEnemy(ctx, e, camX, camY); }
     if (S.boss && !S.boss.gone && !S.boss.facade && !S.boss.hidden) drawBoss(ctx, S.boss, camX, camY);
+    if (S.boss && !S.boss.gone) drawBossPointer(ctx, S.boss, camX, camY);
     if (S.boss && S.boss.facade && !S.boss.gone) drawFacadeParts(ctx, S.boss, camX, camY);
     if (S.chase && !S.chase.arrived) drawPursuer(ctx, camX, camY);
     drawHooks(ctx, camX, camY);
@@ -4088,11 +4388,23 @@
       }
       if (o.st.locked && o.st.lockText && d < 30) DCW.text(o.st.lockText, U.clamp(lx, 60, W - 60), ly - 10, '#f83800', { align: 'center' });
     }
-    var near = interactAt(P);
-    if (near && Math.floor(S.t * 3) % 2 === 0) {
+    // NES-style blinking UP arrow over anything you can use when you stand at it
+    var near = !S.done && (P.onGround || P.state === 'climb') && P.state !== 'hurt' ? interactAt(P, true) : null;
+    if (near && Math.floor(S.t * 3) % 3 !== 2) {
       var ay = near.kind === 'sdoor' ? near.y - 22 : near.y - 12;
-      DCW.text('↑', Math.round(cx(near) - camX), Math.round(ay - camY), '#fcfcfc', { align: 'center' });
+      DCW.text('\u25B2', Math.round(cx(near) - camX), Math.round(ay - camY - (Math.floor(S.t * 3) % 2)), '#fcfcfc', { align: 'center' });
     }
+  }
+  // locked arenas don't chase the boss with the camera: when it's off screen a white arrow blinks at
+  // that edge, level with it
+  function drawBossPointer(ctx, B, camX, camY) {
+    if (!S.locked || B.dying || B.dead || B.hidden || !B.active) return;
+    if (B.facade && B.alpha < 0.5) return;   // a cloaked Dispenser stays hidden
+    var l = B.x - camX, r = B.x + B.w - camX;
+    if (r > 0 && l < W) return;
+    if (Math.floor(S.t * 4) % 2) return;
+    var right = l >= W, y = U.clamp(Math.round(B.y + B.h / 2 - camY), 30, H - 30);
+    DCW.text(right ? '\u25B6' : '\u25C0', right ? W - 5 : 5, y - 3, '#fcfcfc', { align: 'center' });
   }
   function drawPips(ctx, camX, camY) {
     if (!S.party.donut || S.noMagic) return;
@@ -4464,6 +4776,10 @@
     if (S.chase && !S.chase.arrived) hud.meters.push({ label: 'RUN!', frac: U.clamp(cx(S.player) / ((S.arena ? S.arena.x0 : S.L.pxW) || 1), 0, 1), color: '#f83800' });
     hud.bossHp = (B && S.locked && !B.gone) ? Math.max(0, B.hp / B.maxHp) : null;
     hud.bossName = hud.bossHp !== null ? (B.def.name || 'BOSS') : null;
+    // every phase is a full bar: phases = bar count (pips), phase = 0-based bar now, barsLeft incl. this one
+    hud.bossPhases = hud.bossHp !== null ? B.phases.length : null;
+    hud.bossPhase = hud.bossHp !== null ? B.phase : null;
+    hud.bossBarsLeft = hud.bossHp !== null ? B.phases.length - B.phase : null;
     hud.time = null; hud.par = null;
     hud.stageName = S.def.name || ''; hud.areaName = S.mode === 'street' ? (S.def.name || '') : null;
     hud.mode = S.mode; hud.kind = S.kind; hud.night = S.night; hud.wanted = S.mode === 'street' && run.wanted === S.areaId;
@@ -4476,7 +4792,10 @@
     if (hud.timer) DCW.text(hud.timer.label + ' ' + Math.ceil(hud.timer.t), W / 2, 4, hud.timer.warn ? '#f83800' : '#fcfcfc', { align: 'center' });
     if (hud.objective) DCW.text(hud.objective, W / 2, H - 10, '#f8d878', { align: 'center' });
     if (hud.combo > 1) DCW.text(hud.combo + ' HITS', W - 4, 14, '#f8d878', { align: 'right' });
-    if (hud.bossHp !== null) { DCW.bar(60, H - 10, 200, 4, hud.bossHp, '#f83800'); DCW.text(hud.bossName, 160, H - 20, '#fcfcfc', { align: 'center' }); }
+    if (hud.bossHp !== null) {
+      DCW.bar(60, H - 10, 200, 4, hud.bossHp, '#f83800'); DCW.text(hud.bossName, 160, H - 20, '#fcfcfc', { align: 'center' });
+      for (var pi = 0; pi < hud.bossPhases; pi++) DCW.rect(262 + pi * 5, H - 10, 3, 4, pi < hud.bossBarsLeft ? '#f83800' : '#3c3c3c');
+    }
   }
 
   /* ---------------- debug / test hooks ---------------- */
@@ -4503,6 +4822,37 @@
     }
   }
 
+  // Balance meter for the lead: Carl's numbers now vs every mob of the current level (after
+  // D.enemyFor + D.balance), as punches to kill and hits to die. DCW.stage.debugBalance()
+  function debugBalance() {
+    if (!S) return null;
+    var st = stats(), run = getRun(), def = num(st.def, 0), mx = st.maxHp, out = [];
+    var ids = {};
+    var add = function (list, tag) { arr(list).forEach(function (e) { var id = Array.isArray(e) ? e[0] : e; if (typeof id === 'string') ids[id] = ids[id] || tag; }); };
+    var d = S.def || {};
+    if (S.mode === 'street') { var en = d.enemies || {}; add(en.day, 'mob'); add(en.night, 'mob'); }
+    else { add(d.enemies, 'mob'); add(d.elite, 'elite'); add(d.flyers, 'mob'); if (d.survival) add(d.survival.waves, 'mob'); }
+    S.enemies.forEach(function (e) { if (!e.citizen && e.ai !== 'guard') ids[e.id] = ids[e.id] || 'mob'; });
+    Object.keys(ids).forEach(function (id) {
+      var ed = enemyDef(id);
+      [false, true].forEach(function (elite) {
+        if (elite && ids[id] !== 'elite') return;
+        var hp = Math.max(1, Math.round(num(ed.hp, 3) * (elite ? 1.6 : 1))), dmg = num(ed.dmg, 1) + (elite ? Math.max(1, Math.round(num(ed.dmg, 1) * 0.25)) : 0);
+        var taken = Math.max(1, Math.round(dmg - def));
+        out.push({ id: id + (elite ? '*' : ''), hp: hp, dmg: dmg, punches: Math.ceil(hp / Math.max(1, num(st.dmg, 1))), hitsToDie: dmg > 0 ? Math.ceil(mx / taken) : null, act: levelAct() });
+      });
+    });
+    var B = S.boss, boss = null;
+    if (B) {
+      var bt = Math.max(1, Math.round(B.dmg - def));
+      boss = { id: B.id, barHp: B.maxHp, bars: B.phases.length, totalHp: B.maxHp * B.phases.length, dmg: B.dmg,
+        punches: Math.ceil(B.maxHp * B.phases.length / Math.max(1, num(st.dmg, 1))), hitsToDie: Math.ceil(mx / bt) };
+    }
+    return { level: S.id, mode: S.mode, kind: S.kind, act: levelAct(), carl: { level: run.level, punch: st.dmg, kick: st.kickDmg, maxHp: mx, def: def,
+      hob: st.hobDmg, dyn: st.dynDmg, jug: st.jugDmg, missile: st.missileDmg, bite: st.biteDmg },
+      balance: { mobHp: bal('mobHp'), mobDmg: bal('mobDmg'), bossHp: bal('bossHp'), bossDmg: bal('bossDmg'), mobXp: bal('mobXp') }, mobs: out, boss: boss };
+  }
+
   var scene = { enter: enter, exit: exit, update: update, idle: idle, draw: draw };
   var inited = false;
   DCW.stage = {
@@ -4522,6 +4872,8 @@
     playerX: function () { return S && S.player ? Math.round(cx(S.player)) : null; },
     mode: function () { return S ? S.mode : null; },
     debugClear: debugClear, debugGod: debugGod, debugWarp: debugWarp, debugWarpBoss: debugWarp,
+    debugBalance: debugBalance,
+    bal: bal,
     // test helpers (harmless in production)
     spawn: function (id, x, feetY, opts) { return S ? spawnEnemy(id, x, feetY, opts) : null; },
     detonate: function () { if (S && S.plant) detonate(); }

@@ -1,8 +1,9 @@
 /* ============================================================
    DCW UI (book 2) - modal stack, dialog with talking portraits,
-   toasts, banners, menus, HUD, pause + sub-screens (map, quests,
-   inventory, character, loot boxes, wardrobe, achievements,
-   settings, controls, shops) and the non-gameplay scenes (title +
+   toasts, banners, menus, HUD (boss phase pips), pause + sub-screens
+   (map, gear, quests, inventory, character, loot boxes, wardrobe,
+   achievements, settings, controls, shops). SELECT: ui.onSelect()
+   (map on streets, gear elsewhere). Non-gameplay scenes (title +
    book 1 import, class pick, cinema player, inn, Desperado Club,
    results, death, endings + credits).
    Contract: ../DESIGN.md section 11 (book 1's UI contract still applies).
@@ -1626,6 +1627,15 @@
   function gearDef(id) { var g = G('gearDef', id); if (g && typeof g === 'object') return g; var d = D('gear'); return (d && d[id]) || null; }
   function gearName(id) { var d = gearDef(id); return up((d && d.name) || String(id || '').replace(/_/g, ' ')); }
   function gearIcon(id) { var d = gearDef(id); return (d && d.icon) || 'gear_' + id; }
+  // list name: data's short name, else drop ENCHANTED and whole trailing words until it fits (no "OF THE" stubs)
+  function gearShort(def, id, px) {
+    var n = up((def && (def.short || def.name)) || String(id || '').replace(/_/g, ' ')).replace(/^ENCHANTED\s+/, '');
+    if (tw(n) <= px) return n;
+    var w = n.split(/\s+/);
+    while (w.length > 1 && (tw(w.join(' ')) > px || /^(OF|THE|AND|A)$/.test(w[w.length - 1]))) w.pop();
+    var r = w.join(' ');
+    return tw(r) <= px ? r : fitText(n, px);
+  }
   function gearWho(def) { var w = def && String(def.who || '').toLowerCase(); return GEAR_WHO.indexOf(w) >= 0 ? w : 'carl'; }
   function runGear() {
     var l = G('gearList'), tab = D('gear') || {}, order = Object.keys(tab);
@@ -1685,7 +1695,7 @@
     if (ui.isOpen('gear')) return null;
     sfx('menu_select');
     var m = { kind: 'gear', sel: 0, scroll: 0, msg: '', msgT: 0, skinI: -1, msgOk: true };
-    var TOP = 21, BOT = 158;
+    var TOP = 21, BOT = 156;
     function rows() {
       var list = runGear(), out = [{ type: 'sum' }];
       GEAR_WHO.forEach(function (w) {
@@ -1777,10 +1787,10 @@
       for (var i = m.scroll; i < rs.length; i++) {
         var r = rs[i], h = rowH(r), act = i === m.sel;
         if (y + h > BOT + 2) { more = true; break; }
-        if (act) R(9, y - 2, 142, h, '#1c2c5c');
+        if (act) R(9, y - 2, 139, h, '#1c2c5c');
         if (r.type === 'head') {
           T(r.text, 12, y, C.dgray, { shadow: null });
-          R(12 + tw(r.text) + 4, y + 3, Math.max(0, 136 - tw(r.text) - 4), 1, '#2c3c7c');
+          R(12 + tw(r.text) + 4, y + 3, Math.max(0, 134 - tw(r.text) - 4), 1, '#2c3c7c');
         } else if (r.type === 'sum') {
           icon(ctx, 'star', 12, y - 1);
           T('ALL PERKS', 23, y, act ? C.gold : C.yellow);
@@ -1794,20 +1804,20 @@
           T(fitText(skinName(cur), 108), 31, y + 9, cur === equipped('skin') ? C.green : (act ? C.white : C.gray), { shadow: null });
         } else {
           gearIconDraw(ctx, r.g.id, 12, y - 1);
-          T(fitText(r.g.def.name || gearName(r.g.id), 124), 23, y, act ? C.white : C.gray);
+          T(gearShort(r.g.def, r.g.id, 122), 23, y, act ? C.white : C.gray);
           var ps = perkShort(r.g.def.perk);
-          if (ps) T(fitPerks(ps, 124), 23, y + 9, act ? C.green : C.dgreen, { shadow: null });
+          if (ps) T(fitPerks(ps, 122), 23, y + 9, act ? C.green : C.dgreen, { shadow: null });
           else T('NO PERK. LOOKS COOL.', 23, y + 9, C.ddgray, { shadow: null });
         }
         y += h;
       }
-      if (m.scroll > 0) T('▲', 142, TOP - 9 + (blink(4) ? 0 : -1), C.gray);
-      if (more) T('▼', 142, BOT + (blink(4) ? 0 : 1), C.gray);
+      if (m.scroll > 0) T('▲', 149, TOP + (blink(4) ? 0 : -1), C.gray, { shadow: null });
+      if (more) T('▼', 149, BOT - 8 + (blink(4) ? 0 : 1), C.gray, { shadow: null });
       // ---- preview ----
       var px = 156, pw = 154, pv = 20, ph = 66, feet = pv + ph - 5, fr = Math.floor((DCW.t || 0) * 2);
       DCW.box(px, pv, pw, ph, { fill: '#2c2450' });
       R(px + 2, feet - 1, pw - 4, ph - (feet - pv) - 1, '#1c1438');
-      for (var s = 0; s < 5; s++) R(px + 10 + s * 30, pv + 6 + (s % 2) * 5, 1, 1, C.gray);
+      for (var s = 0; s < 4; s++) R(px + 10 + s * 28, pv + 6 + (s % 2) * 5, 1, 1, C.gray);
       var skin = outfitRow ? (row.skins[m.skinI] || equipped('skin')) : equipped('skin');
       var who = row && row.type === 'gear' ? row.who : 'all';
       var mongoS = actorName(compSprite('mongo'), 'idle');
@@ -1832,9 +1842,9 @@
         if (b.text) String(b.text).split('\n').forEach(function (part) { wrap(up(part), pw - 4).forEach(function (t) { lines.push([t, b.color || C.gray]); }); });
       });
       var FIT = 7;
-      if (lines.length > FIT) { lines = lines.slice(0, FIT - 1); lines.push([(blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ MORE', C.white]); }
+      if (lines.length > FIT) { lines = lines.slice(0, FIT - 1); lines.push([bn('confirm') + ': READ MORE ' + (blink(2) ? '▼' : ' '), C.white]); }
       lines.forEach(function (ln, k) { T(ln[0], px + 2, pv + ph + 5 + k * 10, ln[1]); });
-      if (m.msgT > 0) { var mc = m.msgOk ? C.green : C.red; DCW.box(70, 74, 180, 18, { border: mc }); T(fitText(m.msg, 170), 160, 79, mc, { align: 'center' }); }
+      if (m.msgT > 0) { var mc = m.msgOk ? C.green : C.red; DCW.box(px + 4, pv + ph - 24, pw - 8, 17, { border: mc }); T(fitText(m.msg, pw - 16), px + pw / 2, pv + ph - 19, mc, { align: 'center' }); }
     };
     return push(m);
   };
@@ -2073,7 +2083,7 @@
      KEYBOARD CONTROLS (rebinding)
      ================================================================ */
   var CTRL_LABELS = { left: 'MOVE LEFT', right: 'MOVE RIGHT', up: 'UP / DOOR', down: 'DOWN / CROUCH', jump: 'JUMP / OK',
-    attack: 'PUNCH / BACK', bomb: 'THROW', special: 'SPECIAL', potion: 'POTION', start: 'PAUSE', select: 'MAP' };
+    attack: 'PUNCH / BACK', bomb: 'THROW', special: 'SPECIAL', potion: 'POTION', start: 'PAUSE', select: 'MAP / GEAR' };
   var PRESET_ORDER = [['classic', 'CLASSIC Z X C'], ['wasd', 'WASD + SPACE J'], ['arrows', 'ARROWS + SPACE F']];
   ui.openControls = function () {
     var inp = DCW.input;
@@ -2600,12 +2610,12 @@
       var mv = ['left', 'right', 'up', 'down'].map(function (a) { return kbName(a, '?'); }).join(' ');
       return [['MOVE', mv], ['JUMP / OK', kbBoth('jump')], ['PUNCH / BACK', kbBoth('attack')], ['THROW', kbBoth('bomb')],
         ['SPECIAL', kbBoth('special')], ['POTION', kbBoth('potion')], ['PAUSE', 'ENTER / ESC' + (kbName('start', '') ? ' / ' + kbName('start', '') : '')],
-        ['MAP', kbBoth('select')]];
+        ['MAP / GEAR', kbBoth('select')]];
     } },
-    { title: 'GAMEPAD', rows: [['MOVE', 'D-PAD / STICK'], ['JUMP / OK', 'A (BOTTOM)'], ['PUNCH', 'X (LEFT)'], ['THROW / BACK', 'B (RIGHT)'], ['SPECIAL', 'Y (TOP)'], ['POTION', 'BUMPERS / TRIGGERS'], ['PAUSE', 'START'], ['MAP', 'SELECT']] },
-    { title: 'TOUCH', rows: [['MOVE', 'LEFT PAD'], ['JUMP / OK', 'A BUTTON'], ['PUNCH / BACK', 'B BUTTON'], ['THROW', 'BOMB BUTTON'], ['SPECIAL', 'SPC BUTTON'], ['POTION', 'POT BUTTON'], ['PAUSE', 'START (TOP RIGHT)'], ['MAP', 'MAP (TOP RIGHT)']] },
+    { title: 'GAMEPAD', rows: [['MOVE', 'D-PAD / STICK'], ['JUMP / OK', 'A (BOTTOM)'], ['PUNCH', 'X (LEFT)'], ['THROW / BACK', 'B (RIGHT)'], ['SPECIAL', 'Y (TOP)'], ['POTION', 'BUMPERS / TRIGGERS'], ['PAUSE', 'START'], ['MAP / GEAR', 'SELECT']] },
+    { title: 'TOUCH', rows: [['MOVE', 'LEFT PAD'], ['JUMP / OK', 'A BUTTON'], ['PUNCH / BACK', 'B BUTTON'], ['THROW', 'BOMB BUTTON'], ['SPECIAL', 'SPC BUTTON'], ['POTION', 'POT BUTTON'], ['PAUSE', 'START (TOP RIGHT)'], ['MAP / GEAR', 'MAP (TOP RIGHT)']] },
     { title: 'MOVES', rows: [['PUNCH COMBO', 'TAP PUNCH'], ['KICK', 'DOWN + PUNCH'], ['STOMP', 'DOWN + PUNCH IN AIR'], ['THROW EXPLOSIVE', 'THROW'], ['NEXT EXPLOSIVE', 'UP + THROW'], ['PANIC (FEAR + MISSILES)', 'SPECIAL'], ['BOOMY BOY', 'DOWN + SPECIAL'], ['MIC DROP', 'UP + SPECIAL']] },
-    { title: 'THE OVER CITY', rows: [['DOORS, NPCS, SIGNS', 'UP'], ['DAY', 'GUARDS. NO CRIMES.'], ['NIGHT', 'NO GUARDS. WORSE MOBS.'], ['HURT A CITIZEN', 'DEATH PENALTY'], ['INNS', 'SLEEP, CRAFT, LEVEL UP'], ['LOOT BOXES', 'OPEN AT AN INN'], ['THE CLOCK', '8 DAYS, THEN COLLAPSE'], ['THE MAP', 'SIGNPOST ROCKS']] }
+    { title: 'THE OVER CITY', rows: [['DOORS, NPCS, SIGNS', 'UP'], ['DAY', 'GUARDS. NO CRIMES.'], ['NIGHT', 'NO GUARDS. WORSE SHIT.'], ['HURT A CITIZEN', 'DEATH PENALTY'], ['INNS', 'SLEEP, CRAFT, LEVEL, BOXES'], ['THE CLOCK', '8 DAYS, THEN COLLAPSE'], ['THE MAP', 'SIGNPOST ROCKS'], ['SELECT', 'STREETS: MAP. ELSEWHERE: GEAR']] }
   ];
   ui.openHowTo = function () {
     var m = { kind: 'howto', page: 0 };
@@ -2627,7 +2637,7 @@
         var yy = 41 + i * 12; T(r[0], 20, yy, C.gold); T(r[1], 300, yy, C.white, { align: 'right' });
         var lx = 20 + tw(r[0]) + 4, rx = 300 - tw(r[1]) - 4; if (rx - lx > 4) R(lx, yy + 6, rx - lx, 1, '#2c3c7c');
       });
-      T(m.page === 0 ? 'REBIND KEYS IN SETTINGS > KEYBOARD CONTROLS' : '8 DAYS. ONE FLOOR. NO PANTS.', 160, 142, C.pink, { align: 'center' });
+      T(m.page === 0 ? 'REBIND KEYS IN SETTINGS > KEYBOARD CONTROLS' : '8 DAYS. ONE FLOOR. STILL NO GODDAMN PANTS.', 160, 142, C.pink, { align: 'center' });
     };
     return push(m);
   };
@@ -3028,6 +3038,47 @@
     sfx('unlock'); sfx('fanfare');
     showImport(sum, then);
   }
+  // DUNGEON CRAWLER (small) over CARL (big, chunky two-tone letters), the BOOK TWO ribbon and the subtitle.
+  // Strict NES colors; drops in from the top like Book One's cartridge title.
+  var LOGO = { crimson: '#a80020', rust: '#e45c10', dred: '#a81000', red: '#f83800', gold: '#f8b800', orange: '#fca044', white: '#fcfcfc', black: '#000000', yellow: '#f8d878' };
+  function outlined(s, x, y, col, o) {
+    o = o || {}; var sc = o.scale || 1, a = o.align || 'center';
+    [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]].forEach(function (d) { T(s, x + d[0], y + d[1], LOGO.black, { align: a, scale: sc, shadow: null }); });
+    if (o.shadow) T(s, x + 1, y + 2, o.shadow, { align: a, scale: sc, shadow: null });
+    T(s, x, y, col, { align: a, scale: sc, shadow: null });
+  }
+  function drawLogo2(ctx, t) {
+    var drop = Math.round(Math.max(0, 1 - t / 0.6) * 15) * 4;
+    var y0 = 4 - drop;
+    // DUNGEON CRAWLER
+    T('DUNGEON CRAWLER', 160, y0 - 1, LOGO.black, { align: 'center', scale: 2, shadow: null });
+    T('DUNGEON CRAWLER', 160, y0 + 1, LOGO.black, { align: 'center', scale: 2, shadow: null });
+    T('DUNGEON CRAWLER', 162, y0 + 2, LOGO.dred, { align: 'center', scale: 2, shadow: null });
+    T('DUNGEON CRAWLER', 160, y0, LOGO.white, { align: 'center', scale: 2, shadow: null });
+    // CARL: black outline, crimson drop shadow, gold over orange over rust, a glint every few seconds
+    var cy = y0 + 19, s = 5, word = 'CARL';
+    var o = [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, -2], [2, 2], [-2, 2], [2, -2]];
+    T(word, 164, cy + 4, LOGO.crimson, { align: 'center', scale: s, shadow: null });
+    o.forEach(function (d) { T(word, 160 + d[0], cy + d[1], LOGO.black, { align: 'center', scale: s, shadow: null }); });
+    T(word, 160, cy, LOGO.gold, { align: 'center', scale: s, shadow: null });
+    ctx.save(); ctx.beginPath(); ctx.rect(0, cy + 20, W, 20); ctx.clip();
+    T(word, 160, cy, LOGO.orange, { align: 'center', scale: s, shadow: null });
+    ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(0, cy + 25, W, 15); ctx.clip();
+    T(word, 160, cy, LOGO.rust, { align: 'center', scale: s, shadow: null });
+    ctx.restore();
+    var gl = (t % 4) / 0.5;
+    if (gl < 1 && t > 0.6) { var gx = Math.round(100 + gl * 120); ctx.save(); ctx.beginPath(); ctx.rect(gx, cy, 4, 35); ctx.clip(); T(word, 160, cy, LOGO.white, { align: 'center', scale: s, shadow: null }); ctx.restore(); }
+    // BOOK TWO ribbon with swallow-tail ends
+    var ry = y0 + 58, rl = 'BOOK TWO', rw = tw(rl) + 22, rx = Math.round(160 - rw / 2);
+    R(rx - 10, ry + 3, 12, 11, LOGO.black); R(rx - 9, ry + 4, 10, 9, LOGO.dred); R(rx - 9, ry + 7, 2, 3, LOGO.black);
+    R(rx + rw - 2, ry + 3, 12, 11, LOGO.black); R(rx + rw - 1, ry + 4, 10, 9, LOGO.dred); R(rx + rw + 7, ry + 7, 2, 3, LOGO.black);
+    DCW.box(rx, ry, rw, 13, { fill: LOGO.red, border: LOGO.gold });
+    T(rl, 160, ry + 3, LOGO.white, { align: 'center', shadow: LOGO.dred });
+    // subtitle
+    outlined("CARL'S DOOMSDAY SCENARIO", 160, ry + 16, LOGO.yellow, { shadow: LOGO.dred });
+  }
+  ui.drawLogo = drawLogo2;
   scenes.title = {
     enter: function () {
       closeAll();
@@ -3076,39 +3127,26 @@
         slats(ctx, 162, t, true);
         R(0, 162, W, 1, '#7c5c3c');
       }
-      // logo
-      var bob = Math.round(Math.sin(t * 2) * 1);
-      T('DUNGEON CRAWLER', 162, 10, '#a81000', { align: 'center', scale: 2, shadow: null });
-      T('DUNGEON CRAWLER', 160, 8, C.gold, { align: 'center', scale: 2, shadow: '#000' });
-      var word = 'WORLD', wx = 160 - tw(word, 3) / 2;
-      for (var i = 0; i < word.length; i++) {
-        var ly = 26 + bob + Math.round(Math.sin(t * 3 + i * 0.8) * 1.5);
-        T(word.charAt(i), wx + i * 18 + 2, ly + 2, '#a81000', { scale: 3, shadow: null });
-        T(word.charAt(i), wx + i * 18, ly, C.white, { scale: 3, shadow: '#000' });
-      }
-      var sub = "BOOK 2: CARL'S DOOMSDAY SCENARIO", rb = tw(sub) + 20;
-      R(160 - rb / 2 - 6, 54, 6, 9, '#5c0000'); R(160 + rb / 2, 54, 6, 9, '#5c0000');
-      DCW.box(160 - rb / 2, 51, rb, 13, { fill: '#a81000' });
-      T(sub, 160, 54, C.white, { align: 'center' });
+      // logo: Book One's cartridge treatment, BOOK TWO ribbon, subtitle
+      drawLogo2(ctx, t);
       // the AI host + Carl, Donut and Mongo
       spr(ctx, 'ai_screen', 286, 132 + Math.round(Math.sin(t * 2.2) * 3), { frame: Math.floor(t * 2) });
-      var quips = ['FLOOR THREE, BABY!', 'EIGHT DAYS. NO PRESSURE.', 'STILL NO PANTS!'];
+      var quips = canImport() ? ['A BOOK ONE SAVE! IMPORT IT!', 'OOH, A RETURNING CRAWLER!'] : ['FLOOR THREE, BITCHES!', 'EIGHT DAYS. NO PRESSURE.', 'STILL NO PANTS. LOVE IT.', 'WE\'RE LIVE, BABY!'];
       if (Math.floor(t / 4) % 3 === 1) bubble(ctx, quips[Math.floor(t / 12) % quips.length], 286, 110, { w: 64 });
       var fr = Math.floor(t * 2);
       spr(ctx, actorName(compSprite('mongo'), 'idle'), 22, 166, { frame: fr });
       spr(ctx, actorName('carl', 'idle'), 46, 166, { frame: fr, skin: equipped('skin') });
       if (!shoulderDonut(ctx, 46, 166, 1, fr)) spr(ctx, actorName('donut', 'idle'), 66, 166, { frame: fr, flip: true });
       // menu
-      var its = this.items(), mh = its.length * 12 + 10, my = 166 - mh, mw = 136;
+      var its = this.items(), rowH = 10, mh = its.length * rowH + 6, mw = 136, my = Math.max(89, 166 - mh);
       DCW.box(160 - mw / 2, my, mw, mh);
       var self = this;
       its.forEach(function (it, k) {
-        var yy = my + 6 + k * 12;
+        var yy = my + 4 + k * rowH;
         if (k === self.sel) cursor(160 - mw / 2 + 6, yy);
         T(it.label, 160 - mw / 2 + 16, yy, k === self.sel ? (it.color || C.white) : (it.color ? (blink(1.5) ? it.color : C.yellow) : C.gray));
       });
-      if (canImport()) T('★ BOOK 1 SAVE FOUND', 4, 172, blink(1.2) ? C.gold : C.yellow, { shadow: '#000' });
-      T('FAN GAME', 316, 172, '#5c3c5c', { align: 'right', shadow: null });
+      T('A FAN GAME. NOT FOR SALE.', 160, 172, C.dgray, { align: 'center', shadow: '#000' });
     }
   };
 
@@ -4130,7 +4168,7 @@
   };
   var ENDING_KEYS = { win: ['ending', 'winEnding'], early: ['earlyEnding'], collapse: ['collapseEnding'] };
   var ENDING_VIG = { win: ['doomsday', 'greenroom', 'screen', 'stairs'], early: ['stairs', 'overcity', 'screen'], collapse: ['collapse', 'night', 'screen'] };
-  var CREDITS_FB = ['DUNGEON CRAWLER WORLD', "BOOK 2: CARL'S DOOMSDAY SCENARIO", '', 'A PERSONAL FAN GAME', 'BASED ON THE DUNGEON CRAWLER CARL NOVELS', 'NOT FOR SALE. NOT OFFICIAL.', '', 'STARRING', 'CARL', 'PRINCESS DONUT', 'MONGO', 'KATIA GRIM', '', 'MANAGED BY', 'MORDECAI, LEVEL 50 INCUBUS', '', 'HOSTED BY', 'THE SYSTEM AI', '', 'NO PANTS WERE HARMED', 'IN THE MAKING OF THIS FLOOR', '', 'THANKS FOR PLAYING!'];
+  var CREDITS_FB = ['DUNGEON CRAWLER CARL', 'BOOK TWO', "CARL'S DOOMSDAY SCENARIO", '', 'A PERSONAL FAN GAME', 'BASED ON THE DUNGEON CRAWLER CARL NOVELS', 'NOT FOR SALE. NOT OFFICIAL.', '', 'STARRING', 'CARL', 'PRINCESS DONUT', 'MONGO', 'KATIA GRIM', '', 'MANAGED BY', 'MORDECAI, LEVEL 50 INCUBUS', '', 'HOSTED BY', 'THE SYSTEM AI', '', 'NO PANTS WERE HARMED', 'IN THE MAKING OF THIS FLOOR', '', 'THANKS FOR PLAYING!'];
   var CREDIT_HEADS = /^(STARRING|HOSTED BY|MANAGED BY|MUSIC|ART|CODE|WRITTEN BY|THANKS|BASED ON|WITH|SPECIAL THANKS|PRODUCED BY|DIRECTED BY|CAST)/;
   scenes.ending = {
     enter: function (p) {
