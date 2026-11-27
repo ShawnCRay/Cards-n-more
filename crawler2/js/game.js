@@ -126,6 +126,11 @@
     var m = meta();
     var afterPick = function () {
       s.meta.seenIntro = true; persist();
+      if (r.catchUp > 0) {
+        toast('+' + r.catchUp + ' LEVEL' + (r.catchUp > 1 ? 'S' : '') + ' TO REACH FLOOR 3. ' + r.statPoints + ' STAT POINT' + (r.statPoints === 1 ? '' : 'S') + ' TO SPEND AT AN INN.',
+          { title: 'CATCH-UP', icon: 'star', color: '#f8b800', time: 5 });
+        toast("THE THIRD FLOOR DOESN'T DO TRAINING WHEELS, SO WE BOLTED SOME LEVELS ONTO YOU. YOU'RE WELCOME. DON'T FUCK IT UP.", { icon: 'eye', time: 5 });
+      }
       G.playCinema(m.afterClassCinema, function () { G.goArea(r.area, m.startEntry || 'left'); });
     };
     var pick = function () {
@@ -837,7 +842,9 @@
 
   // Everything else Carl does hits as hard as his punch times these (DESIGN 16.1). One table, so
   // the lead can retune explosives, Donut and Mongo against the punch without touching formulas.
-  var RATIO = { hob: 1.6, dyn: 3.2, jug: 1.3, fire: 0.15, missile: 1.0, missileInt: 0.04, bite: 1.0, bigBite: 1.8 };
+  // explosives keep the punch they had before the formulas changed (Carl is a bomb guy):
+  // hob-lobber ~3.4x a punch, dynamite ~6.5x, a Jug O'Boom ~3.2x plus fire ticks of a third
+  var RATIO = { hob: 3.4, dyn: 6.5, jug: 3.2, fire: 0.33, missile: 1.0, missileInt: 0.04, bite: 1.0, bigBite: 1.8 };
   G.ratios = RATIO;
   G.playerStats = function () {
     var r = G.run || makeRun();
@@ -1170,12 +1177,18 @@
   function applyCarry(r, c) {
     var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d; };
     r.level = Math.max(1, n(c.level, r.level));
-    r.lvBase = r.level - 1;
     r.stats = { str: n(c.stats && c.stats.str, 3), con: n(c.stats && c.stats.con, 3), dex: n(c.stats && c.stats.dex, 3), int: n(c.stats && c.stats.int, 3) };
     r.statPoints = n(c.statPoints, 0);
+    // Floor 3 opens at the book's level. A crawler who left Book One lower catches up on the way
+    // down: the missing levels arrive with their stat points to spend at the first inn, so nobody
+    // walks in weaker than a fresh crawl and nothing they earned is taken away.
+    var floorLv = startDef().level;
+    r.catchUp = 0;
+    while (r.level < floorLv) { r.level++; r.statPoints += (r.level % 5 === 0) ? 2 : 1; r.catchUp++; }
+    r.lvBase = r.level - 1;
     // bonus hp as it is (carries made before v2 had Book One's starting 2 taken off)
     r.bonus.hp = c.v === 2 ? n(c.bonusHp, 0) : n(c.bonusHp, 0) + 2;
-    r.xp = Math.max(0, Math.min(n(c.xp, 0), G.xpNeed(r.level) - 1));
+    r.xp = r.catchUp ? 0 : Math.max(0, Math.min(n(c.xp, 0), G.xpNeed(r.level) - 1));
     r.gold = n(c.gold, r.gold);
     r.potions = n(c.potions, r.potions);
     r.items.hob = (r.items.hob || 0) + n(c.bombs, 0);     // Book One's bombs are hob-lobbers by Floor 3
