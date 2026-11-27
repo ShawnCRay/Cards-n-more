@@ -815,3 +815,30 @@ Section 0 already says adult. The first pass came out PG-13 anyway. This pass fi
 Same rules as before: edit only your files, `node --check` after every batch, no git commands that
 change state, code defensively against modules still in progress, Playwright screenshots of your
 work under the scratchpad, report anything you need from another module.
+
+### 16.7 Integration notes (lead, after round 1)
+- **Balance** is measured, not guessed: `node tools/balance_report.js [regex] [--json]` loads every
+  side-view level at its act's debug level and prints punches-to-kill and hits-to-die. `D.balance`
+  now carries per-act multipliers (`acts: [{}, {...}, {...}]`, applied by `G.bal`) because Carl's
+  punch grows slower (15 / 18 / 21 at levels 13 / 18 / 22) than the act scaling the mobs were first
+  tuned against. Result: mobs 4 / 5 / 5 punches (median), Carl down in 8 / 8 / 7 hits, Terror 36
+  punches, Heather 78, the Dispenser 80, Vincente 85 (all bars). Berserkers are the tanks (7-8
+  punches in the light, more in the dark).
+- **Explosives keep their punch.** The example ratios first written in 16.1 were half of what the
+  game had. `G.ratios`: hob 3.4x a punch, dynamite 6.5x, jug 3.2x plus fire ticks of 0.33x.
+- **Import catch-up.** A Book One crawler below Floor 3's level 13 is raised to 13 on arrival, with
+  the stat points for every level gained (unspent, for the first inn) and a CATCH-UP toast. Stats,
+  gear and everything else carry as they were.
+- **Heather's custard** drops when her last bar starts. Grabbing it cuts her to a fifth of a bar, a
+  quick mercy kill, because in the book she is dying anyway.
+- **Phase banners** read `name`, `sub` and `line` (or `lines`). The System AI's foot gag
+  (`D.ai.carlFeet`) plays on some stomps, at most one per 40 s.
+- **Tests:** `stage_test` 142, `gameplay_check` 21, `flow_test` to WIN, `reach_test` 0 problems in
+  both modes, `cam_test` 0 idle/turn moves in arenas, `rooms_test`, `show_test`, `stage_smoke`,
+  `data_validate`, `actors_validate` all clean. The street crime test in `stage_test` still fails
+  about 1 run in 6 for a reason not yet found; it now prints diagnostics when it does.
+- **Palette caveat (art):** Book Two's backgrounds and tiles were never snapped to the strict 2C02
+  table the way Book One's are. New art (Signet, icons, gore, krasue body) uses table colors only.
+- **Book One bug seen while porting** (not fixed, Book One is the owner's baseline): its gear
+  `special` perks sum to 25 and `specialMul` uses them as a multiplier, so the special meter fills
+  about 26x faster than intended.
