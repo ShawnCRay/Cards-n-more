@@ -3245,14 +3245,13 @@
     if (big) { R(tg, op[0] - 3, op[1], 7, 6, SGC.inkR); R(tg, op[0] - 2, op[1] + 2, 2, 1, SGC.W); R(tg, op[0] + 1, op[1] + 2, 2, 1, SGC.W); R(tg, op[0] - 2, op[1] + 4, 5, 1, SGC.K); P(tg, op[0] - 1, op[1] + 4, SGC.W); P(tg, op[0] + 1, op[1] + 4, SGC.W); P(tg, op[0] - 3, op[1] - 1, SGC.inkR); P(tg, op[0] + 3, op[1] - 1, SGC.inkR); P(tg, op[0] - 4, op[1] - 2, SGC.inkR); P(tg, op[0] + 4, op[1] - 2, SGC.inkR); }
     else P(tg, op[0], op[1], SGC.inkR);
     // a dragon coiling down her near arm from the shoulder: ink body, green scales, a red flame tongue
-    var hy = 52 + ((t * 5) % 40);
-    for (i = 0; i < 30; i++) {
-      var dy = hy - i * 1.1, dx = -27.5 + Math.sin(dy / 4.2 + t * 0.6) * 2.6;
-      if (dy < 50) break;
+    var hy = (t * 5) % 46;
+    for (i = 0; i < 28; i++) {
+      var dy = 54 + ((hy - i * 1.2) % 46 + 46) % 46, dx = -27.5 + Math.sin(dy / 4.2) * 2.6;
       p = T(dx, dy); dot(p, i % 4 === 2 ? SGC.inkG : SGC.ink);
       if (big && i % 5 === 4) dot([p[0] - 1, p[1]], SGC.ink, 1, 1);
     }
-    p = T(-27.5 + Math.sin(hy / 4.2 + t * 0.6) * 2.6, hy + 1.5); if (big) { dot(p, SGC.ink, 3, 2); dot([p[0] + 1, p[1] + 2], SGC.inkR, 1, 2); }
+    var hd = 54 + hy; p = T(-27.5 + Math.sin(hd / 4.2) * 2.6 - 0.5, hd + 1); if (big) { dot(p, SGC.ink, 3, 3); P(tg, p[0] + 1, p[1] + 1, SGC.inkR); dot([p[0] + 1, p[1] + 3], SGC.inkR, 1, 2); }
     // waves along her ribs on the far side
     for (i = 0; i < 4; i++) { var w = T(13 + ((t * 2 + i * 3) % 6), 80 + i * 4); if (big) { R(tg, w[0], w[1], 3, 1, SGC.ink); P(tg, w[0] + 1, w[1] - 1, SGC.ink); } }
   }

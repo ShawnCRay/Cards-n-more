@@ -564,6 +564,7 @@
     if (S.introPending && S.t > 0.6) { var il = S.introPending; S.introPending = null; ucall('say', il); return; }
     if (S.pendingSay) { var ps = S.pendingSay; S.pendingSay = null; ucall('say', ps); return; }
     if (P('start') && !S.done && !S.carl.dead && ufn('openPause')) { ucall('openPause', { canFlee: true }); return; }
+    if (P('select') && !S.done && !S.carl.dead && ufn('onSelect')) { ucall('onSelect'); return; }   // SELECT: gear
     if (S.done) { tickFx(dt); return; }
 
     updCarl(dt);

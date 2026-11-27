@@ -406,6 +406,7 @@
     anim(dt);
     if (S.done) return;
     if (P('start') && !S.blast && ufn('openPause')) { ucall('openPause', { canFlee: true }); return; }
+    if (P('select') && !S.blast && ufn('onSelect')) { ucall('onSelect'); return; }   // SELECT: gear
     if (S.waitT > 0) S.waitT -= dt;
     if (S.blast) updBlast(dt);
     if (S.cutin && !S.cutin.speaking && S.cutin.t > 0.55) { S.cutin.speaking = true; S.busy = false; }

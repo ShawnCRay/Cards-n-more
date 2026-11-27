@@ -4146,6 +4146,7 @@
     }
     // SELECT: gear in levels (map on the streets, or when the UI has no gear screen yet)
     if (I.pressed('select') && alive) {
+      if (has(UI(), 'onSelect')) { call(UI(), 'onSelect'); return; }
       if (S.mode === 'level' && has(UI(), 'openGear')) { call(UI(), 'openGear'); return; }
       if (has(UI(), 'openMap')) { call(UI(), 'openMap'); return; }
     }
