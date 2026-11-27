@@ -4,9 +4,12 @@ Book 2 of a personal fan-game series that follows the Dungeon Crawler Carl novel
 book. This game covers **book 2 only: the Third Floor, the Over City**. Source facts (plot beats,
 cast and their looks, monsters, items, pop culture references) are in `SOURCE.md`. Read it.
 
-Book 1 lives in `../crawler/`. Book 2 started as a copy of book 1's code (`js/` here). Unless this
-document overrides it, **book 1's contract in `../crawler/DESIGN.md` still applies** (engine API,
-art def format, sprite naming, audio API, UI helpers, input names, text rules).
+Book One lives in `../crawler-book1/`. Book 2 started as a copy of the older Dungeon Crawler World
+prototype in `../crawler/`, not of the finished Book One, so it missed Book One's playtest work.
+Section 16 brings that work over and is binding. Unless this document overrides it, the prototype's
+contract in `../crawler/DESIGN.md` still applies (engine API, art def format, sprite naming, audio
+API, UI helpers, input names), and `../crawler-book1/DESIGN.md` is the reference for everything
+Section 16 ports.
 
 ## 0. Series rules (binding, from the owner)
 
@@ -655,3 +658,153 @@ Each owner verifies their module boots without console errors (Playwright + Chro
 installed; see `tools/`). The lead's `tools/flow_test.js` drives a full run with debug clears.
 URL params (debug): `?debug&level=<id>`, `?debug&area=<id>`, `?debug&cinema=<id>`,
 `?debug&scene=title|classPick|inn|club|map|ending`, `&night` forces night, `&flags=a,b,c`.
+
+## 16. Playtest round 1: catch up with Book One, then pass it (binding)
+
+The owner played Book Two after Book One and reported: it feels *behind* Book One, not more
+advanced; it feels like the same game but in some ways not as good; and it is far less edgy than
+it should be. Adult game, adult book, adult players. The diagnosis:
+
+- Book Two was forked from the old prototype (`../crawler/`), so none of Book One's playtest work
+  is here: calm camera, pits-are-death with saved checkpoints, plot armor, mob scaling, full-health
+  boss phases, the off-screen boss arrow, mob introductions, Donut's gripes, UP arrows on things you
+  can use, the once-per-crawl special card, the jump-reach rules.
+- The crawler gets *weaker* walking into Book Two. Book One's level 6 Carl has 25 HP; Book Two's
+  level 13 Carl has 16 HP and punches for 3. Book One's gear (trollskin shirt, war gauntlet,
+  BigBoi boxers, the crown...) is thrown away on import even though Book Two's art shows Carl
+  wearing it. There is no gear screen.
+- The script has zero "fuck", zero "shit", zero "goddamn" in it. The book swears on every page.
+- The title still says DUNGEON CRAWLER WORLD (the prototype's name). The series is Dungeon Crawler
+  Carl: the hub says so, Book One says so.
+- Floor 3's backgrounds sit at the same brightness and hue as the floor and the mobs (red lemurs on
+  red ruins). Book One fixed exactly this on its Floor 2.
+
+### 16.1 Continuous crawler (game.js)
+
+One crawler across the series. Numbers only ever go up.
+- **Formulas are Book One's, continued** (absolute level, no `L = level - 12` for these):
+  `maxHp = 10 + (con-3)*2 + (level-1) + bonus.hp + gear.hp + skin.hp`
+  `dmg = 2 + (str-3) + floor((level-1)/2) + gear.dmg + skin.dmg` (+ gear stat perks `str` etc. count as stats)
+  `kickDmg = round(dmg*1.5) + gear.kick`, then x2 with `freeballing`
+  `crit = 0.04 + (dex-3)*0.02 + gear.crit + skin.crit` (cap 0.6); `speedMul = (1 + (dex-3)*0.03) * skin * (1 + gear.speed)`
+  `def = gear.def + skin.def`, plus Book One's `stompMul regen stun missileDmg missileCd specialMul`.
+  Explosives, Donut's missile and Mongo's bite keep the ratio to punch damage they have today
+  (e.g. hob ~1.6x punch, dynamite ~3.2x, jug ~1.3x plus fire ticks of ~15% punch).
+  XP curve stays Book Two's (`xpNeed` from `level - lvBase`), so the book's 13 -> 27 pace holds.
+- **Fresh crawl** (no Book One carry): level 13, stats `str 7 con 6 dex 5 int 6`, `bonus.hp 2`, and
+  Book One's full end-of-book gear: `trollskin_shirt nightgaunt_cloak toad_cudgel toe_ring
+  war_gauntlet bigboi_boxers pedicure_kit` (Carl) and `crown_sepsis talisman_butterfly fae_crupper
+  fur_brush` (Donut). Read it from `D.start` when present (content), these values as the fallback.
+- **Carried crawl**: Book One's snapshot as it is: level, stats, unspent points, `bonus.hp` (as is),
+  gold, potions, bombs -> hob-lobbers, views, kills, boxes, name, skin, and **`run.gear`**. If the
+  snapshot has no gear (older saves), give the fresh-crawl gear set. Book One's flag `jugs` is
+  already implied on Floor 3.
+- **Gear system** as Book One: `run.gear {id:true}`; `G.giveGear(id, from) -> bool` (toast "GOT",
+  `track('gear')`), `G.hasGear(id)`, `G.gearList() -> [{id, def}]` (Carl's first, then Donut's,
+  then Mongo's), gear perks summed in `playerStats()`. `def.skin` switches Carl's outfit when gained
+  (as Book One). New gives entry `{gear: 'id'}` works in level `gives`, event `gives` and cinema
+  `give` lists. Perk keys: Book One's (`hp dmg kick stomp def crit speed regen missile missileCd
+  special stun bombs`) plus `str con dex int` (flat stat bonus) and `bite` (Mongo).
+- **Balance hook**: `D.balance = { mobHp, mobDmg, bossHp, bossDmg, mobXp }` multipliers, applied on
+  top of `D.enemyFor` (mobs, elites, enemy shots) and boss setup. Defaults 1 if missing. The lead
+  tunes them by measurement so that, at the expected level for each act, regular mobs take 3-5
+  punches and Carl goes down in 6-8 hits (a step harder than Book One's Floor 2: 3-4 and 7-9).
+
+### 16.2 Book One systems to port (stage.js, engine.js, game.js)
+
+Port each from `../crawler-book1/js/` and its DESIGN.md sections of the same names; adapt to
+Book Two's modes (streets, climb, drop, chase, survival, plant, escape, facade, swap, rooms).
+- **Calm camera.** Look-ahead (32 px) builds only after 0.35 s of running one way, at 60 px/s;
+  dead zone 20 px (56 px in locked arenas); the follow target is clamped before easing; locked
+  arenas never track the boss; parallax rates 1/4 and 1/2. Vertical modes get the same calm on Y.
+  Autoscroll (chase, survival) is exempt. Port `tools/cam_test.js` too: idle and turn must be 0 in arenas.
+- **Off-screen boss arrow.** When the boss is off screen in an arena, a white arrow blinks at that
+  edge, level with it.
+- **Pits are death** on foot, on every mode (god mode keeps the old drop-back). Every death sets
+  `run.hp = 0` so continuing lands on the death screen.
+- **Checkpoint flags are saved to the run** (`run.checkpoint`). A revival rebuilds the same seeded
+  level and starts Carl at the last flag. Clears on level clear, entering another level, or fleeing.
+  Climb and drop layouts need a `c` at least every two screens (content).
+- **Plot armor.** The first death of every crawl is free: back to the last flag, full HP, no
+  revival spent, no gold or hours lost. Lines from `D.plotArmor` (`first` once per save, `again`
+  on later crawls, plus a Donut line). Every later death goes to the death screen.
+- **Boss phases are full health bars.** Each phase is its own full bar; when one empties and
+  another is left, the boss enters it at full health with the phase banner and a "FULL HEALTH!"
+  pop. `D.bosses[id].hp` is per bar (content sets it so the whole fight is ~1.5x today's length,
+  before `D.balance.bossHp`).
+- **Mob introductions.** The System AI reads a mob's `flavor` when the first one of that kind dies
+  (once per crawl, never in a boss fight), queued so it never stacks on other dialog.
+- **Donut's gripes.** `D.donutGripes` maps a mob id (or one `_`-separated part of it) or a damage
+  kind (`fire spikes bomb wet fall dark psionic`) to a line. When one hurts the player, Donut says it
+  in a pink toast; each once per crawl (`run.gripes`), at most one per 20 s, only while she is in the
+  party and awake. Enemy shots remember their shooter, so the death screen names the shooter.
+- **UP arrows.** A blinking NES UP arrow over anything you can use when you stand at it: doors,
+  NPCs, signs, signposts, charge spots, decoy spots, cages, levers.
+- **Special name card once per crawl** (`run.specialsSeen`); after that the name pops over Carl.
+  No full-screen white flash.
+- **Jump reach rules.** Port `tools/reach_test.js` (exact physics + `COMFORT=1`). Every non-arena
+  chunk and every climb/drop layout must pass both. Report failures to the lead.
+- **Test hook** `DCW.testHold = {right:1, jump:1}` in engine.js (holds logical buttons).
+- **Gore.** The book is gory. On a kill: a burst of red blood pixels with the sprite-colored gibs,
+  and a blood splat decal (art `blood_splat`, 3 variants) left on the floor under the kill for
+  ~20 s (cap ~24, oldest goes first). Bigger bursts for stomps, explosions and bosses. Ghost-class
+  mobs (`magicOnly`) and urchins leave smoke or straw instead of blood. A setting `GORE: ON/OFF`
+  (default ON) in `save.settings.gore`.
+
+### 16.3 UI (ui.js)
+
+- **Title**: Book One's cartridge layout. Logo DUNGEON CRAWLER (small) over CARL (big), a ribbon
+  BOOK TWO, and CARL'S DOOMSDAY SCENARIO under it. Keep Book Two's circus night backdrop, Carl,
+  Donut and Mongo, and the AI screen. "A FAN GAME. NOT FOR SALE." small.
+- **Gear screen** (Book One's `openGear`, adapted): Carl's gear, then Donut's, then Mongo's, perk
+  summary, scrollable description, outfit switch row. On SELECT in levels and inns, and GEAR in the
+  pause menu and the inn menu. Keep MAP reachable from the pause menu and from SELECT on streets.
+- Boss bar shows the phase count (pips) and refills on a new phase.
+- Death screen names the shooter (`result.cause` from the mob name).
+- Settings: GORE ON/OFF.
+
+### 16.4 Tone (data.js, binding for all player-facing text)
+
+Section 0 already says adult. The first pass came out PG-13 anyway. This pass fixes it.
+- **Swear like the book.** Fuck, shit, goddamn, asshole, bitch, bastard, dick, cock, tits, piss,
+  son of a bitch, motherfucker. Not every line, but the cast talks like stressed adults in a death
+  game. Carl swears when scared, hurt or furious ("Goddamnit, Donut."). Mordecai swears like the
+  bitter drunk he is. The System AI is a gleeful, filthy game-show host. Donut is prim and grand,
+  so when she does swear it lands.
+- **Adult humor, adult targets.** Mordecai is now an incubus: people throw themselves at him and he
+  hates it. Carl is freeballing in magic boxers on galactic TV. The System AI's thing for Carl's
+  feet (Book One's running joke) continues. The Desperado Club is a seedy Vegas-strip nightclub.
+  Signet wears a thong and nothing else and Carl very deliberately keeps his eyes up. Sex jokes
+  are fine between adults.
+- **Gore and cruelty played the book's way.** Kills, mob flavors and achievements can be graphic.
+  The Syndicate is monstrous and the AI loves it.
+- **Hard limits.** No slurs. Nothing sexual involving anyone under 18 (Lucia Mar is about 13; the
+  Apito Education Center kids; any child). The murdered women of "The Sex Workers Who Fell from the
+  Heavens" are never the punchline: the jokes land on Quill, the 201st and the Syndicate. No jokes
+  about sexual violence. Nothing sexual about real people.
+- **Running gags** from Book One continue: "X? CARL. YOU KNOW HOW I FEEL ABOUT X." (Donut), Carl's
+  feet and the AI, Mordecai's tired contempt for "the worst crawlers I've ever had".
+- Original writing (no copied sentences), the book's names, no em dashes, no boss weak spots
+  spoiled before the player finds them (unless the story itself shows it in a cutscene).
+
+### 16.5 Art
+
+- **Readable playfield** (Book One rule): every background darker than, or a different hue from,
+  anything the player stands on or fights. Check every theme, day and night, with its mobs on
+  screen. Darken the wall, not the sprite.
+- 8x8 icons for every gear id (Book One's set plus the new Floor 3 gear), `blood_splat` (3
+  variants, ~16x4, NES reds), `blood` (2x2 droplet).
+
+### 16.6 Owners for this round
+
+| File | Owner |
+|---|---|
+| `js/stage.js`, `js/engine.js`, `js/game.js`, `js/rooms.js`, `js/show.js`, new `tools/*` | gameplay |
+| `js/ui.js` | ui |
+| `js/data.js` | content |
+| `js/art.js`, `js/art_actors.js` | art |
+| `DESIGN.md`, `index.html`, integration, balance numbers in `D.balance`, chunk fixes from reach_test | lead |
+
+Same rules as before: edit only your files, `node --check` after every batch, no git commands that
+change state, code defensively against modules still in progress, Playwright screenshots of your
+work under the scratchpad, report anything you need from another module.
