@@ -4645,9 +4645,9 @@
     // Floor 3
     nica_rings: ['.kkk....', 'kwGgk...', 'kG.gk...', 'kGgkkkk.', '.kkkwGgk', '...kG.gk', '...kGggk', '....kkk.'],   // two silver rings
     grace_anklet: ['.kkkkkk.', 'kyoyoyok', 'ko....yk', 'kyoyoyok', '.kkkkkk.', '...kPk..', '..kPpPk.', '...kpk..'], // gold chain, pink charm
-    spiked_kneepads: ['..k.k.k.', '.kGkGkGk', '.kgkgkgk', 'kgbgbgbk', 'kbgbgbgk', 'kgbbbbgk', '.kgbbgk.', '..kkkk..'], // studded pad, iron spikes
+    spiked_kneepads: ['.k...k..', 'kwk.kwk.', 'kGkkkGkk', 'kgkgkgkk', 'kkgkkgkk', 'kgkkgkgk', 'kuuuuuuk', 'kkkkkkkk'], // black leather, iron spikes, a strap
     freeballing: ['kkkkkkkk', 'kCttttCk', '.ktrtrk.', '.ktrrrk.', '.kttrtk.', '.ktttCk.', 'kCttttCk', 'kkkkkkkk'],      // upgrade scroll with a heart seal
-    xistera: ['.....kk.', '....kCCk', '...kCcCk', '..kCcCk.', '.kCcCk..', 'kuCck...', 'kuuk....', '.kk.....'],          // the curved jai alai basket
+    xistera: ['......kk', '....kkCk', '...kCtCk', '..kCtCk.', '.kCtCk..', 'kuCtk...', 'kuuk....', '.kk.....'],          // the curved, woven jai alai basket on its glove
     fang_caps: ['kkkkkkk.', 'kRRRRRk.', 'kwwkwwk.', 'kwwkwwk.', 'kYykYyk.', '.kyk.kyk', '..k...k.', '........'],      // fangs with gold caps
     kimaris: ['kkkkkkkk', 'kLwLLLLk', 'kBBqBBLk', 'kBqqBuLk', 'kBuuuuLk', 'kBuBBuLk', 'kooooook', 'kkkkkkkk']           // a demon duke on a horse in a glass case
   };

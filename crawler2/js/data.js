@@ -354,7 +354,7 @@
     incubus: { name: 'INCUBUS', level: 14, tier: 1, hp: 24, dmg: 3, speed: 40, w: 14, h: 22, ai: 'charm',
       charmTime: 2, charmEvery: 5, aggro: 140, xp: 8, gold: [3, 9], sprite: 'incubus',
       flavor: "SQUARE JAW, BAT WINGS, ABS YOU COULD GRATE CHEESE ON. ITS SMILE FLIPS YOUR LEFT AND RIGHT. YOUR GUIDE IS ONE NOW. DO NOT TELL HIM HE IS THE PRETTY ONE." },
-    berserker: { name: 'SHAMBLING BERSERKER', level: 12, tier: 2, hp: 60, dmg: 4, speed: 22, w: 26, h: 44, ai: 'berserker',
+    berserker: { name: 'SHAMBLING BERSERKER', level: 12, tier: 2, hp: 46, dmg: 4, speed: 22, w: 26, h: 44, ai: 'berserker',
       darkMul: 4, berserkSpeed: 120, aggro: 150, armor: 1, kb: 0.2, xp: 26, gold: [6, 14], sprite: 'berserker',
       flavor: "THIRTEEN FEET OF STITCHED-TOGETHER LEFTOVERS. WE COUNTED FOUR ASSES IN THERE. SLOW IN THE LIGHT. IN THE DARK IT GETS FOUR TIMES WORSE. FRANKENSTEIN WEEPS." },
     city_elf: { name: 'CITY ELF OF THE 201ST', level: 16, tier: 2, hp: 30, dmg: 3, speed: 38, w: 12, h: 20, ai: 'caster',
@@ -3709,7 +3709,11 @@
   };
 
   /* ---------------- balance multipliers (the lead tunes these; game.js G.bal) ---------------- */
-  D.balance = { mobHp: 4.5, mobDmg: 2.5, bossHp: 4.5, bossDmg: 2.5, mobXp: 1 };
+  /* Tuned by the lead with tools/balance_report.js at each act's expected level (13 / 18 / 22).
+     Targets: mobs 4 / 4.5 / 5 punches, Carl down in 8 / 7 / 6.5 hits, bosses ~35 (Terror, end of
+     the first level) to ~90 punches over all their bars. `acts` multiplies on top per act. */
+  D.balance = { mobHp: 3.0, mobDmg: 3.1, bossHp: 3.25, bossDmg: 2.2, mobXp: 1,
+    acts: [ {}, { mobHp: 0.84, mobDmg: 0.8, bossHp: 0.92 }, { mobHp: 0.83, mobDmg: 0.74, bossHp: 0.92 } ] };
 
   /* ---------------- plot armor: the first death of every crawl is free, and the AI is livid ----------------
      first: the first time on this save; again: later crawls; donut: only while she is in the party. */

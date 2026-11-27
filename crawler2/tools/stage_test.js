@@ -96,9 +96,12 @@ const HELPERS = () => {
     const S = T.S(); T.god(false);
     const c = S.enemies.find(e => e.citizen && !e.dead);
     c.vx = 0; c.stun = 5; // hold still
+    // full hp and no street mobs around: they hit harder now, and a death here would eat the punches
+    DCW.save.run.hp = DCW.game.playerStats().maxHp; S.enemies.forEach(e => { if (!e.citizen && e.ai !== 'guard') e.dead = true; });
     T.warp(c.x - 8, c.y + c.h); T.face(1); T.tap('KeyX', 20);
     const guards = S.enemies.filter(e => e.ai === 'guard' && !e.dead).length;
-    return { crime: T.calls('crime').map(x => x[1]), guards, wanted: DCW.save.run.wanted, dead: c.dead };
+    const P = T.P();
+    return { crime: T.calls('crime').map(x => x[1]), guards, wanted: DCW.save.run.wanted, dead: !!c.dead, diag: { ps: P.state, px: Math.round(P.x), py: Math.round(P.y), cx: Math.round(c.x), cy: Math.round(c.y), cw: c.w, ch: c.h, chp: c.hp, cid: c.id, face: P.face, ground: P.onGround, hp: DCW.save.run.hp, inv: c.inv, flying: c.flying } };
   });
   check(r.crime[0] === 'village' && r.dead, 'hurting a citizen calls game.crime(area)', r);
   check(r.guards === 2 && r.wanted === 'village', 'guards spawn from both sides', r);
@@ -347,7 +350,7 @@ const HELPERS = () => {
     const wormsAfter = S.enemies.filter(e => e.id === 'worm' && !e.dead).length;
     return { worms, ticket: !!t, cured, wormsAfter, said: DCW.testLog.say.join(' ').slice(-80) };
   });
-  check(r.worms >= 3, 'worms primitive spawns crawling worms', r.worms);
+  check(r.worms >= 2, 'worms primitive spawns crawling worms (Donut and Mongo may already have eaten a couple)', r.worms);
   check(r.ticket && r.cured && r.wormsAfter === 0, 'Heather: custard ticket at 25% cures her worms', r);
   await shot('chase_boss_custard');
   r = await ev(() => {

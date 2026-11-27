@@ -894,9 +894,18 @@
 
   // Balance multipliers (DESIGN 16.1): D.balance = { mobHp, mobDmg, bossHp, bossDmg, mobXp }, 1 when
   // missing. stage.js / rooms.js apply them (stage.js balanceEnemy / balanceBoss is the one place).
+  // D.balance multipliers (DESIGN 16.1). `acts: [{...}, {...}, {...}]` multiplies on top per act,
+  // because Carl's punch grows slower than the act scaling the mobs were first tuned against.
   G.bal = function (key) {
-    var b = D().balance, v = b && b[key];
-    return (typeof v === 'number' && isFinite(v) && v > 0) ? v : 1;
+    var ok = function (x) { return typeof x === 'number' && isFinite(x) && x > 0; };
+    var b = D().balance || {}, v = ok(b[key]) ? b[key] : 1;
+    if (Array.isArray(b.acts)) {
+      var r = G.run, lv = r && r.levelId && G.levelDef(r.levelId);
+      var act = Math.max(1, (lv && lv.act) || (r && r.act) || 1);
+      var a = b.acts[Math.min(b.acts.length, act) - 1];
+      if (a && ok(a[key])) v *= a[key];
+    }
+    return v;
   };
   G.addXP = function (n) {
     var r = G.run; if (!r || !n) return;
