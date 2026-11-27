@@ -1715,7 +1715,25 @@
     if (S.def.clearToExit) {
       var left = S.regrows.length;
       for (var i = 0; i < S.enemies.length; i++) { var e = S.enemies[i]; if (!e.dead && e.hostile && !e.citizen && e.state !== 'gone') left++; }
-      if (left > 0) { if (!(S.lockMsgT > 0)) { S.lockMsgT = 2; sfx('error'); numText(cx(o), o.y - 6, 'CLEAR THE AREA: ' + left + ' LEFT', '#f83800'); } return; }
+      if (left > 0) {
+        if (!(S.lockMsgT > 0)) {
+          S.lockMsgT = 2; sfx('error');
+          var called = 0;
+          for (var c2 = 0; c2 < S.enemies.length; c2++) {
+            var se = S.enemies[c2];
+            if (se.dead || !se.hostile || se.citizen || se.state === 'gone' || onScreen(se, 8)) continue;
+            // drop it on the ground just off to one side of Carl, inside the level
+            var side = (c2 % 2 ? 1 : -1), nx = U.clamp(cx(P) + side * 110, TS * 2, S.L.w * TS - TS * 3);
+            var gy = groundBelow(nx, P.y - TS * 2);
+            se.x = nx - se.w / 2; se.y = (gy !== null && gy !== undefined ? gy : P.y + P.h) - se.h; se.vx = 0; se.vy = 0;
+            se.active = true; se.alwaysActive = true; if (se.state === 'rest' || se.state === 'patrol') se.state = 'patrol';
+            called++;
+          }
+          numText(cx(o), o.y - 6, 'CLEAR THE AREA: ' + left + ' LEFT', '#f83800');
+          if (called) toast(called === 1 ? 'THE LAST ONE IS COMING TO YOU.' : 'THE STRAGGLERS ARE COMING TO YOU.', { icon: 'skull', color: '#f83800', time: 2.5 });
+        }
+        return;
+      }
     }
     if (o.needs && !hasItem(o.needs)) {
       if (!(S.lockMsgT > 0)) {
@@ -2091,6 +2109,8 @@
     for (var i = S.enemies.length - 1; i >= 0; i--) {
       var e = S.enemies[i];
       if (e.dead) { S.enemies.splice(i, 1); continue; }
+      var Lw = S.L.w * TS, Lh = S.L.h * TS;
+      if (!e.citizen && (e.x + e.w < -TS * 2 || e.x > Lw + TS * 2 || e.y > Lh + TS * 2 || e.y + e.h < -TS)) { e.dead = true; S.enemies.splice(i, 1); continue; }
       var far = e.x + e.w < camL || e.x > camR || (S.vertical && (e.y + e.h < camT || e.y > camB));
       if (far && !e.alwaysActive) { e.active = false; continue; }
       e.active = true;
