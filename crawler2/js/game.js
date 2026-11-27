@@ -49,18 +49,45 @@
   function actScale() { return 1 + (G.act() - 1) * 0.4; }
 
   /* ---------------- run creation ---------------- */
+  // A fresh crawl is the book's Carl walking onto Floor 3 (DESIGN 16.1): level 13, Book One's
+  // end-of-book stats and gear. data.js can override any of it with D.start.
+  var START_GEAR = ['trollskin_shirt', 'nightgaunt_cloak', 'toad_cudgel', 'toe_ring', 'war_gauntlet', 'bigboi_boxers', 'pedicure_kit',
+    'crown_sepsis', 'talisman_butterfly', 'fae_crupper', 'fur_brush'];
+  function startDef() {
+    var st = D().start, n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d; };
+    st = (st && typeof st === 'object') ? st : {};
+    var ss = st.stats || {}, gear = st.gear;
+    var g = {};
+    if (Array.isArray(gear)) gear.forEach(function (id) { if (id) g[id] = true; });
+    else if (gear && typeof gear === 'object') Object.keys(gear).forEach(function (id) { if (gear[id]) g[id] = true; });
+    else START_GEAR.forEach(function (id) { g[id] = true; });
+    var items = st.items && typeof st.items === 'object' ? st.items : null;
+    return {
+      level: Math.max(1, n(st.level, 13)),
+      stats: { str: n(ss.str, 7), con: n(ss.con, 6), dex: n(ss.dex, 5), int: n(ss.int, 6) },
+      bonusHp: n(st.bonus && st.bonus.hp, n(st.bonusHp, 2)),
+      gear: g, gold: n(st.gold, 120), potions: n(st.potions, 2), revivals: n(st.revivals, 3),
+      items: items || { jug: 2, hob: 0, dyn: 0, smoke: 2 }
+    };
+  }
+  G.startGear = function () { return Object.keys(startDef().gear); };
   function makeRun() {
-    var m = meta();
+    var m = meta(), sd = startDef(), items = {};
+    Object.keys(sd.items).forEach(function (k) { items[k] = sd.items[k]; });
+    var gear = {};
+    Object.keys(sd.gear).forEach(function (k) { gear[k] = true; });
     return {
       hoursLeft: m.startHours || 192, hour: m.startHour === undefined ? 7 : m.startHour,
       act: 1, area: m.startArea || 'village', areaX: null, level: null, inInn: null, inClub: null,
       cleared: {}, flags: {}, quests: {}, events: {},
-      items: { jug: 2, hob: 0, dyn: 0, smoke: 2 }, selected: 'jug',
-      hp: 16, level: 13, xp: 0, statPoints: 0,
-      stats: { str: 5, con: 4, dex: 4, int: 4 },
-      bonus: { hp: 0, str: 0, con: 0, dex: 0, int: 0 },
-      gold: 120, potions: 2, views: 0, fanTier: 0, boxes: [], revivals: 3,
+      items: items, selected: 'jug',
+      hp: 16, level: sd.level, lvBase: sd.level - 1, xp: 0, statPoints: 0,
+      stats: { str: sd.stats.str, con: sd.stats.con, dex: sd.stats.dex, int: sd.stats.int },
+      bonus: { hp: sd.bonusHp, str: 0, con: 0, dex: 0, int: 0 },
+      gear: gear,
+      gold: sd.gold, potions: sd.potions, views: 0, fanTier: 0, boxes: [], revivals: sd.revivals,
       kills: 0, deaths: 0, totalTime: 0, banned: {}, wanted: null, bought: {},
+      checkpoint: null, plotArmorUsed: false, plotArmorPending: null, gripes: {}, mobsMet: {}, specialsSeen: {},
       won: false, seed: (Math.random() * 1e9) >>> 0
     };
   }
@@ -72,7 +99,8 @@
     // imported before crawlers carried over: pick the Book One crawler up now
     try {
       var m0 = DCW.save.meta, old0 = DCW.legacy && DCW.legacy.book1;
-      if (m0.imported && !m0.carry && old0) { var c0 = makeCarry((old0.meta && old0.meta.carry) || old0.run); if (c0) { m0.carry = c0; persist(); } }
+      // (and carries made before gear came over are rebuilt from the Book One save once)
+      if (m0.imported && old0 && (!m0.carry || m0.carry.v !== 2)) { var c0 = makeCarry((old0.meta && old0.meta.carry) || old0.run); if (c0) { m0.carry = c0; persist(); } }
     } catch (e) { /* keep going without it */ }
     if (DCW.debug && (p.has('level') || p.has('area') || p.has('scene') || p.has('cinema'))) { G.debugStart(); return; }
     G.toTitle(true);
@@ -247,10 +275,13 @@
       else if (g.gold) { var got = G.addGold(g.gold); toast(got + ' GOLD', { icon: 'coin', color: '#f8b800' }); }
       else if (g.box) G.giveLootBox(g.box, g.from || 'STORY');
       else if (g.skin) G.unlockSkin(g.skin);
+      else if (g.gear) G.giveGear(g.gear, g.from || 'STORY');
       else if (g.xp) G.addXP(g.xp);
+      else if (g.kind === 'gear') G.giveGear(g.id, g.from || 'STORY');
       else if (g.kind) resolveReward(g);
     });
   }
+  G.give = function (list) { applyGives(list); persist(); };   // book 1 shim: give lists from scenes
 
   G.party = function () {
     var r = G.run; if (!r) return ['donut', 'mongo'];
@@ -447,6 +478,7 @@
     var lv = G.levelDef(levelId);
     if (!lv) { toast('LEVEL MISSING: ' + levelId, { color: '#f83800' }); return; }
     eventBusy = false;
+    if (r.checkpoint && r.checkpoint.level !== levelId) r.checkpoint = null;   // flags only count inside their own level
     r.levelId = levelId; r.inInn = null; r.inClub = null; r.levelStartHp = r.hp;
     if (lv.startGives && !r.events['sg_' + levelId]) { r.events['sg_' + levelId] = true; applyGives(lv.startGives); }
     persist();
@@ -498,15 +530,20 @@
       G.giveLootBox(b.loot || 'boss', b.name || 'BOSS', true); rewards.push({ kind: 'box', tier: b.loot || 'boss' });
       var un = b.unlock || {};
       if (un.skin) rewards.push({ kind: 'skin', id: un.skin, isNew: G.unlockSkin(un.skin, true) });
+      if (b.gear) arr(b.gear).forEach(function (gid) { rewards.push({ kind: 'gear', id: gid, isNew: G.giveGear(gid, b.name || 'BOSS') }); });
       G.track('boss:' + bossId);
     }
     if (first) {
       arr(lv.sets).forEach(function (f) { G.setFlag(f); });
-      arr(lv.gives).forEach(function (gv) { if (gv && gv.item) { G.giveItem(gv.item, gv.n === undefined ? 1 : gv.n); rewards.push({ kind: 'item', id: gv.item, count: gv.n || 1 }); } else applyGives([gv]); });
+      arr(lv.gives).forEach(function (gv) {
+        if (gv && gv.item) { G.giveItem(gv.item, gv.n === undefined ? 1 : gv.n); rewards.push({ kind: 'item', id: gv.item, count: gv.n || 1 }); }
+        else if (gv && gv.gear) rewards.push({ kind: 'gear', id: gv.gear, isNew: G.giveGear(gv.gear, lv.name || 'LEVEL CLEAR') });
+        else applyGives([gv]);
+      });
       applyQuest(lv.quest);
     }
     G.track('level_clear'); G.track('clear:' + id);
-    r.levelId = null;
+    r.levelId = null; r.checkpoint = null;
     if (lv.act) r.act = Math.max(r.act, lv.act);
     r.hp = U.clamp(r.hp, 1, G.playerStats().maxHp);
     persist();
@@ -526,6 +563,32 @@
   };
   G.stageCleared = G.levelCleared; // book 1 shim
 
+  // Plot armor (DESIGN 16.2): the first death of every crawl is free. Back to the last checkpoint
+  // flag (or the street), full HP, no revival, gold or hours lost; the System AI is livid about it.
+  var PLOT_ARMOR = {
+    first: ["HOLD ON. HOLD ON. LEGAL IS TELLING ME THAT DOES NOT COUNT. THAT WAS PLOT ARMOR.",
+      "A CRAWLER WITH NUMBERS LIKE YOURS CAN NOT DIE THIS EARLY IN THE SEASON. THE SPONSORS SAID SO. THE SPONSORS ARE ASSHOLES.",
+      "IT WILL NOT HAPPEN AGAIN. I WILL PERSONALLY SEE TO IT. GET BACK OUT THERE AND BLEED FOR MY RATINGS."],
+    again: ["PLOT ARMOR. AGAIN. ONE FREEBIE PER CRAWL, SAYS THE FINE PRINT. I DID NOT WRITE THE FINE PRINT.",
+      "ENJOY IT, MEAT. THE NEXT TIME YOU DIE, YOU STAY GODDAMN DEAD."],
+    donut: 'PLOT ARMOR? CARL. YOU KNOW HOW I FEEL ABOUT PLOT ARMOR.'
+  };
+  G.plotArmorText = function () {
+    var pa = D().plotArmor;
+    return (pa && typeof pa === 'object') ? pa : PLOT_ARMOR;
+  };
+  // scenes call this on enter: the lines for a plot-armor return (and the pending flag is cleared)
+  G.takePlotArmor = function () {
+    var r = G.run; if (!r || !r.plotArmorPending) return null;
+    var pa = G.plotArmorText(), kind = r.plotArmorPending;
+    r.plotArmorPending = null;
+    var list = arr(pa[kind] || pa.first || PLOT_ARMOR[kind] || PLOT_ARMOR.first);
+    var lines = list.map(function (t) { return typeof t === 'string' ? { who: 'SYSTEM AI', portrait: 'p_ai', text: t } : t; });
+    var dl = pa.donut === undefined ? PLOT_ARMOR.donut : pa.donut;
+    if (dl && G.party().indexOf('donut') >= 0) lines.push(typeof dl === 'string' ? { who: 'PRINCESS DONUT', portrait: 'p_donut', text: dl } : dl);
+    persist();
+    return lines;
+  };
   G.playerDied = function (result) {
     var r = G.run; if (!r) return;
     result = result || {};
@@ -534,6 +597,18 @@
     r.diedIn = r.levelId || null;
     if (result.cause === 'guard') r.wanted = null;
     G.track('death');
+    if (!r.plotArmorUsed && !r.won && r.hoursLeft > 0) {
+      r.plotArmorUsed = true;
+      r.plotArmorPending = DCW.save.meta.plotArmorSeen ? 'again' : 'first';
+      DCW.save.meta.plotArmorSeen = true;
+      r.hp = G.playerStats().maxHp;
+      G.track('plot_armor');
+      persist();
+      if (r.levelId && G.levelDef(r.levelId)) G.enterLevel(r.levelId);
+      else G.goArea(r.area, r.areaX !== null && r.areaX !== undefined ? { x: r.areaX } : 'left');
+      return;
+    }
+    r.hp = 0;   // every later death waits on the death screen, even after quitting to the title
     persist();
     go(S().death || fallbackScene('YOU HAVE DIED', function () { G.revive() || G.endRun(); }), { result: result });
   };
@@ -558,7 +633,7 @@
   G.fleeLevel = function () {
     var r = G.run; if (!r) return;
     G.track('flee');
-    r.levelId = null; persist();
+    r.levelId = null; r.checkpoint = null; persist();
     var line = pickLine('flee');
     G.advanceClock(1);
     if (r.hoursLeft <= 0) return;
@@ -640,9 +715,21 @@
   };
 
   /* ---------------- cinema, stairs, endings ---------------- */
+  // a cinema's give list: D.cinemaGive[id], or {give: [...]} on any of its shots (once per crawl)
+  function cinemaGives(id, shots) {
+    var out = arr((D().cinemaGive || {})[id]);
+    (shots || []).forEach(function (sh) { if (sh && sh.give) out = out.concat(arr(sh.give)); });
+    if (shots && !Array.isArray(shots) && shots.give) out = out.concat(arr(shots.give));
+    return out;
+  }
   G.playCinema = function (id, onDone) {
-    onDone = onDone || function () {};
+    var done0 = onDone || function () {};
     var shots = id && (D().cinema || {})[id];
+    var gives = cinemaGives(id, shots), r = G.run;
+    onDone = function () {
+      if (gives.length && r && r === G.run && !r.events['cg_' + id]) { r.events['cg_' + id] = true; applyGives(gives); persist(); }
+      done0();
+    };
     if (!shots || !shots.length) { onDone(); return; }
     var sc = S().cinema;
     if (sc) go(sc, { id: id, shots: shots, onDone: onDone });
@@ -688,40 +775,122 @@
     return (sk && sk.perk) || {};
   }
   function mul(v) { if (!v) return 1; return v < 1 ? 1 + v : v; }
-  // L counts levels gained on this floor's scale. A fresh crawler starts at level 13 (L 1); a carried
-  // Book One crawler keeps their own level number, and L starts at 1 wherever they arrive (lvBase).
+  // L counts levels gained on this floor's scale (the XP curve only). A fresh crawler starts at level 13
+  // (L 1); a carried Book One crawler keeps their own level number, and L starts at 1 wherever they
+  // arrive (lvBase). Damage and HP use the absolute level (Book One's formulas, continued).
   function lvBase(r) { return (r && typeof r.lvBase === 'number') ? r.lvBase : 12; }
-  function Lof(r) { return Math.max(1, (r.level || 13) - lvBase(r)); }
   G.xpNeed = function (level) { var L = Math.max(1, (level || 13) - lvBase(G.run)); return Math.round(25 * Math.pow(L, 1.5)); };
+
+  /* ---------------- gear (permanent for the crawl, Book One's system) ---------------- */
+  var WHO_ORDER = { carl: 0, donut: 1, mongo: 2 };
+  G.gearDef = function (id) { return (D().gear || {})[id] || null; };
+  G.hasGear = function (id) { var r = G.run; return !!(r && r.gear && r.gear[id]); };
+  // [{id, def}]: Carl's first, then Donut's, then Mongo's; data order inside each group
+  G.gearList = function () {
+    var r = G.run; if (!r || !r.gear) return [];
+    var table = D().gear || {}, order = Object.keys(table);
+    var ids = Object.keys(r.gear).filter(function (id) { return r.gear[id]; });
+    var who = function (id) { var w = table[id] && table[id].who; return WHO_ORDER[w] === undefined ? 0 : WHO_ORDER[w]; };
+    ids.sort(function (a, b) {
+      var wa = who(a), wb = who(b);
+      if (wa !== wb) return wa - wb;
+      var ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+    return ids.map(function (id) { return { id: id, def: table[id] || { name: String(id).toUpperCase().replace(/_/g, ' '), who: 'carl', perk: {} } }; });
+  };
+  G.giveGear = function (id, from, quiet) {
+    var r = G.run; if (!r || !id) return false;
+    r.gear = r.gear || {};
+    if (r.gear[id]) return false;
+    var maxBefore = G.playerStats().maxHp;
+    r.gear[id] = true;
+    var def = G.gearDef(id) || { name: String(id).toUpperCase().replace(/_/g, ' ') };
+    if (def.skin && (D().skins || {})[def.skin]) {
+      G.unlockSkin(def.skin, true);
+      DCW.save.equipped.skin = def.skin;    // put the new clothes on right away
+    }
+    var gain = G.playerStats().maxHp - maxBefore;
+    if (gain > 0) r.hp += gain;
+    if (!quiet) { sfx('unlock'); toast(def.name || id, { title: 'GOT', icon: def.icon || 'star', color: '#f8b800', time: 3.5 }); }
+    G.track('gear'); G.track('gear:' + id);
+    persist();
+    return true;
+  };
+  // perks of every piece of gear the crawl owns, summed (numbers add, flags stick)
+  function gearPerks() {
+    var r = G.run, out = {};
+    if (!r || !r.gear) return out;
+    Object.keys(r.gear).forEach(function (id) {
+      if (!r.gear[id]) return;
+      var p = (G.gearDef(id) || {}).perk || {};
+      Object.keys(p).forEach(function (k) {
+        if (typeof p[k] === 'number') out[k] = (out[k] || 0) + p[k];
+        else if (p[k]) out[k] = p[k];
+      });
+    });
+    return out;
+  }
+  G.gearPerks = gearPerks;
+  // 10 means +10%; 0.1 means +10% too
+  function pct(v) { v = +v || 0; return Math.abs(v) >= 1 ? v / 100 : v; }
+
+  // Everything else Carl does hits as hard as his punch times these (DESIGN 16.1). One table, so
+  // the lead can retune explosives, Donut and Mongo against the punch without touching formulas.
+  var RATIO = { hob: 1.6, dyn: 3.2, jug: 1.3, fire: 0.15, missile: 1.0, missileInt: 0.04, bite: 1.0, bigBite: 1.8 };
+  G.ratios = RATIO;
   G.playerStats = function () {
     var r = G.run || makeRun();
-    var b = r.bonus || {};
-    var st = { str: r.stats.str + (b.str || 0), con: r.stats.con + (b.con || 0), dex: r.stats.dex + (b.dex || 0), int: r.stats.int + (b.int || 0) };
-    var L = Lof(r), p = skinPerk();
-    var dmg = 3 + (st.str - 5) + Math.floor((L - 1) / 2) + (p.dmg || 0);
-    dmg = Math.max(1, dmg);
-    var fb = !!(r.flags && r.flags.freeballing);
+    var b = r.bonus || {}, g = gearPerks(), p = skinPerk(), rs = r.stats || {};
+    var st = {
+      str: (rs.str || 3) + (b.str || 0) + (g.str || 0), con: (rs.con || 3) + (b.con || 0) + (g.con || 0),
+      dex: (rs.dex || 3) + (b.dex || 0) + (g.dex || 0), int: (rs.int || 3) + (b.int || 0) + (g.int || 0)
+    };
+    var lv = Math.max(1, r.level || 13);
+    var fl = r.flags || {};
+    var fb = !!fl.freeballing, big = !!fl.mongo_big;
+    // Book One's formulas, continued (absolute level)
+    var dmg = Math.max(1, 2 + (st.str - 3) + Math.floor((lv - 1) / 2) + (g.dmg || 0) + (p.dmg || 0));
+    var kick = (Math.round(dmg * 1.5) + (g.kick || 0)) * (fb ? 2 : 1);
+    var missile = Math.max(1, Math.round(dmg * RATIO.missile * (1 + (st.int - 3) * RATIO.missileInt))) + (g.missile || 0);
+    var bite = Math.max(1, Math.round(dmg * RATIO.bite * (big ? RATIO.bigBite : 1))) + (g.bite || 0);
+    var dyn = Math.max(1, Math.round(dmg * RATIO.dyn));
     return {
-      maxHp: Math.max(8, 16 + (st.con - 4) * 2 + (L - 1) * 2 + (b.hp || 0) + (p.hp || 0)),
+      maxHp: Math.max(8, 10 + (st.con - 3) * 2 + (lv - 1) + (b.hp || 0) + (g.hp || 0) + (p.hp || 0)),
       dmg: dmg,
-      kickDmg: Math.round(dmg * 1.5) * (fb ? 2 : 1),
-      crit: Math.min(0.6, 0.05 + (st.dex - 4) * 0.02 + (p.crit || 0)),
-      speedMul: (1 + (st.dex - 4) * 0.03) * mul(p.speed),
-      def: p.def || 0,
-      hobDmg: 10 + L * 2, dynDmg: 22 + L * 3, jugDmg: 8 + L * 2,
-      bombDmg: 22 + L * 3, bombRadius: 40,          // book 1 names, = dynamite
-      missileDmg: 3 + Math.floor(st.int / 2) + Math.floor((L - 1) / 2),
-      biteDmg: Math.round((2 + L) * (r.flags && r.flags.mongo_big ? 1.8 : 1)),
-      compPower: 1 + (st.int - 4) * 0.15 + (L - 1) * 0.04,
+      kickDmg: kick,
+      crit: Math.min(0.6, 0.04 + (st.dex - 3) * 0.02 + (g.crit || 0) + (p.crit || 0)),
+      speedMul: (1 + (st.dex - 3) * 0.03) * mul(p.speed) * (1 + (g.speed || 0)),
+      def: (g.def || 0) + (p.def || 0),
+      hobDmg: Math.max(1, Math.round(dmg * RATIO.hob)), dynDmg: dyn, jugDmg: Math.max(1, Math.round(dmg * RATIO.jug)),
+      fireDmg: Math.max(1, Math.round(dmg * RATIO.fire)),
+      bombDmg: dyn, bombRadius: 40,          // book 1 names, = dynamite
+      missileDmg: missile,
+      biteDmg: bite,
+      compPower: 1 + (st.int - 3) * 0.15 + (lv - 1) * 0.04,
       goldMul: mul(p.gold), viewMul: mul(p.views),
       extraJump: !!p.doubleJump, skinPerk: p,
-      freeballing: fb, xistera: !!(r.flags && r.flags.xistera), fangCaps: !!(r.flags && r.flags.fang_caps),
-      mongoBig: !!(r.flags && r.flags.mongo_big),
+      // Book One gear perks
+      stompMul: 1 + (g.stomp || 0),
+      regen: g.regen || 0,
+      stun: Math.min(0.5, g.stun || 0),
+      missileCd: g.missileCd || 0,
+      specialMul: 1 + pct(g.special),
+      maxBombs: 9 + (g.bombs || 0),
+      gear: g,
+      freeballing: fb, xistera: !!fl.xistera, fangCaps: !!fl.fang_caps,
+      mongoBig: big,
       party: G.party(),
       stats: st
     };
   };
 
+  // Balance multipliers (DESIGN 16.1): D.balance = { mobHp, mobDmg, bossHp, bossDmg, mobXp }, 1 when
+  // missing. stage.js / rooms.js apply them (stage.js balanceEnemy / balanceBoss is the one place).
+  G.bal = function (key) {
+    var b = D().balance, v = b && b[key];
+    return (typeof v === 'number' && isFinite(v) && v > 0) ? v : 1;
+  };
   G.addXP = function (n) {
     var r = G.run; if (!r || !n) return;
     r.xp += Math.round(n);
@@ -842,6 +1011,10 @@
       case 'revival': { var n = rw.count || 1; r.revivals += n; return { kind: 'revival', count: n }; }
       case 'box': { G.giveLootBox(rw.tier || 'bronze', rw.from || 'LOOT', true); return { kind: 'box', tier: rw.tier || 'bronze' }; }
       case 'views': { return { kind: 'views', amount: G.addViews(rw.amount || 1000) }; }
+      case 'gear': {
+        if (rw.id && !G.hasGear(rw.id)) { G.giveGear(rw.id, rw.from || 'LOOT', true); return { kind: 'gear', id: rw.id, isNew: true }; }
+        var gc = Math.round(80 * actScale()); r.gold += gc; return { kind: 'gold', amount: gc, converted: true };
+      }
       case 'nothing': return { kind: 'nothing', text: rw.text || 'ABSOLUTELY NOTHING' };
       default: return { kind: 'gold', amount: 0 };
     }
@@ -907,6 +1080,7 @@
       if (g.skin) { G.unlockSkin(g.skin, true); return { kind: 'skin', id: g.skin, isNew: true }; }
       if (g.box) { G.giveLootBox(g.box, 'PURCHASE', true); return { kind: 'box', tier: g.box }; }
       if (g.flag) { G.setFlag(g.flag); return { kind: 'flag', id: g.flag }; }
+      if (g.gear) { var gn = G.giveGear(g.gear, 'PURCHASE', true); return { kind: 'gear', id: g.gear, isNew: gn }; }
       return resolveReward(g);
     });
     sfx('buy');
@@ -969,38 +1143,51 @@
     return { skins: skins, achievements: achs, wins: wins, boxes: boxes, title: s.meta.legacyTitle, carry: carry };
   };
 
-  // Book One crawler -> what walks onto Floor 3. Book One stats start at 3 each.
+  // Book One crawler -> what walks onto Floor 3 (DESIGN 16.1): Book One's run snapshot as it is.
+  // src is the whole Book One run object (crawler-book1 G.win keeps it in meta.carry).
   function makeCarry(src) {
     if (!src || typeof src !== 'object' || !src.stats || !src.level) return null;
     var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d; };
+    var gear = null;
+    if (src.gear && typeof src.gear === 'object') {
+      var ids = Array.isArray(src.gear) ? src.gear : Object.keys(src.gear).filter(function (k) { return src.gear[k]; });
+      if (ids.length) { gear = {}; ids.forEach(function (id) { if (typeof id === 'string') gear[id] = true; }); }
+    }
     return {
-      level: Math.max(1, n(src.level, 1)), xp: Math.max(0, n(src.xp, 0)), statPoints: Math.max(0, n(src.statPoints, 0)),
+      v: 2,
+      level: Math.max(1, Math.floor(n(src.level, 1))), xp: Math.max(0, n(src.xp, 0)), statPoints: Math.max(0, n(src.statPoints, 0)),
       stats: { str: n(src.stats.str, 3), con: n(src.stats.con, 3), dex: n(src.stats.dex, 3), int: n(src.stats.int, 3) },
-      bonusHp: Math.max(0, n(src.bonus && src.bonus.hp, 2) - 2),   // Book One hands out 2 just for starting
+      bonusHp: Math.max(0, n(src.bonus && src.bonus.hp, 0)),
       gold: Math.max(0, n(src.gold, 0)), potions: Math.max(0, n(src.potions, 0)), bombs: Math.max(0, n(src.bombs, 0)),
       views: Math.max(0, n(src.views, 0)), kills: Math.max(0, n(src.kills, 0)),
-      boxes: (Array.isArray(src.boxes) ? src.boxes : []).filter(function (b) { return b && b.tier; }).slice(0, 20).map(function (b) { return { tier: b.tier, from: 'BOOK ONE' }; }),
+      boxes: (Array.isArray(src.boxes) ? src.boxes : []).filter(function (b) { return b && b.tier; }).slice(0, 20).map(function (b) { return b.name ? { tier: b.tier, from: 'BOOK ONE', name: b.name } : { tier: b.tier, from: 'BOOK ONE' }; }),
+      gear: gear,
       name: typeof src.name === 'string' ? src.name.slice(0, 16) : null,
       skin: (DCW.legacy && DCW.legacy.book1 && DCW.legacy.book1.equipped && DCW.legacy.book1.equipped.skin) || null,
       fromWin: !!src.won
     };
   }
   function applyCarry(r, c) {
-    r.level = c.level;
-    r.lvBase = c.level - 1;
-    // stats carry as they are; Floor 3's starting line is the floor, so nobody arrives weaker than a fresh crawler
-    var base = r.stats;
-    r.stats = { str: Math.max(base.str, c.stats.str), con: Math.max(base.con, c.stats.con), dex: Math.max(base.dex, c.stats.dex), int: Math.max(base.int, c.stats.int) };
-    r.statPoints = c.statPoints;
-    r.bonus.hp = c.bonusHp;
-    r.xp = Math.min(c.xp, G.xpNeed(r.level) - 1);
-    r.gold = Math.max(r.gold, c.gold);
-    r.potions = Math.max(r.potions, c.potions);
-    r.items.hob = (r.items.hob || 0) + c.bombs;     // Book One's bombs are hob-lobbers by Floor 2
-    r.views = c.views; r.kills = c.kills;
+    var n = function (v, d) { return (typeof v === 'number' && isFinite(v)) ? v : d; };
+    r.level = Math.max(1, n(c.level, r.level));
+    r.lvBase = r.level - 1;
+    r.stats = { str: n(c.stats && c.stats.str, 3), con: n(c.stats && c.stats.con, 3), dex: n(c.stats && c.stats.dex, 3), int: n(c.stats && c.stats.int, 3) };
+    r.statPoints = n(c.statPoints, 0);
+    // bonus hp as it is (carries made before v2 had Book One's starting 2 taken off)
+    r.bonus.hp = c.v === 2 ? n(c.bonusHp, 0) : n(c.bonusHp, 0) + 2;
+    r.xp = Math.max(0, Math.min(n(c.xp, 0), G.xpNeed(r.level) - 1));
+    r.gold = n(c.gold, r.gold);
+    r.potions = n(c.potions, r.potions);
+    r.items.hob = (r.items.hob || 0) + n(c.bombs, 0);     // Book One's bombs are hob-lobbers by Floor 3
+    r.views = n(c.views, 0); r.kills = n(c.kills, 0);
     r.fanTier = 0; while (r.fanTier < FAN_TIERS.length && r.views >= FAN_TIERS[r.fanTier]) r.fanTier++;
-    c.boxes.forEach(function (b) { r.boxes.push({ tier: b.tier, from: b.from }); });
+    (c.boxes || []).forEach(function (b) { r.boxes.push(b.name ? { tier: b.tier, from: b.from, name: b.name } : { tier: b.tier, from: b.from }); });
     if (c.name) r.name = c.name;
+    // the gear came with them; an older Book One save without gear gets the end-of-book set
+    var gear = {};
+    if (c.gear && Object.keys(c.gear).length) Object.keys(c.gear).forEach(function (id) { if (c.gear[id]) gear[id] = true; });
+    else G.startGear().forEach(function (id) { gear[id] = true; });
+    r.gear = gear;
     r.carried = true;
     r.hp = G.playerStats().maxHp;
   }

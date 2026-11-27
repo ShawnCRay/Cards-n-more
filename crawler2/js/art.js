@@ -2367,6 +2367,93 @@
     }
   };
 
+  /* ---- readable playfield (Book One rule, DESIGN 16.5) ----
+     The background must always sit darker than, or in a different hue from, anything the player
+     stands on or fights: ground, platforms, Carl, Donut, Mongo and the mobs. Book Two's Floor 3
+     backdrops were mid-value and the same hue as the floor (red lemurs on the red-sun ruins,
+     mid-brown facades behind mid-brown ground, gray marble behind gray marble), so every theme's
+     sky and parallax layers get one shading pass when they are built. Darken the wall, not the
+     sprite: tiles and actors are never touched.
+       s    desaturate 0..1 (pull toward gray first)
+       m    [r, g, b] multipliers (darken + shift the hue away from the ground and mobs)
+       cap  luminance ceiling (0..255); brighter pixels are squeezed under it, highlights keep a
+            little of their lift (soft) so shapes still read
+     keep: palette keys (and raw colours) that are light sources (lit windows, lamps, braziers,
+     candles, the sun's core, glowing runes); they stay as drawn. The anim layer (smoke, motes,
+     steam, flags) is shaded with the same lay settings so it never outshines the playfield. */
+  var SUNK = ['#d8341c', '#f05a30', '#f88858', '#fcfcfc', '#e0e0f8'];
+  var LIGHTK = ['lit', 'litL', 'lantern', 'lanternL', 'brazier', 'ember', 'eye', 'digit', 'glowC', 'glowL', 'fire', 'fireL', 'crack', 'crackG', 'winF', 'wax', 'flame'];
+  var SHADE = {
+    village: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.4, m: [0.5, 0.5, 0.62], cap: 46 } }, n: { sky: {}, lay: { s: 0.25, m: [0.62, 0.62, 0.7], cap: 30 } } },
+    ruins: { d: { sky: { s: 0.25, m: [0.62, 0.58, 0.7], cap: 52 }, lay: { s: 0.45, m: [0.56, 0.58, 0.74], cap: 40 } }, n: { sky: {}, lay: { s: 0.2, m: [0.74, 0.74, 0.8], cap: 28 } } },
+    circus: { d: { sky: { s: 0.15, m: [0.76, 0.72, 0.8] }, lay: { s: 0.45, m: [0.52, 0.5, 0.64], cap: 44 } }, n: { sky: {}, lay: { s: 0.25, m: [0.66, 0.66, 0.74], cap: 34 } } },
+    basement: { d: { lay: { s: 0.2, m: [0.85, 0.85, 0.9], cap: 40 } }, n: { lay: { s: 0.2, m: [0.85, 0.85, 0.9], cap: 34 } } },
+    settlement: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.4, m: [0.48, 0.5, 0.62], cap: 48 } }, n: { sky: {}, lay: { s: 0.25, m: [0.62, 0.62, 0.7], cap: 32 } } },
+    alley: { d: { sky: { s: 0.15, m: [0.7, 0.66, 0.74] }, lay: { s: 0.4, m: [0.6, 0.62, 0.76], cap: 30 } }, n: { sky: {}, lay: { s: 0.2, m: [0.8, 0.8, 0.84], cap: 22 } } },
+    admin: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.5, m: [0.5, 0.46, 0.5], cap: 52 } }, n: { sky: {}, lay: { s: 0.4, m: [0.62, 0.56, 0.58], cap: 34 } } },
+    office: { d: { sky: { s: 0.2, m: [0.7, 0.7, 0.74] }, lay: { s: 0.45, m: [0.58, 0.6, 0.72], cap: 46 } }, n: { sky: { s: 0.2, m: [0.74, 0.74, 0.78] }, lay: { s: 0.4, m: [0.64, 0.66, 0.76], cap: 38 } } },
+    nest: { d: { sky: { s: 0.5, m: [0.6, 0.62, 0.8] }, lay: { s: 0.55, m: [0.58, 0.6, 0.84], cap: 30 } }, n: { sky: { s: 0.5, m: [0.6, 0.62, 0.8] }, lay: { s: 0.55, m: [0.58, 0.6, 0.84], cap: 26 } } },
+    ymca: { d: { sky: { s: 0.35, m: [0.58, 0.6, 0.68], cap: 46 }, lay: { s: 0.35, m: [0.6, 0.62, 0.7], cap: 50 } }, n: { sky: { s: 0.3, m: [0.62, 0.62, 0.7], cap: 36 }, lay: { s: 0.3, m: [0.64, 0.64, 0.72], cap: 40 } } },
+    school: { d: { sky: { s: 0.4, m: [0.56, 0.6, 0.72], cap: 44 }, lay: { s: 0.4, m: [0.58, 0.62, 0.74], cap: 50 } }, n: { sky: { s: 0.35, m: [0.6, 0.62, 0.72], cap: 36 }, lay: { s: 0.35, m: [0.62, 0.64, 0.74], cap: 42 } } },
+    depot: { d: { sky: { s: 0.3, m: [0.72, 0.72, 0.8] }, lay: { s: 0.3, m: [0.66, 0.66, 0.76], cap: 46 } }, n: { sky: { s: 0.3, m: [0.72, 0.72, 0.8] }, lay: { s: 0.3, m: [0.7, 0.7, 0.78], cap: 36 } } },
+    escape: { d: { sky: { s: 0.1, m: [0.82, 0.78, 0.86] }, lay: { s: 0.25, m: [0.72, 0.68, 0.8], cap: 40 } }, n: { sky: {}, lay: { s: 0.2, m: [0.8, 0.8, 0.86], cap: 30 } } },
+    restroom: { d: { sky: { s: 0.4, m: [0.56, 0.54, 0.62], cap: 44 }, lay: { s: 0.4, m: [0.56, 0.54, 0.64], cap: 48 } }, n: { sky: { s: 0.35, m: [0.6, 0.58, 0.66], cap: 36 }, lay: { s: 0.35, m: [0.6, 0.58, 0.68], cap: 40 } } },
+    temple: { d: { sky: { s: 0.2, m: [0.8, 0.78, 0.84] }, lay: { s: 0.2, m: [0.76, 0.74, 0.8], cap: 44 } }, n: { sky: { s: 0.2, m: [0.8, 0.78, 0.84] }, lay: { s: 0.2, m: [0.76, 0.74, 0.8], cap: 38 } } }
+  };
+  function shadeKeep(Q, sh) {
+    var set = {}, i, k;
+    function add(c) { if (typeof c === 'string' && c.charAt(0) === '#') { var p = parseColor(c); set[(p[0] << 16) | (p[1] << 8) | p[2]] = 1; } else if (c && c.map) c.forEach(add); }
+    for (i = 0; i < LIGHTK.length; i++) add(Q[LIGHTK[i]]);
+    for (k in NIGHT_LIGHTS) add(NIGHT_LIGHTS[k]);
+    SUNK.forEach(add);
+    (sh.keep || []).forEach(function (x) { add(Q[x] !== undefined ? Q[x] : x); });
+    return set;
+  }
+  function shadeRGB(r, g, b, o) {
+    var s = o.s || 0, m = o.m || [1, 1, 1], Y = 0.299 * r + 0.587 * g + 0.114 * b;
+    r = (Y + (r - Y) * (1 - s)) * m[0]; g = (Y + (g - Y) * (1 - s)) * m[1]; b = (Y + (b - Y) * (1 - s)) * m[2];
+    if (o.cap) {
+      var Y2 = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (Y2 > o.cap) { var f = (o.cap + (Y2 - o.cap) * (o.soft === undefined ? 0.22 : o.soft)) / Y2; r *= f; g *= f; b *= f; }
+    }
+    return [Math.round(r), Math.round(g), Math.round(b)];
+  }
+  function shadeCol(c, o, keep) {
+    if (c && c.map) return c.map(function (x) { return shadeCol(x, o, keep); });
+    if (typeof c !== 'string' || c.charAt(0) !== '#') return c;
+    var p = parseColor(c);
+    if (keep[(p[0] << 16) | (p[1] << 8) | p[2]]) return c;
+    var q = shadeRGB(p[0], p[1], p[2], o);
+    return hex(q[0], q[1], q[2]);
+  }
+  var shadeRB = null;
+  function shadeCanvas(cv, o, keep) {
+    if (!o || (!o.s && !o.m && !o.cap)) return;
+    if (!shadeRB) { shadeRB = document.createElement('canvas'); shadeRB.g = shadeRB.getContext('2d', { willReadFrequently: true }); }
+    var W = cv.width, H = cv.height, rb = shadeRB;
+    if (rb.width < W) rb.width = W;
+    if (rb.height < H) rb.height = H;
+    rb.g.clearRect(0, 0, W, H); rb.g.drawImage(cv, 0, 0);
+    var img = rb.g.getImageData(0, 0, W, H), d = img.data, memo = {};
+    for (var i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      var key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+      if (keep[key]) continue;
+      var q = memo[key] || (memo[key] = shadeRGB(d[i], d[i + 1], d[i + 2], o));
+      d[i] = q[0]; d[i + 1] = q[1]; d[i + 2] = q[2];
+    }
+    var g = cv.getContext('2d'); g.clearRect(0, 0, W, H); g.putImageData(img, 0, 0);
+  }
+  function shadeBg(b, id, night) {
+    var sh = SHADE[id]; if (!sh) return;
+    var o = night ? sh.n : sh.d; if (!o) return;
+    var keep = shadeKeep(b.Q, sh);
+    if (o.sky) shadeCanvas(b.sky, o.sky, keep);
+    for (var i = 0; i < b.layers.length; i++) shadeCanvas(b.layers[i].cv, (o.layers && o.layers[i]) || o.lay, keep);
+    if (o.lay) { var Qa = {}; for (var k in b.Q) Qa[k] = shadeCol(b.Q[k], o.lay, keep); b.Q = Qa; }
+  }
+  art.shadeInfo = function (theme) { return SHADE[bgId(theme)] || null; };
+
   /* ---- background() ---- */
   var bgCache = {};
   function newState() { return { chim: [], lamps: [], holes: [], flags: [], flames: [], bulbs: [], misc: [] }; }
@@ -2379,6 +2466,7 @@
       try { L.draw(g2(cv), L.w, Q, night, st); } catch (e2) { if (window.console) console.error('art bg layer failed: ' + id + ' #' + i, e2); }
       b.layers.push({ cv: cv, L: L }); b.st.push(st);
     }
+    try { shadeBg(b, id, night); } catch (e3) { if (window.console) console.error('art bg shade failed: ' + id, e3); }
     bgCache[id + (night ? '~n' : '')] = b;
     // the clock will flip day/night sooner or later: build the other variant when the browser is idle
     if (!bgCache[id + (night ? '' : '~n')] && !b.queued) {

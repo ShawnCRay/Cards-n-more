@@ -529,10 +529,10 @@
     if (!name) return;
     x = Math.round(x); y = Math.round(y);
     var a = DCW.art;
-    if (a && typeof a.icon === 'function' && (hasArt('icon_' + name) || (hasArt(name) && !ICONS[name] && /^(icon_|[a-z]+$)/.test(name) && (artInfo(name) || {}).w <= 10))) {
+    if (a && typeof a.icon === 'function' && (hasArt('icon_' + name) || (hasArt(name) && !ICONS[name] && /^(icon_|gear_|[a-z]+$)/.test(name) && (artInfo(name) || {}).w <= 10))) {
       try { a.icon(ctx, name, x, y, o); return; } catch (e) { /* fall back */ }
     }
-    var c = iconCanvas(name) || iconCanvas(ICON_ALIAS[name]);
+    var c = iconCanvas(name) || iconCanvas(ICON_ALIAS[name]) || (/^gear_/.test(name) ? iconCanvas('gear') : null);
     if (!c) { var d = itemDef(name); if (d && d.icon && d.icon !== name) { icon(ctx, d.icon, x, y, o); return; } c = iconCanvas(d && d.kind === 'key' ? 'key' : d && d.kind === 'material' ? 'moonshine' : null); }
     if (c) { if (o && o.scale > 1) ctx.drawImage(c, 0, 0, 8, 8, x, y, 8 * o.scale, 8 * o.scale); else ctx.drawImage(c, x, y); }
     else T('●', x + 1, y, C.gray, { shadow: null });
@@ -599,20 +599,65 @@
     if (hasG('inSafeRoom')) return !!G('inSafeRoom');
     return !!(ui.scenes && (DCW.scene === ui.scenes.inn || DCW.scene === ui.scenes.safeRoom));
   }
-  function perkText(p) {
-    if (!p) return '';
+  // perk objects (gear + skins) -> readable text. Keys: Book One's (hp dmg kick stomp def crit speed regen
+  // missile missileCd special stun bombs gold views doubleJump) + str con dex int (flat stats) + bite (Mongo)
+  function pctOf(v) { v = +v; return Math.round((Math.abs(v) < 1 ? v : v - 1) * 100); }
+  function sgn(v) { v = +v || 0; return (v < 0 ? '-' : '+') + Math.abs(v); }
+  function perkLines(p) {
+    if (!p || typeof p !== 'object') return [];
     var out = [];
-    function pct(v) { v = +v; return Math.round((v < 1 ? v : v - 1) * 100); }
-    if (p.dmg) out.push('+' + p.dmg + ' DAMAGE');
-    if (p.def) out.push('+' + p.def + ' DEFENSE');
-    if (p.hp) out.push('+' + p.hp + ' MAX HP');
-    if (p.speed) out.push('+' + pct(p.speed) + '% SPEED');
-    if (p.gold) out.push('+' + pct(p.gold) + '% GOLD');
-    if (p.views) out.push('+' + pct(p.views) + '% VIEWS');
-    if (p.bombs) out.push('+' + p.bombs + ' EXPLOSIVES');
-    if (p.crit) out.push('+' + Math.round(p.crit * 100) + '% CRIT');
+    STATS.forEach(function (k) { if (p[k]) out.push(sgn(p[k]) + ' ' + STAT_INFO[k].name); });
+    if (p.hp) out.push(sgn(p.hp) + ' MAX HP');
+    if (p.dmg) out.push(sgn(p.dmg) + ' PUNCH DAMAGE');
+    if (p.kick) out.push(sgn(p.kick) + ' KICK DAMAGE');
+    if (p.stomp) out.push('+' + pctOf(p.stomp) + '% STOMP DAMAGE');
+    if (p.def) out.push(sgn(p.def) + ' DEFENSE');
+    if (p.crit) out.push('+' + pctOf(p.crit) + '% CRIT');
+    if (p.speed) out.push('+' + pctOf(p.speed) + '% SPEED');
+    if (p.regen) out.push('REGEN +' + p.regen + ' HP OVER TIME');
+    if (p.missile) out.push(sgn(p.missile) + ' MISSILE DAMAGE');
+    if (p.missileCd) out.push('FASTER MISSILES (-' + Math.abs(p.missileCd) + 'S)');
+    if (p.special) out.push('+' + (Math.abs(p.special) < 1 ? pctOf(p.special) : Math.round(p.special)) + '% SPECIAL FILL');
+    if (p.stun) out.push(pctOf(p.stun) + '% STUN CHANCE');
+    if (p.bite) out.push(sgn(p.bite) + ' MONGO BITE DAMAGE');
+    if (p.bombs) out.push(sgn(p.bombs) + ' EXPLOSIVES');
+    if (p.gold) out.push('+' + pctOf(p.gold) + '% GOLD');
+    if (p.views) out.push('+' + pctOf(p.views) + '% VIEWS');
     if (p.doubleJump) out.push('DOUBLE JUMP');
-    return out.join(', ');
+    return out;
+  }
+  function perkText(p) { return perkLines(p).join(', '); }
+  // one short line for lists: "+4 HP  +2 DMG  REGEN"
+  function perkShort(p) {
+    if (!p || typeof p !== 'object') return '';
+    var out = [];
+    if (p.hp) out.push(sgn(p.hp) + ' HP');
+    if (p.dmg) out.push(sgn(p.dmg) + ' DMG');
+    if (p.kick) out.push(sgn(p.kick) + ' KICK');
+    STATS.forEach(function (k) { if (p[k]) out.push(sgn(p[k]) + ' ' + STAT_INFO[k].short); });
+    if (p.def) out.push(sgn(p.def) + ' DEF');
+    if (p.crit) out.push('+' + pctOf(p.crit) + '% CRIT');
+    if (p.stomp) out.push('STOMP+');
+    if (p.speed) out.push('SPEED+');
+    if (p.regen) out.push('REGEN');
+    if (p.stun) out.push('STUN');
+    if (p.missile) out.push(sgn(p.missile) + ' MISSILE');
+    if (p.missileCd) out.push('FAST MISSILE');
+    if (p.special) out.push('SPECIAL+');
+    if (p.bite) out.push(sgn(p.bite) + ' BITE');
+    if (p.bombs) out.push(sgn(p.bombs) + ' BOOM');
+    if (p.gold) out.push('GOLD+');
+    if (p.views) out.push('VIEWS+');
+    if (p.doubleJump) out.push('2X JUMP');
+    return out.join('  ');
+  }
+  // fit a perkShort line into px: drop whole entries from the end and mark the cut with "+"
+  function fitPerks(s, px) {
+    if (tw(s) <= px) return s;
+    var parts = s.split('  ');
+    while (parts.length > 1 && tw(parts.join('  ') + ' +') > px) parts.pop();
+    var r = parts.join('  ') + ' +';
+    return tw(r) <= px ? r : fitText(s, px);
   }
   function rewardInfo(r) {
     if (r === null || r === undefined) return { text: 'NOTHING. WOW.', icon: 'skull', color: C.dgray };
@@ -635,6 +680,7 @@
       case 'flag': return { text: up(r.text || r.name || 'SOMETHING HAPPENED'), icon: 'star', color: C.yellow };
       case 'nothing': return { text: up(r.text || 'ABSOLUTELY NOTHING'), icon: 'skull', color: C.dgray };
       case 'title': return { text: 'TITLE: ' + up(r.name || r.id), icon: 'star', color: C.pink };
+      case 'gear': return { text: 'GEAR: ' + gearName(r.id), icon: gearIcon(r.id), gear: true, color: C.green };
       default: return { text: up(r.text || String(r.kind || '?')), icon: r.icon || 'star', color: C.white };
     }
   }
@@ -920,9 +966,10 @@
            clock: true(default)|false|{label,night}, objective: true|'text'|{text} (streets),
            party: true|['donut','mongo']|[{id, state:'ok'|'stunned'|'down'|'away'}],
            timer: seconds|{t, label, warn, color}, meters: [{label, value 0..1, color, text}],
-           bossHp 0..1|null, bossName, time|null, par|null (book 1), bombs (book 1) }
+           bossHp 0..1|null, bossName, bossPhases (count), bossPhase (0-based index; else read from
+           DCW.stage.state.boss.phases/.phase), time|null, par|null (book 1), bombs (book 1) }
      ================================================================ */
-  var hudS = { combo: 0, pop: 0, trail: null, bossTrail: null, lastT: 0, sel: null, selT: 0 };
+  var hudS = { combo: 0, pop: 0, trail: null, bossTrail: null, bossShown: null, bossRefill: 0, bossPh: null, bossPhT: 0, lastT: 0, sel: null, selT: 0 };
   var EXPLOSIVES = ['jug', 'hob', 'dyn', 'smoke'];
   ui.EXPLOSIVES = EXPLOSIVES;
   function hudExplosive(h) {
@@ -1049,17 +1096,48 @@
       var r1 = T(combo, 6, cy0 + py, cc, { scale: 2 });
       T('HIT', 9 + r1.w, cy0 + py, cc); T('COMBO!', 9 + r1.w, cy0 + 8 + py, combo >= 10 ? C.white : C.gray);
     }
-    // boss bar
+    // boss bar: phase pips; each phase is a full bar that sweeps back up when the next one starts
     if (h.bossHp !== undefined && h.bossHp !== null) {
-      var bf = clamp(h.bossHp, 0, 1);
-      if (hudS.bossTrail === null || hudS.bossTrail < bf) hudS.bossTrail = bf; else hudS.bossTrail = Math.max(bf, hudS.bossTrail - dt * 0.35);
+      var bf = clamp(+h.bossHp || 0, 0, 1), bph = bossPhaseInfo(h);
+      if (hudS.bossShown === null) { hudS.bossShown = 0; hudS.bossTrail = 0; hudS.bossRefill = 0; } // first sight: fill in
+      if (bph && hudS.bossPh !== null && bph.i > hudS.bossPh) hudS.bossPhT = 1.2; // new phase: its pip flashes
+      hudS.bossPh = bph ? bph.i : null;
+      if (bf < hudS.bossShown) { hudS.bossShown = bf; hudS.bossRefill = 0; }
+      else if (bf > hudS.bossShown + 0.0001) { hudS.bossShown = Math.min(bf, hudS.bossShown + dt * 1.5); hudS.bossRefill = 0.35; hudS.bossTrail = hudS.bossShown; }
+      else if (hudS.bossRefill > 0) hudS.bossRefill -= dt;
+      if (hudS.bossTrail < hudS.bossShown) hudS.bossTrail = hudS.bossShown; else hudS.bossTrail = Math.max(hudS.bossShown, hudS.bossTrail - dt * 0.35);
+      if (hudS.bossPhT > 0) hudS.bossPhT -= dt;
+      var shown = hudS.bossShown, filling = hudS.bossRefill > 0;
       ctx.globalAlpha = 0.6; R(0, 160, W, 20, '#000'); ctx.globalAlpha = 1;
       icon(ctx, 'skull', 6, 162);
-      T(fitText(up(h.bossName || 'BOSS'), 290), 17, 162, C.gold);
+      var pipW = bph ? bph.n * 8 + 4 : 0;
+      T(fitText(up(h.bossName || 'BOSS'), 290 - pipW), 17, 162, C.gold);
+      if (bph) {
+        for (var pp = 0; pp < bph.n; pp++) {
+          var pxp = 312 - (bph.n - pp) * 8 + 2, done = pp < bph.i, curP = pp === bph.i;
+          R(pxp - 1, 162, 7, 7, '#000');
+          R(pxp, 163, 5, 5, done ? '#3a1020' : curP ? ((hudS.bossPhT > 0 && blink(8)) ? C.white : C.red) : '#a81000');
+          if (!done) R(pxp, 163, 5, 1, curP ? '#fc7460' : '#d82800');
+        }
+      }
       DCW.bar(8, 173, 304, 4, hudS.bossTrail, C.white, '#3a1020');
-      R(8, 173, Math.round(304 * bf), 4, '#d82800'); R(8, 173, Math.round(304 * bf), 1, '#fc7460');
-    } else hudS.bossTrail = null;
+      var fw = Math.round(304 * shown);
+      R(8, 173, fw, 4, '#d82800'); R(8, 173, fw, 1, '#fc7460');
+      if (filling && fw > 0) { R(8 + fw - 3, 172, 3, 6, C.white); if (blink(10)) { R(7, 172, 306, 1, C.white); R(7, 177, 306, 1, C.white); } }
+    } else { hudS.bossTrail = null; hudS.bossShown = null; hudS.bossPh = null; hudS.bossPhT = 0; }
   };
+  // boss phase count + current phase (0-based): hud.bossPhases / hud.bossPhase, else read from the stage's boss
+  function bossPhaseInfo(h) {
+    var n = +h.bossPhases, i = +h.bossPhase;
+    if (!(n > 0)) {
+      try {
+        var st = DCW.stage, S = st && DCW.scene === st.scene ? st.state : null, B = S && S.boss;
+        if (B && Array.isArray(B.phases)) { n = B.phases.length; if (!(i >= 0)) i = +B.phase; }
+      } catch (e) { n = 0; }
+    }
+    if (!(n > 1)) return null;
+    return { n: Math.min(8, Math.round(n)), i: clamp(Math.round(i >= 0 ? i : 0), 0, Math.min(8, Math.round(n)) - 1) };
+  }
   ui.hudMeters = true; // drawHUD draws h.meters and h.timer (rooms.js / show.js check this)
   // a HUD object built from the run (for scenes that don't track their own numbers)
   ui.hudFromRun = function (extra) {
@@ -1071,7 +1149,7 @@
   };
 
   /* ================================================================
-     PAUSE  (RESUME, MAP, QUESTS, CHARACTER, INVENTORY, SETTINGS, FLEE, QUIT)
+     PAUSE  (RESUME, MAP, QUESTS, CHARACTER, GEAR, INVENTORY, SETTINGS, FLEE, QUIT)
      ================================================================ */
   function toTitle() {
     closeAll();
@@ -1096,9 +1174,10 @@
       var run = getRun();
       return [
         { label: 'RESUME', action: function () { close(m); } },
-        { label: 'MAP', action: ui.openMap },
+        { label: 'MAP', action: mapScreen },
         { label: 'QUESTS', action: ui.openQuests, badge: activeQuests() > 0 && !m.seenQuests },
         { label: 'CHARACTER', action: ui.openCharacter, badge: run && run.statPoints > 0 && inSafe() },
+        { label: 'GEAR', action: ui.openGear },
         { label: 'INVENTORY', action: ui.openInventory },
         { label: 'SETTINGS', action: ui.openSettings },
         m.canFlee ? { label: 'FLEE', color: C.orange, action: function () {
@@ -1115,7 +1194,7 @@
       listNav(m, its.length, dt);
       if (P('confirm')) { sfx('menu_select'); var it = its[m.sel]; if (it && it.label === 'QUESTS') m.seenQuests = true; if (it && it.action) it.action(); }
       else if ((P('back') || P('start')) && m.t > 0.1) { sfx('menu_back'); close(m); }
-      else if (P('select') && m.t > 0.1) { sfx('menu_select'); ui.openMap(); }
+      else if (P('select') && m.t > 0.1) { mapScreen(); }
     };
     m.draw = function (ctx) {
       dim(ctx, 0.55);
@@ -1539,6 +1618,228 @@
   };
 
   /* ================================================================
+     GEAR - the crawl's gear (Carl's, then Donut's, then Mongo's), perk totals, outfits.
+     Reads DCW.game.gearList() / gearPerks() / gearDef(id) when present, else run.gear + data.gear.
+     ================================================================ */
+  var GEAR_WHO = ['carl', 'donut', 'mongo'];
+  var GEAR_HEAD = { carl: 'CARL', donut: 'PRINCESS DONUT', mongo: 'MONGO' };
+  function gearDef(id) { var g = G('gearDef', id); if (g && typeof g === 'object') return g; var d = D('gear'); return (d && d[id]) || null; }
+  function gearName(id) { var d = gearDef(id); return up((d && d.name) || String(id || '').replace(/_/g, ' ')); }
+  function gearIcon(id) { var d = gearDef(id); return (d && d.icon) || 'gear_' + id; }
+  function gearWho(def) { var w = def && String(def.who || '').toLowerCase(); return GEAR_WHO.indexOf(w) >= 0 ? w : 'carl'; }
+  function runGear() {
+    var l = G('gearList'), tab = D('gear') || {}, order = Object.keys(tab);
+    if (!Array.isArray(l)) {
+      var r = getRun(), g = r && r.gear;
+      l = [];
+      if (Array.isArray(g)) g.forEach(function (id) { l.push({ id: id }); });
+      else if (g && typeof g === 'object') Object.keys(g).forEach(function (k) { if (g[k]) l.push({ id: k }); });
+      l.sort(function (a, b) { return (order.indexOf(a.id) + 999) % 999 - (order.indexOf(b.id) + 999) % 999; });
+    }
+    var out = [];
+    l.forEach(function (e) {
+      if (typeof e === 'string') e = { id: e };
+      if (!e || !e.id) return;
+      var def = (e.def && typeof e.def === 'object') ? e.def : gearDef(e.id);
+      out.push({ id: e.id, def: def || { name: up(String(e.id).replace(/_/g, ' ')) } });
+    });
+    // stable grouping: Carl's, then Donut's, then Mongo's
+    return out.map(function (e, i) { return [e, i]; }).sort(function (a, b) {
+      return (GEAR_WHO.indexOf(gearWho(a[0].def)) - GEAR_WHO.indexOf(gearWho(b[0].def))) || (a[1] - b[1]);
+    }).map(function (p) { return p[0]; });
+  }
+  ui.gearList = runGear;
+  function gearTotals() {
+    var t = G('gearPerks');
+    if (t && typeof t === 'object') return t;
+    var out = {};
+    runGear().forEach(function (g) {
+      var p = g.def.perk || {};
+      Object.keys(p).forEach(function (k) { if (typeof p[k] === 'number') out[k] = (out[k] || 0) + p[k]; else if (p[k]) out[k] = p[k]; });
+    });
+    Object.keys(out).forEach(function (k) { if (typeof out[k] === 'number') out[k] = Math.round(out[k] * 1000) / 1000; });
+    return out;
+  }
+  // owned outfits, in data order (Book Two wardrobe rules: carl_f3 + save.unlocks.skins)
+  function outfits() {
+    var d = D('skins'), ids = d && Object.keys(d).length ? Object.keys(d) : DEF_SKINS;
+    var out = ids.filter(function (id) { return owned('skin', id); });
+    var eq = equipped('skin'); if (out.indexOf(eq) < 0) out.unshift(eq);
+    return out;
+  }
+  // an 8x8 art icon by name (icon_<name> or <name>), optionally scaled; false when art has none
+  function artIcon(ctx, name, x, y, s) {
+    if (!name || !DCW.art || typeof DCW.art.icon !== 'function') return false;
+    var pre = hasArt('icon_' + name);
+    if (!pre && !hasArt(name)) return false;
+    if (!pre) { var inf = artInfo(name); if (!inf || inf.w > 12 || inf.h > 12) return false; }
+    try { DCW.art.icon(ctx, name, Math.round(x), Math.round(y), s > 1 ? { scale: s } : undefined); return true; } catch (e) { return false; }
+  }
+  function gearIconDraw(ctx, id, x, y, s) {
+    var d = gearDef(id) || {}, tries = ['gear_' + id, d.icon];
+    for (var i = 0; i < tries.length; i++) if (artIcon(ctx, tries[i], x, y, s)) return;
+    icon(ctx, d.icon && ICONS[d.icon] ? d.icon : 'gear', x, y, s > 1 ? { scale: s } : null);
+  }
+  ui.drawGearIcon = gearIconDraw;
+  ui.openGear = function () {
+    if (ui.isOpen('gear')) return null;
+    sfx('menu_select');
+    var m = { kind: 'gear', sel: 0, scroll: 0, msg: '', msgT: 0, skinI: -1, msgOk: true };
+    var TOP = 21, BOT = 158;
+    function rows() {
+      var list = runGear(), out = [{ type: 'sum' }];
+      GEAR_WHO.forEach(function (w) {
+        var mine = list.filter(function (g) { return gearWho(g.def) === w; });
+        if (!mine.length) return;
+        out.push({ type: 'head', text: GEAR_HEAD[w] });
+        mine.forEach(function (g) { out.push({ type: 'gear', g: g, who: w }); });
+      });
+      var sk = outfits();
+      if (sk.length > 1) out.push({ type: 'outfit', skins: sk });
+      return out;
+    }
+    function rowH(r) { return r.type === 'head' ? 11 : r.type === 'sum' ? 13 : 20; }
+    function perkBlockText(def) {
+      if (def && typeof def.perkText === 'string' && def.perkText) return def.perkText;
+      return perkLines(def && def.perk).join('\n');
+    }
+    function textBlocks(row) {
+      if (!row) return [];
+      if (row.type === 'sum') {
+        var pl = perkLines(gearTotals()), n = runGear().length;
+        return [{ head: n ? n + ' PIECE' + (n > 1 ? 'S' : '') + ' OF GEAR' : 'NO GEAR YET', text: n ? '' : 'YOU ARE FIGHTING IN YOUR GODDAMN UNDERWEAR. THE AUDIENCE IS THRILLED.', color: C.gray },
+          { head: 'TOTAL PERKS', headColor: C.green, text: pl.length ? pl.join('\n') : 'NONE. YOU ARE RUNNING ON SPITE AND CHEAP COFFEE.', color: pl.length ? C.green : C.dgray }];
+      }
+      if (row.type === 'outfit') {
+        var id = row.skins[m.skinI] || row.skins[0], sd = skinDef(id) || {};
+        return [{ head: skinName(id), text: sd.desc || '', color: C.gray },
+          sd.perk ? { head: 'PERK', headColor: C.green, text: perkText(sd.perk), color: C.green } : null].filter(Boolean);
+      }
+      var d = row.g.def || {}, pk = perkBlockText(d);
+      return [{ head: d.name || gearName(row.g.id), text: '', color: C.white },
+        pk ? { text: pk, color: C.green } : null,
+        d.desc ? { text: d.desc, color: C.gray } : null,
+        d.skin ? { text: 'OUTFIT: ' + skinName(d.skin), color: C.blue } : null].filter(Boolean);
+    }
+    function selectable(r) { return r && r.type !== 'head'; }
+    function move(rs, d) {
+      var n = rs.length, s = m.sel;
+      for (var k = 0; k < n; k++) { s = (s + d + n) % n; if (selectable(rs[s])) break; }
+      if (s !== m.sel) { m.sel = s; sfx('menu_move'); }
+    }
+    function fixScroll(rs) {
+      if (m.sel < m.scroll) m.scroll = m.sel;
+      if (m.scroll === m.sel && m.sel > 0 && rs[m.sel - 1] && rs[m.sel - 1].type === 'head') m.scroll = m.sel - 1;
+      while (m.scroll < m.sel) {
+        var h = 0; for (var i = m.scroll; i <= m.sel; i++) h += rowH(rs[i]);
+        if (h <= BOT - TOP) break;
+        m.scroll++;
+      }
+      m.scroll = clamp(m.scroll, 0, Math.max(0, rs.length - 1));
+    }
+    function say2(t, ok) { m.msg = t; m.msgOk = ok !== false; m.msgT = 1.2; }
+    m.update = function (dt) {
+      m.t += dt; if (m.msgT > 0) m.msgT -= dt;
+      var rs = rows();
+      if (m.sel >= rs.length || !selectable(rs[m.sel])) m.sel = 0;
+      if (rep(m, 'up', dt)) move(rs, -1); else if (rep(m, 'down', dt)) move(rs, 1);
+      fixScroll(rs);
+      var row = rs[m.sel];
+      if (row && row.type === 'outfit') {
+        if (m.skinI < 0 || m.skinI >= row.skins.length) m.skinI = Math.max(0, row.skins.indexOf(equipped('skin')));
+        if (rep(m, 'left', dt)) { m.skinI = (m.skinI + row.skins.length - 1) % row.skins.length; sfx('menu_move'); }
+        else if (rep(m, 'right', dt)) { m.skinI = (m.skinI + 1) % row.skins.length; sfx('menu_move'); }
+        else if (P('confirm')) {
+          var id = row.skins[m.skinI];
+          if (equipped('skin') === id) { sfx('menu_move'); say2('ALREADY WEARING IT, GENIUS.'); }
+          else {
+            var ok = hasG('equip') ? G('equip', 'skin', id) : (function () { var s = save(); s.equipped = s.equipped || {}; s.equipped.skin = id; persist(); return true; })();
+            if (ok !== false) { sfx('menu_select'); say2('LOOKING GOOD, CARL.'); } else say2('CAN\'T WEAR THAT. NOT YET.', false);
+          }
+        }
+      } else {
+        m.skinI = -1;
+        if (P('confirm') && row) {
+          sfx('menu_select');
+          var bl = textBlocks(row);
+          if (row.type === 'gear') bl[0] = { head: GEAR_HEAD[row.who] + '\'S GEAR', text: '', headColor: C.dgray };
+          ui.readMore({ title: row.type === 'sum' ? 'ALL GEAR PERKS' : (row.g.def.name || gearName(row.g.id)), titleColor: C.gold, blocks: bl });
+          return;
+        }
+      }
+      if ((backPressed() || P('start') || P('select')) && m.t > 0.1) { sfx('menu_back'); close(m); }
+    };
+    m.draw = function (ctx) {
+      var rs = rows(), row = rs[m.sel] || rs[0], outfitRow = row && row.type === 'outfit';
+      frame(ctx, 'GEAR', { footer: outfitRow ? '◀▶:OUTFIT  ' + bn('confirm') + ':WEAR  ' + bn('back') + ':BACK' : '↑↓:PICK  ' + bn('confirm') + ':READ  ' + bn('back') + ':BACK' });
+      // ---- list ----
+      var y = TOP, more = false;
+      for (var i = m.scroll; i < rs.length; i++) {
+        var r = rs[i], h = rowH(r), act = i === m.sel;
+        if (y + h > BOT + 2) { more = true; break; }
+        if (act) R(9, y - 2, 142, h, '#1c2c5c');
+        if (r.type === 'head') {
+          T(r.text, 12, y, C.dgray, { shadow: null });
+          R(12 + tw(r.text) + 4, y + 3, Math.max(0, 136 - tw(r.text) - 4), 1, '#2c3c7c');
+        } else if (r.type === 'sum') {
+          icon(ctx, 'star', 12, y - 1);
+          T('ALL PERKS', 23, y, act ? C.gold : C.yellow);
+          var nG = runGear().length; T(nG ? String(nG) : 'NONE', 146, y, C.dgray, { align: 'right', shadow: null });
+        } else if (r.type === 'outfit') {
+          var cur = r.skins[act && m.skinI >= 0 ? m.skinI : r.skins.indexOf(equipped('skin'))] || r.skins[0];
+          icon(ctx, 'star', 12, y - 1);
+          T('OUTFIT', 23, y, act ? C.white : C.gray);
+          T((r.skins.indexOf(cur) + 1) + '/' + r.skins.length, 146, y, C.dgray, { align: 'right', shadow: null });
+          if (act) { T('◀', 23, y + 9, C.gold); T('▶', 146, y + 9, C.gold, { align: 'right' }); }
+          T(fitText(skinName(cur), 108), 31, y + 9, cur === equipped('skin') ? C.green : (act ? C.white : C.gray), { shadow: null });
+        } else {
+          gearIconDraw(ctx, r.g.id, 12, y - 1);
+          T(fitText(r.g.def.name || gearName(r.g.id), 124), 23, y, act ? C.white : C.gray);
+          var ps = perkShort(r.g.def.perk);
+          if (ps) T(fitPerks(ps, 124), 23, y + 9, act ? C.green : C.dgreen, { shadow: null });
+          else T('NO PERK. LOOKS COOL.', 23, y + 9, C.ddgray, { shadow: null });
+        }
+        y += h;
+      }
+      if (m.scroll > 0) T('▲', 142, TOP - 9 + (blink(4) ? 0 : -1), C.gray);
+      if (more) T('▼', 142, BOT + (blink(4) ? 0 : 1), C.gray);
+      // ---- preview ----
+      var px = 156, pw = 154, pv = 20, ph = 66, feet = pv + ph - 5, fr = Math.floor((DCW.t || 0) * 2);
+      DCW.box(px, pv, pw, ph, { fill: '#2c2450' });
+      R(px + 2, feet - 1, pw - 4, ph - (feet - pv) - 1, '#1c1438');
+      for (var s = 0; s < 5; s++) R(px + 10 + s * 30, pv + 6 + (s % 2) * 5, 1, 1, C.gray);
+      var skin = outfitRow ? (row.skins[m.skinI] || equipped('skin')) : equipped('skin');
+      var who = row && row.type === 'gear' ? row.who : 'all';
+      var mongoS = actorName(compSprite('mongo'), 'idle');
+      if (who === 'carl') bigSprite(ctx, actorName('carl', 'idle'), px + 52, feet, { scale: 2, skin: skin, frame: fr });
+      else if (who === 'donut') bigSprite(ctx, actorName('donut', 'idle'), px + 56, feet, { scale: 2, frame: fr });
+      else if (who === 'mongo') bigSprite(ctx, mongoS, px + 58, feet, { scale: 2, frame: fr });
+      else {
+        bigSprite(ctx, actorName('carl', 'idle'), px + 42, feet, { scale: 2, skin: skin, frame: fr });
+        if (!shoulderDonut(ctx, px + 42, feet, 1, fr, 2)) bigSprite(ctx, actorName('donut', 'idle'), px + 82, feet, { scale: 2, frame: fr, flip: true });
+        bigSprite(ctx, mongoS, px + 112, feet, { scale: 2, frame: fr, flip: true });
+      }
+      if (row && row.type === 'gear') {
+        var bob = blink(1.5) ? 0 : -2;
+        R(px + pw - 42, pv + 14 + bob, 28, 28, '#000'); R(px + pw - 41, pv + 15 + bob, 26, 26, '#1c1438');
+        gearIconDraw(ctx, row.g.id, px + pw - 40, pv + 16 + bob, 3);
+      }
+      if (outfitRow && equipped('skin') === skin) T('WEARING', px + pw - 6, pv + 5, C.green, { align: 'right', shadow: null });
+      // ---- text ----
+      var lines = [];
+      textBlocks(row).forEach(function (b) {
+        if (b.head) wrap(up(b.head), pw - 4).forEach(function (t) { lines.push([t, b.headColor || C.gold]); });
+        if (b.text) String(b.text).split('\n').forEach(function (part) { wrap(up(part), pw - 4).forEach(function (t) { lines.push([t, b.color || C.gray]); }); });
+      });
+      var FIT = 7;
+      if (lines.length > FIT) { lines = lines.slice(0, FIT - 1); lines.push([(blink(2) ? '▼ ' : '  ') + bn('confirm') + ': READ MORE', C.white]); }
+      lines.forEach(function (ln, k) { T(ln[0], px + 2, pv + ph + 5 + k * 10, ln[1]); });
+      if (m.msgT > 0) { var mc = m.msgOk ? C.green : C.red; DCW.box(70, 74, 180, 18, { border: mc }); T(fitText(m.msg, 170), 160, 79, mc, { align: 'center' }); }
+    };
+    return push(m);
+  };
+
+  /* ================================================================
      ACHIEVEMENTS
      ================================================================ */
   ui.openAchievements = function () {
@@ -1618,6 +1919,7 @@
         { label: 'SCREEN SHAKE', type: 'bool', key: 'shake', val: s.shake !== false },
         { label: 'CRT FILTER', type: 'bool', key: 'crt', val: s.crt !== false },
         { label: 'TOUCH CONTROLS', type: 'touch', key: 'touch', val: String(s.touch || 'auto').toUpperCase() },
+        { label: 'GORE', type: 'bool', key: 'gore', val: s.gore !== false },
         { label: 'EASY MODE (HALF DAMAGE)', type: 'bool', key: 'easy', val: s.easy === true },
         { label: 'KEYBOARD CONTROLS', type: 'controls' },
         { label: 'RESET SAVE', type: 'reset' },
@@ -1660,7 +1962,7 @@
       var rs = rows(), s = settings();
       frame(ctx, 'SETTINGS', { footer: '◀▶:CHANGE  ' + bn('confirm') + ':TOGGLE  ' + bn('back') + ':BACK' });
       rs.forEach(function (r, i) {
-        var yy = 26 + i * 15 + (i >= 7 ? 5 : 0), act = i === m.sel;
+        var yy = 24 + i * 13 + (i >= rs.length - 3 ? 5 : 0), act = i === m.sel;
         if (act) { R(14, yy - 3, 292, 13, '#1c2c5c'); cursor(18, yy); }
         T(r.label, 30, yy, r.type === 'reset' ? (act ? C.red : C.dred) : act ? C.white : C.gray);
         if (r.type === 'vol') {
@@ -2023,7 +2325,28 @@
     if (dd.st.locked) return C.dred;
     return dd.optional ? C.orange : C.yellow;
   }
+  // SELECT routing. On the streets SELECT opens the map (SELECT again flips to GEAR, again closes);
+  // everywhere else (levels, inns, the club) it opens GEAR. The pause menu keeps MAP and GEAR.
+  function stageMode() {
+    var st = DCW.stage;
+    if (!st || DCW.scene !== st.scene) return null;
+    try { if (typeof st.mode === 'function') return st.mode() || null; var S = st.state; return (S && S.mode) || null; } catch (e) { return null; }
+  }
+  function onStreets() {
+    var md = stageMode();
+    if (md) return md === 'street';
+    var run = getRun();
+    return !!(DCW.stage && DCW.scene === DCW.stage.scene && run && !run.levelId && !run.inInn && !run.inClub);
+  }
+  ui.onStreets = onStreets;
+  ui.onSelect = function () { return onStreets() ? mapScreen() : ui.openGear(); };
+  // stage.js calls openMap() on SELECT; in a level that press means GEAR (call ui.onSelect() instead)
   ui.openMap = function () {
+    if (P('select') && !stack.length && stageMode() && stageMode() !== 'street') return ui.openGear();
+    return mapScreen();
+  };
+  ui.openMapScreen = function () { return mapScreen(); };
+  function mapScreen() {
     if (ui.isOpen('map')) return null;
     var lay = mapAreas();
     var run = getRun() || {};
@@ -2045,11 +2368,12 @@
       else if (P('up')) { for (var k in lay.ups) if (lay.ups[k] === m.cur) moved = k; if (!moved && areaDoors(m.cur).length > 5) { m.scroll = Math.max(0, m.scroll - 1); } }
       else if (P('down')) { if (lay.ups[m.cur]) moved = lay.ups[m.cur]; else { var n = areaDoors(m.cur).length; if (n > 5) m.scroll = Math.min(n - 5, m.scroll + 1); } }
       if (moved && moved !== m.cur) { m.cur = moved; m.scroll = 0; sfx('menu_move'); }
-      if ((backPressed() || P('start') || P('select') || P('confirm')) && m.t > 0.1) { sfx('menu_back'); close(m); }
+      if (P('select') && m.t > 0.1) { close(m); ui.openGear(); return; }
+      if ((backPressed() || P('start') || P('confirm')) && m.t > 0.1) { sfx('menu_back'); close(m); }
     };
     m.draw = function (ctx) {
       var known = knownAreas(), bx = boxes(), ck = clockInfo(), ob = objectiveInfo(), runNow = getRun() || {};
-      frame(ctx, 'THE OVER CITY', { footer: '◀▶↑↓:AREA  ' + bn('back') + ':CLOSE' });
+      frame(ctx, 'THE OVER CITY', { footer: '◀▶↑↓:AREA  ' + bn('select') + ':GEAR  ' + bn('back') + ':CLOSE' });
       if (ck) {
         T('DAY ' + (ck.day || 1) + ' ' + hourText(ck), 310, 9, ck.night ? C.nblue : C.orange, { align: 'right', shadow: null });
         T(ck.label + ' LEFT', 10, 9, ck.hoursLeft <= 24 ? C.red : C.gray, { shadow: null });
@@ -2111,7 +2435,7 @@
       scrollArrows(sb.x + sb.w - 12, sb.y + 16, sb.y + 62, m.scroll, VIS, ds2.length);
     };
     return push(m);
-  };
+  }
 
   /* ================================================================
      QUEST LOG
@@ -3322,6 +3646,12 @@
   };
 
   /* ---------- DEATH (revivals; guard kills are the DEATH PENALTY) ---------- */
+  // result.cause is the killer's name (mob, shooter, boss) or a hazard word; a few raw ids get a readable name
+  var CAUSE_NAMES = { pit: 'A BOTTOMLESS PIT', fall: 'A VERY LONG FALL', damage: 'MISADVENTURE', hazard: 'THE SCENERY', projectile: 'SOMETHING THAT GOT THROWN' };
+  function causeName(c) {
+    var raw = String(c === undefined || c === null || c === '' ? 'misadventure' : c).trim();
+    return CAUSE_NAMES[raw.toLowerCase()] || up(raw.replace(/_/g, ' '));
+  }
   scenes.death = {
     enter: function (p) {
       closeAll();
@@ -3378,8 +3708,10 @@
       bigSprite(ctx, 'carl_dead', 160, 86, { scale: 2, skin: equipped('skin') });
       if (this.guard) spr(ctx, firstArt(['guard_attack', 'guard_walk', 'guard_idle']) || 'guard_walk', 204, 88, { flip: true, frame: Math.floor(t * 2) });
       if (t > 0.8) {
-        var cause = this.guard ? 'BY ORDER OF THE VILLAGE GUARD. NO JAIL. NO TRIAL.' : 'CAUSE: ' + up(this.r.cause || 'MISADVENTURE');
-        T(fitText(cause, 300), 160, 42, this.guard ? C.gold : C.gray, { align: 'center' });
+        var cause = this.guard ? 'BY ORDER OF THE VILLAGE GUARD. NO JAIL. NO TRIAL.' : 'KILLED BY: ' + causeName(this.r.cause);
+        var cl = wrap(cause, 300);
+        if (cl.length > 2) cl = [cl[0], fitText(cl.slice(1).join(' '), 300)];
+        cl.forEach(function (l, i) { T(l, 160, (cl.length > 1 ? 39 : 42) + i * 10, self.guard ? C.gold : (i === 0 && cl.length === 1) ? C.gray : C.white, { align: 'center' }); });
         DCW.box(4, 92, 312, 38);
         faceSlot(ctx, 'p_ai', 9, 95, t < 2.4, 5);
         wrap(up(this.quip), 262).slice(0, 3).forEach(function (l, i) { T(l, 47, 97 + i * 10, C.white); });
@@ -3604,6 +3936,7 @@
         { label: 'CRAFT', action: function () { self.craftMenu(); } },
         { label: 'LOOT BOXES', right: nb ? String(nb) : '', action: ui.openBoxes },
         { label: 'CHARACTER', right: run.statPoints > 0 ? '+' + run.statPoints : '', action: ui.openCharacter },
+        { label: 'GEAR', right: runGear().length ? String(runGear().length) : '', action: ui.openGear },
         { label: 'WARDROBE', action: ui.openWardrobe },
         { label: 'ACHIEVEMENTS', action: ui.openAchievements },
         { label: 'LEAVE', color: C.orange, action: function () { self.leave(); } },
@@ -3637,7 +3970,7 @@
       tryCall(DCW.game, 'tick', [dt]);
       roomWalk(this, dt);
       if (P('start')) { sfx('pause'); this.innMenu(); return; }
-      if (P('select')) { ui.openMap(); return; }
+      if (P('select')) { ui.openGear(); return; }
       if (roomPet(this)) return;
       if ((P('confirm') || P('up')) && this.near) this.interact(this.near);
     },
@@ -3750,7 +4083,7 @@
       roomWalk(this, dt);
       if (this.dance > 0) return;
       if (P('start')) { sfx('pause'); this.clubMenu(); return; }
-      if (P('select')) { ui.openMap(); return; }
+      if (P('select')) { ui.openGear(); return; }
       if (roomPet(this)) return;
       if ((P('confirm') || P('up')) && this.near) this.interact(this.near);
     },

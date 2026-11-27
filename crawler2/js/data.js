@@ -166,133 +166,133 @@
   /* ---------------- items (explosive ids fixed: jug hob dyn smoke) ---------------- */
   D.items = {
     jug: { name: "CARL'S JUG O'BOOM", kind: 'explosive', icon: 'jug', projectile: 'jug',
-      desc: 'MOONSHINE, A RAG AND A BAD ATTITUDE. LOB IT. IT POPS, THEN THE GROUND BURNS FOR A WHILE. FIRE KILLS MOLD LIONS FOR GOOD.' },
+      desc: "MOONSHINE, A RAG AND A SHITTY ATTITUDE. LOB IT. IT POPS, THEN THE GROUND BURNS FOR A WHILE. FIRE KILLS MOLD LIONS FOR GOOD." },
     hob: { name: 'HOB-LOBBER', kind: 'explosive', icon: 'hob', projectile: 'hob',
-      desc: 'A HOBGOBLIN BOMB SMALLER THAN A BASEBALL. LOB IT, OR WITH THE XISTERA FIRE IT STRAIGHT AND HARD. BURSTS ON IMPACT.' },
+      desc: "A HOBGOBLIN BOMB SMALLER THAN A BASEBALL. LOB IT, OR PUT IT IN THE XISTERA AND FIRE IT STRAIGHT DOWN SOMETHING'S THROAT. BURSTS ON IMPACT." },
     dyn: { name: 'GOBLIN DYNAMITE', kind: 'explosive', icon: 'dyn', projectile: 'dyn_stick',
-      desc: 'A STICK OF GOBLIN DYNAMITE. 1.6 SECOND FUSE, ENORMOUS OPINION. DOWN + SPECIAL STRAPS IT TO CLOCKWORK MONGOS.' },
+      desc: "GOBLIN DYNAMITE. 1.6 SECOND FUSE, ENORMOUS OPINION. DOWN + SPECIAL STRAPS IT TO CLOCKWORK MONGOS. THE SYNDICATE FUCKING LOVES THAT." },
     smoke: { name: 'SMOKE BOMB', kind: 'explosive', icon: 'smoke',
-      desc: 'A HOBGOBLIN SMOKE CURTAIN IN A BALL. ANYTHING INSIDE THE CLOUD FORGETS WHERE YOU ARE FOR FOUR SECONDS.' },
+      desc: "A HOBGOBLIN SMOKE CURTAIN IN A BALL. ANYTHING IN THE CLOUD FORGETS WHERE YOU ARE FOR FOUR SECONDS. IT ALSO SMELLS LIKE A WET ASS." },
     moonshine: { name: 'JUG OF MOONSHINE', kind: 'material', sprite: 'qi_moonshine',
-      desc: 'CLEAR, LOUD AND ILLEGAL IN SIX SYSTEMS. CRAFT IT INTO A JUG O\'BOOM AT ANY INN. DO NOT DRINK IT. MORDECAI DRINKS IT.' },
+      desc: "CLEAR, LOUD AND ILLEGAL IN SIX SYSTEMS. CRAFT IT INTO A JUG O'BOOM AT ANY INN. DO NOT DRINK IT. MORDECAI DRINKS IT. LOOK AT MORDECAI." },
 
     /* key items (sprites from the fixed qi_* list) */
     big_top_ticket: { name: 'BIG TOP TICKET', kind: 'key', sprite: 'qi_ticket',
-      desc: 'ADMIT ONE. GRIMALDI\'S TRAVELING CIRCUS, CENTER RING. NO REFUNDS. NO EXITS. NO EXCEPTIONS.' },
+      desc: "ADMIT ONE. GRIMALDI'S TRAVELING CIRCUS, CENTER RING. NO REFUNDS. NO EXITS. NO SURVIVORS SINCE THE FUCKING CATACLYSM." },
     scratch_ticket: { name: 'FIREBALL OR CUSTARD?', kind: 'key', sprite: 'qi_custard',
-      desc: 'A SCRATCH TICKET THAT TALKS LIKE A PHONE GAME. SCRATCH IT: A HUGE FIREBALL OR A FACE FULL OF CUSTARD. ODDS UNDISCLOSED.' },
+      desc: "A SCRATCH TICKET THAT TALKS LIKE A PHONE GAME. A HUGE FIREBALL OR A FACE FULL OF CUSTARD. ODDS UNDISCLOSED. THE TICKET IS A LITTLE SHIT." },
     str_rings: { name: 'TWO RINGS OF +2 STR', kind: 'key', sprite: 'qi_ring', bonus: { str: 2 },
-      desc: 'LOOTED OFF A DEAD CRAWLER NAMED NICA. +2 STRENGTH WHILE YOU WEAR THEM. SHE WOULD HAVE WANTED YOU TO. PROBABLY.' },
+      desc: "LOOTED OFF A DEAD CRAWLER NAMED NICA. +2 STRENGTH EACH. SHE WOULD HAVE WANTED YOU TO HAVE THEM. PROBABLY. SHE IS IN NO SHAPE TO ARGUE." },
     anklet: { name: 'ANKLET OF THE FALLEN OAK', kind: 'key', sprite: 'qi_anklet',
-      desc: 'DONUT TOOK IT OFF GRACE BAUTISTA 3. ENCHANTED. SOMEBODY IN THIS TOWN IS VERY INTERESTED IN WHOEVER WEARS IT.' },
+      desc: "DONUT TOOK IT OFF GRACE BAUTISTA 3. ENCHANTED. SOMEBODY IN THIS TOWN IS VERY, VERY INTERESTED IN WHOEVER WEARS IT. THAT IS NOT GOOD NEWS." },
     gate_pass: { name: 'GATE PASS', kind: 'key', sprite: 'qi_pass',
-      desc: 'FOUND ON GUMGUM. SIGNED BY MAGISTRATE FEATHERFALL. OPENS THE GATE TO THE ADMINISTRATIVE DISTRICT.' },
+      desc: "FOUND ON GUMGUM'S BODY. SIGNED BY MAGISTRATE FEATHERFALL. OPENS THE GATE TO THE ADMINISTRATIVE DISTRICT. SHE DIED HOLDING IT." },
     letter: { name: 'MYSTERIOUS LETTER', kind: 'key', sprite: 'qi_letter',
-      desc: 'WRITTEN IN THE SCRIBBLY LANGUAGE OF NECROMANCERS. SEALED WITH A FEATHER. NOBODY WRITES LETTERS LIKE THIS ABOUT NICE THINGS.' },
+      desc: "WRITTEN IN THE SCRIBBLY LANGUAGE OF NECROMANCERS, SEALED WITH A FEATHER. NOBODY WRITES A LETTER LIKE THIS ABOUT A BAKE SALE." },
     pet_carrier: { name: 'MAGICAL PET CARRIER', kind: 'key', sprite: 'qi_carrier',
-      desc: 'DONUT BOUGHT IT FOR MONGO. IT FOLDS LIKE A RUBIK\'S CUBE AND MONGO SCREAMS LIKE A TEAKETTLE EVERY TIME HE SEES IT.' },
+      desc: "DONUT BOUGHT IT FOR MONGO. IT FOLDS LIKE A RUBIK'S CUBE AND MONGO SCREAMS LIKE A GODDAMN TEAKETTLE EVERY TIME HE SEES IT." },
     fang_caps: { name: 'FANG CAPS', kind: 'key', sprite: 'qi_caps',
-      desc: 'ENCHANTED CAPS THAT SNAP ONTO MONGO\'S TEETH LIKE LEGO. NOW HIS BITE HURTS GHOSTS. NOW HE IS IMPOSSIBLE.' },
+      desc: "ENCHANTED CAPS THAT SNAP ONTO MONGO'S TEETH LIKE LEGO. NOW HIS BITE HURTS GHOSTS. NOW NOTHING IS SAFE. NOTHING. NOT EVEN YOUR ANKLES." },
     upgrade_scroll: { name: 'SCROLL OF UPGRADE', kind: 'key', sprite: 'qi_scroll',
-      desc: 'USED ON THE ENCHANTED BIGBOI BOXERS. FREEBALLING: EVERY ATTACK FROM BELOW THE WAIST HITS TWICE AS HARD.' },
+      desc: "USED ON THE ENCHANTED BIGBOI BOXERS. FREEBALLING: EVERY ATTACK FROM BELOW THE WAIST HITS TWICE AS HARD. YOUR NUTS ARE NOW A WEAPONS PLATFORM." },
     sepsis_crown: { name: 'THE SEPSIS CROWN', kind: 'key', sprite: 'qi_crown',
-      desc: 'DONUT\'S CROWN. SHE WOULD LIKE YOU TO STOP CALLING IT A KEY ITEM. SHE WOULD LIKE YOU TO CALL IT HER CROWN.' },
+      desc: "DONUT'S CROWN. SHE WOULD LIKE YOU TO STOP CALLING IT A KEY ITEM. SHE WOULD LIKE YOU TO CALL IT HER CROWN. SHE WOULD LIKE YOU TO KNEEL." },
     kimaris: { name: 'KIMARIS IN A GLASS CASE', kind: 'key', sprite: 'qi_case',
-      desc: 'A STUFFED DEMON DUKE ON A HORSE, SEALED IN A SHEOL GLASS REAPER CASE. FROM MISS QUILL\'S TOP SHELF. THE CASE IS THE VALUABLE PART.' },
+      desc: "A STUFFED DEMON DUKE ON A HORSE IN A SHEOL GLASS REAPER CASE, FROM MISS QUILL'S TOP SHELF. THE CASE IS THE VALUABLE PART. THE DOLL IS JUST CREEPY." },
     detonator: { name: 'REMOTE DETONATOR', kind: 'key', sprite: 'qi_key',
-      desc: 'ONE BUTTON. TEN STICKS OF DYNAMITE IN THE GUARD DEPOT. KATIA IS HOLDING IT. DO NOT BUMP KATIA.' },
+      desc: "ONE BUTTON. TEN STICKS OF DYNAMITE IN THE GUARD DEPOT. KATIA IS HOLDING IT. DO NOT BUMP KATIA. FOR FUCK'S SAKE, DO NOT BUMP KATIA." },
     doomsday: { name: "CARL'S DOOMSDAY SCENARIO", kind: 'key', sprite: 'qi_crystal',
-      desc: 'A SOUL CRYSTAL ABOUT TO GO OFF, CAPPED IN A SHEOL GLASS REAPER CASE. IF IT EVER LEAVES YOUR INVENTORY, EVERYTHING NEARBY ENDS.' }
+      desc: "A SOUL CRYSTAL ABOUT TO GO OFF, CAPPED IN A SHEOL GLASS REAPER CASE. IF IT EVER LEAVES YOUR INVENTORY, EVERYTHING NEARBY BECOMES RED MIST." }
   };
 
   D.recipes = {
     jug: { name: "JUG O'BOOM", needs: { moonshine: 1 }, gives: { jug: 1 },
-      desc: 'ONE JUG OF MOONSHINE, ONE RAG, ONE LIGHTER. CARL HAS ALCHEMY 3 NOW. THIS IS WHAT HE DOES WITH IT.' },
+      desc: "ONE JUG OF MOONSHINE, ONE RAG, ONE LIGHTER. CARL HAS ALCHEMY 3 NOW. THIS IS WHAT HE DOES WITH IT. THIS IS ALL HE DOES WITH IT." },
     jug_batch: { name: "JUG O'BOOM, CASE OF FOUR", needs: { moonshine: 3 }, gives: { jug: 4 },
-      desc: 'BULK BREWING. THREE JUGS OF MOONSHINE MAKE FOUR BOMBS IF YOU SKIM THE RAGS. MORDECAI CALLS THIS WASTE. OF MOONSHINE.' }
+      desc: "BULK BREWING. THREE JUGS OF MOONSHINE MAKE FOUR BOMBS IF YOU SKIM THE RAGS. MORDECAI CALLS THIS A GODDAMN WASTE. OF MOONSHINE." }
   };
 
   /* ---------------- shops ----------------
      give: {item, n} | {potion: n} | {skin: id} | {box: tier}. Prices are act 1 values. */
   D.shops = {
     lucky: { name: "LUCKY'S GENERAL GOODS", keeper: 'LUCKY', sprite: 'lucky', portrait: 'p_lucky', items: [
-      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. MORDECAI\'S RECIPE. SMELLS LIKE A GYM BAG FULL OF CHERRIES.', price: 30, give: { potion: 1 } },
-      { id: 'moonshine', name: 'JUG OF MOONSHINE', desc: 'FOR CRAFTING JUGS O\'BOOM AT THE INN. LUCKY SWEARS IT IS FOR CLEANING.', price: 12, give: { item: 'moonshine', n: 1 } },
-      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: 'THREE JUGS. LUCKY HAS STOPPED ASKING QUESTIONS.', price: 32, give: { item: 'moonshine', n: 3 } },
-      { id: 'smoke', name: 'SMOKE BOMB', desc: 'ONE SMOKE BOMB. FOR EXITS, ENTRANCES AND MAGIC TRICKS.', price: 18, give: { item: 'smoke', n: 1 } },
-      { id: 'jug', name: "JUG O'BOOM", desc: 'LUCKY MAKES THESE TOO. HIS RAGS ARE WORSE. THEY STILL BURN.', price: 26, give: { item: 'jug', n: 1 } },
-      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A BRONZE BOX FROM THE BACK ROOM. IT RATTLES. LUCKY SAYS THAT IS NORMAL.', price: 45, give: { box: 'bronze' }, limit: 3 }
+      { id: 'potion', name: 'HEALTH POTION', desc: "HEALS HALF YOUR MAX HP. MORDECAI'S RECIPE. SMELLS LIKE A GYM BAG FULL OF CHERRIES AND TASTES LIKE THE GYM BAG.", price: 30, give: { potion: 1 } },
+      { id: 'moonshine', name: 'JUG OF MOONSHINE', desc: "FOR CRAFTING JUGS O'BOOM AT THE INN. LUCKY SWEARS IT IS FOR CLEANING. LUCKY HAS NEVER CLEANED A FUCKING THING.", price: 12, give: { item: 'moonshine', n: 1 } },
+      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: "THREE JUGS. LUCKY HAS STOPPED ASKING QUESTIONS. LUCKY STOPPED CARING ABOUT TWO HUNDRED YEARS AGO.", price: 32, give: { item: 'moonshine', n: 3 } },
+      { id: 'smoke', name: 'SMOKE BOMB', desc: "ONE SMOKE BOMB. FOR EXITS, ENTRANCES, MAGIC TRICKS AND FARTING IN AN ELEVATOR WITH PLAUSIBLE DENIABILITY.", price: 18, give: { item: 'smoke', n: 1 } },
+      { id: 'jug', name: "JUG O'BOOM", desc: "LUCKY MAKES THESE TOO. HIS RAGS ARE WORSE. THEY STILL BURN. EVERYTHING BURNS IF YOU BELIEVE IN IT.", price: 26, give: { item: 'jug', n: 1 } },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: "A BRONZE BOX FROM THE BACK ROOM. IT RATTLES. LUCKY SAYS THAT IS NORMAL. SOMETHING INSIDE SAYS HELP.", price: 45, give: { box: 'bronze' }, limit: 3 }
     ], lines: [
-      "WELCOME TO LUCKY'S! EVERYTHING IS LUCKY EXCEPT THE PRICES, THE STOCK, AND ME.",
-      "GUARDS OUTSIDE? GOOD. MEANS NOBODY ROBS ME. MEANS NOBODY ROBS YOU EITHER. EXCEPT ME. WITH PRICES.",
-      "MOONSHINE IS FOR CLEANING. THAT IS MY STORY AND I AM STICKING TO IT.",
-      "YOU SMELL LIKE CLOWN. EVERYBODY SMELLS LIKE CLOWN THIS WEEK. THE CIRCUS IS IN TOWN."
+      "WELCOME TO LUCKY'S! EVERYTHING HERE IS LUCKY EXCEPT THE PRICES, THE STOCK, AND ME. MOSTLY ME. MY WIFE LEFT ME FOR A GIRAFFE.",
+      "GUARDS OUTSIDE? GOOD. MEANS NOBODY ROBS ME. MEANS NOBODY ROBS YOU EITHER. EXCEPT ME. WITH PRICES. THAT'S CAPITALISM, ASSHOLE.",
+      "MOONSHINE IS FOR CLEANING. THAT IS MY STORY AND I AM STICKING TO IT. HIC. SHIT. FORGET THE HIC.",
+      "YOU SMELL LIKE CLOWN. EVERYBODY SMELLS LIKE CLOWN THIS WEEK. IT GETS IN THE CLOTHES. YOU DON'T HAVE CLOTHES. IT GOT IN YOU."
     ] },
     edge_dancer: { name: "LUCKY'S GENERAL GOODS (SETTLEMENT)", keeper: 'EDGE DANCER', sprite: 'edge_dancer', portrait: 'p_edge_dancer', items: [
-      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. SKYFOWL GRADE. SAME POTION, MORE FEATHERS IN IT.', price: 30, give: { potion: 1 } },
-      { id: 'potion3', name: 'POTION THREE PACK', desc: 'THREE POTIONS. A DISCOUNT FOR THE FLIGHTLESS. EDGE DANCER INSISTS IT IS NOT AN INSULT.', price: 80, give: { potion: 3 } },
-      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: 'THREE JUGS FOR CRAFTING. THE SKYFOWL DRINK IT FROM SAUCERS. DO NOT ASK.', price: 32, give: { item: 'moonshine', n: 3 } },
-      { id: 'smoke2', name: 'SMOKE BOMB PAIR', desc: 'TWO SMOKE BOMBS. FOR WHEN ONE DRAMATIC EXIT IS NOT ENOUGH.', price: 34, give: { item: 'smoke', n: 2 } },
-      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A SILVER BOX. EDGE DANCER FOUND IT ON A ROOF. HE FINDS A LOT OF THINGS ON ROOFS.', price: 90, give: { box: 'silver' }, limit: 2 }
+      { id: 'potion', name: 'HEALTH POTION', desc: "HEALS HALF YOUR MAX HP. SKYFOWL GRADE. SAME POTION, MORE FEATHERS IN IT. TRY NOT TO THINK ABOUT WHERE THE FEATHERS WERE.", price: 30, give: { potion: 1 } },
+      { id: 'potion3', name: 'POTION THREE PACK', desc: "THREE POTIONS. A DISCOUNT FOR THE FLIGHTLESS. EDGE DANCER INSISTS IT IS NOT AN INSULT. IT IS ABSOLUTELY AN INSULT.", price: 80, give: { potion: 3 } },
+      { id: 'moonshine3', name: 'MOONSHINE, THREE PACK', desc: "THREE JUGS FOR CRAFTING. THE SKYFOWL DRINK IT FROM SAUCERS, LIKE CATS. DO NOT TELL DONUT. DO NOT ASK.", price: 32, give: { item: 'moonshine', n: 3 } },
+      { id: 'smoke2', name: 'SMOKE BOMB PAIR', desc: "TWO SMOKE BOMBS. FOR WHEN ONE DRAMATIC EXIT IS NOT ENOUGH AND YOU NEED TO FUCK OFF TWICE.", price: 34, give: { item: 'smoke', n: 2 } },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: "A SILVER BOX. EDGE DANCER FOUND IT ON A ROOF. HE FINDS A LOT OF THINGS ON ROOFS. SOME OF THEM WERE STILL ALIVE.", price: 90, give: { box: 'silver' }, limit: 2 }
     ], lines: [
-      "YES, THIS IS ALSO LUCKY'S. LUCKY IS A FRANCHISE. LUCKY IS EVERYWHERE. DO NOT THINK ABOUT IT TOO HARD.",
-      "WELCOME, GROUND PERSON. PLEASE WIPE YOUR FEET. ALL OF THEM. YOU HAVE GLITTER ON THEM, WHY DO YOU HAVE GLITTER ON THEM.",
-      "THE MAGISTRATE NEVER COMES DOWN TO THE SHOPS. MISS QUILL HANDLES EVERYTHING. MISS QUILL IS VERY ORGANIZED.",
-      "A FLIGHTLESS CUSTOMER WITH GOLD. THE MODERN WORLD IS AMAZING."
+      "YES, THIS IS ALSO LUCKY'S. LUCKY IS A FRANCHISE. LUCKY IS EVERYWHERE. DO NOT THINK ABOUT IT TOO HARD. IT GETS FUCKING EXISTENTIAL.",
+      "WELCOME, GROUND PERSON. PLEASE WIPE YOUR FEET. ALL OF THEM. WHY IS THERE GLITTER ON THEM. WHY DOES THE SKY KEEP CHEERING WHEN YOU WIGGLE THEM.",
+      "THE MAGISTRATE NEVER COMES DOWN TO THE SHOPS. MISS QUILL HANDLES EVERYTHING. MISS QUILL IS VERY ORGANIZED. MISS QUILL SCARES THE SHIT OUT OF ME.",
+      "A FLIGHTLESS CUSTOMER WITH GOLD. THE MODERN WORLD IS AMAZING. DISGUSTING, BUT AMAZING."
     ] },
     talon: { name: "TALON STRONG'S OUTFITTERS", keeper: 'TALON STRONG', sprite: 'talon', portrait: 'p_talon', items: [
-      { id: 'potion', name: 'HEALTH POTION', desc: 'HEALS HALF YOUR MAX HP. TALON CALLS IT A RECOVERY BEVERAGE.', price: 32, give: { potion: 1 } },
-      { id: 'skin_jacket', name: 'JACKET AND JEANS', desc: 'AN OUTFIT. PANTS INCLUDED. THE AUDIENCE WILL WRITE LETTERS.', price: 220, give: { skin: 'carl_jacket' }, limit: 1 },
-      { id: 'skin_toga', name: 'THE SENATOR', desc: 'A BEDSHEET TOGA. SKYFOWL FIND IT DIGNIFIED. NOBODY ELSE DOES.', price: 260, give: { skin: 'carl_toga' }, limit: 1 },
-      { id: 'skin_kilt', name: 'THE HIGHLANDER', desc: 'A KILT. MAXIMUM KICK. FREEBALLING APPROVED, WHICH TALON SAYS LIKE IT IS A FEATURE.', price: 300, give: { skin: 'carl_kilt' }, limit: 1 },
-      { id: 'mystery', name: 'MYSTERY BOX', desc: 'A GOLD BOX. TALON WON IT AT CARDS. TALON CHEATS AT CARDS.', price: 180, give: { box: 'gold' }, limit: 1 }
+      { id: 'potion', name: 'HEALTH POTION', desc: "HEALS HALF YOUR MAX HP. TALON CALLS IT A RECOVERY BEVERAGE. TALON ALSO CALLS HIS ABS A LIFESTYLE.", price: 32, give: { potion: 1 } },
+      { id: 'skin_jacket', name: 'JACKET AND JEANS', desc: "AN OUTFIT. PANTS INCLUDED. THE AUDIENCE WILL WRITE LETTERS. ANGRY LETTERS. SOME OF THEM WILL BE SCRAWLED IN BLOOD.", price: 220, give: { skin: 'carl_jacket' }, limit: 1 },
+      { id: 'skin_toga', name: 'THE SENATOR', desc: "A BEDSHEET TOGA. SKYFOWL FIND IT DIGNIFIED. EVERYBODY ELSE CAN SEE YOUR ASS. THE CAMERA DRONES SEND THEIR THANKS.", price: 260, give: { skin: 'carl_toga' }, limit: 1 },
+      { id: 'skin_kilt', name: 'THE HIGHLANDER', desc: "A KILT. MAXIMUM KICK. FREEBALLING APPROVED, WHICH TALON SAYS WHILE STARING AT YOUR CROTCH LIKE IT IS A FEATURE.", price: 300, give: { skin: 'carl_kilt' }, limit: 1 },
+      { id: 'mystery', name: 'MYSTERY BOX', desc: "A GOLD BOX. TALON WON IT AT CARDS. TALON CHEATS AT CARDS. THE GUY HE BEAT IS STILL IN THE ALLEY, MISSING A THUMB.", price: 180, give: { box: 'gold' }, limit: 1 }
     ], lines: [
-      "TALON STRONG. STRONG IS THE LAST NAME. IT IS ALSO A LIFESTYLE.",
-      "CLOTHES MAKE THE CRAWLER. YOU, FOR EXAMPLE, ARE MADE OF A JACKET AND ONE BAD DECISION.",
-      "I HAVE PANTS. I HAVE SEVERAL PANTS. I AM NOT JUDGING. I AM SELLING.",
-      "THE ELVES OF THE 201ST BUY UNIFORMS HERE. THEY PAY IN EXACT CHANGE. CREEPY PEOPLE PAY IN EXACT CHANGE."
+      "TALON STRONG. STRONG IS THE LAST NAME. IT IS ALSO A LIFESTYLE. FEEL THAT. NO, THE ARM. FEEL THE ARM.",
+      "CLOTHES MAKE THE CRAWLER. YOU, FOR EXAMPLE, ARE MADE OF A JACKET, A PAIR OF MAGIC SHORTS AND ONE TERRIBLE FUCKING DECISION.",
+      "I HAVE PANTS. I HAVE SEVERAL PANTS. I AM NOT JUDGING. I AM SELLING. ALSO JUDGING. YOUR JUNK IS ON TELEVISION, MAN.",
+      "THE ELVES OF THE 201ST BUY UNIFORMS HERE. THEY PAY IN EXACT CHANGE. CREEPY BASTARDS PAY IN EXACT CHANGE. EVERY TIME."
     ] },
     pustule: { name: 'HOBGOBS AND BOOM STICKS', keeper: 'PUSTULE', sprite: 'pustule', portrait: 'p_pustule', items: [
-      { id: 'hob4', name: 'HOB-LOBBERS, FOUR', desc: 'FOUR HOB-LOBBERS. FUSED OR IMPACT, PUSTULE ADJUSTS THEM WITH HER TEETH.', price: 40, give: { item: 'hob', n: 4 } },
-      { id: 'hob10', name: 'HOB-LOBBERS, TEN', desc: 'TEN HOB-LOBBERS. A BULK DISCOUNT AND A SMILE THAT OOZES. LITERALLY.', price: 90, give: { item: 'hob', n: 10 } },
-      { id: 'dyn', name: 'GOBLIN DYNAMITE', desc: 'ONE STICK. LONG FUSE, SHORT TEMPER. BIG BLAST.', price: 30, give: { item: 'dyn', n: 1 } },
-      { id: 'dyn3', name: 'GOBLIN DYNAMITE, THREE', desc: 'THREE STICKS. ENOUGH TO REDECORATE A MANTA RAY.', price: 80, give: { item: 'dyn', n: 3 } },
-      { id: 'smoke3', name: 'SMOKE CURTAINS, THREE', desc: 'HOBGOBLIN SMOKE CURTAINS. PUSTULE SAYS THEY SMELL LIKE LAVENDER. THEY SMELL LIKE PUSTULE.', price: 45, give: { item: 'smoke', n: 3 } },
-      { id: 'moonshine3', name: 'HOBGOBLIN HOOCH, THREE', desc: 'THREE JUGS OF MOONSHINE. STRONGER THAN LUCKY\'S. THE JUGS ARE SWEATING.', price: 30, give: { item: 'moonshine', n: 3 } }
+      { id: 'hob4', name: 'HOB-LOBBERS, FOUR', desc: "FOUR HOB-LOBBERS. FUSED OR IMPACT. PUSTULE ADJUSTS THEM WITH HER TEETH. DON'T WATCH. YOU WILL WATCH.", price: 40, give: { item: 'hob', n: 4 } },
+      { id: 'hob10', name: 'HOB-LOBBERS, TEN', desc: "TEN HOB-LOBBERS. A BULK DISCOUNT AND A SMILE THAT OOZES. LITERALLY. SOMETHING DRIPPED ON THE COUNTER.", price: 90, give: { item: 'hob', n: 10 } },
+      { id: 'dyn', name: 'GOBLIN DYNAMITE', desc: "ONE STICK. LONG FUSE, SHORT TEMPER, BIG FUCKING BLAST.", price: 30, give: { item: 'dyn', n: 1 } },
+      { id: 'dyn3', name: 'GOBLIN DYNAMITE, THREE', desc: "THREE STICKS. ENOUGH TO REDECORATE A MANTA RAY. THE INSIDES GO ON THE OUTSIDE. INTERIOR DESIGN.", price: 80, give: { item: 'dyn', n: 3 } },
+      { id: 'smoke3', name: 'SMOKE CURTAINS, THREE', desc: "HOBGOBLIN SMOKE CURTAINS. PUSTULE SAYS THEY SMELL LIKE LAVENDER. THEY SMELL LIKE PUSTULE'S ARMPIT.", price: 45, give: { item: 'smoke', n: 3 } },
+      { id: 'moonshine3', name: 'HOBGOBLIN HOOCH, THREE', desc: "THREE JUGS OF MOONSHINE. STRONGER THAN LUCKY'S PISS. THE JUGS ARE SWEATING. THE JUGS ARE AFRAID.", price: 30, give: { item: 'moonshine', n: 3 } }
     ], lines: [
-      "WELL HELLO, SUGAR. HOBGOBS AND BOOM STICKS, OPEN ALL NIGHT. YOU BLOW IT UP, I PROBABLY SOLD IT.",
-      "LIKE THE SHIRT? IT'S A UNICORN IN SUNGLASSES. IT'S THE COOLEST THING I OWN AND I OWN A LOT OF DYNAMITE.",
-      "DON'T STARE AT THE SORE, HONEY. IT KNOWS WHEN YOU STARE.",
-      "MORDECAI'S FRIENDS GET THE GOOD FUSES. EVERYBODY ELSE GETS THE FUN FUSES.",
-      "SMOKE CURTAINS ARE BACK IN STOCK. I TOLD YOU I'D HAVE THEM. PUSTULE KEEPS HER PROMISES. AND HER FINGERS. MOSTLY."
+      "WELL HELLO, SUGAR. HOBGOBS AND BOOM STICKS, OPEN ALL NIGHT. YOU BLOW SOMETHING UP IN THIS TOWN, I PROBABLY SOLD IT TO YOU.",
+      "LIKE THE SHIRT? IT'S A UNICORN IN SUNGLASSES. IT'S THE COOLEST THING I OWN, AND I OWN ENOUGH DYNAMITE TO MOVE A FUCKING MOUNTAIN.",
+      "DON'T STARE AT THE SORE, HONEY. IT KNOWS WHEN YOU STARE. IT GETS SHY. THEN IT GETS WET.",
+      "MORDECAI'S FRIENDS GET THE GOOD FUSES. EVERYBODY ELSE GETS THE FUN FUSES. THE FUN ONES TAKE FINGERS.",
+      "SMOKE CURTAINS ARE BACK IN STOCK. TOLD YOU I'D HAVE THEM. PUSTULE KEEPS HER PROMISES. AND HER FINGERS. MOST OF THEM. SHIT, WHERE'S THE PINKY."
     ] },
     quint: { name: "QUINT'S PHARMACY", keeper: 'QUINT', sprite: 'quint', portrait: 'p_quint', items: [
-      { id: 'potion2', name: 'HEALTH POTION, TWO', desc: 'TWO POTIONS, MEMBER PRICE. QUINT DOES NOT SMILE WHEN HE SAYS MEMBER PRICE.', price: 50, give: { potion: 2 } },
-      { id: 'potion5', name: 'HEALTH POTION, FIVE', desc: 'FIVE POTIONS. FOR CRAWLERS WITH PLANS. OR WITHOUT THEM.', price: 115, give: { potion: 5 } },
-      { id: 'starter', name: "ALCHEMIST'S STARTER KIT", desc: 'FIVE JUGS OF MOONSHINE AND A FUNNEL. MORDECAI BOUGHT ONE TOO. HIS IS ALREADY EMPTY.', price: 55, give: { item: 'moonshine', n: 5 } },
-      { id: 'skin_pajamas', name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS. THE SLIPPERS JUMP TWICE. QUINT WILL NOT SAY WHERE HE GOT THEM.', price: 350, give: { skin: 'carl_pajamas' }, limit: 1 },
-      { id: 'box_gold', name: 'UNDER THE COUNTER', desc: 'A GOLD BOX. NO QUESTIONS. QUINT WAS A CRAWLER ONCE. HE KNOWS WHAT YOU NEED.', price: 200, give: { box: 'gold' }, limit: 2 }
+      { id: 'potion2', name: 'HEALTH POTION, TWO', desc: "TWO POTIONS, MEMBER PRICE. QUINT DOES NOT SMILE WHEN HE SAYS MEMBER PRICE. QUINT DOES NOT SMILE.", price: 50, give: { potion: 2 } },
+      { id: 'potion5', name: 'HEALTH POTION, FIVE', desc: "FIVE POTIONS. FOR CRAWLERS WITH PLANS. OR, MORE LIKELY, CRAWLERS WITH NO FUCKING PLAN AT ALL.", price: 115, give: { potion: 5 } },
+      { id: 'starter', name: "ALCHEMIST'S STARTER KIT", desc: "FIVE JUGS OF MOONSHINE AND A FUNNEL. MORDECAI BOUGHT ONE TOO. HIS IS ALREADY EMPTY. SO IS THE FUNNEL. HE DRANK THROUGH IT.", price: 55, give: { item: 'moonshine', n: 5 } },
+      { id: 'skin_pajamas', name: 'BUNNY PAJAMAS', desc: "FOOTIE PAJAMAS WITH EARS. THE SLIPPERS JUMP TWICE. QUINT WILL NOT SAY WHERE HE GOT THEM. THE STAINS ARE NOT SAYING EITHER.", price: 350, give: { skin: 'carl_pajamas' }, limit: 1 },
+      { id: 'box_gold', name: 'UNDER THE COUNTER', desc: "A GOLD BOX. NO QUESTIONS. QUINT WAS A CRAWLER ONCE. HE KNOWS WHAT YOU NEED. HE ALSO KNOWS HOW YOU DIE. HE WON'T SAY.", price: 200, give: { box: 'gold' }, limit: 2 }
     ], lines: [
-      "PHARMACY. QUINT. WHAT DO YOU NEED.",
-      "I WAS A CRAWLER ONCE. NOW I'M HALF DJINN, HALF GARBAGE SCOWL AND ALL PHARMACIST. DON'T ASK HOW. IT DOESN'T GET BETTER.",
-      "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS.",
-      "YES, THE VOICE IS REAL. NO, I WON'T SAY THE LINE. EVERYBODY WANTS THE LINE.",
-      "DON'T DIE IN THE CLUB. THE CLEANUP FEE IS RIDICULOUS."
+      "PHARMACY. QUINT. WHAT DO YOU NEED. MAKE IT FAST, I HAVE A WHOLE CLUB OF ASSHOLES TO OVERCHARGE.",
+      "I WAS A CRAWLER ONCE. NOW I'M HALF DJINN, HALF GARBAGE SCOWL AND ALL PHARMACIST. DON'T ASK HOW. IT DOESN'T GET BETTER. IT GETS WORSE.",
+      "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS. AND A CLOSED CASKET.",
+      "YES, THE VOICE IS REAL. NO, I WON'T SAY THE LINE. EVERYBODY WANTS THE FUCKING LINE.",
+      "DON'T DIE IN THE CLUB. THE CLEANUP FEE IS RIDICULOUS. THE LAST GUY TOOK THREE MOPS AND A PRIEST."
     ] }
   };
 
   D.inns = {
     pug: { name: 'THE BELLY-RUBBED PUG', price: 10, keeper: 'gordo', keeperName: 'GORDO', theme: 'inn_pug', lines: [
-      "WELCOME TO THE PUG. TEN GOLD A NIGHT. FOOD COSTS NOW. THE SHOW SAYS IT BUILDS CHARACTER. I SAY IT BUILDS PROFIT.",
-      "DON'T MIND THE SMELL. THAT'S ME. WET MOSS. IT'S A BOPCA THING. YOU GET USED TO IT. NOBODY GETS USED TO IT.",
-      "YOUR GUIDE CAME IN THROUGH THE WALL AGAIN. HE DOES THAT. HE ALSO DOES THE OTHER THING. ON THE FLOOR. I CLEANED IT.",
-      "THREE TVS, A FIREPLACE AND A STEW THAT IS MOSTLY STEW. YOU'RE WELCOME."
+      "WELCOME TO THE PUG. TEN GOLD A NIGHT. FOOD COSTS NOW. THE SHOW SAYS IT BUILDS CHARACTER. I SAY IT BUILDS PROFIT. PAY UP.",
+      "DON'T MIND THE SMELL. THAT'S ME. WET MOSS. IT'S A BOPCA THING. YOU GET USED TO IT. NOBODY HAS EVER GOT USED TO IT.",
+      "YOUR GUIDE CAME IN THROUGH THE WALL AGAIN. HE PUKED ON MY FLOOR, PASSED OUT IN IT AND THREE GIRLS TRIED TO BUY HIM A DRINK ANYWAY.",
+      "THREE TVS, A FIREPLACE AND A STEW THAT IS MOSTLY STEW. THE REST IS LEMUR. YOU'RE WELCOME."
     ] },
     narwhal: { name: 'THE ONE-EYED NARWHAL', price: 20, keeper: 'fitz', keeperName: 'FITZ', theme: 'inn_narwhal', lines: [
-      "ONE-EYED NARWHAL. FOUR ROOMS. TWENTY GOLD. THE NARWHAL HAD TWO EYES WHEN I HUNG IT UP. DON'T ASK.",
-      "THE MAGISTRATE? FEATHERFALL. DARK CLERIC. CONTROLS THE UNDEAD, THEY SAY. NOBODY'S SEEN HIM IN YEARS. NOBODY ASKS.",
-      "SKYFOWL DRINK UPSTAIRS. EVERYBODY ELSE DRINKS DOWN HERE. THAT'S THE WHOLE TOWN IN ONE SENTENCE.",
-      "YOUR BIRD-MAN GUIDE, OR WHATEVER HE IS THIS WEEK, OWES ME FOR SIX BOTTLES. TELL HIM FITZ SAID HI. TELL HIM FITZ SAID PAY."
+      "ONE-EYED NARWHAL. FOUR ROOMS. TWENTY GOLD. THE NARWHAL HAD TWO EYES WHEN I HUNG IT UP. SOME DRUNK SON OF A BITCH TOOK ONE.",
+      "THE MAGISTRATE? FEATHERFALL. DARK CLERIC. CONTROLS THE UNDEAD, THEY SAY. NOBODY'S SEEN HIM IN YEARS. NOBODY ASKS. ASKING GETS YOU DEAD.",
+      "SKYFOWL DRINK UPSTAIRS. EVERYBODY ELSE DRINKS DOWN HERE. SHIT ROLLS DOWNHILL. THAT'S THE WHOLE TOWN IN ONE SENTENCE.",
+      "YOUR HORNY GUIDE OWES ME FOR SIX BOTTLES. HALF MY CUSTOMERS WANT TO SLEEP WITH HIM AND HE WANTS TO SLEEP UNDER THE BAR. TELL HIM FITZ SAID PAY."
     ] }
   };
 
@@ -327,58 +327,58 @@
   D.enemies = {
     lemur: { name: 'FORMER CIRCUS LEMUR', level: 8, tier: 1, hp: 11, dmg: 2, speed: 44, w: 12, h: 14, ai: 'perch',
       projectile: 'knife', shootEvery: 2.2, aggro: 150, dropRange: 40, xp: 3, gold: [1, 4], sprite: 'lemur', hiddenUntilSeen: true,
-      flavor: "RED FUR, A PAINTED HUMAN SKULL FOR A FACE AND A BANDOLIER OF KNIVES. THE CUTEST THING ON THIS FLOOR. THAT IS THE PROBLEM WITH THIS FLOOR." },
+      flavor: "RED FUR, A PAINTED HUMAN SKULL FOR A FACE AND A BANDOLIER OF KNIVES. THE SKULL'S LAST OWNER DID NOT GIVE IT UP NICELY. SO CUTE. SO FUCKING STABBY." },
     stilt_clown: { name: 'TERROR THE CLOWN', level: 10, tier: 1, hp: 30, dmg: 3, speed: 46, w: 14, h: 44, ai: 'stilt',
       reach: 28, aggro: 170, fearImmune: true, kb: 0.4, xp: 10, gold: [4, 10], sprite: 'stilt_clown',
-      flavor: "ELEVEN FEET OF CLOWN, MOST OF IT STILT, ALL OF IT FUSED. NO EYES, NO NOSE, ONE MOUTH. FEAR DOES NOTHING. IT HAS NO ROOM LEFT FOR FEAR." },
+      flavor: "ELEVEN FEET OF CLOWN, FUSED TO ITS STILTS AT THE BONE. NO EYES, NO NOSE, ONE BIG RED MOUTH. FEAR DOES NOTHING. THERE IS NO ROOM IN THERE FOR FEAR. ONLY TEETH." },
     fat_clown: { name: 'CLAMMY-TYPE CLOWN', level: 9, tier: 1, hp: 18, dmg: 2, speed: 34, w: 20, h: 18, ai: 'jumper',
       jump: 240, aggro: 140, kb: 0.6, xp: 4, gold: [2, 5], sprite: 'fat_clown',
-      flavor: "SHORT, THREE TIMES AS WIDE AND WEARING A GOWN THAT WAS PINK BEFORE THE CATACLYSM. BOUNCES ON ITS BELLY. HAS A LOT OF TEETH FOR A CLOWN." },
+      flavor: "SHORT, THREE TIMES AS WIDE, IN A GOWN THAT WAS PINK BEFORE THE CATACLYSM AND IS NOW CRUSTY. BOUNCES ON ITS BELLY. SHITLOADS OF TEETH FOR A CLOWN." },
     mold_lion: { name: 'MOLD LION', level: 15, tier: 1, hp: 22, dmg: 3, speed: 50, w: 26, h: 16, ai: 'charger',
       chargeSpeed: 190, aggro: 160, regrow: true, regrowTime: 8, xp: 8, gold: [3, 8], sprite: 'mold_lion',
-      flavor: "A LION WITH A MANE OF PINK AND GREEN WORMS AND ONE GLOWING EMERALD EYE. KILL IT AND IT GETS BACK UP. BURN IT AND IT DOES NOT. JUST SAYING." },
+      flavor: "A LION WITH A MANE OF PINK AND GREEN WORMS THAT WRITHE AND DRIP. KILL IT AND IT GETS BACK UP. BURN IT AND IT SCREAMS AND STAYS THE FUCK DOWN." },
     giraffe: { name: 'ARTILLERY GIRAFFE', level: 12, tier: 1, hp: 40, dmg: 3, speed: 8, w: 24, h: 40, ai: 'launcher',
       spawn: 'lemur', spawnEvery: 5, maxSpawn: 3, aggro: 220, kb: 0.1, armor: 1, xp: 12, gold: [5, 12], sprite: 'giraffe',
-      flavor: "THE CIRCUS TAUGHT IT TO CATCH LEMURS ON ITS NECK. THE CATACLYSM TAUGHT IT TO THROW THEM. AT YOU. FROM ACROSS THE STREET." },
+      flavor: "THE CIRCUS TAUGHT IT TO CATCH LEMURS ON ITS NECK. THE CATACLYSM TAUGHT IT TO THROW THEM. AT YOU. THE LEMURS DO NOT GET A VOTE. THEY LAND HARD." },
     street_urchin: { name: 'STREET URCHIN', level: 8, tier: 1, hp: 14, dmg: 2, speed: 60, w: 14, h: 14, ai: 'urchin',
       neutral: true, nightOnly: true, angerTime: 1, xp: 3, gold: [0, 3], sprite: 'street_urchin',
-      flavor: "A KNEE-HIGH SPIKY TUMBLEWEED WITH A JANITOR'S WORK ETHIC. IT ONLY WANTS THE TRASH. STAND BETWEEN IT AND THE TRASH. SEE WHAT HAPPENS." },
+      flavor: "A KNEE-HIGH SPIKY TUMBLEWEED WITH A JANITOR'S WORK ETHIC. IT WANTS THE TRASH. AND THE CORPSES. STAND BETWEEN IT AND THE TRASH AND IT WILL SHRED YOU." },
     brain_boiler: { name: 'BRAIN BOILER', level: 10, tier: 1, hp: 12, dmg: 1, speed: 16, w: 16, h: 20, ai: 'floater', flying: true,
       projectile: 'psionic', shootEvery: 3.2, aggro: 160, fearImmune: true, xp: 4, gold: [1, 4], sprite: 'brain_boiler',
-      flavor: "A SQUID THAT GOT STUCK INSIDE AN UMBRELLA AND DECIDED TO MAKE IT EVERYBODY'S PROBLEM. ITS PSIONIC RING GIVES YOU A HEADACHE. IT IS ALSO A HEADACHE." },
+      flavor: "A SQUID STUCK IN AN UMBRELLA THAT MADE IT EVERYBODY'S PROBLEM. ITS PSIONIC RING SOFT-BOILS YOUR BRAIN. LOW CHARISMA? ENJOY THE NOSEBLEED, DUMBASS." },
     incubus: { name: 'INCUBUS', level: 14, tier: 1, hp: 24, dmg: 3, speed: 40, w: 14, h: 22, ai: 'charm',
       charmTime: 2, charmEvery: 5, aggro: 140, xp: 8, gold: [3, 9], sprite: 'incubus',
-      flavor: "SQUARE JAW, BAT WINGS, AND A SMILE THAT FLIPS YOUR LEFT AND RIGHT. YOUR GUIDE IS ONE OF THESE NOW. DO NOT TELL HIM HE IS THE PRETTY ONE." },
+      flavor: "SQUARE JAW, BAT WINGS, ABS YOU COULD GRATE CHEESE ON. ITS SMILE FLIPS YOUR LEFT AND RIGHT. YOUR GUIDE IS ONE NOW. DO NOT TELL HIM HE IS THE PRETTY ONE." },
     berserker: { name: 'SHAMBLING BERSERKER', level: 12, tier: 2, hp: 60, dmg: 4, speed: 22, w: 26, h: 44, ai: 'berserker',
       darkMul: 4, berserkSpeed: 120, aggro: 150, armor: 1, kb: 0.2, xp: 26, gold: [6, 14], sprite: 'berserker',
-      flavor: "THIRTEEN FEET OF STITCHED-TOGETHER LEFTOVERS. SLOW IN THE LIGHT. IN THE DARK IT GETS FOUR TIMES WORSE, WHICH IS A NUMBER WE MEASURED." },
+      flavor: "THIRTEEN FEET OF STITCHED-TOGETHER LEFTOVERS. WE COUNTED FOUR ASSES IN THERE. SLOW IN THE LIGHT. IN THE DARK IT GETS FOUR TIMES WORSE. FRANKENSTEIN WEEPS." },
     city_elf: { name: 'CITY ELF OF THE 201ST', level: 16, tier: 2, hp: 30, dmg: 3, speed: 38, w: 12, h: 20, ai: 'caster',
       projectile: 'bolt', shootEvery: 2.4, orbEvery: 7, orbTime: 6, aggro: 170, xp: 15, gold: [4, 10], sprite: 'city_elf',
-      flavor: "UNIFORMED MILITIA OF THE 201ST SECURITY GROUP. THEY THINK THE SKYFOWL ARE ANGELS. THEY CAST DARKNESS LIKE IT IS A HOBBY. IT IS THEIR WHOLE PERSONALITY." },
+      flavor: "MILITIA OF THE 201ST SECURITY GROUP. THEY THINK THE SKYFOWL ARE ANGELS AND THEY WILL GUT YOU TO PROVE IT. THEY CAST DARKNESS THE WAY ASSHOLES CAST SHADE." },
     wand_bearer: { name: 'WAND BEARER', level: 17, tier: 2, hp: 34, dmg: 3, speed: 34, w: 12, h: 20, ai: 'caster',
       projectile: 'bolt', shootEvery: 2.0, orbEvery: 9, orbTime: 5, aggro: 180, xp: 16, gold: [5, 12], sprite: 'wand_bearer',
-      flavor: "TEACHING STAFF OF THE APITO EDUCATION CENTER. THE CURRICULUM IS WAND, WAND AND MORE WAND. TODAY'S LESSON IS YOU." },
+      flavor: "TEACHING STAFF OF THE APITO EDUCATION CENTER. THE CURRICULUM IS WAND, TORTURE AND MORE WAND. THEY CARVED UP AN OLD ORC FOR FUN. EXTRA CREDIT FOR THESE PRICKS." },
     krasue: { name: 'KRASUE', level: 16, tier: 2, hp: 32, dmg: 4, speed: 44, w: 16, h: 24, ai: 'krasue', flying: true,
       magicOnly: true, bodyHp: 34, leash: 96, regrowTime: 8, aggro: 170, xp: 34, gold: [6, 14], sprite: 'krasue',
-      flavor: "A FLYING HEAD THAT BROUGHT ITS ORGANS ALONG FOR THE TRIP. GHOST-CLASS. KILL THE HEAD AND IT COMES BACK. FIND THE BODY. WRECK THE BODY." },
+      flavor: "A FLOATING HEAD WITH ITS LUNGS, HEART AND SEVERAL WET YARDS OF GUT SWINGING UNDER IT. GHOST-CLASS. KILL THE HEAD AND IT COMES BACK. FIND THE BODY. WRECK IT." },
     shadow_leak: { name: 'SHADOW LEAK', level: 14, tier: 2, hp: 14, dmg: 2, speed: 52, w: 14, h: 14, ai: 'swarm', flying: true,
       magicOnly: true, group: 3, aggro: 180, xp: 16, gold: [1, 4], sprite: 'shadow_leak',
-      flavor: "A PUFF OF HUNGRY SMOKE WITH A COLD TOUCH. GHOST-CLASS, SO BOMBS PASS RIGHT THROUGH. FISTS DO NOT. FREE XP, IF YOU ARE THE KIND OF PERSON WHO HITS SMOKE." },
+      flavor: "A PUFF OF HUNGRY SMOKE WITH A TOUCH COLD ENOUGH TO SHRIVEL YOUR BALLS. BOMBS PASS RIGHT THROUGH. FISTS DO NOT. FREE XP FOR ANYONE WILLING TO PUNCH A FART." },
     ruin_flocker: { name: 'RUIN FLOCKER', level: 18, tier: 3, hp: 26, dmg: 4, speed: 70, w: 16, h: 12, ai: 'flyer', flying: true,
       aggro: 200, xp: 14, gold: [2, 6], sprite: 'ruin_flocker',
-      flavor: "RAGGED FEATHERED BATS THAT NEST IN THE RUINS AND PANIC WHEN THE MAGIC GOES WEIRD. THE MAGIC IS VERY WEIRD RIGHT NOW. THEY ARE VERY PANICKED." },
+      flavor: "RAGGED FEATHERED BATS THAT NEST IN THE RUINS AND SHIT THEMSELVES WHEN THE MAGIC GOES WEIRD. THE MAGIC IS VERY WEIRD NOW. IT IS RAINING BAT SHIT. RUN." },
     guard: { name: 'VILLAGE GUARD SWORDSMAN', level: 75, tier: 1, hp: 9999, dmg: 99, speed: 34, w: 18, h: 34, ai: 'guard',
       invulnerable: true, fearImmune: true, kb: 0, xp: 0, gold: [0, 0], sprite: 'guard',
-      flavor: "LEVEL 75. FULL PLATE. A BLADE AS LONG AS YOU. NO JAIL ON THIS FLOOR, JUST THE ONE SENTENCE. HE CARRIES IT OUT HIMSELF." },
+      flavor: "LEVEL 75. FULL PLATE. A BLADE LONGER THAN YOU ARE. NO JAIL ON THIS FLOOR, JUST ONE SENTENCE, AND HE CARRIES IT OUT IN TWO PIECES. BOTH OF THEM YOURS." },
     citizen_human: { name: 'TOWNSPERSON', level: 1, tier: 1, hp: 1, dmg: 0, speed: 20, w: 12, h: 20, ai: 'citizen',
       citizen: true, xp: 0, gold: [0, 0], sprite: 'citizen_human',
-      flavor: "A DESCENDANT OF THE CATACLYSM SURVIVORS. WORTH ZERO XP. HURTING ONE IS A CRIME. THE GUARDS DO NOT DO WARNINGS." },
+      flavor: "A DESCENDANT OF THE CATACLYSM SURVIVORS. WORTH ZERO XP. HURTING ONE IS A CAPITAL CRIME. YOU JUST KILLED A GUY FOR NOTHING. GREAT JOB, ASSHOLE." },
     citizen_skyfowl: { name: 'SKYFOWL CITIZEN', level: 3, tier: 1, hp: 1, dmg: 0, speed: 22, w: 14, h: 24, ai: 'citizen',
       citizen: true, xp: 0, gold: [0, 0], sprite: 'citizen_skyfowl',
-      flavor: "AN EAGLE-HEADED ARISTOCRAT WHO THINKS YOUR FEET ARE A SOCIAL STATEMENT. THEY ARE. WORTH ZERO XP AND ONE DEATH PENALTY." },
+      flavor: "AN EAGLE-HEADED ARISTOCRAT WHO THOUGHT YOUR BARE FEET WERE A SOCIAL STATEMENT. THEY WERE. WORTH ZERO XP AND ONE LONG SWORD THROUGH YOUR SPINE." },
     chickadee: { name: 'CHICKADEE', level: 1, tier: 1, hp: 1, dmg: 0, speed: 28, w: 10, h: 12, ai: 'citizen',
       citizen: true, xp: 0, gold: [0, 0], sprite: 'chickadee',
-      flavor: "A SMALL, ROUND BIRD PERSON. THE SKYFOWL'S FAVORITE COUSINS. DO NOT PUNCH THE CHICKADEE. EVERYONE WILL SEE YOU PUNCH THE CHICKADEE." }
+      flavor: "A SMALL, ROUND BIRD PERSON. THE SKYFOWL'S FAVORITE COUSINS. YOU PUNCHED THE CHICKADEE. EVERYBODY SAW YOU PUNCH THE CHICKADEE. YOU SICK FUCK." }
   };
 
   /* ---------------- projectiles ---------------- */
@@ -401,57 +401,71 @@
   };
 
   /* ---------------- bosses ----------------
-     hp ~ 35-45x the expected punch damage at that point (45-90 s with the party). */
+     hp is PER PHASE (DESIGN 16.2): every phase is a full health bar, refilled with a banner
+     (phase name/sub/line). Per-bar hp = round(1.5 * old single-bar hp / phases), so the whole
+     fight is ~1.5x the old one before D.balance.bossHp. `below` no longer triggers phases. */
   D.bosses = {
     terror_big: { name: 'TERROR THE CLOWN', title: 'THE TALL ONE AT THE END OF THE STREET', level: 12,
-      hp: 110, dmg: 3, w: 24, h: 56, sprite: 'terror_big', xp: 40, gold: [20, 40], flying: false, fearImmune: true,
+      hp: 83, dmg: 3, w: 24, h: 56, sprite: 'terror_big', xp: 40, gold: [20, 40], flying: false, fearImmune: true,
       phases: [
         { below: 1.0, speed: 46, pattern: ['walk:1.5', 'charge', 'idle:1', 'shoot:knife:2', 'walk:1', 'jump_slam', 'idle:1.2'] },
-        { below: 0.5, speed: 60, pattern: ['charge', 'idle:0.6', 'spawn:lemur:2', 'jump_slam', 'shockwave', 'shoot:knife:3', 'idle:0.9'] }
+        { below: 0.5, speed: 60, name: 'ENCORE', sub: 'THE LEMURS JOIN THE ACT',
+          line: "HE CALLED HIS LITTLE FRIENDS! THE LEMURS ARE CLIMBING HIM LIKE A JUNGLE GYM AND HE IS PISSED NOW! MORE KNIVES! MORE CLOWN!",
+          pattern: ['charge', 'idle:0.6', 'spawn:lemur:2', 'jump_slam', 'shockwave', 'shoot:knife:3', 'idle:0.9'] }
       ],
-      intro: ["THAT CLOWN IS STANDING ON STILTS. THE STILTS ARE STANDING ON MORE CLOWN. IT IS CLOWN ALL THE WAY DOWN.",
-        "FEAR WILL NOT WORK ON THIS ONE, CRAWLER. FISTS MIGHT. KICK THE STILTS. KICK THEM LIKE THEY OWE YOU MONEY."],
-      defeat: "TERROR THE CLOWN HAS FALLEN DOWN! IT TOOK A WHILE! THERE WAS A LOT OF HIM TO FALL!",
+      intro: ["THAT CLOWN IS ON STILTS. THE STILTS ARE MADE OF MORE CLOWN. IT IS CLOWN ALL THE WAY DOWN, AND EVERY INCH OF IT WANTS TO WEAR YOUR FACE.",
+        "FEAR WILL NOT WORK ON THIS ONE, CRAWLER. DO IT THE OLD-FASHIONED WAY. FISTS. FEET. MOSTLY FEET, PLEASE. BARE ONES. FOR US."],
+      defeat: "TERROR THE CLOWN HAS FALLEN DOWN! IT TOOK FOUR SECONDS! THERE WAS A LOT OF HIM TO FALL AND MOST OF HIM SPLATTERED! TIMBER, MOTHERFUCKER!",
       loot: 'silver', unlock: null },
 
     heather: { name: 'HEATHER THE BEAR', title: 'LEVEL 19 NEIGHBORHOOD BOSS', level: 19,
       curedLines: [
-        { who: 'SYSTEM AI', text: "CUSTARD! THE TICKET CAME UP CUSTARD! IT HEALS! THE WORMS ARE DYING! THE BEAR IS... THE BEAR IS JUST A BEAR AGAIN!" },
-        { who: 'CARL', text: "SHE'S SLOWING DOWN. SHE'S OLD AND SHE'S TIRED AND SHE'S NOT ANGRY ANYMORE. I'M SORRY, HEATHER. LET'S FINISH THIS GENTLY." } ],
-      hp: 240, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 100, gold: [40, 70], flying: false, custard: 0.25,
+        { who: 'SYSTEM AI', text: "CUSTARD! THE TICKET CAME UP CUSTARD! IT HEALS! THE WORMS ARE SHRIVELING UP AND DYING! THE BEAR IS... OH SHIT. THE BEAR IS JUST A BEAR AGAIN." },
+        { who: 'CARL', text: "SHE'S SLOWING DOWN. SHE'S OLD AND SHE'S TIRED AND SHE'S NOT ANGRY ANYMORE. GODDAMNIT. I'M SORRY, HEATHER. LET'S FINISH THIS GENTLY." } ],
+      hp: 120, dmg: 3, w: 40, h: 40, sprite: 'heather', xp: 100, gold: [40, 70], flying: false, custard: 0.25,
       phases: [
         { below: 1.0, speed: 72, pattern: ['walk:1', 'charge', 'idle:0.8', 'jump_slam', 'idle:1', 'charge', 'charge', 'idle:1.2'] },
-        { below: 0.6, speed: 86, pattern: ['worms', 'charge', 'idle:0.6', 'jump_slam', 'worms', 'shockwave', 'charge', 'idle:1'] },
+        { below: 0.6, speed: 86, name: 'CAN OF WORMS', sub: 'THE PARASITES WAKE UP',
+          line: "THE WORMS ARE AWAKE! THEY ARE POURING OUT OF HER LIKE SPAGHETTI OUT OF A DROPPED CAN! DO NOT STEP IN THE SPAGHETTI!",
+          pattern: ['worms', 'charge', 'idle:0.6', 'jump_slam', 'worms', 'shockwave', 'charge', 'idle:1'] },
         /* the custard ticket drops at 25%: grab it and she slows down for the finish */
-        { below: 0.25, speed: 24, pattern: ['walk:2', 'idle:2.5', 'walk:1.5', 'idle:2'] }
+        { below: 0.25, speed: 24, name: 'LAST SKATE', sub: 'SHE IS SO TIRED',
+          line: "SHE'S WOBBLING! SHE'S OLD AND SHE'S HURT AND SHE IS NOT FUCKING DONE! FINISH IT, CRAWLER. ONE WAY OR ANOTHER.",
+          pattern: ['walk:2', 'idle:2.5', 'walk:1.5', 'idle:2'] }
       ],
-      intro: ["HEATHER THE BEAR! FORTY YEARS ON ROLLER SKATES! RETIREMENT WAS WEEKS AWAY WHEN THE CATACLYSM HIT. NOW SHE HUNTS FOR THE CLOWNS.",
-        "FLAMING SKULL, FRONT PAWS MADE OF WORMS AND A PINK TUTU. SHE DOES NOT FEEL PITY. SHE DOES NOT FEEL REMORSE. SHE DOES DO A NICE SPIN."],
-      defeat: "HEATHER THE BEAR HAS SKATED HER LAST ROUTINE. NEIGHBORHOOD BOSS DOWN! YOUR MAP JUST GOT A LITTLE SMARTER.",
+      intro: ["HEATHER THE BEAR! FORTY YEARS ON ROLLER SKATES! RETIREMENT WAS WEEKS AWAY WHEN THE CATACLYSM HIT. NOW SHE HUNTS FOR THE CLOWNS AND LEAKS WORMS.",
+        "A FLAMING SKULL, WORMS WHERE HER PAWS SHOULD BE AND A PINK TUTU. SHE FEELS NO PITY. SHE FEELS NO PAIN. SHE DOES A FUCKING GORGEOUS SPIN."],
+      defeat: "HEATHER THE BEAR HAS SKATED HER LAST ROUTINE. NEIGHBORHOOD BOSS DOWN! YOUR MAP JUST GOT SMARTER. THE CROWD WENT QUIET. WEIRD. THAT NEVER HAPPENS.",
       loot: 'boss', unlock: null },
 
     dispenser: { name: 'THE DISPENSER', title: 'NEIGHBORHOOD BOSS, WALL SPECIES', level: 20, facade: true, camo: 0.34,
-      hp: 320, dmg: 3, w: 192, h: 112, sprite: 'dispenser', xp: 240, gold: [60, 100], flying: false,
+      hp: 160, dmg: 3, w: 192, h: 112, sprite: 'dispenser', xp: 240, gold: [60, 100], flying: false,
       parts: ['eye', 'mouth', 'wing'], boomyMul: 3,
       phases: [
         { below: 1.0, speed: 0, pattern: ['reveal', 'spit:spit:3', 'idle:1.5', 'cloak', 'reveal', 'idle:1', 'sweep', 'idle:2', 'cloak'] },
-        { below: 0.55, speed: 0, pattern: ['reveal', 'spit:spit:5', 'sweep', 'cloak', 'reveal', 'spawn:brain_boiler:2', 'idle:1', 'reveal', 'sweep', 'idle:1.2', 'cloak'] },
-        { below: 0.25, speed: 0, pattern: ['reveal', 'sweep', 'spit:spit:6', 'reveal', 'sweep', 'cloak', 'reveal', 'idle:0.8'] }
+        { below: 0.55, speed: 0, name: 'BRAIN DRAIN', sub: 'THE WALL CALLS FOR BACKUP',
+          line: "IT'S CALLING FOR BACKUP! BRAIN BOILERS, FRESH OFF THE WALL! THE BUILDING IS PISSED AND IT BROUGHT FRIENDS!",
+          pattern: ['reveal', 'spit:spit:5', 'sweep', 'cloak', 'reveal', 'spawn:brain_boiler:2', 'idle:1', 'reveal', 'sweep', 'idle:1.2', 'cloak'] },
+        { below: 0.25, speed: 0, name: 'PEEL OUT', sub: 'THE WALL COMES OFF THE WALL',
+          line: "THE WHOLE FUCKING WALL IS COMING OFF THE WALL! IT IS SWEEPING THE STREET LIKE A RUG! DUCK OR GET FLATTENED!",
+          pattern: ['reveal', 'sweep', 'spit:spit:6', 'reveal', 'sweep', 'cloak', 'reveal', 'idle:0.8'] }
       ],
-      intro: ["THAT BUILDING IS LOOKING AT YOU. NO, REALLY. THAT IS NOT A WALL, CRAWLER. THAT IS A MANTA RAY WEARING A WALL.",
-        "THE DISPENSER! IT DISPENSES DEATH. AND SPIT. MOSTLY SPIT. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. THE CAT'S EARS KNOW WHERE TO LOOK."],
-      defeat: "THE DISPENSER IS OUT OF ORDER! PERMANENTLY! A CLOCKWORK DINOSAUR CARRYING DYNAMITE IS NOW THE TOP STORY IN NINE SYSTEMS!",
+      intro: ["THAT BUILDING IS LOOKING AT YOU. NO, REALLY. THAT IS NOT A WALL, CRAWLER. THAT IS A MANTA RAY THE SIZE OF A FUCKING WALL, WEARING THE WALL.",
+        "THE DISPENSER! IT DISPENSES DEATH. AND SPIT. HOT, CHUNKY SPIT. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. THE CAT'S EARS KNOW WHERE TO LOOK."],
+      defeat: "THE DISPENSER IS OUT OF ORDER! IT IS NOW SPREAD ACROSS SIX BLOCKS LIKE CHUNKY JAM, AND A CLOCKWORK DINOSAUR IS THE TOP STORY IN NINE SYSTEMS!",
       loot: 'boss', unlock: null },
 
     vincente: { name: 'VINCENTE', title: 'CITY ELF, 201ST SECURITY GROUP', level: 16,
-      hp: 340, dmg: 3, w: 16, h: 22, sprite: 'vincente', xp: 170, gold: [40, 80], flying: false,
+      hp: 255, dmg: 3, w: 16, h: 22, sprite: 'vincente', xp: 170, gold: [40, 80], flying: false,
       phases: [
         { below: 1.0, speed: 44, pattern: ['walk:1.2', 'shoot:bolt:3', 'idle:0.8', 'meat_hooks', 'walk:1', 'darkness', 'shoot:bolt:2', 'idle:1'] },
-        { below: 0.5, speed: 58, pattern: ['darkness', 'teleport', 'shoot:bolt:4', 'meat_hooks', 'spawn:city_elf:1', 'charge', 'spread:bolt:5', 'idle:0.8'] }
+        { below: 0.5, speed: 58, name: 'LIGHTS OUT', sub: 'THE 201ST SENDS BACKUP',
+          line: "HE'S BLINKING AROUND THE ALLEY AND HE CALLED A BUDDY FROM THE 201ST! TWICE THE ELF! TWICE THE SMUG! KICK BOTH IN THE SAME PLACE!",
+          pattern: ['darkness', 'teleport', 'shoot:bolt:4', 'meat_hooks', 'spawn:city_elf:1', 'charge', 'spread:bolt:5', 'idle:0.8'] }
       ],
-      intro: ["THE ELF WITH THE BURNING HAND! HE SAYS HE IS A GUARDIAN OF ANGELS. HE IS STANDING OVER A DEAD ORC. CHOOSE WHICH PART TO BELIEVE.",
-        "HE HAS A SCROLL OF MEAT HOOKS AND HE KNOWS HOW TO USE IT. HIDE THE DINOSAUR. OR DO NOT. THE DINOSAUR SEEMS TO WANT THIS."],
-      defeat: "VINCENTE HAS BEEN KICKED IN THE ONE PLACE EVERY SPECIES AGREES ON. THEN A CAT TOOK HIS HEAD. THE DINOSAUR IS KEEPING IT.",
+      intro: ["THE ELF WITH THE BURNING HAND! HE SAYS HE GUARDS ANGELS. HE IS STANDING OVER A DEAD ORC WITH HER BLOOD ON HIS BOOTS. PICK WHICH PART TO BELIEVE.",
+        "HE HAS A SCROLL OF MEAT HOOKS AND HE LOVES USING IT. HIDE THE DINOSAUR. OR DON'T. THE DINOSAUR WANTS TO EAT THIS SMUG LITTLE SHIT."],
+      defeat: "VINCENTE GOT KICKED SQUARE IN THE NUTS, THEN A CAT TOOK HIS HEAD CLEAN OFF HIS NECK. THE DINOSAUR IS KEEPING IT. THE GALAXY IS ON ITS FEET.",
       loot: 'boss', unlock: null }
   };
 })();
@@ -3783,8 +3797,8 @@
           { who: 'CLARABELLE', text: "THE GIRL WITH THE DOGS TORE THIS PLACE UP LAST NIGHT. IF YOU SEE HER, TELL HER CLARABELLE REMEMBERS. CLARABELLE ALWAYS REMEMBERS." }
         ],
         quint: [
-          "PHARMACY. QUINT. WHAT DO YOU NEED.",
-          "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS.",
+          "PHARMACY. QUINT. WHAT DO YOU NEED. MAKE IT FAST, I HAVE A WHOLE CLUB OF ASSHOLES TO OVERCHARGE.",
+          "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS. AND A CLOSED CASKET.",
           "NO, I WON'T SAY IT IN THE VOICE. EVERYBODY WANTS THE VOICE."
         ],
         dance: [
