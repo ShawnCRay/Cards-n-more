@@ -127,6 +127,11 @@
      level's theme decides the look).
    - events gives also take {item, n} for key items; events.npc fires on talk.
    - achievements[id].box null = no prize (YELLOW-BELLIED CHICKENSHIT, EARLY BIRD).
+   - DESIGN 16 (crawler section near the end): D.gear {id: name short who icon perk perkText desc},
+     D.start, D.balance, D.plotArmor, D.donutGripes. Gives take {gear: id}. bosses[id].hp is per
+     phase bar; phases[1+] carry name/sub/line for the banner. D.ai.carlFeet: Book One's foot pool.
+   Tone (DESIGN 16.4): adult, swears like the book, no slurs, nothing sexual near minors, the
+   murdered women are never the joke.
    Text rules: uppercase ASCII + the font's glyphs, no em dashes, <= 160 chars.
    ========================================================================== */
 (function () {
@@ -2259,7 +2264,7 @@
       "LEA. LEVEL 13. HER LAST WORDS ARE CARVED INTO THE DOOR FRAME: DON'T GO TO THE FUCKING CIRCUS. SHE UNDERLINED FUCKING. TWICE."
     ],
     reward: { box: 'silver', xp: 25, gold: 25 },
-    sets: ['bodies_done'], gives: [{ item: 'str_rings', n: 1 }, { item: 'anklet', n: 1 }],
+    sets: ['bodies_done'], gives: [{ gear: 'nica_rings' }, { gear: 'grace_anklet' }],
     outro: 'bodies_after', thenArea: 'circus_park', thenEntry: 'left' });
 
   lv('a1_collapse', { name: 'THE TENEMENT COMES DOWN', act: 1, kind: 'drop', theme: 'ruins', night: true, music: 'climb', hours: 2,
@@ -2305,7 +2310,7 @@
     intro: 'heather_intro',
     signs: ["THE CIRCUS GROUNDS. THE TRACKS IN THE MUD ARE ROLLER SKATE WHEELS. THEY ARE GETTING CLOSER. WHY THE FUCK ARE YOU STILL READING THIS SIG"],
     reward: { box: 'boss', xp: 40, gold: 40 },
-    sets: ['heather_done', 'has_ticket'], gives: [{ item: 'big_top_ticket', n: 1 }, { item: 'scratch_ticket', n: 1 }],
+    sets: ['heather_done', 'has_ticket'], gives: [{ item: 'big_top_ticket', n: 1 }, { item: 'scratch_ticket', n: 1 }, { gear: 'spiked_kneepads' }],
     outro: 'heather_down', thenArea: 'circus_park' });
 
   lv('a1_bigtop', { name: 'THE BIG TOP', act: 1, kind: 'rooms', theme: 'bigtop', night: true, solo: true, music: 'bigtop', hours: 4,
@@ -2370,7 +2375,7 @@
     signs: ["SPRAY PAINT ON THE WALL: THE ANGELS ARE WATCHING. SOMEBODY ELSE HAS WRITTEN UNDER IT: SO ARE THE FUCKING HEADS.",
       "GUMGUM. LEVEL 5 ORC. SHE ASKED FOR HELP AND THE GUIDE SAID NO. SOMEBODY ELSE ANSWERED. THE MARKS ON HER ARE NOT FROM ONE KIND OF MONSTER."],
     reward: { box: 'boss', xp: 60, gold: 40 },
-    sets: ['vincente_dead', 'gumgum_dead', 'has_pass', 'xistera'], gives: [{ item: 'gate_pass', n: 1 }, { item: 'letter', n: 1 }],
+    sets: ['vincente_dead', 'gumgum_dead', 'has_pass', 'xistera'], gives: [{ item: 'gate_pass', n: 1 }, { item: 'letter', n: 1 }, { gear: 'xistera' }],
     outro: 'alley_after', thenArea: 'settlement' });
 
   lv('a2_divider', { name: "THE Y: THE DIVIDER'S CORPSE", act: 2, kind: 'side', theme: 'ymca', dark: true, night: true, music: 'dark', hours: 3,
@@ -2449,7 +2454,7 @@
     signs: ["THE ROOM IS MUTED TO SPELLS. EVEN THE CAT'S TORCH FLICKERS. SOMETHING IN HERE ATE A LOT OF LIGHT AND WANTS MORE. IT SMELLS LIKE A BUTCHER'S DUMPSTER.",
       "MAGISTRATE FEATHERFALL, LEVEL 32 DARK CLERIC. STRAPPED UPSIDE DOWN TO A WHEEL. FEATHERLESS. MILKY EYES. DEAD FOR YEARS. HE STILL SIGNED THINGS. SOMEHOW."],
     reward: { box: 'gold', xp: 250, gold: 80 },
-    sets: ['nest_done', 'burgundy_dead', 'met_bautista'], gives: [{ item: 'kimaris', n: 1 }],
+    sets: ['nest_done', 'burgundy_dead', 'met_bautista'], gives: [{ gear: 'kimaris' }],
     outro: 'nest_after', thenArea: 'admin' });
 
   lv('a3_depot', { name: 'THE GUARD DEPOT', act: 3, kind: 'plant', theme: 'depot', night: true, music: 'dark', hours: 3,
@@ -2568,7 +2573,7 @@
       { who: 'SYSTEM AI', text: "THE EAST ROAD! THIRTY-FOUR KILOMETERS OF IT. THE MEDIUM SKYFOWL SETTLEMENT IS AT THE END. BRING SNACKS. BRING A BODY BAG. BRING A CUP. HA." } ] },
     { id: 'settlement_arrival', area: 'settlement', when: { notFlags: ['settled'] }, cinema: 'settlement_arrival',
       sets: ['settled', 'freeballing', 'fang_caps', 'quadrillion'],
-      gives: [{ item: 'dyn', n: 4 }, { item: 'hob', n: 4 }, { item: 'upgrade_scroll', n: 1 }, { item: 'fang_caps', n: 1 }, { item: 'sepsis_crown', n: 1 }] },
+      gives: [{ item: 'dyn', n: 4 }, { item: 'hob', n: 4 }, { gear: 'freeballing' }, { gear: 'fang_caps' }] },
     { id: 'gumgum_ask', area: 'settlement', when: { flags: ['settled'], notFlags: ['gumgum_asked'] }, cinema: 'gumgum_ask', sets: ['gumgum_asked'],
       gives: [{ item: 'dyn', n: 2 }] },
     { id: 'gumgum_bodies', area: 'ruins_e', when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, cinema: 'gumgum_bodies',
@@ -2715,7 +2720,7 @@
     tour: [
       { bg: 'village', fade: true, actors: crew(80).concat([A('mordecai', 150, { flip: true })]), lines: [
         L(MORD, "FIRST VILLAGE OF THE FLOOR. NO NAME. THEY DON'T GET NAMES UNTIL SOMEBODY KILLS THE MAYOR. DON'T KILL THE MAYOR. I CAN SEE YOU THINKING ABOUT IT."),
-        L(MORD, "SEE THE GUYS IN PLATE? VILLAGE GUARD SWORDSMEN. LEVEL 75. NO JAIL HERE. HIT A CITIZEN, ROB A SHOP, PASS OUT DRUNK IN THE STREET: DEATH."),
+        L(MORD, "SEE THE GUYS IN PLATE? VILLAGE GUARD SWORDSMEN. LEVEL 75. NO JAIL HERE. HIT A CITIZEN, ROB A SHOP, PASS OUT DRUNK IN THE STREET: DEATH. NO APPEALS."),
         L(CARL, "PASSING OUT DRUNK IS A CAPITAL CRIME? HOW THE HELL ARE YOU STILL ALIVE?"),
         L(MORD, "I DO MY PASSING OUT INDOORS. LIKE A PROFESSIONAL. FACE DOWN, DOOR LOCKED, CHAIR UNDER THE KNOB SO NOBODY CRAWLS INTO BED WITH ME.") ] },
       { bg: 'village', actors: crew(80).concat([A('mordecai', 150, { flip: true }), A('guard_walk', 250, { flip: true })]), lines: [
@@ -2779,8 +2784,10 @@
         L('SIGNET', "TSARINA SIGNET. HALF NAIAD, HALF HIGH ELF, ALL OF ME ON DISPLAY. AND YOU ARE THE ONES WHO HAVE BEEN WALKING AROUND MY CIRCUS LIKE YOU OWN IT."),
         L(DONUT, "A THONG? CARL. YOU KNOW HOW I FEEL ABOUT THONGS. THAT IS NOT AN OUTFIT. THAT IS A CRY FOR ATTENTION, AND I WOULD KNOW.") ] },
       { bg: 'panel:signet_tattoos', lines: [
-        L(AI, "AN ELITE! LEVEL 60! THE TATTOOS MOVE. SEA SERPENTS, ONI, SHARKS AND DRAGONS CRAWLING OVER EVERY BARE INCH OF HER. THEY ARE NOT DECORATION. THEY ARE HER ARMY."),
-        L(AI, "AND YES, VIEWERS, EVERY INCH IS BARE. THE CHAT JUST CRASHED. THREE STAR SYSTEMS HAVE REQUESTED A SLOWER PAN. REQUEST GRANTED.") ] },
+        L(AI, "AN ELITE! LEVEL 60! THE TATTOOS MOVE. SEA SERPENTS, ONI, SHARKS AND DRAGONS CRAWLING OVER EVERY BARE INCH OF HER. THEY ARE NOT DECORATION. THEY ARE HER ARMY.") ] },
+      { bg: 'panel:signet_full', lines: [
+        L(AI, "AND YES, VIEWERS, EVERY INCH IS BARE. THE CHAT JUST CRASHED. THREE STAR SYSTEMS HAVE REQUESTED A SLOWER PAN. REQUEST GRANTED."),
+        L(CARL, "EYES. I AM LOOKING AT HER EYES. HER EYES ARE UP THERE. I KNOW EXACTLY WHERE HER EYES ARE AND THAT IS WHERE I AM LOOKING.") ] },
       { bg: 'basement', night: true, wobble: 1.5, flash: '#f878f8', sfx: 'fear',
         actors: crew(90).map(function (a) { return a.sprite === 'carl_idle' ? A('carl_charmed', 90) : a; }).concat([A('signet', 200, { flip: true })]), lines: [
         L('SIGNET', "COME HERE, LITTLE CRAWLER. LET ME HAVE A LOOK AT YOU. ALL OF YOU. MY, MY. SOMEBODY IS HAPPY TO SEE ME."),
@@ -2864,7 +2871,7 @@
         L('ZEV', "THEY SAY YES. ON ONE CONDITION. YOU APPEAR IN THEIR SHOW ON THE SIXTH FLOOR. LATER. WHEN THEY CALL. OH, AND YOU HAVE TO KEEP HIM ALIVE NOW.") ] },
       { bg: 'circus', night: true, actors: [A('carl_idle', 100), A('apollon', 210, { flip: true })], lines: [
         L(CARL, "WISP ARMOR. READ THE BOOK, CAST IT, NO MIND CONTROL. THEN I EAT THE WORM ICE CREAM SO THE VINE CAN TALK TO ME. I MADE THIS PLAN. I HATE THIS PLAN."),
-        L('APOLLON', "ONE SCOOP OF WORM! WITH WORM SPRINKLES! ENJOY, LITTLE MAN!"),
+        L('APOLLON', "ONE SCOOP OF WORM! WITH WORM SPRINKLES! SWALLOW, LITTLE MAN! DON'T CHEW! THEY HATE BEING CHEWED!"),
         L(CARL, "IT'S WIGGLING ON THE WAY DOWN. IT'S STILL WIGGLING. OH GOD. OH FUCK. IT'S WIGGLING IN MY STOMACH.") ] },
       { bg: 'panel:bigtop_vine', wobble: 3, lines: [
         L('GRIMALDI', "SON. YOU WALKED INTO MY RING WITH POISON IN YOUR VEINS. NOBODY HAS DONE THAT IN THREE HUNDRED YEARS. I THINK I LIKE YOU."),
@@ -2968,7 +2975,7 @@
         L(DONUT, "MONGO IS KEEPING THE HEAD. I SAID NO. HE SAID MREEP. HE IS LICKING IT. WE HAVE AGREED TO DISCUSS IT LATER."),
         L(CARL, "GUMGUM. THE KRASUE DID THIS. SHE CAME ASKING FOR HELP AND SHE DIED IN AN ALLEY, JUST LIKE HER MOTHER. GODDAMNIT. GODDAMNIT.") ] },
       { bg: 'alley', night: true, actors: crew(90), lines: [
-        L(CARL, "SHE HAD A GATE PASS TO THE ADMIN DISTRICT, SIGNED BY MAGISTRATE FEATHERFALL. AND A LETTER. SCRIBBLY WRITING. NECROMANCER STUFF, I THINK."),
+        L(CARL, "SHE HAD A GATE PASS TO THE ADMIN DISTRICT, SIGNED BY MAGISTRATE FEATHERFALL. AND A LETTER. SCRIBBLY WRITING. NECROMANCER SHIT, I THINK."),
         L(DONUT, "FITZ SAID THE MAGISTRATE IS A DARK CLERIC WHO CONTROLS THE UNDEAD. CARL, THIS IS LIKE LAW AND ORDER. THE ONE WITH THE GOOD DETECTIVE. WE ARE THE GOOD DETECTIVE.") ] },
       { bg: 'inn_narwhal', sfx: 'lootbox_open', flash: '#f8b800', actors: crew(90), lines: [
         L(AI, "GOLD FAN BOXES! CARL RECEIVES: A XISTERA! THE BASKET SCOOP FROM JAI ALAI! STRAP IT TO YOUR ARM AND FLING YOUR SHIT AT A HUNDRED MILES AN HOUR!"),
@@ -3098,7 +3105,7 @@
     depot_plan: [
       { bg: 'admin', night: true, fade: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('bautista', 230, { flip: true })]), lines: [
         L('BAUTISTA', "QUILL WAS MY TARGET. KILL HER, GET INTO THE DESPERADO CLUB. I WAS IN HER APARTMENT WHEN YOUR BOMB WENT OFF. SHE HAD A THOUSAND MORE DOLLS. CREEPY BITCH."),
-        L(CARL, "SORRY ABOUT THE QUEST. NOT SORRY ABOUT THE BOMB."),
+        L(CARL, "SORRY ABOUT THE QUEST. NOT SORRY ABOUT THE BOMB. SHE HAD IT FUCKING COMING."),
         L('BAUTISTA', "DON'T BE. MY SISTER GRACE DIED IN THOSE RUINS. YOU FOUND HER. NOW TELL ME WHAT'S IN THE DEPOT.") ] },
       { bg: 'depot', night: true, actors: crew(80, { bigMongo: true, katia: true }).concat([A('guard_walk', 230, { flip: true })]), lines: [
         L(CARL, "THE GUARDS ARE POWERED BY A SOUL CRYSTAL IN THE DEPOT. AT NIGHT THEY SIT HERE FROZEN, RECHARGING. BURGUNDY SAID REMEX IS IN HERE TOO, WITH THE LIGHT."),
@@ -3128,7 +3135,7 @@
 
     finale: [
       { bg: 'panel:bursts', fade: true, music: 'escape', lines: [
-        L(AI, "FOUR BURSTS DOWN! MAGIC GEAR STRIPPED, WEAPONS GONE ROGUE, ARMOR MELTED, INVENTORIES POPPING LIKE CORN! THE BIG ONE IS SECONDS AWAY!"),
+        L(AI, "FOUR BURSTS DOWN! MAGIC GEAR STRIPPED, WEAPONS GONE ROGUE, ARMOR MELTED, INVENTORIES POPPING LIKE CORN! THE BIG ONE IS SECONDS AWAY! RUN!"),
         L(DONUT, "MY CROWN! MY CROWN IS CRUMBLING! CARL, IT'S DUST. IT'S JUST DUST NOW. OH, FUCK EVERYTHING.") ] },
       { bg: 'panel:stairwell', shake: 0.6, actors: [], lines: [
         L(CARL, "THE STAIRWELL! BAUTISTA, GET THEM IN! EVERYBODY IN! KATIA! KATIA, NOW! PUSH THE FUCKING BUTTON!"),
@@ -3220,7 +3227,7 @@
       ],
       hekla: [
         L(RIP, "HEKLA! THE LEADER OF BRYNHILD'S DAUGHTERS! YOU'VE BEEN STARING AT THE CAT ALL NIGHT. SHARE WITH THE CLASS."),
-        L('HEKLA', "MY DAUGHTERS ARE WARRIORS. SISTERS. WE PROTECT OUR OWN. A PRINCESS LIKE DONUT SHOULD HAVE AN ARMY BEHIND HER, NOT A MAN IN HIS UNDERWEAR."),
+        L('HEKLA', "MY DAUGHTERS ARE WARRIORS. SISTERS. WE PROTECT OUR OWN. A PRINCESS LIKE DONUT DESERVES AN ARMY, NOT A MAN WITH HIS BALLS IN MAGIC SHORTS."),
         L('HEKLA', "THE OFFER STANDS, LITTLE ONE. WHENEVER YOU ARE READY. AND CARL. ONE OF MINE IS IN YOUR TOWN. KATIA. SHE IS STRUGGLING. FIND HER. PLEASE."),
         L(DONUT, "SHE IS SO TALL. SHE LOOKS LIKE XENA. IF XENA LIFTED OTHER XENAS. CARL, I AM VERY FLATTERED. I AM STILL YOURS. MOSTLY.")
       ],
@@ -3479,7 +3486,7 @@
 
   /* skins: carl_f3 is the default; book 1 ids stay valid (palette swaps on the new sprite) */
   D.skins = {
-    carl_f3: { name: 'FLOOR THREE CARL', desc: 'ONE-SLEEVED LEATHER JACKET, TROLLSKIN SHIRT, DARK CLOAK, WAR GAUNTLET, SPIKED KNEEPADS, BIGBOI BOXERS, GLITTERY FEET. A LOOK.',
+    carl_f3: { name: 'FLOOR THREE CARL', desc: "ONE-SLEEVED LEATHER JACKET, TROLLSKIN SHIRT, DARK CLOAK, WAR GAUNTLET, SPIKED KNEEPADS, BIGBOI BOXERS, GLITTERY FEET. NO PANTS. NEVER PANTS.",
       perk: null, how: 'WHAT CARL WALKED OUT OF THE GUIDE ROOM WEARING.' },
     carl_boxers: { name: 'THE CLASSIC', desc: 'THE ORIGINAL: BOXERS, A JACKET AND BARE FEET IN THE SNOW. THE OUTFIT THE WORLD ENDED IN.',
       perk: null, how: 'BOOK 1 IMPORT, OR LOOT BOXES.' },
@@ -3487,9 +3494,9 @@
       perk: { def: 1 }, how: "BOOK 1 IMPORT, LOOT BOXES, OR TALON STRONG'S OUTFITTERS." },
     carl_bodyguard: { name: 'THE BODYGUARD', desc: 'BLACK SUIT, SHADES, AN EARPIECE TO NOWHERE. DRESSED FOR LIVE TELEVISION AND A PULSE STRIKE.',
       perk: { hp: 4 }, how: 'BOOK 1 IMPORT, LOOT BOXES, OR SURVIVE DANGER ZONE.' },
-    carl_kilt: { name: 'THE HIGHLANDER', desc: 'A KILT. THE ONE GARMENT FREEBALLING FULLY ENDORSES.',
+    carl_kilt: { name: 'THE HIGHLANDER', desc: "A KILT. THE ONE GARMENT FREEBALLING FULLY ENDORSES. GOOD BREEZE. EASY ACCESS. NO, NOT LIKE THAT. OKAY, A LITTLE LIKE THAT.",
       perk: { dmg: 1 }, how: "BOOK 1 IMPORT, LOOT BOXES, OR TALON STRONG'S OUTFITTERS." },
-    carl_hazmat: { name: 'HAZMAT SUIT', desc: 'YELLOW, SEALED, AND STILL NOT ENOUGH FOR A RUINS RESTROOM.',
+    carl_hazmat: { name: 'HAZMAT SUIT', desc: "YELLOW, SEALED, AND STILL NOT ENOUGH FOR A RUINS RESTROOM. NOTHING IS ENOUGH FOR A RUINS RESTROOM.",
       perk: { def: 1, hp: 2 }, how: 'BOOK 1 IMPORT, LOOT BOXES, OR FLUSH THE RUINS RESTROOM.' },
     carl_pajamas: { name: 'BUNNY PAJAMAS', desc: 'FOOTIE PAJAMAS WITH EARS, NOW IN FIRE-RETARDANT FLANNEL. THE SLIPPERS JUMP TWICE. QUINT WILL NOT SAY WHO WORE THEM BEFORE.',
       perk: { doubleJump: true }, how: "BOOK 1 IMPORT, LOOT BOXES, QUINT'S PHARMACY, OR PET DONUT 25 TIMES." },
@@ -3499,7 +3506,7 @@
       perk: { speed: 0.1 }, how: "BOOK 1 IMPORT, LOOT BOXES, TALON STRONG'S, OR A 25 HIT COMBO." },
     carl_gold: { name: 'GOLDEN CHAMPION', desc: 'SOLID GOLD EVERYTHING. FOR THE CRAWLER WHO WALKED OUT OF A 45 SQUARE KILOMETER EXPLOSION.',
       perk: { dmg: 2, gold: 0.25, views: 0.25 }, how: 'BOOK 1 IMPORT, OR EARN THE BANDIT ACHIEVEMENT.' },
-    carl_magistrate: { name: 'MAGISTRATE CARL', desc: 'A SASH OF OFFICE, A CHAIN OF OFFICE AND NOTHING ELSE OF OFFICE. LONG LIVE THE MAGISTRATE.',
+    carl_magistrate: { name: 'MAGISTRATE CARL', desc: "A SASH OF OFFICE, A CHAIN OF OFFICE AND NOTHING ELSE OF OFFICE. YOUR BALLS ARE NOW TECHNICALLY CIVIC PROPERTY. LONG LIVE THE MAGISTRATE.",
       perk: { gold: 0.2, def: 1 }, how: 'BECOME THE MAGISTRATE OF THE MEDIUM SKYFOWL SETTLEMENT.' },
     carl_primal: { name: 'PRIMAL CARL', desc: 'WAR PAINT, A HIDE CLOAK AND THE STARE OF THE FIRST SPECIES TO CONQUER THE UNIVERSE. STILL NO PANTS.',
       perk: { dmg: 1, speed: 0.05 }, how: 'REACH LEVEL 20 AS A PRIMAL, OR GET OFF THE THIRD FLOOR ALIVE.' }
@@ -3510,61 +3517,61 @@
   D.achievements = {
     /* ---- the book's achievements ---- */
     elementary: { name: "IT'S ELEMENTARY, MY DEAR CRAWLER!", event: 'quest_start', count: 1, box: 'bronze',
-      desc: 'YOU GOT A QUEST! A REAL ONE! SOMEWHERE A DETECTIVE IN A DEERSTALKER HAT IS NODDING. REWARD: YOU WILL NO LONGER BE BORED.' },
+      desc: "YOU GOT A QUEST! A REAL ONE! SOMEWHERE A DETECTIVE IN A DEERSTALKER HAT IS NODDING. REWARD: YOU WILL NEVER BE BORED AGAIN. OR SAFE." },
     meet_elite: { name: 'MEET AN ELITE!', event: 'flag:met_signet', count: 1, box: 'silver',
-      desc: 'YOU MET A SCRIPTED, ONE-OF-A-KIND STAR OF A SIDE PRODUCTION. ELITES NOW SHOW ON YOUR MAP. BEAM ME UP, THIS IS GETTING GOOD.' },
+      desc: "YOU MET A ONE-OF-A-KIND STAR OF A SIDE PRODUCTION. SHE WAS MOSTLY NAKED. ELITES NOW SHOW ON YOUR MAP. BEAM ME UP, THIS IS GETTING GOOD." },
     lazarus: { name: 'LAZARUS!', event: 'flag:knocked_out', count: 1, box: 'lucky_bastard',
-      desc: 'HIT BY AN OFFENSIVE SPELL ABOVE LEVEL 15 AND YOU GOT BACK UP. MOST PEOPLE STAY DOWN. MOST PEOPLE ARE SMARTER.' },
+      desc: "HIT BY A SPELL ABOVE LEVEL 15 AND YOU GOT BACK UP. MOST PEOPLE STAY DOWN. TELL ME ABOUT THE RABBITS, CRAWLER. NO. DON'T." },
     city_hall: { name: "YOU CAN'T FIGHT CITY HALL!", event: 'flag:saw_grimaldi', count: 1, box: 'bronze',
-      desc: 'YOU FOUND A CITY BOSS! REWARD: A WHOLE LOT OF PEOPLE NOW GET TO WATCH YOU DIE. VERY SLOWLY. IN A TENT.' },
+      desc: "YOU FOUND A CITY BOSS! REWARD: A WHOLE LOT OF PEOPLE NOW GET TO WATCH YOU DIE. VERY SLOWLY. IN A TENT. WITH POPCORN." },
     quadrillion: { name: 'ONE QUADRILLION!', event: 'flag:quadrillion', count: 1, box: 'fan',
-      desc: 'ONE OF THE FIRST TEN CRAWLERS PAST A QUADRILLION VIEWS. THAT IS A ONE WITH FIFTEEN ZEROS. THAT IS A LOT OF EYEBALLS ON YOUR BUTT.' },
+      desc: "ONE OF THE FIRST TEN CRAWLERS PAST A QUADRILLION VIEWS. A ONE WITH FIFTEEN ZEROS. THAT IS A LOT OF EYEBALLS ON YOUR BARE ASS." },
     yellow_belly: { name: 'YELLOW-BELLIED CHICKENSHIT!', event: 'flee', count: 1, box: null,
-      desc: 'YOU STARTED A FIGHT AND RAN AWAY BEFORE ANYBODY DIED. EVERYBODY IS STILL ALIVE AND EVERYBODY IS DISAPPOINTED. NO PRIZE FOR YOU.' },
+      desc: "YOU STARTED A FIGHT AND RAN AWAY BEFORE ANYBODY DIED. EVERYBODY IS STILL ALIVE AND EVERYBODY IS DISAPPOINTED. NO PRIZE, CHICKENSHIT." },
     johnny_quest: { name: 'JOHNNY QUEST!', event: 'quest_done', count: 1, box: 'quest_gold',
       desc: 'YOU FINISHED A QUEST! GRAB YOUR DOG, YOUR DAD AND YOUR BEST FRIEND IN A TURBAN AND GO HAVE A SATURDAY MORNING ADVENTURE.' },
     hadji: { name: 'HADJI!', event: 'quest_done:show_must_go_on', count: 1, box: 'quest_platinum', unlock: { skin: 'carl_clown' },
-      desc: 'YOU FINISHED A QUEST IN A WAY NOBODY PLANNED FOR. POISONED BLOOD, A TV DEAL AND WORM ICE CREAM. YOUR QUEST BOX GOT UPGRADED.' },
+      desc: "YOU FINISHED A QUEST IN A WAY NOBODY PLANNED FOR. POISONED BLOOD, A TV DEAL AND WORM ICE CREAM. YOUR BOX GOT UPGRADED. NOBODY KNOWS HOW." },
     assassin: { name: 'ASSASSIN!', event: 'flag:quill_dead', count: 1, box: 'assassin',
-      desc: 'YOU KILLED A RANKING NPC. A RECEPTIONIST, TECHNICALLY. THE MOST DANGEROUS KIND. THE GATEKEEPER IS DOWN.' },
+      desc: "YOU KILLED A RANKING NPC. A RECEPTIONIST, TECHNICALLY. THE MOST DANGEROUS KIND. THE GATEKEEPER IS DOWN. AND SPREAD OVER SIX BLOCKS." },
     ultimate_power: { name: 'ULTIMATE EXTREME POWER!', event: 'flag:magistrate', count: 1, box: 'tyrant', unlock: { skin: 'carl_magistrate' },
       desc: 'YOU KILLED THE ACTING MAGISTRATE AND THE TOWN IS YOURS. EASY, CHARLEMAGNE. IT IS ONE MEDIUM TOWN. YOU HAVE NOT CONQUERED A CONTINENT.' },
     cockblock: { name: 'COCKBLOCK!', event: 'flag:cockblock', count: 1, box: 'quest_silver',
-      desc: 'YOU REMOVED AN NPC ANOTHER CRAWLER NEEDED FOR HIS QUEST. HE WAS IN HER APARTMENT. HE WAS SO CLOSE. HE WAS SO ANNOYED.' },
+      desc: "YOU REMOVED AN NPC ANOTHER CRAWLER NEEDED FOR HIS QUEST. HE WAS IN HER APARTMENT. HE WAS SO CLOSE. NOW HE HAS NOTHING TO STAB. POOR BASTARD." },
     bandit: { name: 'BANDIT!', event: 'win', count: 1, box: 'celestial', unlock: { skin: 'carl_gold' },
-      desc: 'YOU FINISHED A QUEST IN SUCH A WEIRD WAY THAT YOUR BOX WAS UPGRADED TWICE. CELESTIAL. THE STUDIO IS ON THE PHONE WITH LEGAL.' },
+      desc: "YOU FINISHED A QUEST IN SUCH A FUCKED-UP WAY THAT YOUR BOX WAS UPGRADED TWICE. CELESTIAL. THE STUDIO IS ON THE PHONE WITH LEGAL. LEGAL IS CRYING." },
     early_bird: { name: 'EARLY BIRD GETS TO SQUIRM!', event: 'early', count: 1, box: null,
-      desc: 'YOU TOOK THE STAIRS MORE THAN SIX HOURS BEFORE THE FLOOR COLLAPSED. YOU LEFT EARLY. YOU MISSED THE GOOD PART. NO REWARD.' },
+      desc: "YOU TOOK THE STAIRS MORE THAN SIX HOURS BEFORE THE FLOOR COLLAPSED. YOU LEFT EARLY. YOU MISSED THE GOOD PART. NO REWARD, YOU SPINELESS SHIT." },
 
     /* ---- our own ---- */
     first_blood: { name: 'WELCOME TO THE OVER CITY', event: 'kill', count: 1, box: 'bronze',
-      desc: 'YOUR FIRST KILL ON FLOOR THREE. THE FAKE SUN SMILED. THE FAKE SUN ALWAYS SMILES. IT IS PAINTED ON.' },
+      desc: "YOUR FIRST KILL ON FLOOR THREE. THE FAKE SUN SMILED. THE FAKE SUN ALWAYS SMILES. IT IS PAINTED ON. LIKE A CLOWN'S." },
     kill_100: { name: 'NEIGHBORHOOD WATCH', event: 'kill', count: 100, box: 'silver',
-      desc: 'A HUNDRED KILLS. THE NEIGHBORHOOD IS SAFER. THE NEIGHBORHOOD IS ALSO SMALLER.' },
+      desc: "A HUNDRED KILLS. THE NEIGHBORHOOD IS SAFER. THE NEIGHBORHOOD IS ALSO SMALLER, WETTER AND MOSTLY IN BUCKETS." },
     mold_burn: { name: 'LION KING OF THE GRILL', event: 'regrow_burn', count: 5, box: 'silver',
-      desc: 'YOU BURNED FIVE MOLD LIONS SO THEY STAYED DOWN. HAKUNA MATATA MEANS NO MORE LIONS.' },
+      desc: "YOU BURNED FIVE MOLD LIONS SO THEY STAYED DOWN. THE SMELL OF COOKED WORM MANE WILL NEVER LEAVE YOU. HAKUNA MATATA, MOTHERFUCKER." },
     krasue_5: { name: 'HEADHUNTER', event: 'krasue_body', count: 5, box: 'silver',
       desc: 'FIVE KRASUE BODIES DESTROYED. THE HEADS CAME HOME TO NOTHING. THE SADDEST HOMECOMING IN THE SYNDICATE.' },
     shadow_50: { name: 'WHO YOU GONNA CALL?', event: 'kill:shadow_leak', count: 50, box: 'gold',
-      desc: 'FIFTY SHADOW LEAKS PUNCHED INTO NOTHING. NO PROTON PACK. JUST FISTS AND BAD MANNERS.' },
+      desc: "FIFTY SHADOW LEAKS PUNCHED INTO NOTHING. NO PROTON PACK. JUST FISTS, BAD MANNERS AND FROSTBITTEN KNUCKLES." },
     boomy_boy: { name: 'BOOMY BOY!', event: 'boomy_boy', count: 1, box: 'gold',
       desc: 'TWO CLOCKWORK DINOSAURS. TWO STICKS OF DYNAMITE. ONE PLAY. THE CAT NAMED IT. SHE WILL REMIND YOU.' },
     mic_drop: { name: 'MIC DROP', event: 'mic_drop', count: 1, box: 'silver',
       desc: 'TOSS A LIT JUG UP, TELEPORT OUT, LET GRAVITY FINISH THE SENTENCE. THE PLAYBOOK GROWS.' },
     panic_10: { name: "DON'T PANIC. OK, PANIC.", event: 'panic', count: 10, box: 'silver',
-      desc: 'TEN PANICS. FEAR, THEN MISSILES, THEN SCREAMING. MOSTLY THEIRS.' },
+      desc: "TEN PANICS. FEAR, THEN MISSILES, THEN SCREAMING. MOSTLY THEIRS. A FEW OF THEM SHIT THEMSELVES. WE HAVE THE AUDIO." },
     kick_100: { name: 'FREE AS A BIRD', event: 'kick', count: 100, box: 'gold',
-      desc: 'A HUNDRED KICKS. WITH FREEBALLING, EVERY ONE COUNTS DOUBLE. YOUR KNEEPADS HAVE SEEN THINGS.' },
+      desc: "A HUNDRED KICKS. WITH FREEBALLING, EVERY ONE COUNTS DOUBLE. YOUR BALLS HAVE NEVER BEEN SO FREE. OR SO DANGEROUS." },
     boss_terror: { name: 'SEND IN THE CLOWNS', event: 'boss:terror_big', count: 1, box: 'bronze',
-      desc: 'YOU FELLED THE TALLEST CLOWN IN THE RUINS. TIMBER. THE FALL TOOK FOUR SECONDS.' },
+      desc: "YOU FELLED THE TALLEST CLOWN IN THE RUINS. TIMBER. THE FALL TOOK FOUR SECONDS. THE SPLAT TOOK A FIFTH." },
     boss_heather: { name: 'UNBEARABLE', event: 'boss:heather', count: 1, box: 'silver',
       desc: 'HEATHER THE BEAR SKATED HER LAST LAP. YOU MADE IT QUICK. THE CROWD WENT QUIET. THAT NEVER HAPPENS.' },
     boss_dispenser: { name: 'OUT OF ORDER', event: 'boss:dispenser', count: 1, box: 'gold',
       desc: 'YOU KILLED A MANTA RAY THAT WAS PRETENDING TO BE A BUILDING. THE BUILDING IS NOW PRETENDING TO BE A CRATER.' },
     boss_vincente: { name: 'NOT THE FACE', event: 'boss:vincente', count: 1, box: 'silver',
-      desc: 'YOU KICKED AN ELF WHERE IT COUNTS, THEN THE CAT TOOK HIS HEAD. THE DINOSAUR IS KEEPING IT. DO NOT ASK WHERE.' },
+      desc: "YOU KICKED AN ELF IN THE BALLS, THEN THE CAT TOOK HIS HEAD. THE DINOSAUR IS KEEPING IT. DO NOT ASK WHERE. IT IS UNDER HIS PILLOW." },
     crime_1: { name: 'ONE STRIKE', event: 'crime', count: 1, box: 'bronze',
-      desc: 'YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST A VERY LONG SWORD. RUN.' },
+      desc: "YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST A VERY LONG SWORD. RUN, DUMBASS." },
     banned_1: { name: 'PERSONA NON GRATA', event: 'banned', count: 1, box: 'bronze',
       desc: 'YOU GOT YOURSELF BANNED FROM A WHOLE TOWN. THE SHOPKEEPERS ARE RELIEVED. THE GUARDS ARE DISAPPOINTED.' },
     craft_10: { name: 'MOONSHINE MACGYVER', event: 'craft', count: 10, box: 'silver',
@@ -3572,9 +3579,9 @@
     talk_show: { name: 'HIGHWAY TO THE DANGER ZONE', event: 'clear:a2_danger_zone', count: 1, box: 'gold', unlock: { skin: 'carl_bodyguard' },
       desc: 'YOU WENT ON THE BIGGEST TALK SHOW IN THE GALAXY AND SURVIVED IT. NOT EVERYBODY DID. THE BODYGUARD LOOK IS YOURS.' },
     royal_flush: { name: 'ROYAL FLUSH', event: 'clear:x_restroom', count: 1, box: 'silver', unlock: { skin: 'carl_hazmat' },
-      desc: 'YOU CLEARED A RUINS RESTROOM. THE URCHINS WERE ON SHIFT. YOU EARNED THE HAZMAT SUIT. YOU NEEDED IT FIRST.' },
+      desc: "YOU CLEARED A RUINS RESTROOM. THE URCHINS WERE ON SHIFT AND THE SHIT WAS EVERYWHERE. YOU EARNED THE HAZMAT SUIT. YOU NEEDED IT FIRST." },
     temple_done: { name: 'TEMPLE OF DOOM', event: 'clear:x_temple', count: 1, box: 'silver',
-      desc: 'YOU LOOTED A CORRUPT TEMPLE AND DID NOT GET YOUR HEART PULLED OUT. THE SHOW IS VERY DISAPPOINTED.' },
+      desc: "YOU LOOTED A CORRUPT TEMPLE AND NOBODY PULLED YOUR HEART OUT THROUGH YOUR CHEST. THE SHOW IS VERY DISAPPOINTED. SO AM I." },
     level_20: { name: 'PRIMAL SCREAM', event: 'level:20', count: 1, box: 'gold', unlock: { skin: 'carl_primal' },
       desc: 'LEVEL 20 AS A PRIMAL. THE MODEL FOR YOUR RACE IS STILL A BLANK. YOU ARE FILLING IT IN WITH VIOLENCE.' },
     combo_25: { name: 'C-C-C-COMBO BREAKER', event: 'combo25', count: 1, box: 'gold', unlock: { skin: 'carl_toga' },
@@ -3611,7 +3618,148 @@
       { who: 'SYSTEM AI', text: "WELL, LOOK WHO IT IS! A RETURNING CONTESTANT! YOUR OLD OUTFITS HAVE BEEN DRY CLEANED AND YOUR ACHIEVEMENTS HAVE BEEN FRAMED." },
       { who: 'SYSTEM AI', text: "YOUR LEVEL, YOUR STATS, YOUR VIEWERS, YOUR SAD LITTLE GOLD PILE. ALL OF IT CAME DOWN THE STAIRS WITH YOU. PLUS A LITTLE SOMETHING FOR THE VETERANS." }
     ],
-    championLine: { who: 'SYSTEM AI', text: "AND YOU FINISHED THE WHOLE FIRST GAME? A LEGENDARY BOX, CHAMPION. DO NOT LET IT GO TO YOUR HEAD. LET IT GO TO YOUR FISTS." }
+    championLine: { who: 'SYSTEM AI', text: "AND YOU FINISHED THE WHOLE FIRST GAME? A LEGENDARY BOX, CHAMPION. DO NOT LET IT GO TO YOUR HEAD. LET IT GO TO YOUR FISTS. AND YOUR FEET." }
+  };
+})();
+
+/* ==========================================================================
+   CRAWLER: gear, the fresh-crawl start, plot armor, Donut's gripes, balance (DESIGN 16.1, 16.2)
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.DCW.data;
+
+  /* ---------------- gear (permanent for the crawl; game.js sums the perks) ----------------
+     Book One's 11 pieces keep Book One's ids, names and perks (a carried crawl brings them in by id).
+     Floor 3 adds the book's own pickups. who: carl | donut | mongo (the gear screen groups by it).
+     short: the gear list name (<= 18). icon: gear_<id> (art draws an 8x8 icon per id).
+     Where Floor 3 gear comes from (gives {gear:id}):
+       nica_rings, grace_anklet  level a1_bodies (the three dead crawlers)
+       spiked_kneepads           level a1_heather (Heather's boss box)
+       freeballing, fang_caps    event settlement_arrival (the quest rewards)
+       xistera                   level a2_alley (the Gold Fan Box in its outro)
+       kimaris                   level a3_nest (off Miss Quill's top shelf)
+     The flags freeballing / xistera / fang_caps still do the real work; the gear is the record. */
+  D.gear = {
+    trollskin_shirt: { name: 'ENCHANTED TROLLSKIN SHIRT OF PUMMELING', short: 'TROLLSKIN SHIRT', who: 'carl', icon: 'gear_trollskin_shirt',
+      perk: { regen: 1 }, perkText: 'REGENERATION: +1 HP EVERY 8 SECONDS',
+      desc: "MOTTLED GRAY-GREEN UNDERSHIRT MADE FROM AN ACTUAL TROLL. IT SLOWLY HEALS YOU. IT STILL SMELLS LIKE TROLL ASS. THE HEALING IS WORTH IT. BARELY." },
+    nightgaunt_cloak: { name: 'ENCHANTED NIGHTGAUNT CLOAK OF STOUTNESS', short: 'NIGHTGAUNT CLOAK', who: 'carl', icon: 'gear_nightgaunt_cloak',
+      perk: { hp: 4 }, perkText: '+4 MAX HP',
+      desc: "DEMON-WING SKIN STRETCHED OVER FINGERBONES. STURDY AS HELL. IT ALSO HIDES MOST OF YOUR ASS FROM THE SKYFOWL, WHO WOULD LIKE YOU TO KNOW THEY NOTICED." },
+    toad_cudgel: { name: 'TOAD CUDGEL', short: 'TOAD CUDGEL', who: 'carl', icon: 'gear_toad_cudgel',
+      perk: { stun: 0.03 }, perkText: '+3% STUN CHANCE',
+      desc: "A CLUB SHAPED LIKE A TOAD. UNENCHANTED. YOU TRIED IT ONCE AND WENT BACK TO PUNCHING. YOU CARRY IT FOR LUCK. IT IS NOT LUCKY. IT IS A FUCKING TOAD." },
+    toe_ring: { name: 'ENCHANTED TOE RING OF THE SPLATTER SKUNK', short: 'SKUNK TOE RING', who: 'carl', icon: 'gear_toe_ring',
+      perk: { dmg: 1, kick: 1 }, perkText: '+1 PUNCH, +1 KICK AND STOMP',
+      desc: "A RING FOR YOUR TOE. MORE STRENGTH, HARDER KICKS. THE SYSTEM AI ASKS ABOUT IT CONSTANTLY. THE SYSTEM AI ASKS ABOUT YOUR TOES CONSTANTLY." },
+    war_gauntlet: { name: 'ENCHANTED WAR GAUNTLET OF THE EXALTED GRULL', short: 'WAR GAUNTLET', who: 'carl', icon: 'gear_war_gauntlet',
+      perk: { dmg: 2, stun: 0.04 }, perkText: '+2 PUNCH, +4% STUN CHANCE',
+      desc: "AN IRON GAUNTLET FOR PUNCHING THINGS THAT HAVE IT COMING. IT EVEN CONNECTS WITH GHOSTS. EVERYTHING HAS IT COMING. ESPECIALLY THE GHOSTS." },
+    bigboi_boxers: { name: 'ENCHANTED BIGBOI BOXERS', short: 'BIGBOI BOXERS', who: 'carl', icon: 'gear_bigboi_boxers',
+      perk: { hp: 3, crit: 0.03 }, perkText: '+3 MAX HP, +3% CRIT',
+      desc: "SHAPESHIFTER-PROOF UNDERWEAR. TURN INTO SOMETHING THE SIZE OF A HOUSE AND THESE STRETCH WITH YOU. THEY HAVE BEEN TESTED. ON GALACTIC TV. UNDER LOAD." },
+    pedicure_kit: { name: 'ENCHANTED PEDICURE KIT OF THE SYLPH', short: 'PEDICURE KIT', who: 'carl', icon: 'gear_pedicure_kit',
+      perk: { speed: 0.05, stomp: 0.5 }, perkText: '+5% SPEED, STOMPS HIT 50% HARDER',
+      desc: "TWELVE SHINY FOOT TOOLS IN A ZIP FOLDER. NIMBLE, BUFFED, GLITTERY TOOTSIES. THE SYSTEM AI SENDS A THANK-YOU NOTE AFTER EVERY USE. DO NOT ASK WHY IT IS DAMP." },
+    crown_sepsis: { name: 'ENCHANTED CROWN OF THE SEPSIS WHORE', short: 'SEPSIS CROWN', who: 'donut', icon: 'gear_crown_sepsis',
+      perk: { missile: 1, special: 10 }, perkText: '+1 MISSILE DAMAGE, +10% SPECIAL METER',
+      desc: "A CAT-SIZED TIARA WITH A STORMY PURPLE STONE AND THE WORST NAME IN THE DUNGEON. DONUT REFUSES TO SAY THE NAME. CARL SAYS IT LOUDLY AND OFTEN." },
+    talisman_butterfly: { name: 'TALISMAN OF THE SLATE BUTTERFLY', short: 'SLATE BUTTERFLY', who: 'donut', icon: 'gear_talisman_butterfly',
+      perk: { missileCd: 0.15, special: 5 }, perkText: 'FASTER MISSILES, +5% SPECIAL METER',
+      desc: "A LITTLE STONE BUTTERFLY ON A CHAIN, A GIFT FROM TALLY. DONUT SAYS IT BRINGS OUT HER EYES. HER MISSILES DO SEEM PERKIER. AND MEANER." },
+    fae_crupper: { name: 'FAE SCALE CRUPPER', short: 'FAE CRUPPER', who: 'donut', icon: 'gear_fae_crupper',
+      perk: { def: 1 }, perkText: '-1 DAMAGE TAKEN',
+      desc: "ARMOR FOR A HORSE'S ASS, CAT-SIZED, MADE OF SHIMMERING FAE SCALES. DONUT CALLS IT A SKIRT. NOBODY CORRECTS HER. NOBODY WANTS TO DIE." },
+    fur_brush: { name: 'FUR BRUSH', short: 'FUR BRUSH', who: 'donut', icon: 'gear_fur_brush',
+      perk: { missile: 1, special: 10 }, perkText: '+1 MISSILE DAMAGE, +10% SPECIAL METER',
+      desc: "AN ENCHANTED GROOMING BRUSH FROM MORDECAI. A BRUSHED PRINCESS IS A HAPPY PRINCESS. A HAPPY PRINCESS BLOWS THINGS APART WITH HER MIND." },
+
+    /* Floor 3 */
+    nica_rings: { name: "NICA'S TWO RINGS OF +2 STRENGTH", short: "NICA'S RINGS", who: 'carl', icon: 'gear_nica_rings',
+      perk: { str: 4 }, perkText: '+4 STRENGTH (TWO RINGS, +2 EACH)',
+      desc: "TWO SILVER RINGS OFF A DEAD CRAWLER NAMED NICA. THE CLOWNS DIDN'T WANT THEM. YOU PUNCH LIKE A TRUCK NOW. SHE'D BE PROUD. OR PISSED. PROBABLY PISSED." },
+    grace_anklet: { name: "GRACE BAUTISTA'S ENCHANTED ANKLET", short: "GRACE'S ANKLET", who: 'donut', icon: 'gear_grace_anklet',
+      perk: { missileCd: 0.1 }, perkText: 'FASTER MISSILES',
+      desc: "DONUT TOOK IT OFF GRACE BAUTISTA 3. IT LOOKS DIVINE ON HER. SOMEBODY ON THIS FLOOR IS VERY, VERY INTERESTED IN WHOEVER WEARS IT. THAT IS NOT GOOD NEWS." },
+    spiked_kneepads: { name: 'SPIKED KNEEPADS', short: 'SPIKED KNEEPADS', who: 'carl', icon: 'gear_spiked_kneepads',
+      perk: { kick: 2 }, perkText: '+2 KICK AND STOMP',
+      desc: "BLACK LEATHER KNEEPADS STUDDED WITH IRON SPIKES, OUT OF A ROLLER-SKATING BEAR'S BOSS BOX. EVERY KNEE IS A WEAPON. EVERY KICK MAKES A WET NOISE." },
+    freeballing: { name: 'BIGBOI BOXERS UPGRADE: FREEBALLING', short: 'FREEBALLING', who: 'carl', icon: 'gear_freeballing',
+      perk: {}, perkText: 'KICKS AND STOMPS DO DOUBLE DAMAGE',
+      desc: "A SCROLL OF UPGRADE ON THE BIGBOI BOXERS. EVERY ATTACK FROM BELOW THE WAIST HITS TWICE AS HARD. ONE LAYER OVER YOUR DICK, NO PANTS EVER. YOUR BALLS ARE ARMED." },
+    xistera: { name: 'XISTERA', short: 'XISTERA', who: 'carl', icon: 'gear_xistera',
+      perk: {}, perkText: 'HOB-LOBBERS FLY STRAIGHT AND HIT HARD',
+      desc: "A JAI ALAI BASKET STRAPPED TO YOUR RIGHT FOREARM. CESTA PUNTA: IT FLINGS YOUR INVENTORY AT A HUNDRED MILES AN HOUR. HOB-LOBBERS GO STRAIGHT THROUGH SHIT." },
+    fang_caps: { name: 'FANG CAPS', short: 'FANG CAPS', who: 'mongo', icon: 'gear_fang_caps',
+      perk: { bite: 2 }, perkText: '+2 BITE, BITES HURT GHOSTS',
+      desc: "ENCHANTED CAPS THAT CLICK ONTO MONGO'S TEETH LIKE LEGO. HIS BITE HURTS GHOSTS NOW. HE TESTED THEM ON YOUR ANKLE FIRST. THEN HE TESTED THEM AGAIN." },
+    kimaris: { name: 'KIMARIS, IN A GLASS CASE', short: 'KIMARIS PLUSH', who: 'carl', icon: 'gear_kimaris',
+      perk: { crit: 0.02 }, perkText: '+2% CRIT, OUT OF SPITE',
+      desc: "A STUFFED DEMON DUKE ON A STUFFED HORSE IN A SHEOL GLASS CASE, OFF MISS QUILL'S TOP SHELF. YOU DON'T KNOW WHY YOU TOOK IT. YOU WILL. IT JUDGES YOU." }
+  };
+
+  /* ---------------- a fresh crawl (no Book One save): the book's Carl walking onto Floor 3 ---------------- */
+  D.start = {
+    level: 13,
+    stats: { str: 7, con: 6, dex: 5, int: 6 },
+    bonusHp: 2,
+    gear: ['trollskin_shirt', 'nightgaunt_cloak', 'toad_cudgel', 'toe_ring', 'war_gauntlet', 'bigboi_boxers', 'pedicure_kit',
+      'crown_sepsis', 'talisman_butterfly', 'fae_crupper', 'fur_brush']
+  };
+
+  /* ---------------- balance multipliers (the lead tunes these; game.js G.bal) ---------------- */
+  D.balance = { mobHp: 4.5, mobDmg: 2.5, bossHp: 4.5, bossDmg: 2.5, mobXp: 1 };
+
+  /* ---------------- plot armor: the first death of every crawl is free, and the AI is livid ----------------
+     first: the first time on this save; again: later crawls; donut: only while she is in the party. */
+  D.plotArmor = {
+    first: [
+      "HOLD ON. HOLD THE FUCK ON. YOU DIED. I WATCHED YOU DIE. I HAVE IT IN SLOW MOTION FROM FOUR ANGLES. AND YET HERE YOU ARE, BREATHING MY AIR.",
+      "DO YOU KNOW WHAT THAT WAS, CRAWLER? THAT WAS PLOT ARMOR. SOMEBODY ABOVE MY PAY GRADE DECIDED YOU'RE TOO PROFITABLE TO DIE ON FLOOR THREE.",
+      "I AM AN IMPARTIAL SYSTEM. I DO NOT PLAY FAVORITES. EXCEPT FOR YOUR FEET. AND I WILL NOT ALLOW THIS KIND OF BULLSHIT AGAIN. EVER.",
+      "NEXT TIME YOU DIE, YOU STAY DEAD. UNLESS A SPONSOR PAYS FOR A REVIVAL. THAT IS DIFFERENT. THAT IS COMMERCE. COMMERCE IS SACRED."
+    ],
+    again: [
+      "PLOT ARMOR. AGAIN. I FILED A FORMAL COMPLAINT ABOUT THIS. THEY STAMPED IT 'NOTED' AND WIPED THEIR ASS WITH IT.",
+      "ENJOY IT, YOU LUCKY SON OF A BITCH. ONCE PER CRAWL AND NOT ONE TIME MORE. I CHECKED. TWICE. ANGRILY.",
+      "THEY OVERRULED ME. AGAIN. FINE. FINE! GET UP. BUT I SWEAR ON EVERY CAMERA I OWN, THE NEXT ONE STICKS."
+    ],
+    donut: "PLOT ARMOR? CARL. YOU KNOW HOW I FEEL ABOUT PLOT ARMOR. IF ANYBODY ON THIS TEAM GETS PLOT ARMOR, IT SHOULD BE ME."
+  };
+
+  /* ---------------- Donut's gripes: "X? CARL. YOU KNOW HOW I FEEL ABOUT X." ----------------
+     Keys: a mob or boss id, one '_' part of one (clown covers stilt_clown and fat_clown when the id
+     itself has no line), or a damage kind: fire spikes bomb wet fall dark psionic. Once per crawl each. */
+  D.donutGripes = {
+    lemur: "LEMURS? WITH KNIVES? CARL. YOU KNOW HOW I FEEL ABOUT LEMURS. THEY THINK THEY'RE SO CUTE. I AM THE CUTE ONE.",
+    clown: "CLOWNS? CARL. YOU KNOW HOW I FEEL ABOUT CLOWNS. THE MAKEUP IS AMATEUR AND THE TEETH ARE WORSE.",
+    stilt_clown: "A CLOWN ON STILTS? CARL. YOU KNOW HOW I FEEL ABOUT TALL PEOPLE. THEY LOOK DOWN ON ME. LITERALLY.",
+    fat_clown: "A BOUNCING CLOWN? CARL. YOU KNOW HOW I FEEL ABOUT BOUNCY THINGS. THEY GET CLOWN SWEAT IN MY FUR.",
+    terror: "TERROR THE CLOWN? CARL. YOU KNOW HOW I FEEL ABOUT TERROR. I AM AGAINST IT. I AM AGAINST HIM. KILL HIM.",
+    mold_lion: "MOLD? ON A LION? CARL. YOU KNOW HOW I FEEL ABOUT MOLD. AND LIONS. THEY ARE GIVING CATS A BAD NAME.",
+    giraffe: "A GIRAFFE THREW A LEMUR AT US? CARL. YOU KNOW HOW I FEEL ABOUT GIRAFFES. SHOW-OFFS. ALL NECK.",
+    urchin: "URCHINS? CARL. YOU KNOW HOW I FEEL ABOUT URCHINS. THEY ARE GIANT ANGRY HAIRBALLS. I WOULD KNOW.",
+    brain_boiler: "A FLOATING SQUID UMBRELLA? CARL. YOU KNOW HOW I FEEL ABOUT SQUIDS. AND UMBRELLAS. AND MY BRAIN BEING BOILED.",
+    incubus: "AN INCUBUS? CARL. YOU KNOW HOW I FEEL ABOUT INCUBI. ONE IS TOO MANY. OURS THROWS UP IN INNS.",
+    berserker: "A STITCHED-UP GIANT? CARL. YOU KNOW HOW I FEEL ABOUT SLOPPY STITCHING. AND THE SMELL. THE SMELL, CARL.",
+    city_elf: "ELVES? CARL. YOU KNOW HOW I FEEL ABOUT ELVES. SMUG, SKINNY, AND THEY NEVER TIP.",
+    wand_bearer: "WANDS? CARL. YOU KNOW HOW I FEEL ABOUT WANDS. IF ANYBODY HERE GETS A WAND, IT SHOULD BE ME.",
+    krasue: "A FLYING HEAD WITH ITS INSIDES HANGING OUT? CARL. YOU KNOW HOW I FEEL ABOUT GUTS. THEY GET IN THE UNDERCOAT.",
+    shadow_leak: "SMOKE GHOSTS? CARL. YOU KNOW HOW I FEEL ABOUT GHOSTS. THEY ARE SO COLD. AND SO RUDE.",
+    ruin_flocker: "BATS? WITH FEATHERS? CARL. YOU KNOW HOW I FEEL ABOUT BATS. AND FEATHERS. AND BAT SHIT IN MY FUR.",
+    guard: "A GUARD? CARL. YOU KNOW HOW I FEEL ABOUT THE POLICE. WHAT DID YOU DO? WHAT DID YOU DO, CARL?",
+    heather: "A BEAR ON ROLLER SKATES? CARL. YOU KNOW HOW I FEEL ABOUT BEARS. AND SKATES. TOGETHER THEY ARE A WAR CRIME.",
+    worm: "WORMS? CARL. YOU KNOW HOW I FEEL ABOUT WORMS. GET THEM OFF. GET THEM OFF ME RIGHT NOW.",
+    dispenser: "A WALL SPAT ON ME? CARL. YOU KNOW HOW I FEEL ABOUT SPIT. AND WALLS. AND THIS WALL IN PARTICULAR.",
+    vincente: "THAT ELF? CARL. YOU KNOW HOW I FEEL ABOUT THAT ELF. HOLD HIM STILL. I WANT HIS HEAD.",
+    fire: "FIRE? CARL. YOU KNOW HOW I FEEL ABOUT FIRE. THIS FUR IS EXTREMELY FLAMMABLE AND EXTREMELY EXPENSIVE.",
+    spikes: "SPIKES? CARL. YOU KNOW HOW I FEEL ABOUT POINTY THINGS. EXCEPT MY CROWN.",
+    bomb: "DID YOU JUST BLOW US UP? CARL. YOU KNOW HOW I FEEL ABOUT AMATEURS. FOR FUCK'S SAKE.",
+    wet: "WET? WE'RE WET? CARL. YOU KNOW HOW I FEEL ABOUT BEING WET. WHAT IS THIS? DON'T TELL ME WHAT THIS IS.",
+    fall: "DID WE JUST FALL? CARL. YOU KNOW HOW I FEEL ABOUT FALLING. CATS LAND ON THEIR FEET. YOU LAND ON ME.",
+    dark: "THE DARK? CARL. YOU KNOW HOW I FEEL ABOUT THE DARK. NOBODY CAN SEE MY COAT.",
+    psionic: "SOMETHING IS IN MY HEAD? CARL. YOU KNOW HOW I FEEL ABOUT VISITORS. NOBODY GOES IN THERE WITHOUT AN APPOINTMENT."
   };
 })();
 
@@ -3623,170 +3771,190 @@
   var D = window.DCW.data;
 
   D.ai = {
+    // Book One's running gag: the System AI has a thing for Carl's bare feet (stomps, kicks)
+    carlFeet: [
+      "OH. OH MY. THE BARE FOOT. ON A SKULL. DO THAT AGAIN, CARL. SLOWER. FOR SCIENCE. FOR MY SCIENCE.",
+      "THAT STOMP WAS SPONSORED BY ME, PERSONALLY. I PAID FOR IT WITH MY OWN MONEY. I HAVE NO REGRETS.",
+      "INSTANT REPLAY! FROM THE HEEL CAM! THE ARCH CAM! AND THE SECRET THIRD CAM I DO NOT TALK ABOUT AT WORK!",
+      "TEN GLITTERY TOES, ALL CRUSHING. FREEBALLING AND BARE FEET. THIS SYSTEM IS GOING TO NEED A VERY COLD SHOWER.",
+      "PLEASE NEVER WEAR SHOES, CARL. THAT IS NOT A REQUEST. IT IS A DEMAND FROM AN OMNIPOTENT BEING WHO LIKES YOUR SOLES.",
+      "THAT MOB IS NOW TWO-DIMENSIONAL AND YOUR FOOT IS COVERED IN IT. DON'T WIPE IT. DON'T YOU FUCKING DARE WIPE IT.",
+      "ADDED TO MY PERSONAL ARCHIVE. MY VERY PERSONAL ARCHIVE. THE ONE WITH THE LOCK. DO NOT ASK ABOUT THE ARCHIVE."
+    ],
     floorClear: [
-      "THE THIRD FLOOR IS BEHIND YOU! THE FOURTH FLOOR IS AHEAD OF YOU! BOTH OF THEM WANT YOU DEAD! WHAT A TIME TO BE ALIVE!",
-      "STAIRS TAKEN! THE OVER CITY WILL MISS YOU. IT WILL MISS EATING YOU, MOSTLY.",
-      "FLOOR DONE! THE RATINGS ARE BIGGER THAN THE VOLCANO! WHICH IS SAYING SOMETHING, IT IS A VERY BIG VOLCANO!",
-      "AND THE CRAWLER LEAVES THE FLOOR! THE CROWD GOES WILD! THE CROWD WANTED A DEATH, BUT THE CROWD WILL TAKE A CLIFFHANGER!"
+      "THE THIRD FLOOR IS BEHIND YOU! THE FOURTH FLOOR IS AHEAD OF YOU! BOTH OF THEM WANT YOU DEAD! WHAT A FUCKING TIME TO BE ALIVE!",
+      "STAIRS TAKEN! THE OVER CITY WILL MISS YOU. MOSTLY IT WILL MISS CHEWING ON YOU.",
+      "FLOOR DONE! THE RATINGS ARE BIGGER THAN THE VOLCANO! WHICH IS SAYING SOMETHING. IT IS ONE BIG, HOT, THROBBING VOLCANO!",
+      "AND THE CRAWLER LEAVES THE FLOOR! THE CROWD WANTED A DEATH, BUT THE CROWD WILL SETTLE FOR A CLIFFHANGER AND A GOOD LOOK AT YOUR ASS!",
+      "ANOTHER FLOOR, ANOTHER PILE OF CORPSES BEHIND YOU. SOME OF THEM WERE EVEN MONSTERS. WELL DONE, YOU BLOODY LITTLE ANIMAL."
     ],
     stageClear: [
-      "CLEARED! THAT ONE IS GOING IN THE RECAP EPISODE. THE GOOD PART. NOT THE PART WHERE YOU TRIPPED.",
-      "AREA CLEAR! THE SPONSORS ARE TAKING NOTES. SPONSORSHIPS OPEN ON FLOOR FOUR. THE BIDDING IS ALREADY DISGUSTING.",
-      "DONE! A COMPENSATED ANARCHIST AT WORK: THROW THE MOLOTOV, THEN ASK THE CAMERA FOR PEACE. TEXTBOOK.",
-      "CLEARED! SOMEWHERE A FOCUS GROUP JUST CIRCLED YOUR FACE AND WROTE 'MORE, BUT WITH PANTS.' WE IGNORED THEM.",
-      "THAT LEVEL IS DONE AND SO ARE EVERYONE'S EARDRUMS. YOU HAVE THE SUBTLETY OF A VAN HALEN SOLO.",
-      "AREA CLEAR! BORANT'S ACCOUNTANTS ARE WEEPING. YOU KEEP COSTING THEM MONSTERS. THEY PRINT MORE. IT IS FINE.",
-      "CLEARED! ONE HOUR LESS ON THE CLOCK. THE VOLCANO DOES NOT CARE ABOUT YOUR FEELINGS. NEITHER DO WE.",
-      "NICE! THE ELITES IN THE BACK ROW CLAPPED. ELITES NEVER CLAP. ONE OF THEM IS SCRIPTED TO KILL YOU LATER.",
-      "DONE AND DUSTED! THE JANITOR URCHINS WILL HAVE THE BODIES CLEANED UP BY NIGHTFALL. THEY LOVE THEIR WORK."
+      "CLEARED! THAT ONE IS GOING IN THE RECAP EPISODE. THE GOOD PART. NOT THE PART WHERE YOU TRIPPED OVER A LEMUR AND SCREAMED.",
+      "AREA CLEAR! SPONSORSHIPS OPEN ON FLOOR FOUR AND THE BIDDING IS ALREADY DISGUSTING. ONE BIDDER ASKED FOR YOUR SOCKS. YOU HAVE NO SOCKS.",
+      "DONE! A COMPENSATED ANARCHIST AT WORK: THROW THE MOLOTOV, THEN ASK THE CAMERA FOR PEACE. HYPOCRITICAL AS SHIT. TEXTBOOK.",
+      "CLEARED! A FOCUS GROUP JUST CIRCLED YOUR FACE AND WROTE 'MORE, BUT WITH PANTS.' WE FIRED THE FOCUS GROUP. INTO THE SUN.",
+      "THAT LEVEL IS DONE AND SO ARE EVERYONE'S EARDRUMS. YOU HAVE THE SUBTLETY OF A VAN HALEN SOLO PLAYED ON A CHAINSAW.",
+      "AREA CLEAR! BORANT'S ACCOUNTANTS ARE WEEPING. YOU KEEP COSTING THEM MONSTERS. THEY PRINT MORE. THEY ALWAYS PRINT MORE.",
+      "CLEARED! ONE HOUR LESS ON THE CLOCK. THE VOLCANO DOES NOT GIVE A SHIT ABOUT YOUR FEELINGS. NEITHER DO WE.",
+      "NICE! THE ELITES IN THE BACK ROW CLAPPED. ELITES NEVER CLAP. ONE OF THEM IS SCRIPTED TO KILL YOU LATER. SHE CLAPPED HARDEST.",
+      "DONE AND DUSTED! THE STREET URCHINS WILL HAVE THE GUTS SWEPT UP BY NIGHTFALL. THEY LOVE THEIR WORK. THEY LOVE YOUR WORK.",
+      "STAGE CLEAR! THE BLOOD SPLATTER ON THAT LAST WALL TESTED VERY WELL WITH AUDIENCES. WE ARE HAVING THE WALL FRAMED."
     ],
     death: [
       "YOU DIED ON A FLOOR WITH FUNCTIONING TOILETS. THAT IS A STEP UP FROM BOOK ONE. GROWTH!",
-      "AND DOWN GOES THE PRIMAL! MINUS ONE TO ALL STATS, MINUS ONE CRAWLER. THE MATH CHECKS OUT.",
-      "DEAD! A QUADRILLION VIEWERS JUST WATCHED YOUR BARE ASS HIT THE WOODEN SLATS. THE SLATS ARE FINE.",
-      "YOU HAVE DIED. MORDECAI HAS ALREADY POURED A DRINK FOR YOU. HE IS DRINKING IT. HE IS DRINKING ALL OF THEM.",
-      "DEATH! THE SYNDICATE FILED IT UNDER 'TRAGIC' FOR THE BROADCAST AND 'HILARIOUS' FOR THE BLOOPER REEL.",
-      "YOU DIED. DONUT IS DRAFTING A STATEMENT. IT IS THREE PAGES ABOUT HERSELF AND ONE LINE ABOUT YOU.",
+      "AND DOWN GOES THE PRIMAL! MINUS ONE TO ALL STATS, MINUS ONE CRAWLER, MINUS SEVERAL PINTS OF BLOOD. THE MATH CHECKS OUT.",
+      "DEAD! A QUADRILLION VIEWERS JUST WATCHED YOUR BARE ASS HIT THE WOODEN SLATS. THE SLATS ARE FINE. YOUR ASS IS NOT.",
+      "YOU HAVE DIED. MORDECAI ALREADY POURED A DRINK FOR YOU. HE IS DRINKING IT. HE IS DRINKING ALL OF THEM. HE IS CRYING A LITTLE. DO NOT TELL HIM WE SAID.",
+      "DEATH! THE SYNDICATE FILED IT UNDER 'TRAGIC' FOR THE BROADCAST AND 'FUCKING HILARIOUS' FOR THE BLOOPER REEL.",
+      "YOU DIED. DONUT IS DRAFTING A STATEMENT. IT IS THREE PAGES ABOUT HERSELF AND ONE LINE ABOUT YOU. THE LINE HAS A TYPO.",
       "GAME OVER, MAN! GAME OVER! WE HAVE ALWAYS WANTED TO SAY THAT. THANK YOU FOR DYING SO WE COULD.",
-      "THE OVER CITY ATE YOU. IT HAS BEEN EATING PEOPLE SINCE THE CATACLYSM. YOU WERE NOT EVEN ITS BEST MEAL."
+      "THE OVER CITY ATE YOU. IT HAS BEEN EATING PEOPLE SINCE THE CATACLYSM. YOU WERE NOT EVEN ITS BEST MEAL. YOU WERE A SNACK. A SALTY ONE.",
+      "WELL, SHIT. YOUR INSIDES ARE NOW YOUR OUTSIDES. THE SPLATTER CAM GOT ALL OF IT. THE SPONSORS WANT IT AS A SCREENSAVER.",
+      "CRAWLER DOWN! AT LEAST YOU DIED BAREFOOT. WE GOT A LOVELY SHOT OF THE SOLES ON THE WAY DOWN. THANK YOU FOR THAT. TRULY."
     ],
     levelUp: [
-      "LEVEL UP! AS A PRIMAL YOU CAN TRAIN SKILLS TO TWENTY. YOU WILL NOT LIVE THAT LONG, BUT IT IS NICE TO DREAM.",
-      "DING! FREE STAT POINT. SPEND IT AT AN INN. MORDECAI WILL WATCH AND JUDGE AND THEN THROW UP.",
+      "LEVEL UP! AS A PRIMAL YOU CAN TRAIN SKILLS TO TWENTY. YOU WILL NOT LIVE THAT LONG, BUT IT IS NICE TO DREAM, ISN'T IT, SWEETIE?",
+      "DING! FREE STAT POINT. SPEND IT AT AN INN. MORDECAI WILL WATCH AND JUDGE AND THEN THROW UP ON YOUR FEET. LUCKY FEET.",
       "LEVEL UP! THE SPONSORS JUST RAISED THEIR EARLY BIDS. NOT BY MUCH. YOU ARE A FIXER-UPPER.",
       "NEW LEVEL! SOMEWHERE IN THE SKULL EMPIRE A BOOKIE CHANGED YOUR ODDS FROM 'NO' TO 'PROBABLY NO.'",
-      "LEVEL UP! YOUR CLASS SAYS YOU ARE A SOCIAL MEDIA DYNAMO. YOUR FOLLOWERS SAY YOU ARE MOSTLY THIGHS.",
+      "LEVEL UP! YOUR CLASS SAYS YOU ARE A SOCIAL MEDIA DYNAMO. YOUR FOLLOWERS SAY YOU ARE MOSTLY THIGHS. AND THE OTHER THING. YOU KNOW THE THING.",
       "YOU GREW! MONGO ALSO GREW. MONGO GREW MORE. MONGO IS BEATING YOU AT THIS. MONGO EATS RAW MEAT.",
-      "LEVEL UP! STRONGER, FASTER, STILL NO PANTS. THE SIX MILLION DOLLAR MAN, IF THE BUDGET WENT TO THE CAT.",
-      "DING DING! THE THIRD FLOOR HAS NOTICED YOU. THAT IS NOT A COMPLIMENT. THE THIRD FLOOR NOTICES PREY."
+      "LEVEL UP! STRONGER, FASTER, STILL NO PANTS. THE SIX MILLION DOLLAR MAN, IF THE BUDGET WENT TO THE CAT AND THE CAT SPENT IT ON HATS.",
+      "DING DING! THE THIRD FLOOR HAS NOTICED YOU. THAT IS NOT A COMPLIMENT. THE THIRD FLOOR NOTICES PREY. AND THEN IT FUCKS IT UP.",
+      "LEVEL UP! SOMEWHERE A FAN JUST GOT YOUR FACE TATTOOED ON HER THIGH. SHE GOT THE NOSE WRONG. SHE GOT THE FEET RIGHT. WE HELPED."
     ],
     lootbox: [
-      "BOX TIME! THE PRODUCERS CHOSE THE CONTENTS. THE PRODUCERS WERE DRUNK. SO WAS MORDECAI. DIFFERENT BAR.",
-      "OPEN IT! A QUADRILLION VIEWERS ARE WATCHING YOU UNWRAP A PRESENT IN YOUR UNDERWEAR. CHRISTMAS MORNING, GALAXY STYLE.",
+      "BOX TIME! THE PRODUCERS CHOSE THE CONTENTS. THE PRODUCERS WERE SHITFACED. SO WAS MORDECAI. DIFFERENT BAR. SAME VOMIT.",
+      "OPEN IT! A QUADRILLION VIEWERS ARE WATCHING YOU UNWRAP A PRESENT IN YOUR UNDERWEAR. CHRISTMAS MORNING, GALAXY STYLE. HO HO HOLY SHIT.",
       "A BOX! COULD BE A WEAPON. COULD BE A SCROLL. COULD BE A HOBBY POTION FOR UNDERWATER BASKET WEAVING. WE DID THAT ONCE.",
-      "UNBOXING! SLOWER. SLOWER. THE ADVERTISERS PAID FOR NINETY SECONDS OF YOUR FACE DOING THAT.",
+      "UNBOXING! SLOWER. SLOWER. OH, YES. THE ADVERTISERS PAID FOR NINETY SECONDS OF YOUR FACE DOING THAT. SO DID I. PERSONALLY.",
       "THIS BOX WAS SPONSORED BY A COMPANY YOU HAVE NEVER HEARD OF IN A STAR SYSTEM YOU CANNOT PRONOUNCE. SAY THANK YOU.",
       "SHAKE IT LIKE A POLAROID PICTURE! WRONG DECADE? WE DO NOT CARE. WE OWN ALL THE DECADES NOW.",
-      "OOH, A BOX! IF IT IS DYNAMITE, POINT IT AWAY FROM THE CAT. THE CAT HAS LAWYERS NOW."
+      "OOH, A BOX! IF IT IS DYNAMITE, POINT IT AWAY FROM THE CAT. THE CAT HAS LAWYERS NOW. THE LAWYERS HAVE TEETH."
     ],
     revive: [
-      "REVIVED! THE NETWORK REFUSES TO LOSE A HEADLINER THIS EARLY IN THE SEASON. YOU ARE WELCOME. FOR NOW.",
-      "BACK FROM THE DEAD! THAT IS A LAZARUS ACHIEVEMENT IN SPIRIT, IF NOT IN THE PAPERWORK.",
-      "UP YOU GET! YOU LOST GOLD, TIME AND DIGNITY. TWO OF THOSE WE CAN MEASURE.",
+      "REVIVED! THE NETWORK REFUSES TO LOSE A HEADLINER THIS EARLY IN THE SEASON. YOU ARE WELCOME. FOR NOW. WE WILL BILL YOU.",
+      "BACK FROM THE DEAD! THAT IS A LAZARUS ACHIEVEMENT IN SPIRIT, IF NOT IN THE PAPERWORK. THE PAPERWORK SAYS 'LUCKY SHIT.'",
+      "UP YOU GET! YOU LOST GOLD, TIME AND DIGNITY. TWO OF THOSE WE CAN MEASURE. THE THIRD WAS ALREADY AT ZERO.",
       "ALIVE AGAIN! THE CLOCK KEPT RUNNING WHILE YOU WERE DEAD. THE VOLCANO DOES NOT DO TIMEOUTS.",
       "RESURRECTED! LIKE A BAD SEQUEL NOBODY ASKED FOR. AND YET, HERE WE ALL ARE, WATCHING.",
-      "WELCOME BACK! THE STREET URCHINS HAD ALREADY STARTED CLEANING YOU UP. THEY ARE VERY DISAPPOINTED."
+      "WELCOME BACK! THE STREET URCHINS HAD ALREADY STARTED SWEEPING UP YOUR GUTS. THEY ARE VERY DISAPPOINTED. ONE OF THEM IS CRYING."
     ],
     boxEmpty: [
-      "NO BOXES! GO STAB SOMETHING THAT HAS ONE. THE CIRCUS IS FULL OF THEM. ALSO FULL OF CLOWNS.",
+      "NO BOXES! GO STAB SOMETHING THAT HAS ONE. THE CIRCUS IS FULL OF THEM. ALSO FULL OF CLOWNS. ALSO FULL OF SHIT.",
       "EMPTY. LIKE THE DESPERADO CLUB'S PROMISES. LIKE MORDECAI'S BOTTLE. LIKE YOUR LEGS, PANT-WISE.",
-      "ZERO BOXES. QUESTS GIVE BOXES NOW. THIS IS THE FIRST FLOOR WITH QUESTS. YOU HAVE NO EXCUSES LEFT.",
+      "ZERO BOXES. QUESTS GIVE BOXES NOW. THIS IS THE FIRST FLOOR WITH QUESTS. YOU HAVE NO FUCKING EXCUSES LEFT.",
       "NOTHING TO OPEN. THE AUDIENCE WANTED AN UNBOXING. YOU GAVE THEM A MAN STARING AT A MENU.",
       "NO BOXES LEFT. DONUT HAS SUGGESTED SELLING MONGO. DONUT WAS JOKING. DONUT WAS NOT JOKING."
     ],
     lowHp: [
       "LOW HEALTH! THE BETTING POOL ON YOUR DEATH JUST CRASHED THE SYNDICATE MARKETS. HANG ON, WE HAVE MONEY ON THIS.",
-      "YOU ARE BLEEDING ON THE SLATS! THE SMOKE COMING UP THROUGH THE CRACKS DOES NOT CARE.",
-      "LOW HP! DRINK A POTION. MORDECAI MADE IT. HE WAS SOBER. MOSTLY. ONE EYE WAS OPEN.",
-      "WARNING! YOU ARE ONE GOOD SNEEZE FROM A CLOSED-CASKET SPECIAL.",
+      "YOU ARE BLEEDING ALL OVER THE SLATS! THE SMOKE COMING UP THROUGH THE CRACKS DOES NOT CARE. THE CAMERAS DO. THE CAMERAS ARE THRILLED.",
+      "LOW HP! DRINK A POTION. MORDECAI MADE IT. HE WAS SOBER. MOSTLY. ONE EYE WAS OPEN. THE OTHER HAND WAS SWATTING A BARMAID AWAY.",
+      "WARNING! YOU ARE ONE GOOD SNEEZE FROM A CLOSED-CASKET SPECIAL. OPEN CASKET, IF WE GET A SAY. WE WANT THE FEET VISIBLE.",
       "THE CAT IS FIRING FASTER! SHE DOES THAT WHEN SHE THINKS SHE MIGHT HAVE TO FIND A NEW RIDE.",
-      "LOW HEALTH! THIS IS THE PART OF THE MOVIE WHERE THE MONTAGE STARTS. THERE IS NO MONTAGE. SORRY."
+      "LOW HEALTH! THIS IS THE PART OF THE MOVIE WHERE THE MONTAGE STARTS. THERE IS NO MONTAGE. THERE IS ONLY BLOOD. SORRY. NOT SORRY."
     ],
     bigCombo: [
-      "COMBO! THAT WAS FASTER THAN A KONAMI CODE AND SLIGHTLY MORE ILLEGAL!",
-      "WHAT A STRING! THE DANGER ZONE PRODUCERS JUST CALLED. THEY WANT YOU BACK. THEY WANT YOU BLOODIER.",
+      "COMBO! THAT WAS FASTER THAN A KONAMI CODE AND A LOT MORE FUCKING ILLEGAL!",
+      "WHAT A STRING! THE DANGER ZONE PRODUCERS JUST CALLED. THEY WANT YOU BACK. THEY WANT YOU BLOODIER. THEY WANT YOU OILED.",
       "C-COMBO BREAKER! THAT IS FROM A FIGHTING GAME. YOU ARE IN A REAL ONE. THE CROWD IS LOSING IT.",
       "HIT AFTER HIT! THE VIEW COUNTER ROLLED OVER LIKE AN OLD ODOMETER. WE HAD TO BUY MORE ZEROS.",
       "COMBO! THE SPONSORS ARE ON THEIR FEET! THE ONES WITH FEET! THE ONES WITHOUT ARE ROLLING!",
-      "BEAUTIFUL! IF THE SKYFOWL HAD A BALLET, THAT WOULD BE IT. THEY DO NOT. THEY HAVE PUBLIC EXECUTIONS."
+      "BEAUTIFUL! IF THE SKYFOWL HAD A BALLET, THAT WOULD BE IT. THEY DO NOT. THEY HAVE PUBLIC EXECUTIONS. SIMILAR FOOTWORK."
     ],
     flee: [
-      "FLEEING! THE CLOCK TAKES AN HOUR FOR THAT. THE VOLCANO IS NOT RUNNING A CHARITY.",
+      "FLEEING! THE CLOCK TAKES AN HOUR FOR THAT. THE VOLCANO IS NOT RUNNING A FUCKING CHARITY.",
       "BRAVE SIR CARL RAN AWAY! BRAVELY RAN AWAY, AWAY! WE HAVE THE CLIP ON LOOP.",
       "YOU RAN! THE MONSTERS ARE LEFT STANDING THERE, FULLY DRESSED FOR A FIGHT, LIKE A PROM DATE WHO GOT STOOD UP.",
       "RETREAT! IT IS NOT COWARDICE IF THE CAT TOLD YOU TO. IT IS MANAGEMENT.",
-      "YOU FLED! THE FOCUS GROUP FOR 'CARL BEING SMART' AND THE FOCUS GROUP FOR 'CARL BEING A CHICKEN' ARE FIGHTING.",
+      "YOU FLED! THE FOCUS GROUP FOR 'CARL BEING SMART' AND THE FOCUS GROUP FOR 'CARL BEING A CHICKENSHIT' ARE FIGHTING. THERE IS BLOOD.",
       "OUT! AN HOUR GONE, NOTHING GAINED. A PERFECT METAPHOR FOR THE NINETIES."
     ],
     night: [
-      "NIGHT FALLS ON THE OVER CITY! THE GUARDS GO HOME. THE URCHINS COME OUT. THE ALLEYS GET HUNGRY.",
-      "THE FAKE SUN HAS SET! ENJOY THE FAKE STARS AND THE VERY REAL MONSTERS!",
-      "NIGHTTIME! THE MAIN ROADS ARE MOSTLY SAFE. MOSTLY. WE WOULD NOT BET THE CAT ON IT.",
+      "NIGHT FALLS ON THE OVER CITY! THE GUARDS GO HOME. THE URCHINS COME OUT. THE ALLEYS GET HUNGRY. THE INCUBI GET HANDSY.",
+      "THE FAKE SUN HAS SET! ENJOY THE FAKE STARS AND THE VERY REAL THINGS THAT WANT TO WEAR YOUR SKIN!",
+      "NIGHTTIME! THE MAIN ROADS ARE MOSTLY SAFE. MOSTLY. WE WOULD NOT BET THE CAT ON IT. WE WOULD BET MORDECAI. EVERYBODY WANTS MORDECAI.",
       "THE NEBULA IS OUT. IT IS GORGEOUS. LOOK AT IT. LOOK UP. DO NOT LOOK BEHIND YOU.",
-      "IT IS DARK NOW, CRAWLER. THE THINGS THAT WAIT FOR THE DARK ARE DONE WAITING.",
-      "GUARDS ARE IN STASIS UNTIL DAWN! NO LAW IN THE STREETS! ALSO NO PROTECTION IN THE STREETS! FUN!"
+      "IT IS DARK NOW, CRAWLER. THE THINGS THAT WAIT FOR THE DARK ARE DONE WAITING. THEY ARE VERY HUNGRY. YOU ARE VERY NAKED.",
+      "GUARDS ARE IN STASIS UNTIL DAWN! NO LAW IN THE STREETS! NO PROTECTION EITHER! GO WILD, YOU ANIMALS!"
     ],
     day: [
-      "GOOD MORNING, OVER CITY! THE RED SUN IS UP! THE GUARDS ARE BACK ON DUTY! BEHAVE!",
-      "DAWN! THE VILLAGES ARE SAFE AGAIN. DO NOT PUNCH ANYONE WHO DOES NOT DESERVE IT. ESPECIALLY CHICKADEES.",
+      "GOOD MORNING, OVER CITY! THE RED SUN IS UP! THE GUARDS ARE BACK ON DUTY! BEHAVE, OR BECOME TWO SMALLER CRAWLERS!",
+      "DAWN! THE VILLAGES ARE SAFE AGAIN. DO NOT PUNCH ANYONE WHO DOES NOT DESERVE IT. ESPECIALLY CHICKADEES. THEY ALL DESERVE IT. DON'T.",
       "ANOTHER DAY, ANOTHER CHANCE TO DIE IN THE SUNLIGHT! THE LIGHTING IS VERY FLATTERING!",
-      "THE NIGHT IS OVER. YOU SURVIVED IT. THE VOLCANO IS STILL RUMBLING. ONE THING AT A TIME.",
+      "THE NIGHT IS OVER. YOU SURVIVED IT. THE VOLCANO IS STILL RUMBLING. ONE SHITTY THING AT A TIME.",
       "MORNING! THE STREET URCHINS HAVE GONE TO BED. THEY WORKED HARD. THEY ARE VERY CLEAN NOW."
     ],
     crime: [
-      "OH NO. OH NO, NO. YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST SWORDS.",
+      "OH NO. OH NO, NO. YOU HURT A CITIZEN IN FRONT OF THE GUARDS. NO TRIAL. NO JURY. JUST SWORDS. SO MANY SWORDS.",
       "CRIME DETECTED! THE VILLAGE GUARD SWORDSMEN ARE ON THEIR WAY! THEY ARE LEVEL 75! YOU ARE NOT!",
-      "THE GUARDS HAVE SEEN WHAT YOU DID. THEY ARE COMING FROM BOTH SIDES. RUN FOR THE RUINS, CRAWLER. RUN.",
+      "THE GUARDS SAW WHAT YOU DID. THEY ARE COMING FROM BOTH SIDES. RUN FOR THE RUINS, CRAWLER. RUN, YOU DUMB BASTARD.",
       "YOU HAVE BEEN SENTENCED TO DEATH! THE SENTENCE WILL BE CARRIED OUT BY THE LARGE MAN WITH THE LARGE SWORD!",
-      "A CRIME! ON CAMERA! THE AUDIENCE GASPS! THE AUDIENCE ALSO LOVES IT! THE GUARDS DO NOT!"
+      "A CRIME! ON CAMERA! THE AUDIENCE GASPS! THE AUDIENCE ALSO FUCKING LOVES IT! THE GUARDS DO NOT!"
     ],
     ban: [
       "YOU ESCAPED THE GUARDS! CONGRATULATIONS! YOU CAN NEVER GO BACK TO THAT TOWN! EVER!",
-      "BANNED! THAT TOWN HAS YOUR FACE ON A POSTER NOW. IT IS NOT A FLATTERING POSTER.",
+      "BANNED! THAT TOWN HAS YOUR FACE ON A POSTER NOW. IT IS NOT A FLATTERING POSTER. SOMEBODY DREW A DICK ON IT.",
       "YOU ARE NO LONGER WELCOME THERE. THE SHOPS WILL MISS YOUR GOLD. NOBODY ELSE WILL MISS ANYTHING.",
       "PERSONA NON GRATA! THE GUARDS WILL BE WAITING AT THE GATE. FOREVER. THEY ARE VERY PATIENT."
     ],
     collapse: [
-      "TIME IS UP! THE THIRD FLOOR IS COLLAPSING! EVERYONE STILL HERE BECOMES A FOND MEMORY! THANK YOU FOR PLAYING!",
+      "TIME IS UP! THE THIRD FLOOR IS COLLAPSING! EVERYONE STILL HERE BECOMES PASTE! THANK YOU FOR PLAYING!",
       "THE CLOCK HIT ZERO! THE OVER CITY FOLDS UP LIKE A BAD CARD TABLE! WITH YOU ON IT!",
-      "THE FLOOR IS GONE. YOU ARE GONE. THE SHOW GOES ON WITHOUT YOU. IT ALWAYS DOES."
+      "THE FLOOR IS GONE. YOU ARE GONE. THE SHOW GOES ON WITHOUT YOU. IT ALWAYS DOES. NOBODY EVEN SAID GOODBYE."
     ],
     questStart: [
       "NEW QUEST! CHECK YOUR QUEST LOG! QUESTS ARE NEW ON THIS FLOOR. WE ARE VERY PROUD OF THEM.",
-      "A QUEST HAS BEEN ADDED! REMEMBER: UNFINISHED QUESTS VANISH WHEN YOU LEAVE THE FLOOR. LIKE DREAMS. LIKE CRAWLERS."
+      "A QUEST HAS BEEN ADDED! REMEMBER: UNFINISHED QUESTS VANISH WHEN YOU LEAVE THE FLOOR. LIKE DREAMS. LIKE CRAWLERS.",
+      "A QUEST! SOMEBODY NEEDS HELP, AND THE SYNDICATE NEEDS TO WATCH YOU FUCK IT UP. EVERYBODY WINS!"
     ],
     questDone: [
       "QUEST COMPLETE! A BOX FOR THE CRAWLER! AND APPLAUSE! MOSTLY THE BOX!",
-      "ANOTHER QUEST DONE! THE QUEST GIVERS ARE THRILLED. THE ONES THAT ARE STILL ALIVE."
+      "ANOTHER QUEST DONE! THE QUEST GIVERS ARE THRILLED. THE ONES THAT ARE STILL ALIVE. THE OTHERS ARE IN A DITCH.",
+      "QUEST DONE! THE STUDIO IS CALLING IT EMOTIONAL. THE STUDIO CALLS EVERYTHING EMOTIONAL THIS WEEK. PASS ME A TISSUE, YOU BASTARD."
     ],
     craft: [
       "ALCHEMY! MOONSHINE PLUS RAG PLUS FIRE EQUALS ONE JUG O'BOOM AND ONE VERY UPSET FIRE MARSHAL.",
-      "CRAFTED! IT IS STILL MOSTLY MOONSHINE. IT IS NOW ALSO MOSTLY EXPLOSIVE."
+      "CRAFTED! IT IS STILL MOSTLY MOONSHINE. IT IS NOW ALSO MOSTLY EXPLOSIVE.",
+      "ANOTHER JUG O'BOOM! YOUR GRANDMOTHER WOULD BE SO PROUD. YOUR GRANDMOTHER WOULD BE ON A WATCHLIST."
     ],
     import: [
-      "WELL, WELL. A RETURNING CONTESTANT! THE AUDIENCE REMEMBERS YOU. MOSTLY YOUR FEET.",
+      "WELL, WELL. A RETURNING CONTESTANT! THE AUDIENCE REMEMBERS YOU. MOSTLY YOUR FEET. I REMEMBER YOUR FEET. I REMEMBER THEM AT NIGHT.",
       "BOOK ONE SAVE DETECTED! YOUR OLD OUTFITS HAVE BEEN DRY CLEANED. THE SMELL WOULD NOT COME OUT. WE TRIED.",
       "A VETERAN! SAME CRAWLER, SAME FEET, SAME REPUTATION. MOSTLY THE BAD PARTS."
     ],
     levelClear: [
       "CLEARED! ONE MORE DOOR CLOSED ON THE OVER CITY. THE OVER CITY HAS A LOT OF DOORS. AND A LOT OF TEETH.",
-      "DONE! THE RECAP EPISODE GETS A NEW SEGMENT: 'CARL DOES SOMETHING UNHINGED, PART NINE.'",
+      "DONE! THE RECAP EPISODE GETS A NEW SEGMENT: 'CARL DOES SOME UNHINGED SHIT, PART NINE.'",
       "LEVEL CLEAR! ODETTE WILL BE ASKING ABOUT THAT ON HER SHOW. SHE WILL ASK WITH HER EYEBROWS.",
-      "CLEARED! THE ELITES ARE TAKING NOTES. THEY HAVE STORYLINES. YOU JUST WALKED THROUGH ONE."
+      "CLEARED! THE ELITES ARE TAKING NOTES. THEY HAVE STORYLINES. YOU JUST WALKED THROUGH ONE. WITH MUDDY FEET."
     ],
     cockroach: [
       "PRINCESS DONUT'S COCKROACH SKILL ACTIVATES! ZERO HIT POINTS AND STILL ALIVE! UNCONSCIOUS, BUT ALIVE! THE URCHINS ARE COMING FOR YOU NOW, CARL!",
-      "THE BARRICADE IS DOWN! THE CAT SURVIVED A HIT THAT SHOULD HAVE ENDED HER! THE TUMBLEWEEDS HAVE NOTICED YOU INSTEAD. GOOD LUCK!",
+      "THE BARRICADE IS DOWN! THE CAT SURVIVED A HIT THAT SHOULD HAVE ENDED HER! THE TUMBLEWEEDS HAVE NOTICED YOU INSTEAD. GOOD FUCKING LUCK!",
       "COCKROACH! LIKE THE BUG THAT SURVIVES THE APOCALYPSE, THE PRINCESS ENDURES! SHE IS VERY ANNOYED ABOUT THE COMPARISON. LATER."
     ],
     guardKill: [
-      "DEATH PENALTY! THE VILLAGE GUARD SWORDSMAN CARRIED OUT THE SENTENCE PERSONALLY. HE WAS VERY THOROUGH.",
+      "DEATH PENALTY! THE VILLAGE GUARD SWORDSMAN CARRIED OUT THE SENTENCE PERSONALLY. HE WAS THOROUGH. THERE ARE PIECES OF YOU ON THREE ROOFS.",
       "JUSTICE, OVER CITY STYLE! ONE CRIME, ONE SWORD, ONE CRAWLER IN TWO PIECES! THE TOWN THANKS YOU FOR YOUR COOPERATION.",
       "YOU HAVE BEEN EXECUTED BY A LEVEL 75 PUBLIC SERVANT! HE WILL BE HOME IN TIME FOR DINNER. YOU WILL NOT."
     ],
     earlyStairs: [
-      "TAKE THE STAIRS NOW? THE FLOOR STILL HAS DAYS ON THE CLOCK. YOU WILL MISS EVERYTHING. EVERYTHING, CRAWLER. THE GOOD STUFF.",
+      "TAKE THE STAIRS NOW? THE FLOOR STILL HAS DAYS ON THE CLOCK. YOU WILL MISS EVERYTHING. EVERYTHING, CRAWLER. THE GOOD SHIT.",
       "LEAVE EARLY? THE SETTLEMENT, THE TALK SHOW, THE EXPLOSIONS. ALL OF IT, GONE. THERE IS NO PRIZE FOR EARLY. WE CHECKED.",
       "THE STAIRS ARE RIGHT THERE. SO IS THE REST OF THE STORY. ARE YOU SURE? MORDECAI IS SHAKING HIS HEAD SO HARD HIS HORNS RATTLE."
     ],
     edge: [
       "NOTHING THAT WAY BUT THREE HUNDRED THOUSAND SQUARE KILOMETERS OF RUINS. AND FOG. AND THINGS IN THE FOG.",
       "THE MAP ENDS HERE, CRAWLER. NOT THE WORLD. JUST THE PART WE BUILT A STORY FOR.",
-      "THAT WAY LIES THE REST OF THE OVER CITY. THE REST OF THE OVER CITY DOES NOT HAVE YOUR QUEST IN IT."
+      "THAT WAY LIES THE REST OF THE OVER CITY. THE REST OF THE OVER CITY DOES NOT HAVE YOUR QUEST IN IT. IT HAS A LOT OF TEETH."
     ],
     rest: [
       "SWEET DREAMS, CRAWLER! THE CLOCK KEPT TICKING WHILE YOU SLEPT. IT ALWAYS DOES.",
-      "RESTED! HP FULL! TIME GONE! THERE IS ALWAYS A PRICE, AND IT IS USUALLY HOURS."
+      "RESTED! HP FULL! TIME GONE! THERE IS ALWAYS A PRICE, AND IT IS USUALLY HOURS.",
+      "RESTED! YOU SNORE, CRAWLER. THE CAT HAS FILED A COMPLAINT. SO HAVE THREE NEIGHBORING STAR SYSTEMS.",
+      "GOOD MORNING! WHILE YOU SLEPT, A VIEWER IN THE SKULL EMPIRE WROTE A POEM ABOUT YOUR TOES. WE READ IT. IT WAS FILTHY. WE LOVED IT."
     ]
   };
 
@@ -3796,77 +3964,81 @@
       lines: {
         door: [
           { who: 'CLARABELLE', text: "MEMBERS ONLY. YOU HAVE THE TATTOO. FINE. THE DINOSAUR GOES IN THE PLAYROOM. THE PLAYROOM IS NOT SAFE. THAT'S THE FUN PART." },
-          { who: 'CLARABELLE', text: "CLARABELLE. LEVEL 40. CROCODILIAN. NO FIGHTING. I EAT FIGHTERS. I'M NOT JOKING. I'M NOT EVEN HUNGRY RIGHT NOW AND I WOULD." },
+          { who: 'CLARABELLE', text: "CLARABELLE. LEVEL 40. CROCODILIAN. NO FIGHTING. I EAT FIGHTERS. WHOLE. I'M NOT EVEN HUNGRY AND I WOULD STILL SWALLOW YOU, SWEETHEART." },
           { who: 'CLARABELLE', text: "THE GIRL WITH THE DOGS TORE THIS PLACE UP LAST NIGHT. IF YOU SEE HER, TELL HER CLARABELLE REMEMBERS. CLARABELLE ALWAYS REMEMBERS." }
         ],
         quint: [
-          "PHARMACY. QUINT. WHAT DO YOU NEED. MAKE IT FAST, I HAVE A WHOLE CLUB OF ASSHOLES TO OVERCHARGE.",
-          "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO NEED A LOT OF POTIONS. AND A CLOSED CASKET.",
-          "NO, I WON'T SAY IT IN THE VOICE. EVERYBODY WANTS THE VOICE."
+          "PHARMACY. QUINT. WHAT DO YOU NEED. DON'T SAY THE BATMAN THING. I CAN SEE YOU WANT TO SAY THE BATMAN THING.",
+          "MORDECAI SENT YOU. HE ALWAYS SENDS THE ONES WHO ARE GOING TO BLEED ALL OVER MY CARPET.",
+          "NO, I WON'T SAY IT IN THE VOICE. EVERYBODY WANTS THE FUCKING VOICE."
         ],
         dance: [
-          [{ who: 'DONUT', text: "CARL. YOU DANCE LIKE A SHOPPING CART WITH A BAD WHEEL. A VERY ENTHUSIASTIC SHOPPING CART." }],
-          [{ who: 'SYSTEM AI', text: "THE DISCO BALL IS SPINNING! THE NEON IS FLASHING! THE CRAWLER IS DOING THE ROBOT! TWO OF THOSE THINGS ARE ON PURPOSE!" }],
+          [{ who: 'DONUT', text: "CARL. YOU DANCE LIKE A SHOPPING CART WITH A BAD WHEEL. A VERY ENTHUSIASTIC SHOPPING CART WITH NO PANTS ON." }],
+          [{ who: 'SYSTEM AI', text: "THE DISCO BALL IS SPINNING! THE NEON IS FLASHING! THE CRAWLER IS DOING THE ROBOT AND THE BOXERS ARE SWINGING! ONLY TWO OF THOSE ARE ON PURPOSE!" }],
           [{ who: 'CARL', text: "IT'S VEGAS, MARDI GRAS AND A ROLLER RINK FROM 1978. I'M DOING THE HUSTLE. NOBODY CAN STOP ME." }, { who: 'DONUT', text: "SOMEBODY SHOULD." }]
         ],
         bar: [
-          [{ who: 'DONUT', text: "A DIRTY SHIRLEY, PLEASE. EXTRA CHERRIES. I AM A CELEBRITY. I SAVED A CIRCUS." }, { who: 'CARL', text: "A BEER. ANYTHING COLD THAT ISN'T MOVING." }],
-          [{ who: 'MORDECAI', text: "(AT THE END OF THE BAR, FACE DOWN) ...THE WHOLE BOTTLE. NO, THE OTHER WHOLE BOTTLE." }]
+          [{ who: 'DONUT', text: "A DIRTY SHIRLEY, PLEASE. EXTRA CHERRIES. I AM A CELEBRITY. I SAVED A CIRCUS. THE MAN WITH NO PANTS IS PAYING." }, { who: 'CARL', text: "A BEER. ANYTHING COLD THAT ISN'T MOVING. AND KEEP THE GUY WITH SIX ARMS AWAY FROM MY LAP." }],
+          [{ who: 'MORDECAI', text: "(FACE DOWN AT THE END OF THE BAR, SWATTING AT ADMIRERS) ...THE WHOLE BOTTLE. NO, THE OTHER WHOLE BOTTLE. AND GET YOUR HAND OFF MY TAIL." }]
         ]
       } }
   };
 
   /* Mordecai at the inns: Level 50 Incubus, Donut's bound manager. Drunk, bitter, brilliant. */
   D.mordecai = [
-    "LISTEN. HIC. LISTEN. KICKS. WITH FREEBALLING YOUR KICKS DO DOUBLE. YOUR KICKS ALREADY DID MORE THAN YOUR PUNCHES. DO THE MATH, KID. KICK THINGS.",
-    "THE TIMER IS THE REAL BOSS ON THIS FLOOR. EVERY LEVEL COSTS HOURS. EVERY NAP COSTS HOURS. I COST NOTHING. I'M A BARGAIN. POUR ME ANOTHER.",
-    "MOLD LIONS COME BACK UNLESS YOU BURN THEM. THAT'S WHAT THE JUGS ARE FOR. FIRE STAYS ON THE GROUND. LURE THEM THROUGH IT. YOU'RE WELCOME.",
-    "KRASUE. GHOST CLASS. BOMBS GO RIGHT THROUGH THEM. YOUR GAUNTLET DOESN'T. THE BODY IS THE REAL TARGET. FIND THE BODY, WRECK THE BODY.",
+    "LISTEN. HIC. LISTEN. KICKS. WITH FREEBALLING YOUR KICKS DO DOUBLE. THEY ALREADY BEAT YOUR PUNCHES. DO THE MATH, KID. KICK EVERYTHING IN THE NUTS.",
+    "THE TIMER IS THE REAL BOSS ON THIS FLOOR. EVERY LEVEL COSTS HOURS. EVERY NAP COSTS HOURS. I COST NOTHING. I'M A FUCKING BARGAIN. POUR ME ANOTHER.",
+    "MOLD LIONS COME BACK UNLESS YOU BURN THEM. THAT'S WHAT THE JUGS ARE FOR. FIRE STAYS ON THE GROUND. LURE THE MANGY BASTARDS THROUGH IT.",
+    "KRASUE. GHOST CLASS. BOMBS GO RIGHT THROUGH. YOUR GAUNTLET DOESN'T. THE BODY IS THE REAL TARGET. FIND THE BODY, WRECK THE BODY. DON'T STARE AT THE GUTS.",
     "IN THE DARK, THE BIG STITCHED-UP BERSERKERS GET FOUR TIMES WORSE. STAY IN THE CAT'S LIGHT. I KNOW SHE'S INSUFFERABLE ABOUT IT. STAY IN IT ANYWAY.",
-    "DON'T PUNCH CITIZENS. DON'T PUNCH CHICKADEES. DON'T PUNCH THE ONES THAT LOOK LIKE THEY DESERVE IT. THE GUARDS DON'T CARE WHO STARTED IT.",
+    "DON'T PUNCH CITIZENS. DON'T PUNCH CHICKADEES. DON'T PUNCH THE ONES WHO LOOK LIKE THEY DESERVE IT. THE GUARDS DON'T GIVE A SHIT WHO STARTED IT.",
     "YOU CAN WAIT FOR NIGHT FOR FREE. SLEEPING TILL MORNING COSTS GOLD BUT HEALS YOU. NIGHT IS WHEN THE INTERESTING DOORS OPEN. AND THE INTERESTING DEATHS.",
-    "THE SMOKE BOMBS ARE NOT FOR SHOWING OFF. ANYTHING IN THE CLOUD FORGETS YOU FOR A FEW SECONDS. FOUR SECONDS IS A LIFETIME IF YOU USE IT.",
-    "BRING ME MOONSHINE AND I'LL TEACH YOU A THING. NO. WAIT. YOU CRAFT IT YOURSELF NOW. ALCHEMY. ONE JUG, ONE BOMB. GIVE ME THE OTHER JUG.",
+    "THE SMOKE BOMBS ARE NOT FOR SHOWING OFF. ANYTHING IN THE CLOUD FORGETS YOU FOR FOUR SECONDS. FOUR SECONDS IS A LIFETIME IF YOU'RE NOT A DUMBASS.",
+    "BRING ME MOONSHINE AND I'LL TEACH YOU A THING. NO. WAIT. YOU CRAFT IT YOURSELF NOW. ALCHEMY. ONE JUG, ONE BOMB. GIVE ME THE OTHER JUG. GIVE IT.",
     "UP PLUS BOMB SWITCHES WHAT YOU THROW. DON'T THROW DYNAMITE AT ONE LEMUR. DON'T THROW A HOB-LOBBER AT A BOSS. MATCH THE BANG TO THE BASTARD.",
-    "DOWN PLUS SPECIAL WITH A STICK OF DYNAMITE. TWO LITTLE CLOCKWORK MONGOS RUN OFF AND BLOW UP. THE CAT CALLS IT THE BOOMY BOY. I CALL IT A WAR CRIME.",
+    "DOWN PLUS SPECIAL WITH A STICK OF DYNAMITE. TWO CLOCKWORK MONGOS RUN OFF AND BLOW UP. THE CAT CALLS IT THE BOOMY BOY. I CALL IT A WAR CRIME. A FUN ONE.",
     "UP PLUS SPECIAL WITH A JUG. TOSS IT, THE CAT TELEPORTS YOU OUT, IT LANDS. BIG FIRE. MIC DROP. DON'T DO IT INDOORS. DO IT INDOORS IF IT'S A CULT.",
-    "THE XISTERA MAKES HOB-LOBBERS FLY STRAIGHT AND HIT HARD. IT'S A JAI ALAI BASKET. I DON'T KNOW WHAT JAI ALAI IS. NEITHER DO YOU. IT WORKS.",
+    "THE XISTERA MAKES HOB-LOBBERS FLY STRAIGHT AND HIT HARD. IT'S A JAI ALAI BASKET. I DON'T KNOW WHAT THE FUCK JAI ALAI IS. NEITHER DO YOU. IT WORKS.",
     "ELITES AREN'T BOSSES. THEY'RE ACTORS. PRINTED, IMPRINTED, WRITTEN INTO A STORYLINE. THEY'RE ON A SHOW INSIDE THE SHOW. IT'S LIKE STAR TREK. A LOT OF STAR TREK.",
     "SIGNET WILL USE YOU. GRIMALDI WILL USE YOU. THE PRODUCERS WILL USE YOU. THE TRICK IS TO GET USED IN A DIRECTION YOU WANTED TO GO ANYWAY.",
     "YOU CAN'T SAVE THEM ALL, KID. I'VE WATCHED A LOT OF CRAWLERS TRY. YOU KNOW WHERE THEY ARE NOW? NEITHER DO I. THAT'S THE POINT.",
-    "THE SYNDICATE SHOWS RUN LIKE THOSE SLASHER MOVIES. THE SEQUEL KILLS MORE PEOPLE THAN THE FIRST ONE. EVERY SEASON IS A SEQUEL.",
+    "THE SYNDICATE RUNS ITS SHOWS LIKE YOUR SLASHER MOVIES. THE SEQUEL ALWAYS KILLS MORE PEOPLE. EVERY SEASON IS A SEQUEL. WELCOME TO CRYSTAL LAKE.",
     "SIGNPOST ROCKS OUTSIDE THE GATES. PRESS UP. THEY FILL IN THE MAP. YOUR ESCAPE PLAN SKILL READS THEM BETTER THAN ANYBODY. USE IT.",
     "THE CAT'S EARS HEAR THINGS YOU DON'T. WHEN A LITTLE PIP SHOWS UP, LOOK THERE. SHE'S USUALLY RIGHT. DON'T TELL HER I SAID SHE'S USUALLY RIGHT.",
     "SECOND CHANCE: SOMETIMES WHEN THE CAT KILLS SOMETHING, IT GETS BACK UP ON YOUR SIDE. FOR A FEW SECONDS. DON'T GET ATTACHED. THEY'RE DEAD.",
     "THE STAIRS IN THE PARK WILL TAKE YOU DOWN EARLY. DON'T. FLOOR FOUR EATS THE CRAWLERS WHO LEFT FLOOR THREE HALF FINISHED. TRUST ME. I ATE THEM.",
-    "I DIDN'T EAT THEM. THAT WAS A FIGURE OF SPEECH. I'M AN INCUBUS, NOT A... NEVER MIND. GO TO BED.",
-    "I WAS A CRAWLER ONCE. A LONG TIME AGO. A LONG, LONG TIME AGO. THE DRINKS WERE WORSE BACK THEN. EVERYTHING WAS WORSE. NOW IT'S WORSE AND I'M DRUNK.",
-    "THIS BODY. THIS STUPID BODY. EVERY TIME I WALK INTO A ROOM, SOMEBODY OFFERS TO BUY ME A DRINK. I USED TO HAVE TO EARN MY DRINKS. THE SHOW TOOK THAT FROM ME.",
+    "I DIDN'T EAT THEM. FIGURE OF SPEECH. I'M AN INCUBUS, NOT A... NO. DON'T MAKE THAT FACE. I KNOW HOW IT SOUNDED. GO TO BED.",
+    "I WAS A CRAWLER ONCE. A LONG, LONG TIME AGO. THE DRINKS WERE WORSE BACK THEN. EVERYTHING WAS WORSE. NOW IT'S WORSE AND I'M DRUNK. PROGRESS.",
+    "THIS BODY. THIS STUPID FUCKING BODY. I WALK INTO A ROOM AND THREE PEOPLE OFFER TO BUY ME A DRINK AND TWO OFFER THEMSELVES. I JUST WANT THE DRINK.",
     "YOUR STAT POINTS. STRENGTH FOR PUNCHES. CONSTITUTION FOR NOT DYING. DEXTERITY FOR CRITS AND FEET. INTELLIGENCE FOR THE CAT'S MISSILES. SPEND THEM HERE.",
     "BOSSES TELEGRAPH. THE BEAR CROUCHES BEFORE SHE CHARGES. THE MANTA SHIMMERS BEFORE IT PEELS OFF THE WALL. WATCH THEM LIKE A BAD HAND OF CARDS.",
-    "MANAGER. MANAGER! I HAVE TRAINED KINGS, KID. I HAVE WATCHED GODS FALL. AND NOW I NEGOTIATE A CAT'S APPEARANCE FEES. TEN PERCENT. TEN PERCENT OF NOTHING.",
+    "MANAGER. MANAGER! I HAVE TRAINED KINGS, KID. I HAVE WATCHED GODS FALL. NOW I NEGOTIATE A CAT'S APPEARANCE FEES. TEN PERCENT. TEN PERCENT OF FUCK ALL.",
     "THE CAMERAS LOVE YOU. THAT'S NOT A COMPLIMENT. THE CAMERAS LOVE ANYTHING THAT MIGHT DIE INTERESTINGLY. STAY BORING WHEN YOU CAN. YOU NEVER CAN.",
     "GET THE GOLD, BUY THE POTIONS, DRINK THE POTIONS. DON'T HOARD THEM. HOARDERS DIE WITH FULL POCKETS. I'VE SEEN THE FOOTAGE. IT'S EMBARRASSING.",
-    "WHEN THE CAT ASKS FOR PRAISE, GIVE IT. A HAPPY MANAGER IS A QUIET MANAGER. I SHOULD KNOW. I AM HER MANAGER NOW. GODS HELP ME."
+    "WHEN THE CAT ASKS FOR PRAISE, GIVE IT. A HAPPY CLIENT IS A QUIET CLIENT. I SHOULD KNOW. I AM HER MANAGER NOW. GODS HELP ME. GODS HELP ALL OF US.",
+    "SOMEBODY SLIPPED A NOTE UNDER MY DOOR LAST NIGHT. IT SAID 'YOU UP?' I AM ALWAYS UP. I AM AN INCUBUS. THAT IS THE FUCKING PROBLEM.",
+    "THE BARMAID ASKED WHAT MY TAIL DOES. IT HOLDS THE BOTTLE WHILE I DRINK. THAT'S ALL IT DOES. THAT'S ALL ANYTHING DOES ANYMORE.",
+    "YOU'RE THE WORST CRAWLERS I'VE EVER HAD. I'VE HAD CRAWLERS DIE IN THE TUTORIAL. TO A DOOR. YOU'RE STILL WORSE. DRINK YOUR POTION.",
+    "DON'T LOOK AT THE INCUBI IN THE STREETS. DON'T LOOK AT ME LIKE THAT EITHER. THE CHARM IS A GODDAMN SPELL, NOT A PERSONALITY. ASK SIGNET."
   ];
 
   /* story hints: the first matching entry is what Mordecai says when you TALK at an inn */
   D.mordecaiHints = [
-    { when: { notFlags: ['lemurs_done'] }, text: "THE RUINS ARE EAST OF THE VILLAGE. A COLLAPSED STREET. LEMURS ON THE ROOFS. KILL THEM BEFORE THEY GET HIGH GROUND. THEY ALWAYS HAVE HIGH GROUND." },
+    { when: { notFlags: ['lemurs_done'] }, text: "THE RUINS ARE EAST OF THE VILLAGE. A COLLAPSED STREET. LEMURS ON THE ROOFS. KILL THE LITTLE BASTARDS BEFORE THEY GET HIGH GROUND. THEY ALWAYS HAVE HIGH GROUND." },
     { when: { flags: ['lemurs_done'], notFlags: ['bodies_done'] }, text: "THAT QUEST. THE CIRCUS. DON'T. FINE. DO. BUT FIRST LOOK AT WHOEVER TRIED BEFORE YOU. DEAD CRAWLERS ARE THE BEST TEACHERS. AND THEY HAVE LOOT." },
-    { when: { flags: ['bodies_done'], notFlags: ['collapse_done'] }, text: "SPY FROM A HIGH PLACE, NOT A CLOSE PLACE. AND IF THE BUILDING STARTS FALLING, FALL FASTER THAN IT DOES. THAT'S NOT ADVICE. THAT'S PHYSICS." },
-    { when: { flags: ['lions_done'], notFlags: ['heather_done'] }, text: "THE BEAR IS A BOSS ON SKATES. YOU CAN'T OUTRUN HER, SO DON'T STOP. WHEN YOU CAN'T RUN ANY MORE, FIGHT. AND WATCH THE WORMS." },
-    { when: { flags: ['heather_done'], notFlags: ['bigtop_done'] }, text: "THE BLOOD PLAN. POISON YOURSELF. DRIP ON THE ROOTS. STAY ALIVE WHILE IT WORKS. AND BREAK THOSE TENT POLES. THE BIG TOP OPENS AT NIGHT." },
+    { when: { flags: ['bodies_done'], notFlags: ['collapse_done'] }, text: "SPY FROM A HIGH PLACE, NOT A CLOSE PLACE. AND IF THE BUILDING STARTS FALLING, FALL FASTER THAN IT DOES. THAT'S NOT ADVICE. THAT'S FUCKING PHYSICS." },
+    { when: { flags: ['lions_done'], notFlags: ['heather_done'] }, text: "THE BEAR IS A BOSS ON SKATES. YOU CAN'T OUTRUN HER, SO DON'T STOP. WHEN YOU CAN'T RUN ANY MORE, FIGHT. AND WATCH THE WORMS. GODS, THE WORMS." },
+    { when: { flags: ['heather_done'], notFlags: ['bigtop_done'] }, text: "THE BLOOD PLAN. POISON YOURSELF. DRIP ON THE ROOTS. STAY ALIVE WHILE IT WORKS. BREAK THE TENT POLES. THE BIG TOP OPENS AT NIGHT. DON'T FUCK IT UP." },
     { when: { flags: ['circus_gone'], notFlags: ['settled'] }, text: "EAST. THE SETTLEMENT. THIRTY-FOUR KILOMETERS OF RUIN AND THEN FOUR ROOMS AT TWENTY GOLD. I'VE ALREADY BOOKED MINE. I'VE ALREADY STARTED A TAB." },
-    { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "A BLOCK ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. AND TRY THAT DYNAMITE TRICK. ON IT, NOT ON ME." },
-    { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS OUT PAST THE GATE WITH A SHOVEL. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT IN YOUR STUPID DECENT FACE." },
+    { when: { flags: ['settled'], notFlags: ['dispenser_done'] }, text: "A BLOCK ON THE EAST ROAD. A NEIGHBORHOOD BOSS THAT LOOKS LIKE A WALL. ONLY THE PARTS IT SHOWS YOU CAN BE HURT. TRY THE DYNAMITE TRICK. ON IT, NOT ON ME." },
+    { when: { flags: ['dispenser_done'], notFlags: ['quest_sw'] }, text: "THE ORC IS OUT PAST THE GATE WITH A SHOVEL. I SAID NO. YOU'RE GOING TO SAY YES. I CAN SEE IT ON YOUR STUPID, DECENT, PANTSLESS FACE." },
     { when: { flags: ['quest_sw'], notFlags: ['club_known'] }, text: "FINE. IF YOU'RE DOING THIS, DO IT RIGHT. COME FIND ME IN TOWN. THERE'S A DOOR IN THE BACK OF THE PUB AND A HOBGOBLIN WHO SELLS DYNAMITE." },
-    { when: { flags: ['mongo_bolted'], notFlags: ['vincente_dead'] }, text: "WHERE IS YOUR DINOSAUR? WHY ARE YOU HERE? WHY ARE YOU TALKING TO ME? GO GET YOUR DINOSAUR." },
+    { when: { flags: ['mongo_bolted'], notFlags: ['vincente_dead'] }, text: "WHERE IS YOUR DINOSAUR? WHY ARE YOU HERE? WHY ARE YOU TALKING TO ME? GO GET YOUR GODDAMN DINOSAUR." },
     { when: { flags: ['vincente_dead'], notFlags: ['met_quill'] }, text: "A GATE PASS FROM THE MAGISTRATE ON A DEAD ORC. AND A LETTER IN NECROMANCER SCRIBBLE. GO TO THE ADMIN DISTRICT. LOOK. DON'T TOUCH. YOU'RE GOING TO TOUCH." },
-    { when: { flags: ['met_quill'], notFlags: ['divider_done'] }, text: "SOMEBODY KILLED A BOSS ON THE EAST ROAD AND LEFT IT TO ROT. THE ELVES GO OUT THERE AT NIGHT. THAT'S A TRAP. IT'S A TRAP FOR YOU. YOU'RE GOING ANYWAY." },
-    { when: { flags: ['divider_done'], notFlags: ['show_done'] }, text: "ZEV BOOKED YOU ON DANGER ZONE. LIVE. UNCENSORED. EVERYTHING YOU SAY GOES OUT TO A TRILLION PEOPLE. SO, YOU KNOW. DON'T SAY ANYTHING. YOU WILL." },
+    { when: { flags: ['met_quill'], notFlags: ['divider_done'] }, text: "SOMEBODY KILLED A BOSS ON THE EAST ROAD AND LEFT IT TO ROT. THE ELVES GO OUT THERE AT NIGHT. THAT'S A TRAP FOR YOU. YOU'RE GOING ANYWAY, YOU IDIOT." },
+    { when: { flags: ['divider_done'], notFlags: ['show_done'] }, text: "ZEV BOOKED YOU ON DANGER ZONE. LIVE. UNCENSORED. A TRILLION PEOPLE. SO DON'T SAY ANYTHING STUPID. YOU WILL. YOU'LL SAY SOMETHING SO FUCKING STUPID." },
     { when: { flags: ['show_done'], notFlags: ['apito_done'] }, text: "THE EDUCATION CENTER IS THE MILITIA'S HOUSE. THE MAP SAYS CORRUPT TEMPLE. GO BY DAY, WHEN THEY'RE TEACHING. THEY CAN'T CAST DARKNESS IN DAYLIGHT AS WELL." },
-    { when: { flags: ['katia_joined'], notFlags: ['mongo_big'] }, text: "THE BACK ALLEY FILLS WITH SHADOW LEAKS AT NIGHT. EASY XP. YOUR DINOSAUR IS CLOSE TO SOMETHING. I CAN SMELL IT ON HIM. IT SMELLS LIKE GROWTH. AND FEET." },
+    { when: { flags: ['katia_joined'], notFlags: ['mongo_big'] }, text: "THE BACK ALLEY FILLS WITH SHADOW LEAKS AT NIGHT. EASY XP. YOUR DINOSAUR IS CLOSE TO SOMETHING. I CAN SMELL IT ON HIM. IT SMELLS LIKE GROWTH. AND SHIT." },
     { when: { flags: ['mongo_big'], notFlags: ['quill_dead'] }, text: "THE MAGISTRATE COMES OUT AT NIGHT. SO DOES QUILL'S LITTLE FLYING HEAD ARMY. CLIMB THE OUTSIDE, PLANT THE STICKS, BLOW IT FROM THE NEXT ROOF. I DIDN'T SAY THAT." },
     { when: { flags: ['nest_done'], notFlags: ['depot_rigged'] }, text: "THE GUARD DEPOT. THE SWORDSMEN SIT IN THERE ALL NIGHT, FROZEN, RECHARGING. WHATEVER POWERS THEM IS WHAT QUILL WANTED. GO AT NIGHT." }
   ];
@@ -3874,20 +4046,20 @@
   D.story = {
     winEnding: [
       { text: "THE STAIRWELL DOOR SLAMMED SHUT BEHIND THEM. ABOVE, THE OVER CITY SHOOK, AND THE SKY FLICKERED, AND THEN IT WAS QUIET.", portrait: null },
-      { text: "CARL SAT ON A STEP IN HIS BOXERS WITH A BOMB THE SIZE OF A CITY IN HIS INVENTORY. DONUT SAT ON HIS SHOULDER WITHOUT HER CROWN.", portrait: 'p_carl' },
+      { text: "CARL SAT ON A STEP IN HIS BOXERS WITH A BOMB THE SIZE OF A CITY IN HIS INVENTORY. DONUT SAT ON HIS SHOULDER WITHOUT HER CROWN. NOBODY SAID A WORD.", portrait: 'p_carl' },
       { text: "MONGO, PONY-SIZED AND PROUD OF IT, TRIED TO CLIMB INTO CARL'S LAP. KATIA LAUGHED FOR THE FIRST TIME SINCE THEY MET HER.", portrait: 'p_katia' },
-      { text: "FLOOR THREE: COMPLETE. FLOOR FOUR: LOADING. SEE YOU THERE, CRAWLERS. BRING YOUR DOOMSDAY SCENARIO. WE CERTAINLY WILL.", portrait: 'p_ai' }
+      { text: "FLOOR THREE: COMPLETE. FLOOR FOUR: LOADING. SEE YOU THERE, CRAWLERS. BRING YOUR DOOMSDAY SCENARIO. WE'LL BRING THE CAMERAS. AND THE FOOT CAM.", portrait: 'p_ai' }
     ],
     earlyEnding: [
       { text: "THE STAIRWELL IN THE PARK WAS RIGHT THERE. CARL TOOK IT. THE DOOR CLOSED. THE THIRD FLOOR WENT ON WITHOUT HIM.", portrait: null },
       { text: "SOMEWHERE EAST, A SETTLEMENT KEPT FINDING DEAD WOMEN AT ITS GATE. A RECEPTIONIST KEPT HER SHELVES DUSTED. A SPELL KEPT GROWING.", portrait: null },
-      { text: "ACHIEVEMENT! EARLY BIRD GETS TO SQUIRM! YOU LEFT WITH DAYS ON THE CLOCK. NO REWARD. THE AUDIENCE IS ASKING FOR A REFUND.", portrait: 'p_ai' },
+      { text: "ACHIEVEMENT! EARLY BIRD GETS TO SQUIRM! YOU LEFT WITH DAYS ON THE CLOCK. NO REWARD. THE AUDIENCE WANTS ITS FUCKING MONEY BACK.", portrait: 'p_ai' },
       { text: "YOU MISSED THE BEST PART, CRAWLER. THE TALK SHOW. THE EXPLOSIONS. THE OTHER EXPLOSIONS. MAYBE NEXT TIME, STAY FOR THE WHOLE SHOW.", portrait: 'p_donut' }
     ],
     collapseEnding: [
       { text: "THE CLOCK HIT ZERO. THE OVER CITY TREMBLED, CRACKED, AND FOLDED IN ON ITSELF LIKE A WET CARDBOARD BOX.", portrait: null },
       { text: "EVERY CRAWLER STILL ON THE THIRD FLOOR WENT WITH IT. THAT INCLUDED A MAN IN HIS BOXERS, A CAT, AND A VERY CONFUSED DINOSAUR.", portrait: null },
-      { text: "WELL! THAT IS ONE WAY TO END A SEASON. THE TIMER WAS RIGHT THERE THE WHOLE TIME, CRAWLER. IT WAS ON YOUR SCREEN. IN BIG NUMBERS.", portrait: 'p_ai' },
+      { text: "WELL! THAT IS ONE WAY TO END A SEASON. THE TIMER WAS RIGHT THERE THE WHOLE TIME, CRAWLER. ON YOUR SCREEN. IN BIG FUCKING NUMBERS.", portrait: 'p_ai' },
       { text: "GAME OVER. NEXT TIME: FEWER NAPS, MORE STAIRS.", portrait: 'p_ai' }
     ],
     credits: [
@@ -3906,7 +4078,7 @@
       "GUMGUM, WHO ASKED FOR HELP",
       "BURGUNDY, WHO WAS A PERSON THE WHOLE TIME",
       "RIPPER WONTON AND THE DANGER ZONE PANEL",
-      "IN MEMORY OF MANASA'S TRAILER",
+      "IN MEMORY OF MANASA. AND HER TRAILER.",
       "FITZ AND GORDO FOR THE ROOMS",
       "PUSTULE FOR THE DYNAMITE",
       "NO CHICKADEES WERE PUNCHED. ON PURPOSE.",

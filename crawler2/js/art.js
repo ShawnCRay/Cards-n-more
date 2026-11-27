@@ -2384,21 +2384,21 @@
   var SUNK = ['#d8341c', '#f05a30', '#f88858', '#fcfcfc', '#e0e0f8'];
   var LIGHTK = ['lit', 'litL', 'lantern', 'lanternL', 'brazier', 'ember', 'eye', 'digit', 'glowC', 'glowL', 'fire', 'fireL', 'crack', 'crackG', 'winF', 'wax', 'flame'];
   var SHADE = {
-    village: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.4, m: [0.5, 0.5, 0.62], cap: 46 } }, n: { sky: {}, lay: { s: 0.25, m: [0.62, 0.62, 0.7], cap: 30 } } },
-    ruins: { d: { sky: { s: 0.25, m: [0.62, 0.58, 0.7], cap: 52 }, lay: { s: 0.45, m: [0.56, 0.58, 0.74], cap: 40 } }, n: { sky: {}, lay: { s: 0.2, m: [0.74, 0.74, 0.8], cap: 28 } } },
-    circus: { d: { sky: { s: 0.15, m: [0.76, 0.72, 0.8] }, lay: { s: 0.45, m: [0.52, 0.5, 0.64], cap: 44 } }, n: { sky: {}, lay: { s: 0.25, m: [0.66, 0.66, 0.74], cap: 34 } } },
+    village: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.3, m: [0.5, 0.5, 0.62], cap: 46 } }, n: { sky: {}, lay: { s: 0.25, m: [0.62, 0.62, 0.7], cap: 30 } } },
+    ruins: { d: { sky: { s: 0.25, m: [0.62, 0.58, 0.7], cap: 52 }, lay: { s: 0.35, m: [0.56, 0.58, 0.74], cap: 40 } }, n: { sky: {}, lay: { s: 0.2, m: [0.74, 0.74, 0.8], cap: 28 } } },
+    circus: { d: { sky: { s: 0.15, m: [0.76, 0.72, 0.8] }, lay: { s: 0.25, m: [0.54, 0.5, 0.64], cap: 44 } }, n: { sky: {}, lay: { s: 0.25, m: [0.66, 0.66, 0.74], cap: 34 } } },
     basement: { d: { lay: { s: 0.2, m: [0.85, 0.85, 0.9], cap: 40 } }, n: { lay: { s: 0.2, m: [0.85, 0.85, 0.9], cap: 34 } } },
     settlement: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.4, m: [0.48, 0.5, 0.62], cap: 48 } }, n: { sky: {}, lay: { s: 0.25, m: [0.62, 0.62, 0.7], cap: 32 } } },
-    alley: { d: { sky: { s: 0.15, m: [0.7, 0.66, 0.74] }, lay: { s: 0.4, m: [0.6, 0.62, 0.76], cap: 30 } }, n: { sky: {}, lay: { s: 0.2, m: [0.8, 0.8, 0.84], cap: 22 } } },
+    alley: { d: { sky: { s: 0.15, m: [0.7, 0.66, 0.74] }, lay: { s: 0.3, m: [0.6, 0.62, 0.76], cap: 30 } }, n: { sky: {}, lay: { s: 0.2, m: [0.8, 0.8, 0.84], cap: 22 } } },
     admin: { d: { sky: { s: 0.15, m: [0.78, 0.74, 0.8] }, lay: { s: 0.5, m: [0.5, 0.46, 0.5], cap: 52 } }, n: { sky: {}, lay: { s: 0.4, m: [0.62, 0.56, 0.58], cap: 34 } } },
     office: { d: { sky: { s: 0.2, m: [0.7, 0.7, 0.74] }, lay: { s: 0.45, m: [0.58, 0.6, 0.72], cap: 46 } }, n: { sky: { s: 0.2, m: [0.74, 0.74, 0.78] }, lay: { s: 0.4, m: [0.64, 0.66, 0.76], cap: 38 } } },
-    nest: { d: { sky: { s: 0.5, m: [0.6, 0.62, 0.8] }, lay: { s: 0.55, m: [0.58, 0.6, 0.84], cap: 30 } }, n: { sky: { s: 0.5, m: [0.6, 0.62, 0.8] }, lay: { s: 0.55, m: [0.58, 0.6, 0.84], cap: 26 } } },
+    nest: { d: { sky: { s: 0.4, m: [0.62, 0.58, 0.78] }, lay: { s: 0.4, m: [0.6, 0.56, 0.78], cap: 30 } }, n: { sky: { s: 0.4, m: [0.62, 0.58, 0.78] }, lay: { s: 0.4, m: [0.6, 0.56, 0.78], cap: 26 } } },
     ymca: { d: { sky: { s: 0.35, m: [0.58, 0.6, 0.68], cap: 46 }, lay: { s: 0.35, m: [0.6, 0.62, 0.7], cap: 50 } }, n: { sky: { s: 0.3, m: [0.62, 0.62, 0.7], cap: 36 }, lay: { s: 0.3, m: [0.64, 0.64, 0.72], cap: 40 } } },
     school: { d: { sky: { s: 0.4, m: [0.56, 0.6, 0.72], cap: 44 }, lay: { s: 0.4, m: [0.58, 0.62, 0.74], cap: 50 } }, n: { sky: { s: 0.35, m: [0.6, 0.62, 0.72], cap: 36 }, lay: { s: 0.35, m: [0.62, 0.64, 0.74], cap: 42 } } },
     depot: { d: { sky: { s: 0.3, m: [0.72, 0.72, 0.8] }, lay: { s: 0.3, m: [0.66, 0.66, 0.76], cap: 46 } }, n: { sky: { s: 0.3, m: [0.72, 0.72, 0.8] }, lay: { s: 0.3, m: [0.7, 0.7, 0.78], cap: 36 } } },
     escape: { d: { sky: { s: 0.1, m: [0.82, 0.78, 0.86] }, lay: { s: 0.25, m: [0.72, 0.68, 0.8], cap: 40 } }, n: { sky: {}, lay: { s: 0.2, m: [0.8, 0.8, 0.86], cap: 30 } } },
     restroom: { d: { sky: { s: 0.4, m: [0.56, 0.54, 0.62], cap: 44 }, lay: { s: 0.4, m: [0.56, 0.54, 0.64], cap: 48 } }, n: { sky: { s: 0.35, m: [0.6, 0.58, 0.66], cap: 36 }, lay: { s: 0.35, m: [0.6, 0.58, 0.68], cap: 40 } } },
-    temple: { d: { sky: { s: 0.2, m: [0.8, 0.78, 0.84] }, lay: { s: 0.2, m: [0.76, 0.74, 0.8], cap: 44 } }, n: { sky: { s: 0.2, m: [0.8, 0.78, 0.84] }, lay: { s: 0.2, m: [0.76, 0.74, 0.8], cap: 38 } } }
+    temple: { d: { sky: { s: 0.2, m: [0.76, 0.74, 0.8] }, lay: { s: 0.25, m: [0.68, 0.66, 0.74], cap: 40 } }, n: { sky: { s: 0.2, m: [0.76, 0.74, 0.8] }, lay: { s: 0.25, m: [0.68, 0.66, 0.74], cap: 34 } } }
   };
   function shadeKeep(Q, sh) {
     var set = {}, i, k;
@@ -3041,12 +3041,14 @@
     ];
     if (full) P_.push(
       { f: 'e', n: 'handL', c: [-27, 138, 2], r: [3.6, 4.6, 3], tag: 'arm' },
-      { f: 'c', n: 'thighL', a: [-9, 120], b: [-8, 176], z: 1, r0: 10, r1: 6.4, tag: 'leg' },
-      { f: 'c', n: 'shinL', a: [-8, 176], b: [-7.5, 250], z: 1.5, r0: 6, r1: 3.4, tag: 'leg' },
-      { f: 'e', n: 'footL', c: [-10, 254, 3], r: [6, 3, 4], tag: 'leg' },
-      { f: 'c', n: 'thighR', a: [9, 120], b: [10, 176], z: -1, r0: 9.6, r1: 6.2, tag: 'leg' },
-      { f: 'c', n: 'shinR', a: [10, 176], b: [11, 250], z: -1, r0: 5.8, r1: 3.3, tag: 'leg' },
-      { f: 'e', n: 'footR', c: [13, 254, 1], r: [6, 3, 4], tag: 'leg' }
+      { f: 'c', n: 'thighL', a: [-9.5, 122], b: [-7.5, 172], z: 1, r0: 11.5, r1: 6.6, tag: 'leg' },
+      { f: 'c', n: 'shinL', a: [-7.5, 172], b: [-7, 238], z: 1.5, r0: 6.2, r1: 3.4, tag: 'leg' },
+      { f: 'e', n: 'calfL', c: [-8.5, 190, 1], r: [6.8, 13, 6], tag: 'leg' },
+      { f: 'e', n: 'footL', c: [-9.5, 241, 3], r: [6, 3, 4], tag: 'leg' },
+      { f: 'c', n: 'thighR', a: [9.5, 122], b: [9.5, 172], z: -1, r0: 11, r1: 6.4, tag: 'leg' },
+      { f: 'c', n: 'shinR', a: [9.5, 172], b: [10.5, 238], z: -1, r0: 6, r1: 3.3, tag: 'leg' },
+      { f: 'e', n: 'calfR', c: [10.5, 190, -1], r: [6.4, 13, 6], tag: 'leg' },
+      { f: 'e', n: 'footR', c: [12.5, 241, 1], r: [6, 3, 4], tag: 'leg' }
     );
     return P_;
   }
@@ -3168,9 +3170,8 @@
   }
   function sigFaceSmall(g, ox, oy, s) { // the full-body shot: the same face, pixel-sized
     function at(x, y, c) { P(g, Math.round(ox + x * s), Math.round(oy + y * s), c); }
-    at(-8, 20, SGC.eye); at(-5.5, 20, SGC.eye); at(3, 20, SGC.eye); at(5.5, 20, SGC.eye);
-    at(-8, 17.5, SGC.K); at(-5.5, 17.5, SGC.K); at(3, 17.5, SGC.K); at(5.5, 17.5, SGC.K);
-    at(-1, 30, SGC.lip); at(-3.5, 30, SGC.lip); at(1.5, 30, SGC.lipD);
+    at(-8, 20, SGC.eye); at(4.5, 20, SGC.eye); at(-10.5, 17.5, SGC.K); at(7, 17.5, SGC.K);
+    at(-1, 30, SGC.lip); at(1.5, 30, SGC.lipD);
   }
   // collarbones, ribs, navel, nipples
   function sigBodyMarks(g, ox, oy, s) {
@@ -3226,10 +3227,10 @@
     var big = s > 0.8, th = big ? 2 : 1, i, p;
     function dot(q, c, w, h) { tg.fillStyle = c; tg.fillRect(q[0], q[1], w || th, h || th); }
     // a sea serpent swimming a figure-eight around both breasts: a solid ink body, red fins, a white eye
-    for (i = 34; i >= 0; i--) {
+    for (i = 34; i >= 0; i -= big ? 1 : 3) {
       var a = t * 0.55 - i * 0.075, lx = Math.sin(a), ly = Math.sin(a) * Math.cos(a);
       p = T(lx * 23, 70 + ly * 24);
-      dot(p, SGC.ink, i === 0 ? 3 : th, i === 0 ? 3 : th);
+      dot(p, i === 0 && !big ? SGC.inkR : SGC.ink, i === 0 && big ? 3 : th, i === 0 && big ? 3 : th);
       if (big && i % 6 === 3) dot([p[0], p[1] - 1], SGC.inkR, 1, 1);
       if (big && i === 0) dot([p[0] + 1, p[1] + 1], SGC.W, 1, 1);
     }
@@ -3248,6 +3249,7 @@
     var hy = (t * 5) % 46;
     for (i = 0; i < 28; i++) {
       var dy = 54 + ((hy - i * 1.2) % 46 + 46) % 46, dx = -27.5 + Math.sin(dy / 4.2) * 2.6;
+      if (!big && i % 3) continue;
       p = T(dx, dy); dot(p, i % 4 === 2 ? SGC.inkG : SGC.ink);
       if (big && i % 5 === 4) dot([p[0] - 1, p[1]], SGC.ink, 1, 1);
     }

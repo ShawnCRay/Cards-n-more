@@ -1214,6 +1214,7 @@
     (p.get('flags') || '').split(',').filter(Boolean).forEach(function (f) { r.flags[f] = true; });
     if (p.has('night')) r.hour = 21;
     if (p.has('god')) r.god = true;
+    if (p.has('plotused')) r.plotArmorUsed = true;   // debug: the next death goes straight to the death screen
     var areaId = p.get('area');
     if (areaId) r.area = areaId;
     persist();

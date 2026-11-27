@@ -677,8 +677,10 @@
     S.special = 0;
     S.fearT = 2.5;
     sfx('fear');
-    flash('#d8b8f8', 0.15);
-    ucall('announce', 'PANIC!', { sub: 'FEAR + MAGIC MISSILE', color: '#d8b8f8', time: 1.2 });
+    // the name card once per crawl (run.specialsSeen, shared with stage.js), then a pop over Carl
+    var rr = run(); rr.specialsSeen = rr.specialsSeen || {};
+    if (!rr.specialsSeen['PANIC!']) { rr.specialsSeen['PANIC!'] = true; ucall('announce', 'PANIC!', { sub: 'FEAR + MAGIC MISSILE', color: '#d8b8f8', time: 1.2 }); }
+    else pop(xOf(S.carl.X, 1), 120, 'PANIC!', '#f8d878');
     S.enemies.forEach(function (e) { if (!e.def.fearImmune) e.stun = 2.5; });
     if (S.donut) {
       var tg = S.enemies.filter(function (e) { return !e.dead && !e.dying; });

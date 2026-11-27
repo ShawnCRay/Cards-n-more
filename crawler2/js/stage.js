@@ -859,10 +859,12 @@
       // the floor stays solid: the splat only covers its top pixels (S.L may have lost the tile)
       if (!isSolidT(tileAt(Math.floor(sp.x / TS), Math.floor(sp.y / TS))) && tileAt(Math.floor(sp.x / TS), Math.floor(sp.y / TS)) !== T_ONEWAY) continue;
       if (art) { spr(ctx, 'blood_splat', x, y + 2, sp.v, sp.flip, null); continue; }
-      var w = sp.big ? 14 : 9, rx = Math.round(x - w / 2), ry = Math.round(y);
-      ctx.fillStyle = '#881400'; ctx.fillRect(rx, ry - 1, w, 2);
-      ctx.fillStyle = '#a81000'; ctx.fillRect(rx + 1, ry, w - 2, 1);
-      ctx.fillStyle = '#d82800'; ctx.fillRect(rx + 2 + sp.v, ry - 1, 2, 1); if (sp.big) ctx.fillRect(rx + 8, ry - 2, 2, 1);
+      // no art yet: a small NES-red puddle
+      var w = sp.big ? 16 : 11, rx = Math.round(x - w / 2), ry = Math.round(y);
+      ctx.fillStyle = '#881400'; ctx.fillRect(rx, ry - 1, w, 2); ctx.fillRect(rx + 2, ry - 2, w - 5 - sp.v, 1);
+      ctx.fillStyle = '#a81000'; ctx.fillRect(rx + 1, ry - 1, w - 3, 1);
+      ctx.fillStyle = '#d82800'; ctx.fillRect(rx + 2 + sp.v, ry - 2, 2, 1); ctx.fillRect(rx + w - 4, ry - 1, 1, 1);
+      if (sp.big) { ctx.fillStyle = '#a81000'; ctx.fillRect(rx - 3, ry - 1, 2, 1); ctx.fillRect(rx + w + 1, ry - 1, 2, 1); }
     }
   }
   function bodyXp() { var bd = (D().enemies || {}).krasue_body; return num(bd && bd.xp, num(enemyDef('krasue').xp, 8)); }
@@ -4838,7 +4840,8 @@
       var ed = enemyDef(id);
       [false, true].forEach(function (elite) {
         if (elite && ids[id] !== 'elite') return;
-        var hp = Math.max(1, Math.round(num(ed.hp, 3) * (elite ? 1.6 : 1))), dmg = num(ed.dmg, 1) + (elite ? Math.max(1, Math.round(num(ed.dmg, 1) * 0.25)) : 0);
+        var base = (id === 'krasue_body' && !(D().enemies || {}).krasue_body) ? Math.max(6, num(enemyDef('krasue').bodyHp, num(ed.hp, 14))) : num(ed.hp, 3);
+        var hp = Math.max(1, Math.round(base * (elite ? 1.6 : 1))), dmg = num(ed.dmg, 1) + (elite ? Math.max(1, Math.round(num(ed.dmg, 1) * 0.25)) : 0);
         var taken = Math.max(1, Math.round(dmg - def));
         out.push({ id: id + (elite ? '*' : ''), hp: hp, dmg: dmg, punches: Math.ceil(hp / Math.max(1, num(st.dmg, 1))), hitsToDie: dmg > 0 ? Math.ceil(mx / taken) : null, act: levelAct() });
       });
